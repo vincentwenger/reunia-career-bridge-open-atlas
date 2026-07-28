@@ -22,7 +22,7 @@ The two root histories are retained on `import/reunia-original` and `import/resu
 | Audio recording | Réunia browser recorder, async jobs, worker, route layer | Wrap | Keep browser/worker behavior intact behind a port. |
 | Transcription | Réunia recorder transcription and transcript services/repository | Adapt | Normalize segments to the shared transcript model. |
 | Scoring | Réunia meeting scoring; Resume Taylor job-fit/resume reports | Consolidate later | Preserve individual rubrics; normalize only score type and 0–100 output. |
-| Action tracking | Réunia action center; Resume Taylor application tracker | Adapt | Tasks and application outcomes remain separate concepts joined by a journey. |
+| Action tracking | Réunia action center; Resume Taylor application tracker | Adapt | Tasks and application outcomes remain separate legacy concepts adapted into one job application. |
 | Admin support | Réunia support, incident, analytics services/repositories | Wrap | Reuse operational controls instead of rebuilding them in Career Bridge. |
 | Resume parsing and generation | Resume Taylor profile schema, AI workflow, validation, DOCX/PDF export | Wrap | Treat the existing evidence-grounded resume pipeline as one engine. |
 

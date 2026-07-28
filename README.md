@@ -1,18 +1,39 @@
-# Réunia Career Bridge — Technical Foundation
+# Réunia Career Bridge — Shared Technical Foundation
 
-This workspace combines the histories of two imported applications without prematurely combining their routes, databases, or dependency stacks.
+This workspace combines the histories of Réunia and Resume Taylor without prematurely combining their routes, databases, or dependency stacks.
+
+`JobApplication` is now the shared aggregate root. Resume tailoring and mock interview practice are two stages of the same application lifecycle.
 
 ## Repository layout
 
 ```text
-career_bridge/                 New shared domain and adapter contracts
+career_bridge/                 Shared job-application domain and adapter contracts
 products/reunia/               Original Réunia import
 products/resume_taylor/        Original Resume Taylor import
-docs/                          Architecture and migration guidance
+docs/DOMAIN_MODEL.md           Aggregate relationships and consistency rules
+docs/ARCHITECTURE.md           Integration boundaries and first vertical slice
+docs/MIGRATION_PLAN.md         Incremental adapter and workflow plan
 provenance/                    SHA-256 import manifests
 PREEXISTING_COMPONENTS.md      Hackathon provenance and reuse inventory
 HACKATHON_CHANGES.md           New-work development log
 ```
+
+## Central model
+
+A `JobApplication` connects:
+
+- candidate profile;
+- career background;
+- source resume;
+- target job description;
+- evidence library;
+- tailored resume versions;
+- interview preparation;
+- mock interview sessions;
+- improvement actions;
+- application status and status history.
+
+The hydrated `JobApplicationBundle` validates that every child belongs to the same candidate and application.
 
 ## Git provenance
 
@@ -21,7 +42,7 @@ git tag -n
 git log --graph --decorate --oneline --all
 ```
 
-The original snapshots are tagged as `reunia-original-import` and `resume-tailor-original-import`. Their independent roots remain available as import branches.
+The original snapshots remain tagged as `reunia-original-import` and `resume-tailor-original-import`. Their independent roots remain available as import branches.
 
 ## Run the existing applications
 
@@ -58,4 +79,4 @@ python -m compileall -q career_bridge
 
 ## Integration rule
 
-New Career Bridge features should depend on `career_bridge.ports`, not import Flask routes or persistence implementations directly. Adapters can wrap existing services one capability at a time.
+New Career Bridge features should depend on `career_bridge.ports`, not import Flask routes or persistence implementations directly. Meeting, recording, resume, and tracking records are adapted into a job application; none of those legacy records becomes the aggregate root.

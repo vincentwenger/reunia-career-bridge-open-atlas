@@ -1,4 +1,4 @@
-"""Technology-neutral interfaces for adapting the two existing products."""
+"""Technology-neutral interfaces for adapting the two imported products."""
 
 from __future__ import annotations
 
@@ -8,13 +8,22 @@ from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 from career_bridge.domain.enums import DocumentKind, ScoreKind
 from career_bridge.domain.models import (
     AuthSession,
-    CareerAction,
+    CandidateProfile,
+    CareerBackground,
     CareerDocument,
-    CareerJourney,
-    InterviewSession,
-    ResumeArtifact,
+    EvidenceItem,
+    EvidenceLibrary,
+    ImprovementAction,
+    InterviewPreparation,
+    InterviewQuestion,
+    JobApplication,
+    JobApplicationBundle,
+    MockInterviewSession,
+    Resume,
     Score,
     SupportCase,
+    TailoredResumeVersion,
+    TargetJobDescription,
     Transcript,
     UserProfile,
 )
@@ -39,11 +48,14 @@ class AIResponse:
 
 @dataclass(frozen=True, slots=True)
 class ResumeGenerationRequest:
-    journey: CareerJourney
-    profile: UserProfile
-    source_resume: CareerDocument
-    job_description: CareerDocument
-    evidence_ids: tuple[str, ...] = ()
+    application: JobApplication
+    candidate_profile: CandidateProfile
+    career_background: CareerBackground
+    source_resume: Resume
+    source_document: CareerDocument
+    target_job: TargetJobDescription
+    evidence_library: EvidenceLibrary
+    evidence_items: tuple[EvidenceItem, ...] = ()
     options: Mapping[str, Any] = field(default_factory=dict)
 
 
@@ -57,6 +69,12 @@ class AuthenticationPort(Protocol):
 class UserProfilePort(Protocol):
     def get(self, user_id: str) -> UserProfile | None: ...
     def save(self, profile: UserProfile) -> UserProfile: ...
+
+
+@runtime_checkable
+class CandidateProfilePort(Protocol):
+    def get(self, candidate_profile_id: str) -> CandidateProfile | None: ...
+    def save(self, profile: CandidateProfile) -> CandidateProfile: ...
 
 
 @runtime_checkable
@@ -75,7 +93,7 @@ class OpenAIIntegrationPort(Protocol):
 class AudioRecordingPort(Protocol):
     def accept_recording(
         self,
-        session: InterviewSession,
+        session: MockInterviewSession,
         *,
         source: str,
         content: bytes,
@@ -87,7 +105,7 @@ class AudioRecordingPort(Protocol):
 class TranscriptionPort(Protocol):
     def transcribe(
         self,
-        session: InterviewSession,
+        session: MockInterviewSession,
         recordings: Sequence[CareerDocument],
         *,
         language: str,
@@ -98,7 +116,7 @@ class TranscriptionPort(Protocol):
 class ScoringPort(Protocol):
     def score(
         self,
-        journey: CareerJourney,
+        application: JobApplication,
         kind: ScoreKind,
         inputs: Mapping[str, Any],
     ) -> Score: ...
@@ -106,8 +124,8 @@ class ScoringPort(Protocol):
 
 @runtime_checkable
 class ActionTrackingPort(Protocol):
-    def list_for_journey(self, journey_id: str) -> list[CareerAction]: ...
-    def save(self, action: CareerAction) -> CareerAction: ...
+    def list_for_application(self, application_id: str) -> list[ImprovementAction]: ...
+    def save(self, action: ImprovementAction) -> ImprovementAction: ...
 
 
 @runtime_checkable
@@ -123,15 +141,52 @@ class ResumeEnginePort(Protocol):
         document: CareerDocument,
         content: bytes,
         *,
-        user_id: str,
-    ) -> Mapping[str, Any]: ...
+        candidate_profile_id: str,
+    ) -> CareerBackground: ...
 
-    def generate_resume(self, request: ResumeGenerationRequest) -> ResumeArtifact: ...
+    def generate_resume(
+        self,
+        request: ResumeGenerationRequest,
+    ) -> TailoredResumeVersion: ...
 
 
 @runtime_checkable
 class CareerBridgeRepository(Protocol):
-    def get_journey(self, journey_id: str) -> CareerJourney | None: ...
-    def save_journey(self, journey: CareerJourney) -> CareerJourney: ...
+    """Persistence boundary for the shared application aggregate.
+
+    Existing Réunia and Resume Taylor records remain in their current stores.
+    Implementations may persist only shared IDs and relationships initially.
+    """
+
+    def get_application(self, application_id: str) -> JobApplication | None: ...
+    def save_application(self, application: JobApplication) -> JobApplication: ...
+    def get_application_bundle(self, application_id: str) -> JobApplicationBundle | None: ...
+
+    def get_candidate_profile(self, candidate_profile_id: str) -> CandidateProfile | None: ...
+    def save_candidate_profile(self, profile: CandidateProfile) -> CandidateProfile: ...
+    def save_career_background(self, background: CareerBackground) -> CareerBackground: ...
+    def save_resume(self, resume: Resume) -> Resume: ...
+    def save_target_job(self, target_job: TargetJobDescription) -> TargetJobDescription: ...
+    def save_evidence_library(self, library: EvidenceLibrary) -> EvidenceLibrary: ...
+    def save_evidence_item(self, item: EvidenceItem) -> EvidenceItem: ...
+    def save_tailored_resume_version(
+        self,
+        version: TailoredResumeVersion,
+    ) -> TailoredResumeVersion: ...
+    def save_interview_preparation(
+        self,
+        preparation: InterviewPreparation,
+    ) -> InterviewPreparation: ...
+    def save_interview_question(self, question: InterviewQuestion) -> InterviewQuestion: ...
+    def save_mock_interview_session(
+        self,
+        session: MockInterviewSession,
+    ) -> MockInterviewSession: ...
+    def save_improvement_action(self, action: ImprovementAction) -> ImprovementAction: ...
+
     def save_document(self, document: CareerDocument) -> CareerDocument: ...
-    def list_documents(self, journey_id: str, kind: DocumentKind | None = None) -> list[CareerDocument]: ...
+    def list_documents(
+        self,
+        application_id: str,
+        kind: DocumentKind | None = None,
+    ) -> list[CareerDocument]: ...

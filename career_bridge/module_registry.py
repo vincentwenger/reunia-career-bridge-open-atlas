@@ -62,7 +62,7 @@ MODULES: tuple[ModuleDescriptor, ...] = (
             "products/resume_taylor/resume_tailor/profile_io.py",
         ),
         ReuseStrategy.CONSOLIDATE_LATER,
-        "Keep account preferences and verified candidate evidence distinct, joined by the Career Bridge user ID.",
+        "Keep account preferences separate from CandidateProfile and CareerBackground; join them through the Career Bridge user ID.",
     ),
     ModuleDescriptor(
         Capability.DOCUMENT_STORAGE,
@@ -134,7 +134,7 @@ MODULES: tuple[ModuleDescriptor, ...] = (
             "products/resume_taylor/resume_tailor/application_tracker.py",
         ),
         ReuseStrategy.ADAPT,
-        "Use Réunia actions for tasks and Resume Taylor records for application outcomes; join them through CareerJourney.",
+        "Normalize coaching and follow-up tasks as ImprovementAction records owned by a JobApplication.",
     ),
     ModuleDescriptor(
         Capability.ADMIN_SUPPORT,

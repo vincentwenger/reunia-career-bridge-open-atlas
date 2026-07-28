@@ -2,7 +2,7 @@
 
 ## Goal
 
-Create a Career Bridge product that can reuse mature capabilities from Réunia and Resume Taylor while keeping the first integration reversible and auditable.
+Create one Career Bridge product that reuses mature capabilities from Réunia and Resume Taylor while keeping integration reversible, auditable, and centered on a candidate's job application.
 
 ## Layering
 
@@ -16,35 +16,45 @@ Dependencies point inward. Imported products are not dependencies of the domain 
 
 ## Shared aggregate
 
-`CareerJourney` is the central aggregate. It connects a user and target role to:
+`JobApplication` is the aggregate root. It connects:
 
-- source and generated documents;
-- verified candidate evidence;
-- job-fit, resume, readiness, and communication scores;
-- mock or real interview sessions and transcripts;
-- follow-up actions;
-- support and operational references.
+- a candidate profile and reusable career background;
+- a selected source resume;
+- one target job description;
+- a candidate evidence library;
+- tailored resume versions and application-scoped scores;
+- interview preparation and questions;
+- mock interview sessions, recordings, transcripts, and scorecards;
+- improvement actions;
+- the business application status and status history.
 
-This model gives both products a common vocabulary without forcing their current storage records into one table.
+See [DOMAIN_MODEL.md](DOMAIN_MODEL.md) for the relationship diagram and invariants.
+
+## Why this is not a meeting-centered system
+
+Réunia meeting, recording, and transcript records become supporting capabilities. A mock interview session belongs to a job application; it does not own the candidate, resume, target job, or application lifecycle.
+
+Resume Taylor workflow state also becomes supporting implementation detail. Its draft and final outputs are normalized as `TailoredResumeVersion` records belonging to the same job application used by interview practice.
 
 ## Anti-corruption boundaries
 
-- Réunia meeting IDs must not become Career Bridge journey IDs.
-- Resume Taylor workflow state must not become the shared persistence schema.
-- Existing scores retain their own algorithms and are labeled by `ScoreKind`.
-- Existing account settings and candidate evidence remain separate models.
+- Réunia meeting or recorder IDs must not become Career Bridge application IDs.
+- Resume Taylor workflow/session state must not become the shared persistence schema.
+- Existing scores retain their algorithms and are labeled by `ScoreKind`.
+- Account preferences remain separate from career-facing candidate data.
+- Candidate evidence is reusable, but selected evidence and generated outputs are application-scoped.
 - Binary storage keys are opaque to the domain layer.
 - OpenAI request details remain inside provider adapters.
+- Existing product tables are not renamed or repurposed.
 
 ## First vertical slice
 
-The safest first end-to-end slice is:
-
 1. Authenticate through Réunia.
-2. Create a `CareerJourney` for a job.
-3. Store a job description and source resume through the Réunia storage adapter.
+2. Load or create a candidate profile, career background, source resume, and evidence library.
+3. Create a `JobApplication` and target job description.
 4. Call Resume Taylor through `ResumeEnginePort`.
-5. Normalize its job-fit and resume scores.
-6. Create interview-preparation actions in the Réunia action adapter.
+5. Save a `TailoredResumeVersion` and normalized job-fit/resume scores.
+6. Generate `InterviewPreparation` from the same target job and evidence.
+7. Create application-scoped `ImprovementAction` records.
 
-Audio recording and mock-interview transcription can be the second slice after the account, storage, and resume boundaries are proven.
+Mock interview recording and transcription are the second slice, attached to this existing job application rather than introduced as a separate meeting workflow.

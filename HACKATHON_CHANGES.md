@@ -35,3 +35,35 @@ This log records work added after the two original applications were tagged.
 ## Next recommended log entries
 
 Future commits should append adapter-level changes here, including the exact legacy files reused, new tests, schema migrations, and any behavior differences introduced for Career Bridge.
+
+## 2026-07-28 — Job application aggregate
+
+### Architectural change
+
+- Replaced the shared `CareerJourney` aggregate with `JobApplication` as the central domain object.
+- Replaced generic journey stages with an explicit job-application lifecycle and auditable status history.
+- Removed journey terminology from shared ports, application orchestration, and current architecture documentation.
+
+### Shared data model
+
+- Added `CandidateProfile`, distinct from authentication/account preferences.
+- Added normalized `CareerBackground`, `CareerExperience`, and `EducationRecord` models.
+- Added reusable `Resume`, `EvidenceLibrary`, and `EvidenceItem` models.
+- Added application-owned `TargetJobDescription` and `TailoredResumeVersion` models.
+- Added `InterviewPreparation`, `InterviewQuestion`, and `MockInterviewSession` models.
+- Replaced generic career actions with application-scoped `ImprovementAction` records.
+- Made `Score` application-scoped and linked support cases optionally to an application.
+- Added `JobApplicationBundle` to validate a fully hydrated application graph across resume and interview capabilities.
+
+### Contracts and tests
+
+- Updated resume generation, scoring, audio, transcription, action tracking, and repository ports to use job applications.
+- Updated the coordinator to create applications, transition application status, and save improvement actions.
+- Added shared tests for aggregate relationships, lifecycle transitions, graph consistency, score scope, and coordinator behavior.
+- Added `docs/DOMAIN_MODEL.md` with the shared relationship model, lifecycle, legacy mappings, and anti-leakage rules.
+
+### Intentionally not changed
+
+- No imported Réunia or Resume Taylor product code was modified.
+- No legacy route, meeting table, resume workflow table, or database object was merged.
+- No adapter or production migration was introduced in this change.

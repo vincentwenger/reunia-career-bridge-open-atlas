@@ -7,6 +7,7 @@ from career_bridge.ports import (
     AdminSupportPort,
     AudioRecordingPort,
     AuthenticationPort,
+    CandidateProfilePort,
     DocumentStoragePort,
     OpenAIIntegrationPort,
     ResumeEnginePort,
@@ -22,6 +23,7 @@ class CareerBridgeModules:
 
     authentication: AuthenticationPort | None = None
     user_profiles: UserProfilePort | None = None
+    candidate_profiles: CandidateProfilePort | None = None
     document_storage: DocumentStoragePort | None = None
     openai: OpenAIIntegrationPort | None = None
     audio_recording: AudioRecordingPort | None = None
@@ -42,6 +44,7 @@ class CareerBridgeModules:
         return all(
             (
                 self.user_profiles,
+                self.candidate_profiles,
                 self.document_storage,
                 self.openai,
                 self.scoring,
