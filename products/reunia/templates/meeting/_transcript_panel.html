@@ -1,0 +1,27 @@
+<section class="tab-content" id="transcript-tab" role="tabpanel" aria-labelledby="transcript-tab-button" hidden>
+    <section class="section-card" id="transcript-card">
+        <div class="section-header">
+            <h3>Full Transcript</h3>
+            <p>Search, copy, or expand the complete meeting transcript.</p>
+        </div>
+
+        <div class="section-body">
+            <div class="transcript-tools">
+                <label class="sr-only" for="transcript-search">Search inside this transcript</label>
+                <input
+                    id="transcript-search"
+                    class="transcript-search-input"
+                    type="search"
+                    placeholder="Search inside this transcript..."
+                    autocomplete="off"
+                >
+                <button class="btn-secondary" type="button" id="copy-transcript-button">Copy Transcript</button>
+                <button class="btn-secondary" type="button" id="fullscreen-button" aria-pressed="false">⛶ Fullscreen</button>
+            </div>
+
+            <div class="transcript-content" id="transcript-content" tabindex="0">
+                Select a meeting from the library to view the full transcript.
+            </div>
+        </div>
+    </section>
+</section>

@@ -1,0 +1,27 @@
+/* Shared authenticated-page spacing and responsive alignment.
+   Loaded after page-specific styles so every application page uses one grid. */
+.app-page {
+    width: min(1500px, calc(100% - 48px));
+    max-width: 1500px;
+    margin: 28px auto 64px;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.app-page > .page-hero {
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .app-page {
+        width: min(1500px, calc(100% - 32px));
+        margin: 22px auto 52px;
+    }
+}
+
+@media (max-width: 700px) {
+    .app-page {
+        width: min(1500px, calc(100% - 24px));
+        margin: 16px auto 40px;
+    }
+}

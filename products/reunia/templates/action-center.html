@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+{% from 'macros/ui.html' import page_hero %}
+
+{% block title %}Réunia - Action Center{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ static_asset('css/pages/action-center.css') }}">
+{% endblock %}
+
+{% block content %}
+<div
+    class="app-page action-center-container"
+    id="action-center-app"
+    data-current-user="{{ session.get('full_name') or session.get('email') or session.get('user_id') or '' }}"
+>
+    {{ page_hero(
+        'Action Center',
+        'Review open work from every meeting, assign owners and due dates, and mark actions complete.'
+    ) }}
+
+    <section class="action-command-bar" aria-label="Action Center controls">
+        <div class="action-command-copy">
+            <span class="action-command-kicker">Execution workspace</span>
+            <strong>Focus on the work that needs attention now.</strong>
+            <span id="action-storage-status">Loading action items…</span>
+        </div>
+        <button class="action-primary-button" id="add-action-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            Add action
+        </button>
+    </section>
+
+    <section class="action-kpi-grid" aria-label="Action overview">
+        <button class="action-kpi-card action-kpi-open" type="button" data-kpi-filter="open">
+            <span class="action-kpi-icon" aria-hidden="true">▤</span>
+            <span><small>Open actions</small><strong id="action-open-count">—</strong><em>Not completed</em></span>
+        </button>
+        <button class="action-kpi-card action-kpi-overdue" type="button" data-kpi-filter="overdue">
+            <span class="action-kpi-icon" aria-hidden="true">!</span>
+            <span><small>Overdue</small><strong id="action-overdue-count">—</strong><em>Needs attention</em></span>
+        </button>
+        <button class="action-kpi-card action-kpi-due" type="button" data-kpi-filter="due_soon">
+            <span class="action-kpi-icon" aria-hidden="true">◷</span>
+            <span><small>Due soon</small><strong id="action-due-soon-count">—</strong><em>Within 7 days</em></span>
+        </button>
+        <button class="action-kpi-card action-kpi-done" type="button" data-kpi-filter="done">
+            <span class="action-kpi-icon" aria-hidden="true">✓</span>
+            <span><small>Completed</small><strong id="action-done-count">—</strong><em>Closed actions</em></span>
+        </button>
+    </section>
+
+    <section class="action-workspace">
+        <header class="action-workspace-header">
+            <div>
+                <span class="action-section-kicker">All meeting actions</span>
+                <h2>Action register</h2>
+                <p id="action-results-summary" aria-live="polite">Loading actions…</p>
+            </div>
+            <div class="action-view-toggle" role="group" aria-label="Quick views">
+                <button class="is-active" type="button" data-quick-view="open">Open</button>
+                <button type="button" data-quick-view="mine">My actions</button>
+                <button type="button" data-quick-view="all">All</button>
+                <button type="button" data-quick-view="closed">Closed</button>
+            </div>
+        </header>
+
+        <div class="action-filter-bar" aria-label="Filter actions">
+            <label class="action-search-field" for="action-search">
+                <span>Search</span>
+                <div>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.7-3.7"></path></svg>
+                    <input id="action-search" type="search" placeholder="Search actions, meetings, or owners…" autocomplete="off">
+                </div>
+            </label>
+
+            <label class="action-filter-field" for="action-meeting-filter">
+                <span>Meeting</span>
+                <select id="action-meeting-filter"><option value="all">All meetings</option></select>
+            </label>
+
+            <label class="action-filter-field" for="action-owner-filter">
+                <span>Owner</span>
+                <select id="action-owner-filter"><option value="all">All owners</option></select>
+            </label>
+
+            <label class="action-filter-field" for="action-due-filter">
+                <span>Due date</span>
+                <select id="action-due-filter">
+                    <option value="all">All due dates</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="today">Due today</option>
+                    <option value="due_soon">Due within 7 days</option>
+                    <option value="later">Due later</option>
+                    <option value="none">No due date</option>
+                </select>
+            </label>
+
+            <label class="action-filter-field" for="action-priority-filter">
+                <span>Priority</span>
+                <select id="action-priority-filter">
+                    <option value="all">All priorities</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="none">No priority</option>
+                </select>
+            </label>
+
+            <label class="action-filter-field" for="action-status-filter">
+                <span>Status</span>
+                <select id="action-status-filter">
+                    <option value="all">All statuses</option>
+                    <option value="open">All open</option>
+                    <option value="not_started">Not started</option>
+                    <option value="in_progress">In progress</option>
+                    <option value="blocked">Blocked</option>
+                    <option value="done">Done</option>
+                </select>
+            </label>
+
+            <label class="action-filter-field action-sort-field" for="action-sort">
+                <span>Sort by</span>
+                <select id="action-sort" aria-describedby="action-sort-description">
+                    <option value="attention">Recommended order</option>
+                    <option value="due_asc">Due date: earliest</option>
+                    <option value="due_desc">Due date: latest</option>
+                    <option value="priority">Priority</option>
+                    <option value="meeting">Meeting</option>
+                    <option value="newest">Newest first</option>
+                </select>
+                <small class="action-sort-description" id="action-sort-description">
+                    Overdue and blocked actions first, then priority and deadline.
+                </small>
+            </label>
+
+            <button class="action-clear-button" id="clear-action-filters" type="button">Clear filters</button>
+        </div>
+
+        <div class="action-table-shell" id="action-table-shell" aria-busy="true">
+            <table class="action-table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="action-complete-column"><span class="sr-only">Complete</span></th>
+                        <th scope="col">Action</th>
+                        <th scope="col">Meeting</th>
+                        <th scope="col">Owner</th>
+                        <th scope="col">Due date</th>
+                        <th scope="col">Priority</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="action-menu-column"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody id="action-table-body"></tbody>
+            </table>
+
+            <div class="action-loading-state" id="action-loading-state">
+                <span class="action-spinner" aria-hidden="true"></span>
+                <strong>Collecting actions from your meetings</strong>
+                <p>Combining owners, deadlines, and follow-up items into one view.</p>
+            </div>
+
+            <div class="action-empty-state" id="action-empty-state" hidden>
+                <span aria-hidden="true">✓</span>
+                <strong id="action-empty-title">No actions found</strong>
+                <p id="action-empty-message">Try changing the filters or add a new action.</p>
+                <button type="button" id="empty-add-action-button">Add an action</button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="action-modal-backdrop" id="action-modal" hidden>
+    <section class="action-modal-card" role="dialog" aria-modal="true" aria-labelledby="action-modal-title">
+        <header class="action-modal-header">
+            <div>
+                <span class="action-section-kicker">Action details</span>
+                <h2 id="action-modal-title">Add action</h2>
+            </div>
+            <button class="action-modal-close" id="action-modal-close" type="button" aria-label="Close action editor">×</button>
+        </header>
+
+        <form id="action-form">
+            <input id="action-form-id" type="hidden">
+
+            <label class="action-form-field action-form-field-wide" for="action-form-description">
+                <span>Action <strong aria-hidden="true">*</strong></span>
+                <textarea id="action-form-description" maxlength="1000" rows="4" required placeholder="What needs to be done?"></textarea>
+            </label>
+
+            <div class="action-form-grid">
+                <label class="action-form-field" for="action-form-meeting">
+                    <span>Meeting</span>
+                    <select id="action-form-meeting"><option value="">No linked meeting</option></select>
+                </label>
+
+                <div class="action-form-field action-owner-field">
+                    <div class="action-form-label-row">
+                        <label for="action-form-owner">Owner</label>
+                        <button
+                            class="action-assign-me-button"
+                            id="action-assign-me"
+                            type="button"
+                            aria-pressed="false"
+                        >
+                            <span aria-hidden="true">✓</span>
+                            <span id="action-assign-me-label">Assign to me</span>
+                        </button>
+                    </div>
+                    <input
+                        id="action-form-owner"
+                        type="text"
+                        maxlength="200"
+                        placeholder="Unassigned"
+                        aria-describedby="action-owner-help"
+                    >
+                    <small class="action-owner-help" id="action-owner-help">
+                        Assigning the action to yourself makes it appear under My actions.
+                    </small>
+                </div>
+
+                <label class="action-form-field" for="action-form-due-date">
+                    <span>Due date</span>
+                    <input id="action-form-due-date" type="date">
+                </label>
+
+                <label class="action-form-field" for="action-form-priority">
+                    <span>Priority</span>
+                    <select id="action-form-priority">
+                        <option value="none">No priority</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </label>
+
+                <label class="action-form-field" for="action-form-status">
+                    <span>Status</span>
+                    <select id="action-form-status">
+                        <option value="not_started">Not started</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="done">Done</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="action-form-note">
+                <span aria-hidden="true">i</span>
+                <p>Meeting Review keeps the original context. Action Center is the place to manage ownership, deadlines, priority, and completion across all meetings.</p>
+            </div>
+
+            <footer class="action-modal-actions">
+                <button class="action-secondary-button" id="action-form-cancel" type="button">Cancel</button>
+                <button class="action-primary-button" id="action-form-submit" type="submit">Save action</button>
+            </footer>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ static_asset('js/meeting-utils.js') }}" defer></script>
+<script src="{{ static_asset('js/pages/action-center.js') }}" defer></script>
+{% endblock %}

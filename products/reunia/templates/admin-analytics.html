@@ -1,0 +1,488 @@
+{% extends 'base.html' %}
+{% from 'macros/ui.html' import page_hero %}
+
+{% block title %}Réunia - Admin Analytics{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ static_asset('css/pages/admin-analytics.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="app-page admin-analytics-container">
+    {{ page_hero(
+        'Admin Analytics',
+        'Understand website reach, registered-user activity, and how each account uses Réunia’s core features.'
+    ) }}
+
+    <div class="admin-navigation-shell">
+        <nav class="admin-section-tabs" aria-label="Admin Analytics sections" role="tablist">
+            <button id="admin-tab-overview" type="button" role="tab" aria-selected="true" aria-controls="admin-panel-overview" data-admin-tab="overview">Overview</button>
+            <button id="admin-tab-product" type="button" role="tab" aria-selected="false" aria-controls="admin-panel-product" data-admin-tab="product" tabindex="-1">Product</button>
+            <button id="admin-tab-operations" type="button" role="tab" aria-selected="false" aria-controls="admin-panel-operations" data-admin-tab="operations" tabindex="-1">Operations</button>
+            <button id="admin-tab-users" type="button" role="tab" aria-selected="false" aria-controls="admin-panel-users" data-admin-tab="users" tabindex="-1">Users</button>
+            <button id="admin-tab-support" type="button" role="tab" aria-selected="false" aria-controls="admin-panel-support" data-admin-tab="support" tabindex="-1">Support <span class="admin-tab-badge" id="admin-support-tab-badge" hidden></span></button>
+        </nav>
+
+        <section class="admin-toolbar" aria-label="Admin analytics controls">
+            <div class="admin-filter-group">
+                <label for="admin-period">Activity period</label>
+                <select id="admin-period">
+                    <option value="7" selected>Last 7 days</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="365">Last 12 months</option>
+                </select>
+            </div>
+            <div class="admin-toolbar-meta">
+                <div class="admin-status" id="admin-status" role="status" aria-live="polite">Loading admin analytics…</div>
+                <div class="admin-toolbar-actions">
+                    <a class="admin-secondary-button admin-tab-context" id="admin-export" href="{{ request.script_root }}/api/admin/analytics/users.csv?days=7" hidden>Export users CSV</a>
+                    <button class="admin-primary-button" id="admin-refresh" type="button">Refresh</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="admin-tab-panel" id="admin-panel-overview" role="tabpanel" aria-labelledby="admin-tab-overview" data-admin-panel="overview"></section>
+    <section class="admin-tab-panel" id="admin-panel-product" role="tabpanel" aria-labelledby="admin-tab-product" data-admin-panel="product" hidden></section>
+    <section class="admin-tab-panel" id="admin-panel-operations" role="tabpanel" aria-labelledby="admin-tab-operations" data-admin-panel="operations" hidden></section>
+    <section class="admin-tab-panel" id="admin-panel-users" role="tabpanel" aria-labelledby="admin-tab-users" data-admin-panel="users" hidden></section>
+    <section class="admin-tab-panel" id="admin-panel-support" role="tabpanel" aria-labelledby="admin-tab-support" data-admin-panel="support" hidden></section>
+
+    <section class="admin-kpi-grid" id="admin-overview-kpis" aria-label="Key business and product health">
+        <article class="admin-kpi-card">
+            <span class="admin-kpi-icon" aria-hidden="true">◉</span>
+            <div>
+                <span>Active registered users</span>
+                <strong id="admin-active-users">—</strong>
+                <small>Used Réunia in the selected period</small>
+                <small class="admin-kpi-trend" id="admin-active-users-trend">Comparing with the previous period…</small>
+            </div>
+        </article>
+        <article class="admin-kpi-card">
+            <span class="admin-kpi-icon" aria-hidden="true">✓</span>
+            <div>
+                <span>Activated users</span>
+                <strong id="admin-activation-rate">—</strong>
+                <small id="admin-activation-note">Saved a meeting and opened its review</small>
+            </div>
+        </article>
+        <article class="admin-kpi-card">
+            <span class="admin-kpi-icon" aria-hidden="true">↻</span>
+            <div>
+                <span>7-day return rate</span>
+                <strong id="admin-retention-rate">—</strong>
+                <small id="admin-retention-note">Eligible registered accounts</small>
+            </div>
+        </article>
+        <article class="admin-kpi-card">
+            <span class="admin-kpi-icon" aria-hidden="true">●</span>
+            <div>
+                <span>Processing success</span>
+                <strong id="admin-reliability-rate">—</strong>
+                <small id="admin-reliability-note">Measured operations in the selected period</small>
+                <small class="admin-kpi-trend" id="admin-reliability-trend">Comparing with the previous period…</small>
+            </div>
+        </article>
+        <article class="admin-kpi-card admin-support-kpi-card">
+            <span class="admin-kpi-icon admin-support-kpi-icon" aria-hidden="true">✉</span>
+            <div>
+                <span>New support messages</span>
+                <strong id="admin-new-support-count">—</strong>
+                <small id="admin-support-count-note">Checking the support inbox…</small>
+                <button class="admin-kpi-inline-action" type="button" data-admin-open-tab="support">Open support inbox <span aria-hidden="true">→</span></button>
+            </div>
+        </article>
+    </section>
+
+    <section class="admin-card admin-support-card" id="admin-support-inbox" data-admin-section="support">
+        <header class="admin-card-header admin-support-header">
+            <div>
+                <span class="admin-card-kicker">Help &amp; Support</span>
+                <h2>Support inbox <span class="admin-new-badge" id="admin-support-new-badge" hidden></span></h2>
+                <p>Review messages submitted through Help &amp; Support.</p>
+            </div>
+            <div class="admin-support-controls">
+                <label>
+                    <span>Show</span>
+                    <select id="admin-support-filter">
+                        <option value="all">All messages</option>
+                        <option value="new">New</option>
+                        <option value="read">Read</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </label>
+                <button class="admin-secondary-button" id="admin-support-refresh" type="button">Refresh inbox</button>
+            </div>
+        </header>
+
+        <div class="admin-support-status" id="admin-support-status" role="status" aria-live="polite">
+            Loading support messages…
+        </div>
+
+        <div class="admin-support-layout">
+            <div class="admin-support-list" id="admin-support-list" aria-label="Support messages"></div>
+            <div class="admin-support-empty" id="admin-support-empty" hidden>
+                <strong>No support messages</strong>
+                <p>Messages submitted through Help &amp; Support will appear here.</p>
+            </div>
+
+            <article class="admin-support-detail" id="admin-support-detail" aria-live="polite">
+                <div class="admin-support-detail-placeholder" id="admin-support-detail-placeholder">
+                    <strong>Select a message</strong>
+                    <p>Choose a support request to read the full message and update its status.</p>
+                </div>
+                <div id="admin-support-detail-content" hidden></div>
+            </article>
+        </div>
+    </section>
+
+    <section class="admin-dashboard-grid" id="admin-overview-activity">
+        <article class="admin-card admin-chart-card">
+            <header class="admin-card-header">
+                <div>
+                    <span class="admin-card-kicker">Daily activity</span>
+                    <h2>Guests and active users</h2>
+                    <p>Unique guest browsers and registered users active each day.</p>
+                </div>
+                <div class="admin-chart-legend" aria-label="Chart legend">
+                    <span><i class="guest-dot"></i>Guests</span>
+                    <span><i class="user-dot"></i>Registered users</span>
+                </div>
+            </header>
+            <div class="admin-chart-shell">
+                <svg id="admin-activity-chart" viewBox="0 0 900 310" role="img" aria-labelledby="admin-chart-title admin-chart-description">
+                    <title id="admin-chart-title">Daily guest and registered-user activity</title>
+                    <desc id="admin-chart-description">A line chart comparing unique guest browsers and active registered users by day.</desc>
+                </svg>
+                <div class="admin-empty-state" id="admin-chart-empty" hidden>
+                    <strong>No activity yet</strong>
+                    <p>Visits will appear here after the analytics table begins receiving data.</p>
+                </div>
+            </div>
+        </article>
+
+        <details class="admin-card admin-info-card">
+            <summary>
+                <span><small>How measurement works</small><strong>Privacy-conscious analytics</strong></span>
+                <span aria-hidden="true">+</span>
+            </summary>
+            <ul>
+                <li>Guests are counted using an anonymous first-party browser identifier.</li>
+                <li>Last active and active-user counts include browser activity plus durable product actions such as desktop sign-ins, recordings, meetings, documents, Live Q&amp;A, and Action Center changes.</li>
+                <li>Active time and web active days count only while a browser tab is visible and recently used.</li>
+                <li>IP addresses, transcripts, recording audio, and document contents are not stored in analytics; only content-free metadata such as recording length and a coarse country code is used.</li>
+                <li>Product usage reads document metadata and saved-meeting metadata, never document or transcript content.</li>
+                <li>Desktop use counts successful desktop-client sign-ins; downloads are tied to an account only when the user is signed in.</li>
+                <li>Your administrator activity is excluded by default.</li>
+            </ul>
+        </details>
+    </section>
+
+    <section class="admin-insight-kpi-grid" id="admin-acquisition-kpis" aria-label="Reach and acquisition overview">
+        <button class="admin-kpi-card admin-kpi-card-button" id="admin-guest-geography-trigger" type="button" aria-haspopup="dialog" aria-controls="admin-guest-geography-modal">
+            <span class="admin-kpi-icon" aria-hidden="true">◎</span>
+            <div><span>Unique guest browsers</span><strong id="admin-unique-guests">—</strong><small id="admin-unique-guests-note">Anonymous browsers in the selected period</small><small class="admin-kpi-trend" id="admin-unique-guests-trend">Comparing with the previous period…</small><small class="admin-kpi-action">View country distribution <span aria-hidden="true">→</span></small></div>
+        </button>
+        <article class="admin-kpi-card"><span class="admin-kpi-icon" aria-hidden="true">♙</span><div><span>Registered users</span><strong id="admin-registered-users">—</strong><small>Total accounts</small></div></article>
+        <article class="admin-kpi-card"><span class="admin-kpi-icon" aria-hidden="true">◷</span><div><span>Registered-user time</span><strong id="admin-active-time">—</strong><small>Total active time in the selected period</small><small class="admin-kpi-trend" id="admin-active-time-trend">Comparing with the previous period…</small></div></article>
+        <article class="admin-kpi-card"><span class="admin-kpi-icon" aria-hidden="true">↗</span><div><span>Guest-to-registration</span><strong id="admin-conversion-rate">—</strong><small id="admin-conversion-note">Selected period</small><small class="admin-kpi-trend" id="admin-conversion-trend">Comparing with the previous period…</small></div></article>
+    </section>
+
+    <section class="admin-card admin-alerts-card" id="admin-alerts-card" hidden>
+        <header class="admin-card-header"><div><span class="admin-card-kicker">Needs attention</span><h2>Dashboard alerts</h2><p>Important onboarding, reliability, support, and cost signals.</p></div></header>
+        <div class="admin-alert-list" id="admin-alert-list"></div>
+    </section>
+
+    <section class="admin-metrics-grid" id="admin-acquisition-grid">
+        <article class="admin-card">
+            <header class="admin-card-header"><div><span class="admin-card-kicker">Acquisition</span><h2>Registration conversion</h2><p>How visitors progress from browsing to creating an account.</p></div></header>
+            <div class="admin-stat-list" id="admin-growth-metrics"></div>
+        </article>
+        <article class="admin-card">
+            <header class="admin-card-header"><div><span class="admin-card-kicker">Onboarding</span><h2>Activation and retention</h2><p>Whether registered users reach value and return.</p></div></header>
+            <div class="admin-stat-list" id="admin-activation-retention"></div>
+        </article>
+    </section>
+
+    <section class="admin-metrics-grid" id="admin-workflow-grid">
+        <article class="admin-card">
+            <header class="admin-card-header"><div><span class="admin-card-kicker">Core workflow</span><h2>Meeting funnel</h2><p>Completion across recording, processing, review, and follow-up.</p></div></header>
+            <div class="admin-progress-list" id="admin-meeting-funnel"></div>
+        </article>
+        <article class="admin-card">
+            <header class="admin-card-header"><div><span class="admin-card-kicker">Adoption</span><h2>Feature adoption</h2><p>Registered accounts that used each product area at least once.</p></div></header>
+            <div class="admin-progress-list" id="admin-feature-adoption"></div>
+        </article>
+    </section>
+
+    <section class="admin-operations-navigation" id="admin-operations-navigation" aria-label="Operations sections">
+        <div>
+            <span class="admin-card-kicker">Operations workspace</span>
+            <strong>Monitor reliability and investigate failures</strong>
+        </div>
+        <div class="admin-operations-tabs" role="tablist" aria-label="Operations views">
+            <button type="button" role="tab" aria-selected="true" data-admin-operations-tab="health">System Health</button>
+            <button type="button" role="tab" aria-selected="false" data-admin-operations-tab="incidents">Incidents <span class="admin-operations-badge" id="admin-incidents-tab-badge" hidden></span></button>
+        </div>
+    </section>
+
+    <section class="admin-card" id="admin-system-health">
+        <header class="admin-card-header"><div><span class="admin-card-kicker">Operations</span><h2>System health</h2><p>Shows whether key workflows complete successfully and how long each measured attempt takes.</p></div></header>
+        <p class="admin-metric-explainer"><strong>How to read this table:</strong> Successes completed without a recorded error; failures ended with a recorded error. Success rate is successful attempts divided by all measured attempts. Average duration includes attempts where timing data was recorded.</p>
+        <div class="admin-table-scroll">
+            <table class="admin-health-table"><thead><tr><th>Operation</th><th>Successes</th><th>Failures</th><th>Success rate</th><th>Average duration</th></tr></thead><tbody id="admin-health-body"></tbody></table>
+        </div>
+    </section>
+
+    <section class="admin-card admin-incidents-card" id="admin-incidents-card" hidden>
+        <header class="admin-card-header admin-incidents-header">
+            <div>
+                <span class="admin-card-kicker">Reliability investigation</span>
+                <h2>Incidents</h2>
+                <p>Review every recorded failure by user, including the error, timing, available diagnostics, and likely cause.</p>
+            </div>
+            <button class="admin-secondary-button" id="admin-incidents-refresh" type="button">Refresh incidents</button>
+        </header>
+
+        <div class="admin-incident-summary-grid" aria-label="Incident summary">
+            <article><span>Recorded incidents</span><strong id="admin-incident-total">—</strong></article>
+            <article><span>Affected users</span><strong id="admin-incident-users">—</strong></article>
+            <article><span>Repeated-failure users</span><strong id="admin-incident-repeated-users">—</strong></article>
+            <article><span>Visible after filters</span><strong id="admin-incident-visible">—</strong></article>
+        </div>
+
+        <div class="admin-incident-controls">
+            <label class="admin-incident-search">
+                <span>User</span>
+                <input id="admin-incident-user-filter" type="search" placeholder="Name or email…" autocomplete="off">
+            </label>
+            <label>
+                <span>Feature</span>
+                <select id="admin-incident-feature-filter"><option value="all">All features</option></select>
+            </label>
+            <label>
+                <span>Date</span>
+                <select id="admin-incident-date-filter">
+                    <option value="all">All recorded incidents</option>
+                    <option value="1">Last 24 hours</option>
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="365">Last 12 months</option>
+                </select>
+            </label>
+            <label>
+                <span>Status</span>
+                <select id="admin-incident-status-filter"><option value="all">All statuses</option></select>
+            </label>
+            <label>
+                <span>Error type</span>
+                <select id="admin-incident-type-filter"><option value="all">All error types</option></select>
+            </label>
+            <label class="admin-incident-repeat-filter">
+                <input id="admin-incident-repeated-filter" type="checkbox">
+                <span>Only users with 3+ failures</span>
+            </label>
+        </div>
+
+        <div class="admin-support-status" id="admin-incidents-status" role="status" aria-live="polite">Loading incidents…</div>
+        <div class="admin-incident-list" id="admin-incident-list"></div>
+        <div class="admin-failure-empty" id="admin-incident-empty" hidden>No incidents match the selected filters.</div>
+    </section>
+
+    <section class="admin-detail-metric-grid">
+        <article class="admin-card" id="admin-document-card"><header class="admin-card-header"><div><span class="admin-card-kicker">Documents</span><h2>Library health</h2><p>How many files users currently store, upload, and successfully process.</p></div></header><div class="admin-stat-list" id="admin-document-health"></div><div class="admin-chip-section"><strong>Current files by type</strong><small>Shows the file extension and number of files currently stored across user libraries.</small><div class="admin-chip-list" id="admin-file-types"></div></div></article>
+        <article class="admin-card" id="admin-actions-card"><header class="admin-card-header"><div><span class="admin-card-kicker">Follow-through</span><h2>Action outcomes</h2><p>Whether meeting follow-up tasks are created, completed, or becoming overdue.</p></div></header><div class="admin-stat-list" id="admin-action-outcomes"></div></article>
+        <article class="admin-card" id="admin-live-ai-card"><header class="admin-card-header"><div><span class="admin-card-kicker">AI assistance</span><h2>Live Q&amp;A and AI</h2><p>How often users request AI help, whether answers succeed, and how quickly they arrive.</p></div></header><div class="admin-stat-list" id="admin-live-ai-health"></div></article>
+        <article class="admin-card" id="admin-support-health-card"><header class="admin-card-header"><div><span class="admin-card-kicker">Customer care</span><h2>Support health</h2><p>How many support requests need attention and how quickly administrators respond.</p></div></header><div class="admin-stat-list" id="admin-support-health"></div></article>
+    </section>
+
+    <section class="admin-card admin-users-card" id="admin-users-card">
+        <header class="admin-card-header admin-users-header">
+            <div>
+                <span class="admin-card-kicker">Registered accounts</span>
+                <h2>User activity</h2>
+                <p>Last active includes confirmed browser, desktop, meeting, document, Live Q&amp;A, and Action Center activity. Web active days measure browser engagement only.</p>
+            </div>
+            <div class="admin-user-controls">
+                <label class="admin-user-search">
+                    <span>Search users</span>
+                    <input id="admin-user-search" type="search" placeholder="Name or email…" autocomplete="off">
+                </label>
+                <label>
+                    <span>Activation</span>
+                    <select id="admin-user-activation-filter">
+                        <option value="all">All accounts</option>
+                        <option value="activated">Activated</option>
+                        <option value="not-activated">Not activated</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Period activity</span>
+                    <select id="admin-user-activity-filter">
+                        <option value="all">All activity</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </label>
+            </div>
+        </header>
+
+        <div class="admin-product-kpi-grid" id="admin-product-kpis" aria-label="Product usage totals">
+            <article>
+                <span>Documents stored</span>
+                <strong id="admin-total-documents">—</strong>
+                <small>Current files across user libraries</small>
+            </article>
+            <article>
+                <span>Document storage</span>
+                <strong id="admin-total-document-size">—</strong>
+                <small>Total current file size</small>
+            </article>
+            <article>
+                <span>Saved meetings</span>
+                <strong id="admin-total-meetings">—</strong>
+                <small>Recorded and saved meeting reviews</small>
+            </article>
+            <article>
+                <span>Live Q&amp;A answers</span>
+                <strong id="admin-total-live-qa-answers">—</strong>
+                <small>Durably counted from this update onward</small>
+            </article>
+            <article>
+                <span>Desktop downloads</span>
+                <strong id="admin-total-desktop-downloads">—</strong>
+                <small>Installer downloads by signed-in users</small>
+            </article>
+            <article>
+                <span>Desktop client uses</span>
+                <strong id="admin-total-desktop-uses">—</strong>
+                <small>Successful desktop-client sign-ins</small>
+            </article>
+        </div>
+
+        <div class="admin-usage-source-warning" id="admin-usage-source-warning" hidden></div>
+
+        <div class="admin-table-scroll">
+            <table class="admin-user-table">
+                <thead>
+                    <tr>
+                        <th scope="col">User</th>
+                        <th scope="col">Last active</th>
+                        <th scope="col">Activated</th>
+                        <th scope="col">Web active days</th>
+                        <th scope="col">Saved meetings</th>
+                        <th scope="col">Documents</th>
+                        <th scope="col">Actions</th>
+                        <th scope="col"><span class="sr-only">Usage details</span></th>
+                    </tr>
+                </thead>
+                <tbody id="admin-user-table-body"></tbody>
+            </table>
+        </div>
+        <div class="admin-empty-users" id="admin-user-empty" hidden>No registered users match this search.</div>
+    </section>
+</div>
+
+<div class="admin-guest-geo-modal" id="admin-guest-geography-modal" hidden>
+    <button class="admin-usage-backdrop" type="button" data-admin-guest-geo-close aria-label="Close guest country distribution"></button>
+    <section class="admin-guest-geo-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-guest-geography-title" aria-describedby="admin-guest-geography-description">
+        <header class="admin-usage-dialog-header">
+            <div>
+                <span class="admin-card-kicker">Guest geography</span>
+                <h2 id="admin-guest-geography-title">Guest distribution by country</h2>
+                <p id="admin-guest-geography-description">Unique anonymous browsers in the selected activity period.</p>
+            </div>
+            <button class="admin-usage-close" type="button" data-admin-guest-geo-close aria-label="Close guest country distribution">×</button>
+        </header>
+
+        <div class="admin-guest-geo-coverage" id="admin-guest-geography-coverage"></div>
+        <div class="admin-guest-geo-chart" id="admin-guest-geography-chart" role="list" aria-label="Guest browser distribution by country"></div>
+        <div class="admin-empty-state admin-guest-geo-empty" id="admin-guest-geography-empty" hidden>
+            <strong>Country distribution unavailable</strong>
+            <p id="admin-guest-geography-empty-message">No country data is available for the selected period.</p>
+        </div>
+        <p class="admin-guest-geo-privacy">Only a two-letter country code supplied by a trusted proxy is stored. IP addresses, precise locations, and city data are not retained.</p>
+    </section>
+</div>
+
+<div class="admin-usage-modal" id="admin-usage-modal" hidden>
+    <button class="admin-usage-backdrop" type="button" data-admin-usage-close aria-label="Close user usage details"></button>
+    <section class="admin-usage-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-usage-title">
+        <header class="admin-usage-dialog-header">
+            <div>
+                <span class="admin-card-kicker">Account usage</span>
+                <h2 id="admin-usage-title">User details</h2>
+                <p id="admin-usage-email"></p>
+            </div>
+            <button class="admin-usage-close" type="button" data-admin-usage-close aria-label="Close user usage details">×</button>
+        </header>
+
+        <div class="admin-usage-dialog-status" id="admin-usage-dialog-status" role="status" aria-live="polite">
+            Loading usage details…
+        </div>
+
+        <div id="admin-usage-dialog-content" hidden>
+            <div class="admin-usage-summary-grid">
+                <article><span>Documents</span><strong id="admin-detail-documents">0</strong></article>
+                <article><span>Total size</span><strong id="admin-detail-storage">0 B</strong></article>
+                <article><span>Saved meetings</span><strong id="admin-detail-meetings">0</strong></article>
+                <article><span>Average recording</span><strong id="admin-detail-recording-average">—</strong></article>
+                <article><span>Longest recording</span><strong id="admin-detail-recording-maximum">—</strong></article>
+                <article><span>Shortest recording</span><strong id="admin-detail-recording-minimum">—</strong></article>
+                <article><span>Live Q&amp;A answers</span><strong id="admin-detail-answers">0</strong></article>
+                <article><span>Desktop downloads</span><strong id="admin-detail-desktop-downloads">0</strong></article>
+                <article><span>Desktop uses</span><strong id="admin-detail-desktop-uses">0</strong></article>
+            </div>
+
+            <section class="admin-account-activity-card" aria-labelledby="admin-account-activity-title">
+                <header><h3 id="admin-account-activity-title">Activity and outcomes</h3><p>Additional account metrics moved out of the main user table.</p></header>
+                <div class="admin-account-activity-grid">
+                    <article><span>Web active days</span><strong id="admin-detail-active-days">0</strong></article>
+                    <article><span>7-day return</span><strong id="admin-detail-returned">No</strong></article>
+                    <article><span>Sessions</span><strong id="admin-detail-sessions">0</strong></article>
+                    <article><span>Today</span><strong id="admin-detail-today-time">0 min</strong></article>
+                    <article><span>Selected period</span><strong id="admin-detail-period-time">0 min</strong></article>
+                    <article><span>All time</span><strong id="admin-detail-lifetime-time">0 min</strong></article>
+                    <article><span>Completed actions</span><strong id="admin-detail-completed-actions">0</strong></article>
+                    <article><span>Overdue actions</span><strong id="admin-detail-overdue-actions">0</strong></article>
+                    <article><span>Recorded failures</span><strong id="admin-detail-failures">0</strong></article>
+                    <article><span>Estimated AI cost</span><strong id="admin-detail-ai-cost">$0.00</strong></article>
+                </div>
+            </section>
+
+            <p class="admin-live-qa-tracking-note" id="admin-recording-duration-tracking-note"></p>
+
+            <div class="admin-usage-detail-grid">
+                <section class="admin-usage-list-card">
+                    <header>
+                        <div>
+                            <h3>Document Library</h3>
+                            <p>Current files and their individual sizes.</p>
+                        </div>
+                    </header>
+                    <div class="admin-usage-list" id="admin-detail-document-list"></div>
+                </section>
+
+                <section class="admin-usage-list-card">
+                    <header>
+                        <div>
+                            <h3>Saved meetings</h3>
+                            <p>Meetings recorded, processed, and saved.</p>
+                        </div>
+                    </header>
+                    <div class="admin-usage-list" id="admin-detail-meeting-list"></div>
+                </section>
+            </div>
+
+            <p class="admin-live-qa-tracking-note" id="admin-live-qa-tracking-note"></p>
+            <p class="admin-live-qa-tracking-note" id="admin-desktop-tracking-note"></p>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ static_asset('js/pages/admin-analytics.js') }}" defer></script>
+{% endblock %}

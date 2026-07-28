@@ -1,0 +1,615 @@
+{% extends 'base.html' %}
+{% from 'macros/ui.html' import page_hero %}
+
+{% block title %}Réunia - Application Settings{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ static_asset('css/pages/settings.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="app-page settings-page">
+
+    {{ page_hero(
+        'Settings',
+        'Manage your AI experience, live assistance, meeting follow-up, privacy, and sharing defaults.'
+    ) }}
+
+    <div class="settings-layout">
+
+        <aside class="overview-panel">
+            <div class="overview-header">
+                <h2>Categories</h2>
+                <p>Choose an area to update. Unsaved categories are marked automatically.</p>
+            </div>
+
+            <label class="settings-mobile-nav" for="settings-category-select">
+                <span class="settings-mobile-label">Settings category <span class="settings-mobile-dirty" hidden>· Unsaved changes</span></span>
+                <select id="settings-category-select" class="form-control">
+                    <option value="global-settings">General &amp; AI</option>
+                    <option value="live-qa-settings">Live meeting assistance</option>
+                    <option value="meeting-review-settings">Review &amp; follow-up</option>
+                    <option value="privacy-sharing-settings">Privacy &amp; sharing</option>
+                </select>
+            </label>
+
+            <nav class="scope-summary" aria-label="Settings categories">
+                <button
+                    type="button"
+                    class="scope-card global"
+                    data-settings-target="global-settings"
+                    aria-controls="global-settings"
+                    aria-pressed="false"
+                >
+                    <span class="scope-card-icon" aria-hidden="true">🌐</span>
+                    <span class="scope-card-copy">
+                        <span class="scope-card-title">General &amp; AI</span>
+                        <span class="scope-card-description">Language and default AI performance</span>
+                    </span>
+                    <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
+                    <span class="scope-arrow" aria-hidden="true">›</span>
+                </button>
+
+                <button
+                    type="button"
+                    class="scope-card live-qa"
+                    data-settings-target="live-qa-settings"
+                    aria-controls="live-qa-settings"
+                    aria-pressed="false"
+                >
+                    <span class="scope-card-icon" aria-hidden="true">💬</span>
+                    <span class="scope-card-copy">
+                        <span class="scope-card-title">Live meeting assistance</span>
+                        <span class="scope-card-description">Live Q&amp;A behavior and automation</span>
+                    </span>
+                    <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
+                    <span class="scope-arrow" aria-hidden="true">›</span>
+                </button>
+
+                <button
+                    type="button"
+                    class="scope-card meeting-review"
+                    data-settings-target="meeting-review-settings"
+                    aria-controls="meeting-review-settings"
+                    aria-pressed="false"
+                >
+                    <span class="scope-card-icon" aria-hidden="true">📊</span>
+                    <span class="scope-card-copy">
+                        <span class="scope-card-title">Review &amp; follow-up</span>
+                        <span class="scope-card-description">Summaries, tasks, and scorecards</span>
+                    </span>
+                    <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
+                    <span class="scope-arrow" aria-hidden="true">›</span>
+                </button>
+
+                <button
+                    type="button"
+                    class="scope-card privacy-sharing"
+                    data-settings-target="privacy-sharing-settings"
+                    aria-controls="data-privacy-settings sharing-settings"
+                    aria-pressed="false"
+                >
+                    <span class="scope-card-icon" aria-hidden="true">🔒</span>
+                    <span class="scope-card-copy">
+                        <span class="scope-card-title">Privacy &amp; sharing</span>
+                        <span class="scope-card-description">Retention and new link defaults</span>
+                    </span>
+                    <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
+                    <span class="scope-arrow" aria-hidden="true">›</span>
+                </button>
+            </nav>
+
+            <div class="scope-note">
+                Changes affect future activity unless a setting says otherwise. Existing meetings and links stay unchanged.
+            </div>
+        </aside>
+
+        <main class="settings-card" id="workspace-card">
+            <div class="settings-card-header">
+                <h2 id="workspace-title">General &amp; AI</h2>
+                <p id="workspace-description"></p>
+            </div>
+
+            <div class="settings-form-body is-empty" id="workspace-body">
+                <div id="settings-toast" class="toast" role="status" aria-live="polite"></div>
+
+                <form action="{{ request.script_root }}/update-settings" method="POST" id="settingsForm">
+
+                    <section class="category-section" id="global-settings" hidden>
+                        <div class="category-header global">
+                            <div class="category-heading">
+                                <div class="category-icon">🌐</div>
+                                <div>
+                                    <div class="category-eyebrow">Category 1</div>
+                                    <h2>Global Settings</h2>
+                                    <p>
+                                        These preferences apply throughout Réunia, including Live Q&amp;A,
+                                        transcript processing, and meeting analysis where applicable.
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="scope-badge">Applies across the platform</span>
+                        </div>
+
+                        <div class="category-body">
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">1</div>
+                                    <div>
+                                        <h3>Application language</h3>
+                                        <p>Choose the language used by the interface, transcription, and AI-generated results.</p>
+                                    </div>
+                                </div>
+
+                                <div class="settings-box">
+                                    <div class="form-grid">
+                                        <div class="form-group full-span">
+                                            <label class="form-label" for="language">Application language</label>
+                                            <select id="language" name="language" class="form-control">
+                                                <option value="en" {% if not settings or settings.language == 'en' %}selected{% endif %}>English</option>
+                                                <option value="fr" {% if settings and settings.language == 'fr' %}selected{% endif %}>Français</option>
+                                            </select>
+                                            <span class="form-help">
+                                                Controls the language used throughout Réunia, including the interface, transcription, summaries, answers, and analysis.
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">2</div>
+                                    <div>
+                                        <h3>Default AI model</h3>
+                                        <p>Choose the default performance level used for AI-powered features.</p>
+                                    </div>
+                                </div>
+
+                                <div class="settings-box">
+                                    <div class="form-grid">
+                                        <div class="form-group full-span">
+                                            <label class="form-label" for="aiModelPreset">Default AI model</label>
+
+                                            <select id="aiModelPreset" name="aiModelPreset" class="form-control">
+                                                <option value="fast" {% if not settings or settings.aiModelPreset == 'fast' %}selected{% endif %}>
+                                                    Fast — recommended for lowest cost
+                                                </option>
+                                                <option value="balanced" {% if settings and settings.aiModelPreset == 'balanced' %}selected{% endif %} {% if config.AI_MAX_MODEL_PRESET == 'fast' %}disabled{% endif %}>
+                                                    Balanced — higher cost{% if config.AI_MAX_MODEL_PRESET == 'fast' %} (disabled by cost policy){% endif %}
+                                                </option>
+                                                <option value="advanced" {% if settings and settings.aiModelPreset == 'advanced' %}selected{% endif %} {% if config.AI_MAX_MODEL_PRESET != 'advanced' %}disabled{% endif %}>
+                                                    Advanced — highest cost{% if config.AI_MAX_MODEL_PRESET != 'advanced' %} (disabled by cost policy){% endif %}
+                                                </option>
+                                            </select>
+
+                                            <span class="form-help">
+                                                Used by Live Q&amp;A and other AI features unless a feature-specific model is configured. The server-side cost policy can restrict higher-cost presets.
+                                            </span>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="category-section" id="live-qa-settings" hidden>
+                        <div class="category-header live-qa">
+                            <div class="category-heading">
+                                <div class="category-icon">💬</div>
+                                <div>
+                                    <div class="category-eyebrow">Category 2</div>
+                                    <h2>Live Q&amp;A Settings</h2>
+                                    <p>
+                                        The settings in this category affect only Live Questions &amp; Answers.
+                                        Audio and clipboard prompts are generated automatically from Meeting Preparation → AI Context. These settings control automation, answer updates, and retention.
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="scope-badge">Live Q&amp;A only</span>
+                        </div>
+
+                        <div class="category-body">
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">1</div>
+                                    <div>
+                                        <h3>Automation, Updates &amp; Retention <span class="field-scope">LIVE Q&amp;A ONLY</span></h3>
+                                        <p>Control which local sources generate answers, how frequently partial answers refresh, and how long history remains visible.</p>
+                                    </div>
+                                </div>
+
+                                <div class="settings-box highlight-box">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="retentionHours">Message Expiration</label>
+
+                                            <input
+                                                type="number"
+                                                id="retentionHours"
+                                                name="retentionHours"
+                                                class="form-control"
+                                                min="1"
+                                                max="24"
+                                                step="1"
+                                                value="{{ settings.retentionHours if settings and settings.retentionHours else '1' }}"
+                                            >
+
+                                            <span class="form-help">
+                                                Number of hours streamed Live Q&amp;A history remains visible.
+                                            </span>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label" for="liveQaAnswerUpdateFrequency">Live answer update frequency</label>
+
+                                            <select
+                                                id="liveQaAnswerUpdateFrequency"
+                                                name="liveQaAnswerUpdateFrequency"
+                                                class="form-control"
+                                            >
+                                                <option value="fast" {% if settings and settings.liveQaAnswerUpdateFrequency == 'fast' %}selected{% endif %}>
+                                                    Faster updates — about every 1 second
+                                                </option>
+                                                <option value="balanced" {% if settings and settings.liveQaAnswerUpdateFrequency == 'balanced' %}selected{% endif %}>
+                                                    Balanced — about every 2 seconds (recommended)
+                                                </option>
+                                                <option value="efficient" {% if not settings or settings.liveQaAnswerUpdateFrequency == 'efficient' %}selected{% endif %}>
+                                                    Lower resource usage — about every 5 seconds
+                                                </option>
+                                            </select>
+
+                                            <span class="form-help">
+                                                Controls how often partial AI answers appear in the Real-Time Meeting Feed. Faster updates may use more system resources, but do not make the AI model generate answers faster.
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="automation-settings">
+                                        <h3 class="section-title automation-settings-title">
+                                            ⚡ Automatic AI Triggers
+                                        </h3>
+
+                                        <p class="section-description">
+                                            Select which sources should automatically generate answers in Live Q&amp;A.
+                                        </p>
+
+                                        <div class="source-toggle-list">
+
+                                            <label class="source-toggle" for="aiClipboard">
+                                                <div class="source-text">
+                                                    <div class="source-icon">📋</div>
+                                                    <div>
+                                                        <span class="source-title">Clipboard</span>
+                                                        <span class="source-description">
+                                                            Generate a Live Q&amp;A answer when clipboard text is captured.
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <input
+                                                    type="checkbox"
+                                                    id="aiClipboard"
+                                                    name="aiClipboard"
+                                                    {% if settings and (settings.aiClipboard or settings.autoAskClipboard) %}checked{% endif %}
+                                                >
+                                                <span class="switch"></span>
+                                            </label>
+
+                                            <label class="source-toggle" for="aiSpeaker">
+                                                <div class="source-text">
+                                                    <div class="source-icon">🔊</div>
+                                                    <div>
+                                                        <span class="source-title">Speaker Output</span>
+                                                        <span class="source-description">
+                                                            Generate a Live Q&amp;A answer for incoming speaker audio.
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <input
+                                                    type="checkbox"
+                                                    id="aiSpeaker"
+                                                    name="aiSpeaker"
+                                                    {% if settings and (settings.aiSpeaker or settings.autoAskSpeaker) %}checked{% endif %}
+                                                >
+                                                <span class="switch"></span>
+                                            </label>
+
+                                            <label class="source-toggle" for="aiMicrophone">
+                                                <div class="source-text">
+                                                    <div class="source-icon">🎙</div>
+                                                    <div>
+                                                        <span class="source-title">Microphone Input</span>
+                                                        <span class="source-description">
+                                                            Generate a Live Q&amp;A answer for microphone speech.
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <input
+                                                    type="checkbox"
+                                                    id="aiMicrophone"
+                                                    name="aiMicrophone"
+                                                    {% if settings and (settings.aiMicrophone or settings.autoAskMicrophone) %}checked{% endif %}
+                                                >
+                                                <span class="switch"></span>
+                                            </label>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="category-section" id="meeting-review-settings" hidden>
+                        <div class="category-header meeting-review">
+                            <div class="category-heading">
+                                <div class="category-icon">📊</div>
+                                <div>
+                                    <div class="category-eyebrow">Category 3</div>
+                                    <h2>Meeting Review Settings</h2>
+                                    <p>
+                                        These settings affect only the Scorecard tab on the Meeting Review page.
+                                        Choose which recorded audio source or sources should be evaluated.
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="scope-badge">Meeting Review only</span>
+                        </div>
+
+                        <div class="category-body">
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">1</div>
+                                    <div>
+                                        <h3>Review Generation <span class="field-scope">MEETING REVIEW ONLY</span></h3>
+                                        <p>Choose the level of detail and which structured results are generated after transcription.</p>
+                                    </div>
+                                </div>
+
+                                <div class="settings-box highlight-box">
+                                    <div class="form-grid">
+                                        <div class="form-group full-span">
+                                            <label class="form-label" for="meetingSummaryDetail">Summary detail</label>
+                                            <select id="meetingSummaryDetail" name="meetingSummaryDetail" class="form-control">
+                                                <option value="brief" {% if not settings or settings.meetingSummaryDetail == 'brief' %}selected{% endif %}>Brief — 2 or 3 concise sentences</option>
+                                                <option value="standard" {% if settings and settings.meetingSummaryDetail == 'standard' %}selected{% endif %}>Standard — one clear paragraph</option>
+                                                <option value="detailed" {% if settings and settings.meetingSummaryDetail == 'detailed' %}selected{% endif %}>Detailed — discussion, decisions, risks, and next steps</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="automation-settings">
+                                        <div class="source-toggle-list">
+                                            <label class="source-toggle" for="meetingExtractActionItems">
+                                                <div class="source-text">
+                                                    <div class="source-icon" aria-hidden="true">📝</div>
+                                                    <div><span class="source-title">Extract action items</span><span class="source-description">Add detected follow-up tasks to Meeting Review and Action Center.</span></div>
+                                                </div>
+                                                <input type="checkbox" id="meetingExtractActionItems" name="meetingExtractActionItems" {% if not settings or settings.meetingExtractActionItems %}checked{% endif %}>
+                                                <span class="switch"></span>
+                                            </label>
+                                            <label class="source-toggle" for="meetingGenerateScorecard">
+                                                <div class="source-text">
+                                                    <div class="source-icon">📈</div>
+                                    <div><span class="source-title">Generate scorecard</span><span class="source-description">Evaluate newly processed meetings for answer content and speaking form. Turning this off skips the scorecard AI request.</span></div>
+                                                </div>
+                                                <input type="checkbox" id="meetingGenerateScorecard" name="meetingGenerateScorecard" {% if not settings or settings.meetingGenerateScorecard %}checked{% endif %}>
+                                                <span class="switch"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">2</div>
+                                    <div>
+                                        <h3>Scorecard Evaluation <span class="field-scope">MEETING REVIEW ONLY</span></h3>
+                                        <p>Select the audio source containing the answers that the scorecard should evaluate.</p>
+                                    </div>
+                                </div>
+
+                                <div class="settings-box highlight-box">
+                                    <div class="form-grid">
+                                        <div class="form-group full-span">
+                                            <label class="form-label" for="scorecard_source">Scorecard Source</label>
+
+                                            <div class="scorecard-source-selector" id="scorecard-source-selector" role="radiogroup" aria-label="Scorecard Source">
+                                                <label class="scorecard-source-option" for="scorecardSourceAll">
+                                                    <input
+                                                        type="radio"
+                                                        id="scorecardSourceAll"
+                                                        name="scorecard_source"
+                                                        value="all"
+                                                        {% if settings and settings.scorecard_source == 'all' %}checked{% endif %}
+                                                    >
+                                                    <span class="scorecard-source-choice">
+                                                        <span class="scorecard-source-icon scorecard-source-icon-pair" aria-hidden="true">🎙️🔊</span>
+                                                        <span class="scorecard-source-copy">
+                                                            <span class="scorecard-source-title">All Audio Sources</span>
+                                                            <span class="scorecard-source-description">
+                                                                Evaluate microphone and speaker audio, using either or both when available.
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </label>
+
+                                                <label class="scorecard-source-option" for="scorecardSourceMicrophone">
+                                                    <input
+                                                        type="radio"
+                                                        id="scorecardSourceMicrophone"
+                                                        name="scorecard_source"
+                                                        value="microphone"
+                                                        {% if not settings or not settings.scorecard_source or settings.scorecard_source == 'microphone' %}checked{% endif %}
+                                                    >
+                                                    <span class="scorecard-source-choice">
+                                                        <span class="scorecard-source-icon" aria-hidden="true">🎙</span>
+                                                        <span class="scorecard-source-copy">
+                                                            <span class="scorecard-source-title">Score my answers</span>
+                                                            <span class="scorecard-source-description">
+                                                                Use the audio captured from my microphone.
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </label>
+
+                                                <label class="scorecard-source-option" for="scorecardSourceSpeaker">
+                                                    <input
+                                                        type="radio"
+                                                        id="scorecardSourceSpeaker"
+                                                        name="scorecard_source"
+                                                        value="speaker"
+                                                        {% if settings and settings.scorecard_source == 'speaker' %}checked{% endif %}
+                                                    >
+                                                    <span class="scorecard-source-choice">
+                                                        <span class="scorecard-source-icon" aria-hidden="true">🔊</span>
+                                                        <span class="scorecard-source-copy">
+                                                            <span class="scorecard-source-title">Score the other participant</span>
+                                                            <span class="scorecard-source-description">
+                                                                Use the audio captured from the computer speakers.
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </label>
+                                            </div>
+
+                                            <span class="form-help">
+                                                Choose microphone, speaker, or all available audio sources for scorecard evaluation.
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="category-section" id="data-privacy-settings" data-settings-category="privacy-sharing-settings" hidden>
+                        <div class="category-header data-privacy">
+                            <div class="category-heading">
+                                <div class="category-icon">🔒</div>
+                                <div>
+                                    <div class="category-eyebrow">Category 4</div>
+                                    <h2>Data &amp; Privacy</h2>
+                                    <p>Automatically remove newly saved content after the selected period.</p>
+                                </div>
+                            </div>
+                            <span class="scope-badge">Account-wide</span>
+                        </div>
+                        <div class="category-body">
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">1</div>
+                                    <div><h3>Retention periods</h3><p>Expired records are removed when meeting history or the document library is accessed.</p></div>
+                                </div>
+                                <div class="settings-box highlight-box">
+                                    <div class="form-grid">
+                                        <div class="form-group retention-control" data-retention-control>
+                                            <label class="form-label" for="meetingRetentionDays">Saved meetings</label>
+                                            <select id="meetingRetentionDays" name="meetingRetentionDays" class="form-control">
+                                                <option value="0" {% if settings and settings.meetingRetentionDays == 0 %}selected{% endif %}>Keep until I delete them</option>
+                                                <option value="7" {% if not settings or settings.meetingRetentionDays == 7 %}selected{% endif %}>Delete after 7 days</option>
+                                                <option value="30" {% if settings and settings.meetingRetentionDays == 30 %}selected{% endif %}>Delete after 30 days</option>
+                                                <option value="90" {% if settings and settings.meetingRetentionDays == 90 %}selected{% endif %}>Delete after 90 days</option>
+                                                <option value="365" {% if settings and settings.meetingRetentionDays == 365 %}selected{% endif %}>Delete after 1 year</option>
+                                            </select>
+                                            <span class="form-help">Applies only to newly saved meetings, including their transcripts and analysis.</span>
+                                            <span class="retention-warning" data-retention-warning hidden>Automatic deletion is enabled for newly saved meetings.</span>
+                                        </div>
+                                        <div class="form-group retention-control" data-retention-control>
+                                            <label class="form-label" for="documentRetentionDays">Uploaded documents</label>
+                                            <select id="documentRetentionDays" name="documentRetentionDays" class="form-control">
+                                                <option value="0" {% if settings and settings.documentRetentionDays == 0 %}selected{% endif %}>Keep until I delete them</option>
+                                                <option value="7" {% if not settings or settings.documentRetentionDays == 7 %}selected{% endif %}>Delete after 7 days</option>
+                                                <option value="30" {% if settings and settings.documentRetentionDays == 30 %}selected{% endif %}>Delete after 30 days</option>
+                                                <option value="90" {% if settings and settings.documentRetentionDays == 90 %}selected{% endif %}>Delete after 90 days</option>
+                                                <option value="365" {% if settings and settings.documentRetentionDays == 365 %}selected{% endif %}>Delete after 1 year</option>
+                                            </select>
+                                            <span class="form-help">Applies only to newly uploaded documents. Temporary recorder uploads already follow system cleanup rules.</span>
+                                            <span class="retention-warning" data-retention-warning hidden>Automatic deletion is enabled for newly uploaded documents.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="category-section" id="sharing-settings" data-settings-category="privacy-sharing-settings" hidden>
+                        <div class="category-header sharing">
+                            <div class="category-heading">
+                                <div class="category-icon">🔗</div>
+                                <div>
+                                    <div class="category-eyebrow">Category 5</div>
+                                    <h2>Sharing Defaults</h2>
+                                    <p>These values prefill and secure new public meeting links.</p>
+                                </div>
+                            </div>
+                            <span class="scope-badge">New links only</span>
+                        </div>
+                        <div class="category-body">
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">2</div>
+                                    <div><h3>New link defaults</h3><p>These defaults apply only to newly created public links. You can change them before creating each link.</p></div>
+                                </div>
+                                <div class="settings-box highlight-box">
+                                    <div class="form-grid">
+                                        <div class="form-group full-span">
+                                            <label class="form-label" for="shareDefaultExpirationDays">Default expiration</label>
+                                            <select id="shareDefaultExpirationDays" name="shareDefaultExpirationDays" class="form-control">
+                                                <option value="7" {% if settings and settings.shareDefaultExpirationDays == 7 %}selected{% endif %}>After 7 days</option>
+                                                <option value="30" {% if not settings or settings.shareDefaultExpirationDays == 30 %}selected{% endif %}>After 30 days</option>
+                                                <option value="90" {% if settings and settings.shareDefaultExpirationDays == 90 %}selected{% endif %}>After 90 days</option>
+                                                <option value="0" {% if settings and settings.shareDefaultExpirationDays == 0 %}selected{% endif %}>Never</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="automation-settings">
+                                        <div class="source-toggle-list">
+                                            <label class="source-toggle" for="shareRequirePassword">
+                                                <div class="source-text"><div class="source-icon">🔑</div><div><span class="source-title">Require a password</span><span class="source-description">Do not create a public link until a password is entered.</span></div></div>
+                                                <input type="checkbox" id="shareRequirePassword" name="shareRequirePassword" {% if settings and settings.shareRequirePassword %}checked{% endif %}><span class="switch"></span>
+                                            </label>
+                                            <label class="source-toggle" for="shareIncludeScorecard">
+                                                <div class="source-text"><div class="source-icon">📊</div><div><span class="source-title">Include scorecard</span><span class="source-description">Select the scorecard automatically in the sharing dialog.</span></div></div>
+                                                <input type="checkbox" id="shareIncludeScorecard" name="shareIncludeScorecard" {% if settings and settings.shareIncludeScorecard %}checked{% endif %}><span class="switch"></span>
+                                            </label>
+                                            <label class="source-toggle" for="shareAllowDownload">
+                                                <div class="source-text"><div class="source-icon">⬇️</div><div><span class="source-title">Allow downloads and printing</span><span class="source-description">Enable recipient downloads by default for new links.</span></div></div>
+                                                <input type="checkbox" id="shareAllowDownload" name="shareAllowDownload" {% if settings and settings.shareAllowDownload %}checked{% endif %}><span class="switch"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="save-bar" id="settings-save-bar">
+                        <div class="save-note" id="save-note">No unsaved changes</div>
+
+                        <div class="save-actions">
+                            <button type="button" class="btn btn-secondary" id="resetSettingsBtn" disabled>
+                                Reset changes
+                            </button>
+                            <button type="submit" class="btn" id="saveSettingsBtn" disabled>
+                                Save changes
+                            </button>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+        </main>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ static_asset('js/pages/settings.js') }}" defer></script>
+{% endblock %}

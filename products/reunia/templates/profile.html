@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% from 'macros/ui.html' import page_hero %}
+
+{% block title %}Réunia - User Profile{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ static_asset('css/pages/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="app-page profile-page">
+
+    {{ page_hero(
+        'User Profile',
+        'Update the personal and professional details used in your Réunia workspace.'
+    ) }}
+
+    <div class="profile-layout">
+
+        <aside class="profile-summary">
+            <div class="summary-top">
+                <div class="profile-avatar-large" id="profileAvatar" aria-hidden="true">
+                    {{ (user.full_name if user and user.full_name else user.email if user and user.email else 'U')[:1] | upper }}
+                </div>
+
+                <h2 class="summary-name" id="summaryName">
+                    {{ user.full_name if user and user.full_name else 'Your Profile' }}
+                </h2>
+
+                <div class="summary-email">
+                    {{ user.email if user and user.email else 'No email available' }}
+                </div>
+            </div>
+
+            <div class="summary-list">
+                <div class="summary-item">
+                    <div class="summary-icon" aria-hidden="true">💼</div>
+                    <div>
+                        <strong>Job Title</strong>
+                        <span id="summaryJobTitle">
+                            {{ user.job_title if user and user.job_title else 'Not provided yet' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="summary-item">
+                    <div class="summary-icon" aria-hidden="true">🔐</div>
+                    <div>
+                        <strong>Account Email</strong>
+                        <span>Your email is locked to protect account identity.</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="profile-card">
+            <div class="profile-card-header">
+                <h2>Edit Profile Settings</h2>
+                <p>
+                    Update your personal and professional information. Your email address is used as your account identity
+                    and cannot be changed from this page.
+                </p>
+            </div>
+
+            <div class="profile-form-body">
+                <form action="{{ request.script_root }}/update-profile" method="POST" id="profileForm" novalidate>
+
+                    <section class="form-section">
+                        <h3 class="section-title">
+                            <span aria-hidden="true">👤</span>
+                            Basic Information
+                        </h3>
+                        <p class="section-description">
+                            This information helps identify your account inside Réunia.
+                        </p>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label" for="fullName">Full Name</label>
+                                <input
+                                    type="text"
+                                    id="fullName"
+                                    name="fullName"
+                                    class="form-control"
+                                    value="{{ user.full_name if user else '' }}"
+                                    placeholder="John Doe"
+                                    autocomplete="name"
+                                    maxlength="120"
+                                    required
+                                >
+                            </div>
+
+                            <div class="form-group locked-field">
+                                <label class="form-label" for="emailAddress">
+                                    Email Address
+                                    <span class="locked-badge">Locked</span>
+                                </label>
+
+                                <input
+                                    type="email"
+                                    id="emailAddress"
+                                    name="emailAddress"
+                                    class="form-control"
+                                    value="{{ user.email if user else '' }}"
+                                    placeholder="john@example.com"
+                                    autocomplete="email"
+                                    aria-describedby="emailAddressHelp"
+                                    readonly
+                                >
+
+                                <span class="form-help" id="emailAddressHelp">
+                                    This email is linked to your account and cannot be edited here.
+                                </span>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="jobTitle">Job Title</label>
+                                <input
+                                    type="text"
+                                    id="jobTitle"
+                                    name="jobTitle"
+                                    class="form-control"
+                                    value="{{ user.job_title if user else '' }}"
+                                    placeholder="Project Manager"
+                                    autocomplete="organization-title"
+                                    maxlength="120"
+                                >
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="form-actions">
+                        <div class="save-status-group">
+                            <div class="save-note">
+                                Your profile changes will be saved to your Réunia account.
+                                <span class="save-state" id="profileSaveState" aria-live="polite">Saved</span>
+                            </div>
+                            <div
+                                id="profile-toast"
+                                class="toast profile-save-feedback"
+                                role="status"
+                                aria-live="polite"
+                                aria-atomic="true"
+                            ></div>
+                        </div>
+
+                        <button type="submit" class="btn btn-submit" id="saveProfileBtn" aria-busy="false">
+                            Save Profile Changes
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </main>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ static_asset('js/pages/profile.js') }}" defer></script>
+{% endblock %}

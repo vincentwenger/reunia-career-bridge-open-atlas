@@ -1,0 +1,155 @@
+<section class="tab-content" id="scorecard-tab" role="tabpanel" aria-labelledby="scorecard-tab-button" hidden>
+                    <section class="score-hero-card score-red" id="overall-score-card">
+                        <div class="score-hero-content">
+                            <div>
+                                <div class="score-hero-heading-row">
+                                    <div class="score-hero-title" id="overall-score-title">Overall Performance Score</div>
+                                    <span class="score-evidence-badge evidence-insufficient" id="overall-evidence-badge">Insufficient evidence</span>
+                                </div>
+                                <div class="score-hero-subtitle" id="score-description">
+                                    Select a meeting to view the weighted aggregate of content quality, communication form, and meeting effectiveness metrics.
+                                </div>
+                            </div>
+
+                            <div class="score-circle" id="score-circle">
+                                <div class="score-circle-inner">
+                                    <span class="score-number" id="final-weighted-grade">-</span>
+                                    <span class="score-label" id="score-circle-label">out of 100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="score-stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Content Average Score</div>
+                            <div class="stat-value" id="content-average-score">-</div>
+                            <div class="stat-evidence" id="content-evidence-status">Insufficient evidence</div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-label">Form Average Score</div>
+                            <div class="stat-value" id="form-average-score">-</div>
+                            <div class="stat-evidence" id="form-evidence-status">Insufficient evidence</div>
+                        </div>
+                    </section>
+
+                    <section class="section-card">
+                        <div class="section-header">
+                            <h3>Grade Content Section</h3>
+                            <p>Evaluation of answer relevance, depth, and quality.</p>
+                        </div>
+
+                        <div class="section-evidence-note" id="content-evidence-note" hidden></div>
+                        <div class="section-body" id="content-grading-container">
+                            <div class="no-records-state">
+                                <strong>No meeting selected</strong>
+                                Select a meeting from the library to view content grading.
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="section-card">
+                        <div class="section-header">
+                            <h3>Grade Form Section</h3>
+                            <p>Communication style, confidence, tone, pace, and delivery metrics.</p>
+                        </div>
+
+                        <div class="section-evidence-note" id="form-evidence-note" hidden></div>
+                        <div class="section-body">
+                            <div class="metric-grid">
+                                <div class="metric-box">
+                                    <div class="metric-title">Pace</div>
+                                    <div class="metric-value" id="form-pace-value">-</div>
+                                    <span class="badge badge-grade" id="form-pace-grade">N/A</span>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    class="metric-box metric-box-clickable"
+                                    data-form-metric-detail="filler_words"
+                                    aria-expanded="false"
+                                    aria-controls="form-metric-details"
+                                >
+                                    <div class="metric-title">Filler Words</div>
+                                    <div class="metric-value" id="form-filler-value">-</div>
+                                    <span class="badge badge-grade" id="form-filler-grade">N/A</span>
+                                    <span class="metric-rate" id="form-filler-rate">Rate unavailable</span>
+                                    <span class="metric-click-hint">View detected words</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="metric-box metric-box-clickable"
+                                    data-form-metric-detail="power_words"
+                                    aria-expanded="false"
+                                    aria-controls="form-metric-details"
+                                >
+                                    <div class="metric-title">Power Words</div>
+                                    <div class="metric-value" id="form-power-value">-</div>
+                                    <span class="badge badge-grade" id="form-power-grade">N/A</span>
+                                    <span class="metric-rate" id="form-power-rate">Rate unavailable</span>
+                                    <span class="metric-click-hint">View detected words</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="metric-box metric-box-clickable"
+                                    data-form-metric-detail="negative_words"
+                                    aria-expanded="false"
+                                    aria-controls="form-metric-details"
+                                >
+                                    <div class="metric-title">Negative Words</div>
+                                    <div class="metric-value" id="form-negative-words-value">-</div>
+                                    <span class="badge badge-grade" id="form-negative-words-grade">N/A</span>
+                                    <span class="metric-rate" id="form-negative-words-rate">Rate unavailable</span>
+                                    <span class="metric-click-hint">View detected words</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="metric-box metric-box-clickable"
+                                    data-form-metric-detail="negative_tone"
+                                    aria-expanded="false"
+                                    aria-controls="form-metric-details"
+                                >
+                                    <div class="metric-title">Negative Tone</div>
+                                    <div class="metric-value" id="form-negative-tone-value">-</div>
+                                    <span class="badge badge-grade" id="form-negative-tone-grade">N/A</span>
+                                    <span class="metric-rate" id="form-negative-tone-rate">Rate unavailable</span>
+                                    <span class="metric-click-hint">View tone excerpts</span>
+                                </button>
+
+                                <div class="metric-box">
+                                    <div class="metric-title">Pauses</div>
+                                    <div class="metric-value" id="form-pauses-value">-</div>
+                                    <span class="badge badge-grade" id="form-pauses-grade">N/A</span>
+                                    <span class="metric-rate" id="form-pauses-rate">Rate unavailable</span>
+                                </div>
+                            </div>
+
+                            <section
+                                class="form-metric-details"
+                                id="form-metric-details"
+                                tabindex="-1"
+                                aria-live="polite"
+                                hidden
+                            >
+                                <div class="form-metric-details-header">
+                                    <div>
+                                        <div class="form-metric-details-eyebrow">Communication detail</div>
+                                        <h4 id="form-metric-details-title">Detected words</h4>
+                                    </div>
+                                    <span class="form-metric-details-count" id="form-metric-details-count">0 items</span>
+                                </div>
+                                <p class="form-metric-details-description" id="form-metric-details-description"></p>
+                                <ul class="form-metric-details-list" id="form-metric-details-list"></ul>
+                            </section>
+
+                            <div class="overall-assessment-box">
+                                <div class="overall-assessment-title">Overall Assessment</div>
+                                <p class="overall-assessment-text" id="form-overall-assessment">N/A</p>
+                            </div>
+                        </div>
+                    </section>
+                </section>

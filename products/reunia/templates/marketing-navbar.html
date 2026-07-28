@@ -1,0 +1,45 @@
+<nav class="navbar marketing-navbar" id="mainNavbar" aria-label="Public navigation">
+    <div class="nav-container">
+        <a href="#product" class="nav-brand" aria-label="Réunia home">
+            <span class="brand-icon" aria-hidden="true">
+                <img src="{{ static_asset('icons/favicon-64.png') }}" alt="">
+            </span>
+            <span class="brand-text">
+                <span class="brand-title">Réunia</span>
+                <span class="brand-subtitle">YOUR AI MEETING COACH</span>
+            </span>
+        </a>
+
+        <button
+            type="button"
+            class="mobile-menu-btn"
+            id="mobileMenuBtn"
+            aria-label="Open navigation menu"
+            aria-expanded="false"
+            aria-controls="primaryNavContent"
+        >
+            <span class="mobile-menu-line" aria-hidden="true"></span>
+            <span class="mobile-menu-line" aria-hidden="true"></span>
+            <span class="mobile-menu-line" aria-hidden="true"></span>
+        </button>
+
+        <div class="nav-content" id="primaryNavContent">
+            <ul class="nav-menu marketing-nav-menu">
+                <li class="nav-item"><a class="nav-link" href="#product">Product</a></li>
+                <li class="nav-item"><a class="nav-link" href="#how-it-works">How it works</a></li>
+                <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+                <li class="nav-item"><a class="nav-link" href="#use-cases">Use cases</a></li>
+                <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+            </ul>
+
+            <div class="nav-auth marketing-nav-auth">
+                {% include 'components/guest_language_switcher.html' %}
+                <a href="{{ request.script_root }}/login.html" class="support-nav-link">Sign in</a>
+                <a href="{{ request.script_root }}/login.html" class="marketing-get-started-btn">
+                    Get started
+                    <span aria-hidden="true">→</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>

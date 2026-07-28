@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% from 'macros/ui.html' import page_hero %}
+
+{% block title %}Réunia - Meeting Review{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ static_asset('css/pages/meeting-review.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="app-page dashboard-container">
+
+    {{ page_hero(
+        'Meeting Review',
+        'Choose a meeting to review its summary, actions, scorecard, transcript, and ask questions about that meeting.'
+    ) }}
+
+    <div class="content-grid">
+
+        {% set sidebar_title = 'Meeting Library' %}
+{% set sidebar_description = 'Select a meeting to review its summary, scorecard, and transcript.' %}
+{% set sidebar_search_id = 'meeting-search' %}
+{% set sidebar_search_placeholder = 'Search by meeting name, date, score, summary, transcript, wins, or action items...' %}
+{% set sidebar_list_id = 'meeting-list' %}
+{% set sidebar_loading_title = 'Loading meetings' %}
+{% set sidebar_loading_message = 'Retrieving your meeting history...' %}
+{% include 'meeting/_meeting_sidebar.html' %}
+
+        <main class="details-panel">
+            <section class="tab-shell" id="meeting-review-shell">
+                <div class="tab-nav">
+                    <div class="tab-button-group" role="tablist" aria-label="Meeting review tabs">
+                        <button class="tab-button active" type="button" id="summary-tab-button" role="tab" aria-selected="true" aria-controls="summary-tab" tabindex="0" data-meeting-tab="summary">Summary</button>
+                        <button class="tab-button" type="button" id="scorecard-tab-button" role="tab" aria-selected="false" aria-controls="scorecard-tab" tabindex="-1" data-meeting-tab="scorecard">Scorecard</button>
+                        <button class="tab-button" type="button" id="transcript-tab-button" role="tab" aria-selected="false" aria-controls="transcript-tab" tabindex="-1" data-meeting-tab="transcript">Transcript</button>
+                        <button class="tab-button" type="button" id="ask-ai-tab-button" role="tab" aria-selected="false" aria-controls="ask-ai-tab" tabindex="-1" data-meeting-tab="ask-ai">Ask about this meeting</button>
+                    </div>
+                    <button class="meeting-share-trigger" type="button" id="meeting-share-trigger" disabled>
+                        <span aria-hidden="true">↗</span> Share
+                    </button>
+                </div>
+
+                {% include 'meeting/_summary_panel.html' %}
+
+                {% include 'meeting/_scorecard_panel.html' %}
+
+                {% include 'meeting/_transcript_panel.html' %}
+
+                {% include 'meeting/_ask_ai_panel.html' %}
+            </section>
+        </main>
+    </div>
+    {% include 'meeting/_share_dialog.html' %}
+    {% include 'meeting/_topic_manager_dialog.html' %}
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ static_asset('js/meeting-utils.js') }}" defer></script>
+<script src="{{ static_asset('js/scorecard-utils.js') }}" defer></script>
+<script src="{{ static_asset('js/pages/meeting-review.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,69 @@
+<section class="tab-content active" id="summary-tab" role="tabpanel" aria-labelledby="summary-tab-button">
+                    <section class="summary-card">
+                        <div class="summary-heading-row">
+                            <h3 class="summary-title">Executive Summary</h3>
+                            <div class="selected-meeting-topics" id="selected-meeting-topics" hidden></div>
+                        </div>
+                        <p class="summary-text" id="summary-content">
+                            Select a meeting from the library to view its executive summary, key wins, improvement areas,
+                            action items, and open questions.
+                        </p>
+                    </section>
+
+                    <section class="insights-grid insights-grid-spaced">
+                        <div class="section-card">
+                            <div class="section-header">
+                                <h3>✅ Key Wins</h3>
+                                <p>Positive outcomes and strengths detected in the meeting.</p>
+                            </div>
+                            <div class="section-body">
+                                <ul class="item-list win-list" id="key-wins-list">
+                                    <li class="empty-message">No meeting selected.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="section-card">
+                            <div class="section-header">
+                                <h3>🚧 Improvement Areas</h3>
+                                <p>Opportunities to improve future meeting performance.</p>
+                            </div>
+                            <div class="section-body">
+                                <ul class="item-list loss-list" id="improvement-areas-list">
+                                    <li class="empty-message">No meeting selected.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="insights-grid insights-grid-spaced">
+                        <div class="section-card">
+                            <div class="section-header meeting-actions-header">
+                                <div>
+                                    <h3>✅ Action Items</h3>
+                                    <p>Tasks, follow-ups, and owners captured from this meeting.</p>
+                                    <a class="meeting-action-center-link" id="action-center-link" href="{{ request.script_root }}/action-center.html">
+                                        Manage in Action Center <span aria-hidden="true">→</span>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="section-body">
+                                <ul class="item-list action-list" id="action-items-list">
+                                    <li class="empty-message">No meeting selected.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="section-card">
+                            <div class="section-header">
+                                <h3>❓ Open Questions</h3>
+                                <p>Unresolved questions that may require follow-up.</p>
+                            </div>
+                            <div class="section-body">
+                                <ul class="item-list question-list" id="open-questions-list">
+                                    <li class="empty-message">No meeting selected.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </section>
+                </section>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="{{ share_language | default('en') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="referrer" content="no-referrer">
+    <title>{{ social_meta.title }}</title>
+    <meta name="description" content="{{ social_meta.description }}">
+    <link rel="canonical" href="{{ social_meta.url }}">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Réunia">
+    <meta property="og:title" content="{{ social_meta.title }}">
+    <meta property="og:description" content="{{ social_meta.description }}">
+    <meta property="og:url" content="{{ social_meta.url }}">
+    <meta property="og:image" content="{{ social_meta.image_url }}">
+    <meta property="og:image:secure_url" content="{{ social_meta.image_url }}">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="{{ social_meta.image_alt }}">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ social_meta.title }}">
+    <meta name="twitter:description" content="{{ social_meta.description }}">
+    <meta name="twitter:image" content="{{ social_meta.image_url }}">
+    <meta name="twitter:image:alt" content="{{ social_meta.image_alt }}">
+
+    <link rel="icon" type="image/x-icon" href="{{ static_asset('icons/favicon.ico') }}">
+    <link rel="stylesheet" href="{{ static_asset('css/base.css') }}">
+    <link rel="stylesheet" href="{{ static_asset('css/pages/shared-meeting.css') }}">
+</head>
+<body class="shared-meeting-body" data-app-language="{{ share_language | default('en') }}" data-authenticated="false">
+    <a class="skip-link" href="#shared-meeting-main">Skip to shared meeting</a>
+
+    {% set marketing_url = url_for(
+        'main.marketing_page',
+        utm_source='shared_meeting',
+        utm_medium='public_link',
+        utm_campaign='meeting_share',
+        lang=share_language
+    ) %}
+
+    <main id="shared-meeting-main" class="shared-meeting-page">
+        {% if unavailable_message %}
+            <section class="shared-unlock-card" aria-labelledby="shared-unavailable-title">
+                <img class="shared-brand-mark" src="{{ static_asset('icons/favicon-64.png') }}" alt="" width="54" height="54" aria-hidden="true">
+                <p class="shared-eyebrow">Shared meeting unavailable</p>
+                <h1 id="shared-unavailable-title">This link cannot be opened</h1>
+                <p>{{ unavailable_message }}</p>
+                <p class="shared-security-note">Ask the meeting owner for a new link if you still need access.</p>
+            </section>
+        {% elif password_required %}
+            <section class="shared-unlock-card" aria-labelledby="shared-unlock-title">
+                <img class="shared-brand-mark" src="{{ static_asset('icons/favicon-64.png') }}" alt="" width="54" height="54" aria-hidden="true">
+                <p class="shared-eyebrow">Private share</p>
+                <h1 id="shared-unlock-title">This meeting is password protected</h1>
+                <p>Enter the password provided by the person who shared this meeting.</p>
+                <form method="post" action="{{ url_for('meeting_shares.unlock_shared_meeting', share_id=share.share_id, lang=share_language) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="share-password">Password</label>
+                    <input
+                        id="share-password"
+                        name="password"
+                        type="password"
+                        maxlength="128"
+                        autocomplete="current-password"
+                        required
+                        autofocus
+                    >
+                    {% if password_error %}
+                        <p class="shared-form-error" role="alert">{{ password_error }}</p>
+                    {% endif %}
+                    <button type="submit">View shared meeting</button>
+                </form>
+                <p class="shared-security-note">The link may expire or be disabled by its owner.</p>
+            </section>
+        {% else %}
+            <header class="shared-meeting-header">
+                <div class="shared-header-copy">
+                    <a
+                        class="shared-powered-by"
+                        href="{{ marketing_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Learn more about Réunia"
+                    >
+                        <img class="shared-powered-mark" src="{{ static_asset('icons/favicon-64.png') }}" alt="" width="38" height="38" aria-hidden="true">
+                        <span>
+                            <small>Securely shared through</small>
+                            <strong>Réunia</strong>
+                        </span>
+                    </a>
+                    <p class="shared-eyebrow">Shared meeting</p>
+                    <h1 data-i18n-skip>{{ snapshot.meeting_name or 'Shared meeting' }}</h1>
+                    {% if snapshot.meeting_date %}
+                        <time datetime="{{ snapshot.meeting_date }}" data-i18n-skip>{{ snapshot.meeting_date[:10] }}</time>
+                    {% endif %}
+                </div>
+                {% if share.allow_download %}
+                    <div class="shared-header-actions" data-print-controls>
+                        <button type="button" class="shared-secondary-button" id="print-shared-meeting">Print</button>
+                        <a class="shared-primary-button" href="{{ url_for('meeting_shares.download_shared_meeting', share_id=share.share_id, lang=share_language) }}">Download</a>
+                    </div>
+                {% endif %}
+            </header>
+
+            <section class="shared-content-card shared-summary-card" aria-labelledby="shared-summary-title">
+                <div class="shared-section-heading">
+                    <p class="shared-section-eyebrow">Overview</p>
+                    <h2 id="shared-summary-title">Meeting summary</h2>
+                </div>
+                <p class="shared-summary-text" data-i18n-skip>{{ snapshot.summary or 'No summary was included.' }}</p>
+            </section>
+
+            {% set overview_sections = [
+                ('Key wins', snapshot.key_wins or []),
+                ('Improvement areas', snapshot.improvement_areas or []),
+                ('Action items', snapshot.action_items or []),
+                ('Open questions', snapshot.open_questions or [])
+            ] %}
+            <div class="shared-insight-grid">
+                {% for heading, items in overview_sections %}
+                    {% if items %}
+                        <section class="shared-content-card">
+                            <h2>{{ heading }}</h2>
+                            <ul class="shared-item-list">
+                                {% for item in items %}
+                                    <li>
+                                        {% if item is mapping %}
+                                            <strong data-i18n-skip>{{ item.task or item.action or item.text or item.question or 'Item' }}</strong>
+                                            {% if item.owner %}<span><span>Owner:</span> <span data-i18n-skip>{{ item.owner }}</span></span>{% endif %}
+                                            {% if item.due_date %}<span><span>Due:</span> <span data-i18n-skip>{{ item.due_date }}</span></span>{% endif %}
+                                        {% else %}
+                                            <span data-i18n-skip>{{ item }}</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </section>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if snapshot.scorecard %}
+                {% set scorecard = snapshot.scorecard %}
+                <section class="shared-content-card shared-scorecard" aria-labelledby="shared-scorecard-title">
+                    <div class="shared-section-heading shared-scorecard-heading">
+                        <div>
+                            <p class="shared-section-eyebrow">Optional detail</p>
+                            <h2 id="shared-scorecard-title">Scorecard</h2>
+                        </div>
+                        <div class="shared-overall-score">
+                            <strong>{{ scorecard.overall_score if scorecard.overall_score is not none else 'N/A' }}</strong>
+                            <span>Overall score</span>
+                        </div>
+                    </div>
+
+                    <div class="shared-score-grid">
+                        <div><span>Content score</span><strong>{{ scorecard.content_average_score if scorecard.content_average_score is not none else 'N/A' }}</strong></div>
+                        <div><span>Form score</span><strong>{{ scorecard.form_average_score if scorecard.form_average_score is not none else 'N/A' }}</strong></div>
+                    </div>
+
+                    {% if scorecard.form_metrics and scorecard.form_metrics.overall_assessment %}
+                        <div class="shared-assessment">
+                            <h3>Communication assessment</h3>
+                            <p data-i18n-skip>{{ scorecard.form_metrics.overall_assessment }}</p>
+                        </div>
+                    {% endif %}
+
+                    {% if scorecard.content_grades %}
+                        <div class="shared-table-wrap">
+                            <table>
+                                <thead><tr><th>Question</th><th>Answer assessment</th><th>Grade</th></tr></thead>
+                                <tbody>
+                                    {% for grade in scorecard.content_grades %}
+                                        <tr>
+                                            <td data-i18n-skip>{{ grade.question or 'Question' }}</td>
+                                            <td data-i18n-skip>{{ grade.relevance_analysis or grade.answer or 'No assessment available.' }}</td>
+                                            <td><strong data-i18n-skip>{{ grade.grade or 'N/A' }}</strong></td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                </section>
+            {% endif %}
+
+            {% if snapshot.transcript %}
+                <section class="shared-content-card shared-transcript-card">
+                    <details>
+                        <summary>
+                            <span>
+                                <small>Optional detail</small>
+                                <strong>Full transcript</strong>
+                            </span>
+                            <span aria-hidden="true">Expand</span>
+                        </summary>
+                        <pre>{{ snapshot.transcript }}</pre>
+                    </details>
+                </section>
+            {% endif %}
+
+            <aside class="shared-product-cta" aria-labelledby="shared-product-title" data-print-controls>
+                <div class="shared-product-cta-copy">
+                    <p class="shared-section-eyebrow">Powered by Réunia</p>
+                    <h2 id="shared-product-title">Turn meetings into clear summaries and action items</h2>
+                    <p>Prepare with your own documents, capture discussions, ask questions, and keep follow-up work organized.</p>
+                </div>
+                <div class="shared-product-cta-actions">
+                    <a
+                        class="shared-primary-button"
+                        href="{{ marketing_url }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >Explore Réunia</a>
+                    <small>No account is required to view this shared meeting.</small>
+                </div>
+            </aside>
+
+            <footer class="shared-meeting-footer">
+                <span>This read-only link may expire or be disabled by its owner.</span>
+            </footer>
+        {% endif %}
+    </main>
+
+    <script src="{{ static_asset('js/i18n.js') }}" defer></script>
+    <script src="{{ static_asset('js/pages/shared-meeting.js') }}" defer></script>
+</body>
+</html>
