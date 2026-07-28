@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block title %}Réunia - Login{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ static_asset('css/pages/login.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-shell">
+
+        <section class="auth-brand-panel">
+            <div class="brand-badge">✨ Réunia · AI Meeting Intelligence</div>
+
+            <h1>Prepare. Connect. Move forward.</h1>
+
+            <p class="brand-description">
+                Sign in to access live questions and answers, historical transcripts, meeting scorecards,
+                action items, and AI-generated insights from your recorded sessions.
+            </p>
+
+            <div class="feature-list">
+                <div class="feature-item">
+                    <div class="feature-icon">💬</div>
+                    <div>
+                        <strong>Live Questions & Answers</strong>
+                        <span>View real-time AI answers generated from speaker, microphone, and clipboard input.</span>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📝</div>
+                    <div>
+                        <strong>Meeting Transcripts</strong>
+                        <span>Review complete meeting history, summaries, action items, and open questions.</span>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <div>
+                        <strong>Meeting Scorecards</strong>
+                        <span>Measure communication quality, content relevance, and overall performance.</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="auth-form-panel">
+            <div class="auth-card" data-auth-mode="{{ auth_mode or 'login' }}">
+
+                <div class="auth-header">
+                    <h2 id="auth-title">{{ 'Create Account' if auth_mode == 'signup' else 'Welcome Back' }}</h2>
+                    <p id="auth-subtitle">
+                        {% if auth_mode == 'signup' %}
+                            Create your workspace to start capturing and analyzing meetings.
+                        {% else %}
+                            Log in to continue reviewing your meeting intelligence dashboard.
+                        {% endif %}
+                    </p>
+                </div>
+
+                {% if auth_error %}
+                    <div class="auth-alert" id="auth-error" role="alert" tabindex="-1">
+                        {{ auth_error }}
+                    </div>
+                {% endif %}
+
+                <div class="toggle-tabs" role="tablist" aria-label="Account access">
+                    <button
+                        type="button"
+                        class="toggle-tab {{ 'active' if auth_mode != 'signup' else '' }}"
+                        id="tab-login"
+                        role="tab"
+                        aria-controls="login-form"
+                        aria-selected="{{ 'false' if auth_mode == 'signup' else 'true' }}"
+                    >Sign In</button>
+                    <button
+                        type="button"
+                        class="toggle-tab {{ 'active' if auth_mode == 'signup' else '' }}"
+                        id="tab-signup"
+                        role="tab"
+                        aria-controls="signup-form"
+                        aria-selected="{{ 'true' if auth_mode == 'signup' else 'false' }}"
+                    >Create Account</button>
+                </div>
+
+                <form
+                    id="login-form"
+                    action="{{ request.script_root }}/api/login"
+                    method="POST"
+                    role="tabpanel"
+                    aria-labelledby="tab-login"
+                    class="{{ 'hidden' if auth_mode == 'signup' else '' }}"
+                >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group">
+                        <label class="form-label" for="login-email">Email Address</label>
+                        <input
+                            class="form-input"
+                            type="email"
+                            id="login-email"
+                            name="email"
+                            autocomplete="email"
+                            placeholder="name@company.com"
+                            value="{{ login_email or '' }}"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="login-password">Password</label>
+                        <div class="input-wrapper">
+                            <input
+                                class="form-input"
+                                type="password"
+                                id="login-password"
+                                name="password"
+                                autocomplete="current-password"
+                                placeholder="Enter your password"
+                                required
+                            >
+                            <button type="button" class="password-toggle" data-password-target="login-password" aria-pressed="false">
+                                Show
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="forgot-password-row">
+                        <a href="{{ url_for('auth.forgot_password_page') }}">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" class="submit-btn">Sign In</button>
+
+                    <div class="switch-prompt">
+                        Don't have an account?
+                        <a href="#" id="link-to-signup" class="switch-link">Create one now</a>
+                    </div>
+                </form>
+
+                <form
+                    id="signup-form"
+                    action="{{ request.script_root }}/api/signup"
+                    method="POST"
+                    role="tabpanel"
+                    aria-labelledby="tab-signup"
+                    class="{{ '' if auth_mode == 'signup' else 'hidden' }}"
+                >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group">
+                        <label class="form-label" for="signup-name">Full Name</label>
+                        <input
+                            class="form-input"
+                            type="text"
+                            id="signup-name"
+                            name="full_name"
+                            autocomplete="name"
+                            placeholder="Alex Johnson"
+                            value="{{ signup_full_name or '' }}"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="signup-email">Email Address</label>
+                        <input
+                            class="form-input"
+                            type="email"
+                            id="signup-email"
+                            name="email"
+                            autocomplete="email"
+                            placeholder="name@company.com"
+                            value="{{ signup_email or '' }}"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="signup-password">Password</label>
+                        <div class="input-wrapper">
+                            <input
+                                class="form-input"
+                                type="password"
+                                id="signup-password"
+                                name="password"
+                                autocomplete="new-password"
+                                placeholder="Minimum 8 characters"
+                                minlength="8"
+                                required
+                            >
+                            <button type="button" class="password-toggle" data-password-target="signup-password" aria-pressed="false">
+                                Show
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="signup-confirm-password">Confirm Password</label>
+                        <div class="input-wrapper">
+                            <input
+                                class="form-input"
+                                type="password"
+                                id="signup-confirm-password"
+                                name="confirm_password"
+                                autocomplete="new-password"
+                                placeholder="Retype your password"
+                                minlength="8"
+                                required
+                            >
+                            <button type="button" class="password-toggle" data-password-target="signup-confirm-password" aria-pressed="false">
+                                Show
+                            </button>
+                        </div>
+                        <div class="error-message" id="password-error">
+                            Passwords do not match. Please verify both fields.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn dark">Create Account</button>
+
+                    <div class="switch-prompt">
+                        Already have an account?
+                        <a href="#" id="link-to-login" class="switch-link">Log in instead</a>
+                    </div>
+                </form>
+
+                <div class="security-note">
+                    <strong>Next step after login:</strong>
+                    review your profile settings before recording meetings so the application can process
+                    your transcripts, live answers, and scorecards correctly.
+                </div>
+
+            </div>
+        </section>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ static_asset('js/pages/login.js') }}" defer></script>
+{% endblock %}

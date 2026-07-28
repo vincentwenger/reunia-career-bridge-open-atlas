@@ -1,0 +1,206 @@
+{
+  "name": "Vincent Wenger",
+  "contact": {
+    "location": "Portland, OR",
+    "phone": "669-234-2091",
+    "email": "vincentwenger@icloud.com",
+    "linkedin_label": "LinkedIn",
+    "github_label": "GitHub",
+    "linkedin_url": "https://www.linkedin.com/in/vincentwenger/",
+    "github_url": "https://github.com/vincentwenger"
+  },
+  "current_summary": "Experienced software engineer with over 15 years in data science and engineering, including 12 years of experience in the financial industry, specializing in regulatory reporting solutions. Expanded expertise through a Professional Certificate in Machine Learning and Artificial Intelligence from UC Berkeley. Hands-on experience with data pipelines, feature engineering, preprocessing, model evaluation, and AI solution development. Additional experience in IT audit, including risk assessment, control evaluation, and process improvement initiatives.",
+  "skills": {
+    "hard_skills": [
+      "API Development",
+      "Data Cleansing",
+      "Data Integration",
+      "Data Mining",
+      "Data Modeling",
+      "Data Transformation",
+      "Data Validation",
+      "ETL Workflows",
+      "Feature Engineering",
+      "Internal Controls",
+      "Issue Resolution",
+      "Performance Optimization",
+      "Regression Testing",
+      "Release Planning",
+      "Requirements Gathering",
+      "Risk Assessment",
+      "Software Configuration",
+      "Software Testing",
+      "Unit Testing"
+    ],
+    "soft_skills": [
+      "Client Training",
+      "Cross-functional Collaboration",
+      "Executive Communication",
+      "Stakeholder Communication",
+      "Technical Leadership"
+    ],
+    "tools_software": [
+      "Axiom regulatory reporting platform",
+      "AWS Cloud",
+      "Excel",
+      "FastAPI",
+      "GitHub",
+      "Jenkins",
+      "Jira",
+      "Jupyter Notebooks",
+      "MySQL",
+      "Oracle",
+      "PHP",
+      "PostgreSQL",
+      "Python",
+      "Scikit-learn",
+      "solidDB",
+      "SQL",
+      "SQL Server",
+      "Streamlit",
+      "XHTML",
+      "XML"
+    ],
+    "industry_knowledge": [
+      "Agile Scrum",
+      "AIFMD",
+      "Asset Management Reporting",
+      "Basel III/IV",
+      "Broker-Dealer Regulatory Reporting",
+      "CECL",
+      "COBIT",
+      "Credit Risk Reporting",
+      "EU ESMA Reporting",
+      "Financial Services",
+      "IT Auditing",
+      "IT General Controls",
+      "Regulatory Reporting",
+      "SEC Form PF",
+      "Tax Reporting"
+    ],
+    "languages": [
+      "English (Professional)",
+      "French (Native)"
+    ]
+  },
+  "education": [
+    {
+      "credential": "Professional Certificate in Machine Learning and Artificial Intelligence",
+      "institution": "University of California, Berkeley",
+      "location": "Berkeley, CA",
+      "date": "01/2026",
+      "detail": ""
+    },
+    {
+      "credential": "Master of Science (M.S.), Engineering",
+      "institution": "Ecole Centrale de Lille",
+      "location": "Lille, France",
+      "date": "09/2007",
+      "detail": "Emphasis in Information Systems Engineering."
+    },
+    {
+      "credential": "Bachelor of Science (B.S.), Engineering",
+      "institution": "Universite Bordeaux I",
+      "location": "Bordeaux, France",
+      "date": "09/2003",
+      "detail": ""
+    }
+  ],
+  "experiences": [
+    {
+      "id": "nasdaq",
+      "employer": "Nasdaq",
+      "location": "Portland, OR",
+      "dates": "09/2013 - 05/2025",
+      "title": "Software Engineer",
+      "bullets": [
+        {
+          "id": "NAS-01",
+          "text": "Led the end-to-end implementation of the SEC Form PF regulatory reporting solution within the Axiom Solutions team, developing and executing a delivery and testing plan, resulting in on-time compliance for the mid-June 2025 deadline"
+        },
+        {
+          "id": "NAS-02",
+          "text": "Delivered regulatory reporting across 50 reports covering broker-dealer, Basel III/IV credit risk, tax, asset management, CECL, and EU AIFMD/ESMA frameworks for 20 banking clients"
+        },
+        {
+          "id": "NAS-03",
+          "text": "Configured the Axiom platform to design and implement ETL workflows that loaded, cleansed, validated, and transformed raw data from multiple sources, ensuring accurate, high-quality, and properly formatted data for reliable reporting outputs"
+        },
+        {
+          "id": "NAS-04",
+          "text": "Applied advanced data transformations using SQL, aggregation objects, scripts, and Python while working with diverse file formats and 5 database systems to ensure efficient and accurate data integration"
+        },
+        {
+          "id": "NAS-05",
+          "text": "Led the migration of a client's reporting solution to AWS Cloud, redesigning architecture and optimizing SQL workflows to improve performance and usability, achieving a seamless transition and significantly enhancing the end-user experience"
+        },
+        {
+          "id": "NAS-06",
+          "text": "Delivered 10 complex software projects using Agile Scrum by breaking work into sprints and collaborating cross-functionally"
+        },
+        {
+          "id": "NAS-07",
+          "text": "Implemented automated CI/CD pipelines with Jenkins to streamline releases, enabling continuous integration through automated code validation and regression testing and continuous deployment by generating release documentation and shipping final builds to clients, improving delivery efficiency and team collaboration"
+        },
+        {
+          "id": "NAS-08",
+          "text": "Resolved 1000 client-reported technical issues for 20 clients by managing structured Jira workflows and maintaining clear stakeholder communication, improving operational stability, accelerating resolution times, enhancing project transparency, and ensuring compliant end-to-end delivery"
+        },
+        {
+          "id": "NAS-09",
+          "text": "Validated client data, supported end-to-end testing, and delivered hands-on training for 30 internal and external clients and colleagues, ensuring accurate reporting, smooth global deployment, and full regulatory compliance"
+        }
+      ]
+    },
+    {
+      "id": "aviva",
+      "employer": "Aviva",
+      "location": "Paris, France",
+      "dates": "08/2010 - 08/2011",
+      "title": "IT Auditor",
+      "bullets": [
+        {
+          "id": "AVI-01",
+          "text": "Managed IT audit engagements by evaluating infrastructure, IT processes, and internal controls to identify risks, compliance gaps, and operational inefficiencies, delivering actionable recommendations to senior management"
+        },
+        {
+          "id": "AVI-02",
+          "text": "Executed audits in alignment with COBIT frameworks and IT General Controls, partnering with cross-functional teams to scope, assess, and strengthen governance, security, and compliance practices"
+        },
+        {
+          "id": "AVI-03",
+          "text": "Presented audit findings, risk assessments, and remediation strategies to executive leadership, supporting the implementation of corrective actions that improved IT controls, processes, and organizational effectiveness"
+        },
+        {
+          "id": "AVI-04",
+          "text": "Maintained strong stakeholder communication throughout audit lifecycles, ensuring transparency on project progress, key risks, and resolution efforts within a regulated insurance industry environment"
+        }
+      ]
+    },
+    {
+      "id": "capgemini",
+      "employer": "Capgemini",
+      "location": "Paris, France",
+      "dates": "10/2007 - 08/2010",
+      "title": "QA Engineer",
+      "bullets": [
+        {
+          "id": "CAP-01",
+          "text": "Performed quality assurance testing for a mail sorting control solution built with PHP and database technologies, validating envelope data processing and automated sorting logic to support high-volume postal operations with improved accuracy and reliability"
+        },
+        {
+          "id": "CAP-02",
+          "text": "Created and executed more than 100 regression tests, unit tests, end-to-end tests, and detailed test scenarios, helping identify and resolve hundreds of software defects before production and significantly improving application code quality and system stability"
+        },
+        {
+          "id": "CAP-03",
+          "text": "Identified, documented, and tracked more than 100 software defects, collaborated closely with development teams to accelerate issue resolution, and helped deliver more stable releases by reducing production issues and significantly improving overall application reliability and code quality"
+        },
+        {
+          "id": "CAP-04",
+          "text": "Tested integrations involving MySQL, solidDB, XML, and XHTML components to ensure data integrity, interface consistency, seamless communication between systems, and reliable real-time operational monitoring"
+        }
+      ]
+    }
+  ]
+}

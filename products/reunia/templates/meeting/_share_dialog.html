@@ -1,0 +1,118 @@
+<div class="meeting-share-backdrop" id="meeting-share-modal" hidden>
+    <section class="meeting-share-dialog" role="dialog" aria-modal="true" aria-labelledby="meeting-share-title" tabindex="-1">
+        <header class="meeting-share-header">
+            <div>
+                <p class="meeting-share-eyebrow">Public read-only link</p>
+                <h2 id="meeting-share-title">Share meeting</h2>
+                <p id="meeting-share-meeting-name">Select a meeting before creating a share link.</p>
+            </div>
+            <button class="meeting-share-close" type="button" id="meeting-share-close" aria-label="Close share meeting dialog">×</button>
+        </header>
+
+        <div class="meeting-share-body">
+            <form id="meeting-share-form">
+                <section class="meeting-share-section" aria-labelledby="meeting-share-content-title">
+                    <div class="meeting-share-section-heading">
+                        <h3 id="meeting-share-content-title">Content to include</h3>
+                        <p>A frozen copy is created when the link is generated.</p>
+                    </div>
+
+                    <label class="meeting-share-option meeting-share-option-required">
+                        <input type="checkbox" checked disabled>
+                        <span>
+                            <strong>Meeting summary</strong>
+                            <small>Includes key wins, improvement areas, action items, and open questions.</small>
+                        </span>
+                        <span class="meeting-share-required-label">Required</span>
+                    </label>
+
+                    <label class="meeting-share-option">
+                        <input type="checkbox" id="meeting-share-scorecard">
+                        <span>
+                            <strong>Scorecard</strong>
+                            <small>Include overall, content, form, and answer-assessment results.</small>
+                        </span>
+                    </label>
+
+                    <label class="meeting-share-option meeting-share-sensitive-option">
+                        <input type="checkbox" id="meeting-share-transcript">
+                        <span>
+                            <strong>Full transcript</strong>
+                            <small>May contain confidential or personal information. Review it before sharing.</small>
+                        </span>
+                    </label>
+                </section>
+
+                <section class="meeting-share-section" aria-labelledby="meeting-share-settings-title">
+                    <div class="meeting-share-section-heading">
+                        <h3 id="meeting-share-settings-title">Link settings</h3>
+                        <p>The recipient does not need a Réunia account.</p>
+                    </div>
+
+                    <div class="meeting-share-field-grid">
+                        <label class="meeting-share-field">
+                            <span>Expires</span>
+                            <select id="meeting-share-expiration">
+                                <option value="7">After 7 days</option>
+                                <option value="30" selected>After 30 days</option>
+                                <option value="90">After 90 days</option>
+                                <option value="never">Never</option>
+                            </select>
+                        </label>
+
+                        <label class="meeting-share-field">
+                            <span id="meeting-share-password-label">Optional password</span>
+                            <input
+                                type="password"
+                                id="meeting-share-password"
+                                maxlength="128"
+                                autocomplete="new-password"
+                                placeholder="Leave blank for no password"
+                            >
+                        </label>
+                    </div>
+
+                    <label class="meeting-share-option meeting-share-download-option">
+                        <input type="checkbox" id="meeting-share-download">
+                        <span>
+                            <strong>Allow download and printing</strong>
+                            <small>Recipients can download a text copy or print the shared page.</small>
+                        </span>
+                    </label>
+                </section>
+
+                <p class="meeting-share-privacy-note">
+                    Anyone with the link can view the selected content until it expires or you revoke it.
+                </p>
+
+                <div class="meeting-share-form-actions">
+                    <button class="meeting-share-cancel" type="button" id="meeting-share-cancel">Cancel</button>
+                    <button class="meeting-share-create" type="submit" id="meeting-share-create">Create share link</button>
+                </div>
+            </form>
+
+            <section class="meeting-share-created" id="meeting-share-created" aria-live="polite" hidden>
+                <div>
+                    <p class="meeting-share-eyebrow">Link ready</p>
+                    <h3>Share this secure link</h3>
+                    <p>The recipient can open it without signing in.</p>
+                </div>
+                <div class="meeting-share-link-row">
+                    <input id="meeting-share-created-url" type="text" readonly aria-label="Created share link">
+                    <button type="button" id="meeting-share-copy-link">Copy link</button>
+                    <a id="meeting-share-open-link" href="#" target="_blank" rel="noopener noreferrer">Open</a>
+                </div>
+            </section>
+
+            <section class="meeting-existing-shares" aria-labelledby="meeting-existing-shares-title">
+                <div class="meeting-share-section-heading">
+                    <h3 id="meeting-existing-shares-title">Existing links</h3>
+                    <p>Refresh a snapshot, extend its expiration, or revoke access.</p>
+                </div>
+                <div class="meeting-share-list" id="meeting-share-list">
+                    <p class="meeting-share-empty">No share links created for this meeting.</p>
+                </div>
+            </section>
+        </div>
+    </section>
+</div>

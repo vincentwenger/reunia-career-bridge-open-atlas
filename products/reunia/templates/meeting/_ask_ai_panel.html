@@ -1,0 +1,79 @@
+<section class="tab-content" id="ask-ai-tab" role="tabpanel" aria-labelledby="ask-ai-tab-button" hidden>
+    <section class="meeting-ask-card" aria-labelledby="meeting-ask-title">
+        <div class="meeting-ask-header">
+            <div class="meeting-ask-heading">
+                <span class="meeting-ask-icon" aria-hidden="true">✦</span>
+                <div>
+                    <p class="meeting-ask-eyebrow">Selected meeting</p>
+                    <h3 id="meeting-ask-title">Ask about this meeting</h3>
+                    <p>
+                        Ask questions about this meeting’s transcript, decisions, action items, and analysis.
+                    </p>
+                </div>
+            </div>
+
+            <a
+                class="meeting-knowledge-link"
+                id="open-meeting-knowledge-link"
+                href="{{ request.script_root }}/knowledge.html?view=search"
+            >
+                Search all knowledge
+                <span aria-hidden="true">→</span>
+            </a>
+        </div>
+
+        <div class="selected-meeting-context" id="selected-meeting-context" aria-live="polite">
+            <span class="selected-meeting-context-label">Current meeting</span>
+            <strong id="ask-ai-meeting-name">No meeting selected</strong>
+            <span id="ask-ai-meeting-date">Select a meeting from the library before asking a question.</span>
+        </div>
+
+        <form id="meeting-ask-form">
+            <label class="meeting-related-toggle" for="meeting-include-related">
+                <input type="checkbox" id="meeting-include-related" name="include_related_knowledge">
+                <span class="meeting-related-toggle-copy">
+                    <strong>Include related knowledge</strong>
+                    <small>Also use relevant uploaded documents and previous meetings. The selected meeting remains the primary source.</small>
+                </span>
+            </label>
+
+            <div class="meeting-ask-suggestions" aria-label="Suggested questions about this meeting">
+                <span>Try asking:</span>
+                <button type="button" data-meeting-ask-suggestion="What decisions were made in this meeting?">What decisions were made?</button>
+                <button type="button" data-meeting-ask-suggestion="Which action items from this meeting are still unresolved?">Which tasks remain open?</button>
+                <button type="button" data-meeting-ask-suggestion="What should I improve based on this meeting's scorecard and analysis?">What should I improve?</button>
+            </div>
+
+            <label class="meeting-ask-question" for="meeting-ask-question">
+                <span class="sr-only">Question about the selected meeting</span>
+                <textarea
+                    id="meeting-ask-question"
+                    name="question"
+                    rows="5"
+                    placeholder="Select a meeting before asking a question..."
+                    required
+                ></textarea>
+            </label>
+
+            <div class="meeting-ask-actions">
+                <p id="meeting-ask-scope-summary">Using only the selected meeting.</p>
+                <button class="btn-primary meeting-ask-submit" type="submit" id="meeting-ask-submit">
+                    Ask about meeting
+                </button>
+            </div>
+        </form>
+
+        <section class="meeting-answer-panel" id="meeting-answer-panel" aria-live="polite" hidden>
+            <div class="meeting-answer-header">
+                <h4>Answer</h4>
+                <button type="button" class="meeting-answer-copy" id="meeting-answer-copy">Copy</button>
+            </div>
+            <div class="meeting-answer-content" id="meeting-answer-content"></div>
+
+            <div class="meeting-answer-sources" id="meeting-answer-sources" hidden>
+                <h5>Sources</h5>
+                <div class="meeting-source-list" id="meeting-source-list"></div>
+            </div>
+        </section>
+    </section>
+</section>

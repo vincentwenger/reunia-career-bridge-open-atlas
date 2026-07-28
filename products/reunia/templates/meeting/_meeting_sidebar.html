@@ -1,0 +1,64 @@
+<aside class="panel meeting-library-panel">
+    <div class="panel-header">
+        <h2>{{ sidebar_title }}</h2>
+        <p>{{ sidebar_description }}</p>
+    </div>
+
+    <div class="search-wrapper">
+        <label class="sr-only" for="{{ sidebar_search_id }}">Search {{ sidebar_title }}</label>
+        <input
+            id="{{ sidebar_search_id }}"
+            class="search-input"
+            type="search"
+            placeholder="{{ sidebar_search_placeholder }}"
+            autocomplete="off"
+        >
+    </div>
+
+    <section class="meeting-organizer" aria-label="Meeting organization controls">
+        <div class="meeting-view-toggle" role="group" aria-label="Organize meetings">
+            <button type="button" class="meeting-view-button active" data-meeting-view="date" aria-pressed="true">By date</button>
+            <button type="button" class="meeting-view-button" data-meeting-view="topic" aria-pressed="false">By topic</button>
+        </div>
+
+        <div class="meeting-organizer-grid">
+            <label class="meeting-organizer-field">
+                <span>Topic</span>
+                <select id="meeting-topic-filter">
+                    <option value="">All topics</option>
+                </select>
+            </label>
+            <label class="meeting-organizer-field">
+                <span>Sort</span>
+                <select id="meeting-sort-direction">
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="meeting-date-filters">
+            <label class="meeting-organizer-field">
+                <span>From</span>
+                <input type="date" id="meeting-date-from">
+            </label>
+            <label class="meeting-organizer-field">
+                <span>To</span>
+                <input type="date" id="meeting-date-to">
+            </label>
+        </div>
+
+        <div class="meeting-organizer-actions">
+            <button type="button" id="meeting-clear-filters" class="meeting-filter-clear">Clear filters</button>
+            <button type="button" id="meeting-manage-topics" class="meeting-manage-topics">Manage topics</button>
+        </div>
+        <datalist id="meeting-topic-suggestions"></datalist>
+    </section>
+
+    <div class="sidebar-list" id="{{ sidebar_list_id }}" aria-live="polite" aria-busy="true">
+        <div class="loading-state">
+            <strong>{{ sidebar_loading_title }}</strong>
+            {{ sidebar_loading_message }}
+        </div>
+    </div>
+</aside>

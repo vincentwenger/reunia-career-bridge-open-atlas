@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="{{ app_language | default('en') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_description %}Réunia — AI Meeting Intelligence. Prepare, connect, and move forward after every meeting.{% endblock %}">
+
+    {% if csrf_token is defined %}
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+
+    <title>{% block title %}Réunia{% endblock %}</title>
+
+    <link rel="icon" type="image/x-icon" href="{{ static_asset('icons/favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ static_asset('icons/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="64x64" href="{{ static_asset('icons/favicon-64.png') }}">
+    <link rel="apple-touch-icon" sizes="192x192" href="{{ static_asset('icons/favicon.png') }}">
+
+    <link rel="stylesheet" href="{{ static_asset('css/base.css') }}">
+    <link rel="stylesheet" href="{{ static_asset('css/navbar.css') }}">
+    <link rel="stylesheet" href="{{ static_asset('css/components.css') }}">
+    {% block page_styles %}{% endblock %}
+    <link rel="stylesheet" href="{{ static_asset('css/app-layout.css') }}">
+    {% include 'components/asset_recovery.html' %}
+</head>
+<body class="{% block body_class %}{% endblock %}" data-app-root="{{ request.script_root }}" data-app-language="{{ app_language | default('en') }}" data-authenticated="{{ 'true' if session.get('user_id') else 'false' }}" data-analytics-heartbeat="{{ analytics_heartbeat_seconds | default(30) }}">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    {% include 'navbar.html' %}
+    {% include 'components/flash_messages.html' %}
+
+    <div id="main-content" tabindex="-1">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ static_asset('js/common.js') }}" defer></script>
+    <script src="{{ static_asset('js/analytics-tracker.js') }}" defer></script>
+    <script src="{{ static_asset('js/i18n.js') }}" defer></script>
+    <script src="{{ static_asset('js/navbar.js') }}" defer></script>
+    {% block page_scripts %}{% endblock %}
+</body>
+</html>

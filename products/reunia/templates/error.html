@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Réunia - {{ error_title or "System Error" }}{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ static_asset('css/pages/error.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-shell">
+
+        <main
+            class="error-content-panel"
+            aria-labelledby="error-title"
+            aria-describedby="error-message"
+        >
+            <div class="error-card">
+                <div class="error-icon-wrap" aria-hidden="true">
+                    <div class="error-icon">!</div>
+                </div>
+
+                <div class="status-pill">
+                    <span>Error</span> {{ error_status_code }}
+                </div>
+
+                <h1 id="error-title">{{ error_title or "Something went wrong" }}</h1>
+
+                <p class="error-message" id="error-message">
+                    {{ error_message or "We could not complete your request. Please return home and try again." }}
+                </p>
+
+                <div class="action-stack" aria-label="Error recovery actions">
+                    {% if primary_action.kind == 'back' %}
+                        <button
+                            type="button"
+                            class="action-btn"
+                            data-safe-back
+                            data-fallback-url="{{ primary_action.fallback_url }}"
+                        >
+                            {{ primary_action.label }}
+                        </button>
+                    {% else %}
+                        <a href="{{ primary_action.href }}" class="action-btn">
+                            {{ primary_action.label }}
+                        </a>
+                    {% endif %}
+
+                    <div class="secondary-actions">
+                        {% for action in secondary_actions %}
+                            {% if action.kind == 'back' %}
+                                <button
+                                    type="button"
+                                    class="secondary-btn"
+                                    data-safe-back
+                                    data-fallback-url="{{ action.fallback_url }}"
+                                >
+                                    <span aria-hidden="true">←</span> {{ action.label }}
+                                </button>
+                            {% else %}
+                                <a href="{{ action.href }}" class="secondary-btn">
+                                    {{ action.label }}
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {% if error_reference_id %}
+                    <div class="error-reference">
+                        <strong>Reference:</strong>
+                        <code>{{ error_reference_id }}</code>
+                        <span>Include this reference when contacting support.</span>
+                    </div>
+                {% endif %}
+            </div>
+        </main>
+
+        <aside class="error-brand-panel" aria-labelledby="recovery-title">
+            <div class="brand-badge">
+                <span aria-hidden="true">⚠️</span>
+                Réunia System Message
+            </div>
+
+            <h2 id="recovery-title">{{ recovery_title }}</h2>
+
+            <p class="brand-description">
+                {{ recovery_description }}
+            </p>
+
+            <div class="support-list">
+                {% for item in recovery_items %}
+                    <div class="support-item">
+                        <div class="support-icon" aria-hidden="true">{{ item.icon }}</div>
+                        <div>
+                            <strong>{{ item.title }}</strong>
+                            <span>{{ item.text }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </aside>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ static_asset('js/pages/error.js') }}" defer></script>
+{% endblock %}

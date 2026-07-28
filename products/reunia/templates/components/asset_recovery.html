@@ -1,0 +1,128 @@
+{#
+    Static-asset safety net.
+
+    Every stylesheet already has a content-derived version in its URL. This
+    small inline check handles the less common case where a browser, proxy, or
+    container briefly fails a CSS request: it retries the failed stylesheet
+    once with a fresh query value, then reloads the page once as a final
+    recovery step. The reload guard prevents loops.
+#}
+<script nonce="{{ csp_nonce }}">
+(function () {
+    'use strict';
+
+    const stylesheetSelector = 'link[rel="stylesheet"][href]';
+    const pageRetryParameter = '_asset_reload';
+    const retryStoragePrefix = 'meeting-assistant:asset-reload:';
+    const retryWindowMs = 60 * 1000;
+    let recoveryInProgress = false;
+
+    function stylesheetLoaded(link) {
+        try {
+            return Boolean(link.sheet);
+        } catch (error) {
+            // A stylesheet object exists even when its rules cannot be read.
+            return true;
+        }
+    }
+
+    function retryStylesheet(link) {
+        if (link.dataset.assetRetryAttempted === 'true') {
+            return Promise.resolve(stylesheetLoaded(link));
+        }
+
+        link.dataset.assetRetryAttempted = 'true';
+        const replacement = link.cloneNode(true);
+        const retryUrl = new URL(link.href, window.location.href);
+        retryUrl.searchParams.set('_asset_retry', String(Date.now()));
+        replacement.href = retryUrl.toString();
+        replacement.dataset.assetRetryAttempted = 'true';
+
+        return new Promise(function (resolve) {
+            const timeout = window.setTimeout(function () {
+                resolve(false);
+            }, 8000);
+
+            replacement.addEventListener('load', function () {
+                window.clearTimeout(timeout);
+                resolve(true);
+            }, {once: true});
+
+            replacement.addEventListener('error', function () {
+                window.clearTimeout(timeout);
+                resolve(false);
+            }, {once: true});
+
+            link.replaceWith(replacement);
+        });
+    }
+
+    function cleanRecoveryUrl() {
+        const currentUrl = new URL(window.location.href);
+        if (!currentUrl.searchParams.has(pageRetryParameter)) return;
+        currentUrl.searchParams.delete(pageRetryParameter);
+        window.history.replaceState(window.history.state, '', currentUrl.toString());
+    }
+
+    function reloadPageOnce() {
+        const storageKey = retryStoragePrefix + window.location.pathname;
+        const now = Date.now();
+        let lastRetry = 0;
+
+        try {
+            lastRetry = Number(window.sessionStorage.getItem(storageKey) || 0);
+        } catch (error) {
+            // Continue with the URL guard when sessionStorage is unavailable.
+        }
+
+        const currentUrl = new URL(window.location.href);
+        const alreadyRetriedInUrl = currentUrl.searchParams.has(pageRetryParameter);
+        if (alreadyRetriedInUrl || (lastRetry && now - lastRetry < retryWindowMs)) {
+            return;
+        }
+
+        try {
+            window.sessionStorage.setItem(storageKey, String(now));
+        } catch (error) {
+            // The URL parameter still prevents a reload loop.
+        }
+
+        currentUrl.searchParams.set(pageRetryParameter, String(now));
+        window.location.replace(currentUrl.toString());
+    }
+
+    async function recoverMissingStylesheets() {
+        if (recoveryInProgress) return;
+
+        const failedLinks = Array.from(document.querySelectorAll(stylesheetSelector))
+            .filter(function (link) {
+                return !stylesheetLoaded(link);
+            });
+
+        if (!failedLinks.length) {
+            cleanRecoveryUrl();
+            return;
+        }
+
+        recoveryInProgress = true;
+        const results = await Promise.all(failedLinks.map(retryStylesheet));
+        recoveryInProgress = false;
+
+        if (results.some(function (loaded) { return !loaded; })) {
+            reloadPageOnce();
+        } else {
+            cleanRecoveryUrl();
+        }
+    }
+
+    document.querySelectorAll(stylesheetSelector).forEach(function (link) {
+        link.addEventListener('error', function () {
+            window.setTimeout(recoverMissingStylesheets, 100);
+        }, {once: true});
+    });
+
+    window.addEventListener('load', function () {
+        window.setTimeout(recoverMissingStylesheets, 150);
+    }, {once: true});
+}());
+</script>

@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réunia Test Report</title>
+    <style>
+        :root {
+            --bg: #f5f7fb;
+            --surface: #ffffff;
+            --surface-soft: #f8fafc;
+            --text: #172033;
+            --muted: #667085;
+            --border: #dfe5ee;
+            --primary: #3157d5;
+            --primary-soft: #e9efff;
+            --success: #157347;
+            --success-bg: #e9f8ef;
+            --success-border: #b9e7c9;
+            --danger: #b42318;
+            --danger-bg: #fff0ee;
+            --danger-border: #ffc6bf;
+            --warning: #985c00;
+            --warning-bg: #fff6df;
+            --warning-border: #f3d48a;
+            --shadow: 0 18px 50px rgba(20, 35, 70, 0.09);
+            --radius: 18px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(49, 87, 213, 0.08), transparent 30%),
+                var(--bg);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.5;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .page-shell {
+            width: min(1180px, calc(100% - 32px));
+            margin: 28px auto 60px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 18px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-mark {
+            width: 44px;
+            height: 44px;
+            display: grid;
+            place-items: center;
+            border-radius: 14px;
+            color: white;
+            background: linear-gradient(145deg, #3157d5, #7048d8);
+            box-shadow: 0 10px 24px rgba(49, 87, 213, 0.25);
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .brand strong {
+            display: block;
+            font-size: 17px;
+        }
+
+        .brand span {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .button {
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 16px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            background: var(--surface);
+            font-weight: 700;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .button:hover {
+            transform: translateY(-1px);
+            border-color: #b8c4d8;
+            box-shadow: 0 8px 20px rgba(20, 35, 70, 0.08);
+        }
+
+        .button-primary {
+            color: white;
+            border-color: transparent;
+            background: linear-gradient(135deg, #3157d5, #6447d7);
+        }
+
+        .file-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+        }
+
+        .hero {
+            position: relative;
+            overflow: hidden;
+            padding: 34px;
+            border-radius: 24px;
+            color: white;
+            background:
+                radial-gradient(circle at 85% 18%, rgba(115, 214, 255, 0.24), transparent 26%),
+                linear-gradient(135deg, #142650, #2848a6 55%, #5b43c4);
+            box-shadow: var(--shadow);
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .hero-kicker {
+            margin: 0 0 8px;
+            color: #bcd0ff;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(30px, 5vw, 48px);
+            line-height: 1.08;
+            letter-spacing: -0.045em;
+        }
+
+        .hero-message {
+            max-width: 700px;
+            margin: 12px 0 0;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 17px;
+        }
+
+        .overall-badge {
+            min-width: 164px;
+            padding: 22px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.17);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+        }
+
+        .overall-icon {
+            width: 66px;
+            height: 66px;
+            display: grid;
+            place-items: center;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.16);
+            font-size: 30px;
+            font-weight: 900;
+        }
+
+        .overall-badge strong {
+            display: block;
+            font-size: 20px;
+        }
+
+        .overall-badge span {
+            display: block;
+            margin-top: 4px;
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 12px;
+        }
+
+        .hero.pass {
+            background:
+                radial-gradient(circle at 85% 18%, rgba(128, 255, 203, 0.23), transparent 26%),
+                linear-gradient(135deg, #123e36, #157347 58%, #1d875b);
+        }
+
+        .hero.fail {
+            background:
+                radial-gradient(circle at 85% 18%, rgba(255, 210, 190, 0.22), transparent 26%),
+                linear-gradient(135deg, #531c18, #9b2c24 58%, #b42318);
+        }
+
+        .hero.warning {
+            background:
+                radial-gradient(circle at 85% 18%, rgba(255, 229, 154, 0.25), transparent 26%),
+                linear-gradient(135deg, #4d3512, #8a5a0a 58%, #a66b08);
+        }
+
+        .hero.loading {
+            background:
+                radial-gradient(circle at 85% 18%, rgba(196, 214, 255, 0.2), transparent 26%),
+                linear-gradient(135deg, #142650, #2848a6 55%, #5b43c4);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            margin-top: 18px;
+        }
+
+        .summary-card {
+            padding: 20px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            box-shadow: 0 8px 26px rgba(20, 35, 70, 0.05);
+        }
+
+        .summary-card span {
+            display: block;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .summary-card strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 30px;
+            line-height: 1;
+            letter-spacing: -0.04em;
+        }
+
+        .summary-card small {
+            display: block;
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .content-card {
+            margin-top: 18px;
+            padding: 24px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            box-shadow: 0 10px 30px rgba(20, 35, 70, 0.05);
+        }
+
+        .section-heading {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+
+        .section-heading h2 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: -0.025em;
+        }
+
+        .section-heading p {
+            margin: 5px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-button {
+            min-height: 36px;
+            padding: 0 13px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--muted);
+            background: var(--surface);
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .filter-button.active {
+            color: var(--primary);
+            border-color: #b9c8ff;
+            background: var(--primary-soft);
+        }
+
+        .search-box {
+            min-height: 38px;
+            min-width: 220px;
+            padding: 0 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            background: var(--surface);
+            outline: none;
+        }
+
+        .search-box:focus {
+            border-color: #8ba4ff;
+            box-shadow: 0 0 0 4px rgba(49, 87, 213, 0.11);
+        }
+
+        .test-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .test-item {
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            background: var(--surface);
+        }
+
+        .test-header {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
+        }
+
+        .status-dot {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            font-weight: 900;
+        }
+
+        .test-item.pass .status-dot {
+            color: var(--success);
+            background: var(--success-bg);
+        }
+
+        .test-item.fail .status-dot {
+            color: var(--danger);
+            background: var(--danger-bg);
+        }
+
+        .test-name {
+            min-width: 0;
+        }
+
+        .test-name strong {
+            display: block;
+            overflow-wrap: anywhere;
+        }
+
+        .test-name span {
+            display: block;
+            margin-top: 3px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .status-label {
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .test-item.pass .status-label {
+            color: var(--success);
+            background: var(--success-bg);
+        }
+
+        .test-item.fail .status-label {
+            color: var(--danger);
+            background: var(--danger-bg);
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            padding: 0 18px 18px 66px;
+        }
+
+        .value-panel {
+            min-width: 0;
+            padding: 14px;
+            border-radius: 12px;
+            background: var(--surface-soft);
+        }
+
+        .value-panel span {
+            display: block;
+            margin-bottom: 7px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .value-panel pre {
+            margin: 0;
+            overflow-x: auto;
+            color: #263148;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+
+        .error-panel {
+            grid-column: 1 / -1;
+            padding: 13px 14px;
+            border: 1px solid var(--danger-border);
+            border-radius: 12px;
+            color: var(--danger);
+            background: var(--danger-bg);
+            font-size: 13px;
+        }
+
+        .suite-card {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 16px;
+            align-items: start;
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            background: var(--surface-soft);
+        }
+
+        .suite-icon {
+            width: 44px;
+            height: 44px;
+            display: grid;
+            place-items: center;
+            border-radius: 13px;
+            font-size: 20px;
+            font-weight: 900;
+        }
+
+        .suite-card.pass .suite-icon {
+            color: var(--success);
+            background: var(--success-bg);
+        }
+
+        .suite-card.fail .suite-icon {
+            color: var(--danger);
+            background: var(--danger-bg);
+        }
+
+        .suite-card.warning .suite-icon {
+            color: var(--warning);
+            background: var(--warning-bg);
+        }
+
+        .suite-card h3 {
+            margin: 1px 0 4px;
+            font-size: 17px;
+        }
+
+        .suite-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        details {
+            margin-top: 14px;
+            border-top: 1px solid var(--border);
+            padding-top: 14px;
+        }
+
+        summary {
+            color: var(--primary);
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .technical-output {
+            margin-top: 12px;
+            padding: 14px;
+            max-height: 360px;
+            overflow: auto;
+            border-radius: 12px;
+            color: #dbe6ff;
+            background: #14203b;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+
+        .empty-state,
+        .load-panel {
+            padding: 34px;
+            text-align: center;
+            border: 2px dashed #cbd5e1;
+            border-radius: 17px;
+            background: var(--surface-soft);
+        }
+
+        .empty-state h3,
+        .load-panel h2 {
+            margin: 0 0 8px;
+        }
+
+        .empty-state p,
+        .load-panel p {
+            max-width: 600px;
+            margin: 0 auto;
+            color: var(--muted);
+        }
+
+        .drop-zone {
+            margin-top: 18px;
+            padding: 26px;
+            border: 2px dashed #b8c5e5;
+            border-radius: 16px;
+            background: white;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--primary);
+            background: var(--primary-soft);
+        }
+
+        .drop-zone strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .drop-zone span {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .notice {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border: 1px solid var(--warning-border);
+            border-radius: 12px;
+            color: var(--warning);
+            background: var(--warning-bg);
+            font-size: 13px;
+        }
+
+        .generated-time {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 900px) {
+            .summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .hero-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .overall-badge {
+                max-width: 220px;
+            }
+
+            .section-heading {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 620px) {
+            .page-shell {
+                width: min(100% - 20px, 1180px);
+                margin-top: 12px;
+            }
+
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .toolbar {
+                width: 100%;
+            }
+
+            .toolbar .button {
+                flex: 1;
+            }
+
+            .hero {
+                padding: 26px 22px;
+                border-radius: 19px;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .summary-card {
+                padding: 16px;
+            }
+
+            .summary-card strong {
+                font-size: 25px;
+            }
+
+            .content-card {
+                padding: 18px;
+            }
+
+            .test-header {
+                grid-template-columns: auto minmax(0, 1fr);
+            }
+
+            .status-label {
+                grid-column: 2;
+                justify-self: start;
+            }
+
+            .comparison-grid {
+                grid-template-columns: 1fr;
+                padding-left: 18px;
+            }
+
+            .search-box {
+                width: 100%;
+                min-width: 0;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .page-shell {
+                width: 100%;
+                margin: 0;
+            }
+
+            .topbar,
+            .load-panel,
+            .filter-row {
+                display: none !important;
+            }
+
+            .hero,
+            .content-card,
+            .summary-card {
+                box-shadow: none;
+            }
+
+            .test-item,
+            .suite-card,
+            .summary-card {
+                break-inside: avoid;
+            }
+
+            details {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page-shell">
+        <div class="topbar">
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true">✓</div>
+                <div>
+                    <strong>Réunia</strong>
+                    <span>Automated test report</span>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <label class="button button-primary" for="reportFile">Open test results</label>
+                <input class="file-input" id="reportFile" type="file" accept=".json,application/json">
+                <button class="button" id="reloadButton" type="button">Reload report</button>
+                <button class="button" id="printButton" type="button">Print / Save PDF</button>
+            </div>
+        </div>
+
+        <section class="hero loading" id="hero">
+            <div class="hero-grid">
+                <div>
+                    <p class="hero-kicker">Application health check</p>
+                    <h1 id="heroTitle">Load the latest test report</h1>
+                    <p class="hero-message" id="heroMessage">
+                        This page turns technical test results into a clear summary that anyone can understand.
+                    </p>
+                    <p class="generated-time" id="generatedTime"></p>
+                </div>
+
+                <div class="overall-badge">
+                    <div class="overall-icon" id="overallIcon">?</div>
+                    <strong id="overallLabel">Not loaded</strong>
+                    <span id="overallDetail">Choose test-results.json</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="load-panel" id="loadPanel">
+            <h2>Open your test results</h2>
+            <p>
+                When opened by <strong>run_tests.bat</strong>, this page automatically loads the latest
+                <strong>test-results.json</strong>. You can also select or drop a different JSON report below.
+            </p>
+
+            <div class="drop-zone" id="dropZone" tabindex="0" role="button" aria-label="Select or drop test-results.json">
+                <strong>Drop test-results.json here</strong>
+                <span>or click this area to choose the file</span>
+            </div>
+
+            <div class="notice" id="loadNotice">
+                For automatic loading, run <strong>run_tests.bat</strong>. When this page is opened directly as a file,
+                select test-results.json manually because browsers may block local file access.
+            </div>
+        </section>
+
+        <section class="summary-grid hidden" id="summaryGrid" aria-label="Test summary">
+            <article class="summary-card">
+                <span>Total comparison tests</span>
+                <strong id="totalTests">0</strong>
+                <small>Expected output compared with actual output</small>
+            </article>
+            <article class="summary-card">
+                <span>Passed</span>
+                <strong id="passedTests">0</strong>
+                <small>Results that matched expectations</small>
+            </article>
+            <article class="summary-card">
+                <span>Needs attention</span>
+                <strong id="failedTests">0</strong>
+                <small>Results that were different or raised an error</small>
+            </article>
+            <article class="summary-card">
+                <span>Complete test suite</span>
+                <strong id="pytestStatus">—</strong>
+                <small id="pytestSummary">Not loaded</small>
+            </article>
+        </section>
+
+        <section class="content-card hidden" id="comparisonSection">
+            <div class="section-heading">
+                <div>
+                    <h2>Expected versus actual results</h2>
+                    <p>Each check passes only when the actual result exactly matches the expected result.</p>
+                </div>
+
+                <div class="filter-row" aria-label="Test filters">
+                    <button class="filter-button active" type="button" data-filter="all">All</button>
+                    <button class="filter-button" type="button" data-filter="pass">Passed</button>
+                    <button class="filter-button" type="button" data-filter="fail">Needs attention</button>
+                    <input class="search-box" id="searchBox" type="search" placeholder="Search tests" aria-label="Search tests">
+                </div>
+            </div>
+
+            <div class="test-list" id="testList"></div>
+            <div class="empty-state hidden" id="emptyState">
+                <h3>No matching tests</h3>
+                <p>Change the filter or search text to see more results.</p>
+            </div>
+        </section>
+
+        <section class="content-card hidden" id="pytestSection">
+            <div class="section-heading">
+                <div>
+                    <h2>Complete application test suite</h2>
+                    <p>This is the broader automated check run by pytest.</p>
+                </div>
+            </div>
+
+            <div class="suite-card" id="suiteCard">
+                <div class="suite-icon" id="suiteIcon">?</div>
+                <div>
+                    <h3 id="suiteTitle">Not loaded</h3>
+                    <p id="suiteMessage"></p>
+
+                    <details id="technicalDetails">
+                        <summary>Show technical details</summary>
+                        <pre class="technical-output" id="technicalOutput"></pre>
+                    </details>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (() => {
+            "use strict";
+
+            const state = {
+                report: null,
+                filter: "all",
+                search: ""
+            };
+
+            const elements = {
+                hero: document.getElementById("hero"),
+                heroTitle: document.getElementById("heroTitle"),
+                heroMessage: document.getElementById("heroMessage"),
+                generatedTime: document.getElementById("generatedTime"),
+                overallIcon: document.getElementById("overallIcon"),
+                overallLabel: document.getElementById("overallLabel"),
+                overallDetail: document.getElementById("overallDetail"),
+                loadPanel: document.getElementById("loadPanel"),
+                loadNotice: document.getElementById("loadNotice"),
+                reportFile: document.getElementById("reportFile"),
+                dropZone: document.getElementById("dropZone"),
+                reloadButton: document.getElementById("reloadButton"),
+                printButton: document.getElementById("printButton"),
+                summaryGrid: document.getElementById("summaryGrid"),
+                totalTests: document.getElementById("totalTests"),
+                passedTests: document.getElementById("passedTests"),
+                failedTests: document.getElementById("failedTests"),
+                pytestStatus: document.getElementById("pytestStatus"),
+                pytestSummary: document.getElementById("pytestSummary"),
+                comparisonSection: document.getElementById("comparisonSection"),
+                testList: document.getElementById("testList"),
+                emptyState: document.getElementById("emptyState"),
+                searchBox: document.getElementById("searchBox"),
+                pytestSection: document.getElementById("pytestSection"),
+                suiteCard: document.getElementById("suiteCard"),
+                suiteIcon: document.getElementById("suiteIcon"),
+                suiteTitle: document.getElementById("suiteTitle"),
+                suiteMessage: document.getElementById("suiteMessage"),
+                technicalDetails: document.getElementById("technicalDetails"),
+                technicalOutput: document.getElementById("technicalOutput")
+            };
+
+            function formatValue(value) {
+                if (value === undefined) {
+                    return "Not provided";
+                }
+                if (value === null) {
+                    return "null";
+                }
+                if (typeof value === "string") {
+                    return value;
+                }
+                try {
+                    return JSON.stringify(value, null, 2);
+                } catch (_error) {
+                    return String(value);
+                }
+            }
+
+            function formatDate(value) {
+                if (!value) {
+                    return "";
+                }
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) {
+                    return `Generated: ${value}`;
+                }
+                return `Generated ${new Intl.DateTimeFormat(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short"
+                }).format(date)}`;
+            }
+
+            function normalizeReport(report) {
+                if (!report || typeof report !== "object" || Array.isArray(report)) {
+                    throw new Error("The selected file is not a valid test report.");
+                }
+
+                const expectedActual = report.expected_actual;
+                if (!expectedActual || typeof expectedActual !== "object") {
+                    throw new Error("The report does not contain expected-versus-actual results.");
+                }
+
+                const tests = Array.isArray(expectedActual.tests) ? expectedActual.tests : [];
+                const normalizedTests = tests.map((test, index) => ({
+                    name: typeof test?.name === "string" && test.name.trim()
+                        ? test.name.trim()
+                        : `Unnamed test ${index + 1}`,
+                    expected: test?.expected,
+                    actual: test?.actual,
+                    passed: Boolean(test?.passed),
+                    error: test?.error ? String(test.error) : null
+                }));
+
+                const passedCount = normalizedTests.filter((test) => test.passed).length;
+                const failedCount = normalizedTests.length - passedCount;
+                const pytest = report.pytest && typeof report.pytest === "object"
+                    ? report.pytest
+                    : {
+                        passed: false,
+                        skipped: true,
+                        stdout: "",
+                        stderr: "",
+                        exit_code: null
+                    };
+
+                const allTestsPassed = typeof report.all_tests_passed === "boolean"
+                    ? report.all_tests_passed
+                    : failedCount === 0 && Boolean(pytest.passed);
+
+                return {
+                    generatedAt: report.generated_at || "",
+                    allTestsPassed,
+                    overallResult: report.overall_result || (allTestsPassed ? "PASS" : "FAIL"),
+                    expectedActual: {
+                        tests: normalizedTests,
+                        total: normalizedTests.length,
+                        passedCount,
+                        failedCount
+                    },
+                    pytest: {
+                        passed: Boolean(pytest.passed),
+                        skipped: Boolean(pytest.skipped),
+                        status: pytest.status || "",
+                        reason: pytest.reason || "",
+                        exitCode: pytest.exit_code,
+                        command: pytest.command || "",
+                        stdout: pytest.stdout || "",
+                        stderr: pytest.stderr || ""
+                    }
+                };
+            }
+
+            function createValuePanel(label, value) {
+                const panel = document.createElement("div");
+                panel.className = "value-panel";
+
+                const title = document.createElement("span");
+                title.textContent = label;
+
+                const pre = document.createElement("pre");
+                pre.textContent = formatValue(value);
+
+                panel.append(title, pre);
+                return panel;
+            }
+
+            function createTestItem(test) {
+                const item = document.createElement("article");
+                item.className = `test-item ${test.passed ? "pass" : "fail"}`;
+                item.dataset.status = test.passed ? "pass" : "fail";
+                item.dataset.search = test.name.toLowerCase();
+
+                const header = document.createElement("div");
+                header.className = "test-header";
+
+                const icon = document.createElement("div");
+                icon.className = "status-dot";
+                icon.setAttribute("aria-hidden", "true");
+                icon.textContent = test.passed ? "✓" : "!";
+
+                const name = document.createElement("div");
+                name.className = "test-name";
+
+                const nameStrong = document.createElement("strong");
+                nameStrong.textContent = test.name;
+
+                const explanation = document.createElement("span");
+                explanation.textContent = test.passed
+                    ? "The actual output matched the expected output."
+                    : "The actual output did not match the expected output.";
+
+                name.append(nameStrong, explanation);
+
+                const status = document.createElement("span");
+                status.className = "status-label";
+                status.textContent = test.passed ? "Passed" : "Needs attention";
+
+                header.append(icon, name, status);
+
+                const comparison = document.createElement("div");
+                comparison.className = "comparison-grid";
+                comparison.append(
+                    createValuePanel("Expected output", test.expected),
+                    createValuePanel("Actual output", test.actual)
+                );
+
+                if (test.error) {
+                    const error = document.createElement("div");
+                    error.className = "error-panel";
+                    error.textContent = `Test error: ${test.error}`;
+                    comparison.append(error);
+                }
+
+                item.append(header, comparison);
+                return item;
+            }
+
+            function renderTests() {
+                if (!state.report) {
+                    return;
+                }
+
+                const query = state.search.trim().toLowerCase();
+                const tests = state.report.expectedActual.tests.filter((test) => {
+                    const statusMatches = state.filter === "all"
+                        || (state.filter === "pass" && test.passed)
+                        || (state.filter === "fail" && !test.passed);
+                    const searchMatches = !query || test.name.toLowerCase().includes(query);
+                    return statusMatches && searchMatches;
+                });
+
+                elements.testList.replaceChildren(...tests.map(createTestItem));
+                elements.emptyState.classList.toggle("hidden", tests.length > 0);
+            }
+
+            function renderPytest(pytest) {
+                elements.suiteCard.classList.remove("pass", "fail", "warning");
+
+                let title;
+                let message;
+                let icon;
+                let className;
+
+                if (pytest.status === "dependency_missing") {
+                    title = "pytest is not installed";
+                    message = pytest.reason || "Install pytest, then run the tests again.";
+                    icon = "⚙";
+                    className = "warning";
+                } else if (pytest.skipped) {
+                    title = "The complete test suite was skipped";
+                    message = pytest.reason || "Only the expected-versus-actual checks were run for this report.";
+                    icon = "–";
+                    className = "warning";
+                } else if (pytest.passed) {
+                    title = "The complete test suite passed";
+                    message = "The broader application checks completed without a reported failure.";
+                    icon = "✓";
+                    className = "pass";
+                } else {
+                    title = "The complete test suite needs attention";
+                    message = "At least one broader application check failed or could not run.";
+                    icon = "!";
+                    className = "fail";
+                }
+
+                elements.suiteCard.classList.add(className);
+                elements.suiteIcon.textContent = icon;
+                elements.suiteTitle.textContent = title;
+                elements.suiteMessage.textContent = message;
+
+                const technicalSections = [];
+                if (pytest.reason) {
+                    technicalSections.push(`Explanation:
+${pytest.reason}`);
+                }
+                if (pytest.command) {
+                    technicalSections.push(`Command:\n${pytest.command}`);
+                }
+                if (pytest.exitCode !== null && pytest.exitCode !== undefined) {
+                    technicalSections.push(`Exit code:\n${pytest.exitCode}`);
+                }
+                if (pytest.stdout) {
+                    technicalSections.push(`Output:\n${pytest.stdout}`);
+                }
+                if (pytest.stderr) {
+                    technicalSections.push(`Errors:\n${pytest.stderr}`);
+                }
+
+                elements.technicalOutput.textContent = technicalSections.join("\n\n")
+                    || "No technical output was included in the report.";
+            }
+
+            function renderReport(report) {
+                state.report = normalizeReport(report);
+
+                const data = state.report;
+                const total = data.expectedActual.total;
+                const passed = data.expectedActual.passedCount;
+                const failed = data.expectedActual.failedCount;
+
+                elements.loadPanel.classList.add("hidden");
+                elements.summaryGrid.classList.remove("hidden");
+                elements.comparisonSection.classList.remove("hidden");
+                elements.pytestSection.classList.remove("hidden");
+
+                const setupIncomplete = data.pytest.status === "dependency_missing";
+
+                elements.hero.classList.remove("loading", "pass", "fail", "warning");
+                if (data.allTestsPassed) {
+                    elements.hero.classList.add("pass");
+                    elements.heroTitle.textContent = "All tests passed";
+                    elements.heroMessage.textContent =
+                        "Every expected result matched the actual result, and the complete application test suite passed.";
+                    elements.overallIcon.textContent = "✓";
+                    elements.overallLabel.textContent = "Healthy";
+                    elements.overallDetail.textContent = "No failures found";
+                } else if (setupIncomplete && failed === 0) {
+                    elements.hero.classList.add("warning");
+                    elements.heroTitle.textContent = "Test setup is incomplete";
+                    elements.heroMessage.textContent =
+                        `${passed} comparison ${passed === 1 ? "test passed" : "tests passed"}, but the complete pytest suite could not run because pytest is not installed.`;
+                    elements.overallIcon.textContent = "⚙";
+                    elements.overallLabel.textContent = "Setup needed";
+                    elements.overallDetail.textContent = "Install pytest and run again";
+                } else {
+                    elements.hero.classList.add("fail");
+                    elements.heroTitle.textContent = "Some tests need attention";
+                    elements.heroMessage.textContent =
+                        failed > 0
+                            ? `${failed} expected-versus-actual ${failed === 1 ? "test was" : "tests were"} different. Review the red items below.`
+                            : "The comparison tests passed, but the complete application test suite reported a problem.";
+                    elements.overallIcon.textContent = "!";
+                    elements.overallLabel.textContent = "Review needed";
+                    elements.overallDetail.textContent = failed > 0
+                        ? `${failed} comparison ${failed === 1 ? "failure" : "failures"}`
+                        : "Application suite issue";
+                }
+
+                elements.generatedTime.textContent = formatDate(data.generatedAt);
+                elements.totalTests.textContent = String(total);
+                elements.passedTests.textContent = String(passed);
+                elements.failedTests.textContent = String(failed);
+
+                if (data.pytest.status === "dependency_missing") {
+                    elements.pytestStatus.textContent = "Not run";
+                    elements.pytestSummary.textContent = "pytest must be installed";
+                } else if (data.pytest.skipped) {
+                    elements.pytestStatus.textContent = "Skipped";
+                    elements.pytestSummary.textContent = "Not included in this run";
+                } else if (data.pytest.passed) {
+                    elements.pytestStatus.textContent = "Passed";
+                    elements.pytestSummary.textContent = "Broader checks completed successfully";
+                } else {
+                    elements.pytestStatus.textContent = "Review";
+                    elements.pytestSummary.textContent = "One or more broader checks failed";
+                }
+
+                renderTests();
+                renderPytest(data.pytest);
+            }
+
+            function showLoadError(message) {
+                elements.loadPanel.classList.remove("hidden");
+                elements.loadNotice.textContent = message;
+                elements.loadNotice.style.color = "var(--danger)";
+                elements.loadNotice.style.background = "var(--danger-bg)";
+                elements.loadNotice.style.borderColor = "var(--danger-border)";
+            }
+
+            async function readFile(file) {
+                if (!file) {
+                    return;
+                }
+
+                try {
+                    const text = await file.text();
+                    const report = JSON.parse(text);
+                    renderReport(report);
+                } catch (error) {
+                    showLoadError(`Could not read this report: ${error.message}`);
+                }
+            }
+
+            async function loadDefaultReport() {
+                try {
+                    const response = await fetch(`test-results.json?time=${Date.now()}`, {
+                        cache: "no-store"
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const report = await response.json();
+                    renderReport(report);
+                } catch (_error) {
+                    elements.loadPanel.classList.remove("hidden");
+                }
+            }
+
+            elements.reportFile.addEventListener("change", (event) => {
+                readFile(event.target.files?.[0]);
+            });
+
+            elements.dropZone.addEventListener("click", () => {
+                elements.reportFile.click();
+            });
+
+            elements.dropZone.addEventListener("keydown", (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    elements.reportFile.click();
+                }
+            });
+
+            ["dragenter", "dragover"].forEach((eventName) => {
+                elements.dropZone.addEventListener(eventName, (event) => {
+                    event.preventDefault();
+                    elements.dropZone.classList.add("dragover");
+                });
+            });
+
+            ["dragleave", "drop"].forEach((eventName) => {
+                elements.dropZone.addEventListener(eventName, (event) => {
+                    event.preventDefault();
+                    elements.dropZone.classList.remove("dragover");
+                });
+            });
+
+            elements.dropZone.addEventListener("drop", (event) => {
+                readFile(event.dataTransfer?.files?.[0]);
+            });
+
+            elements.reloadButton.addEventListener("click", loadDefaultReport);
+            elements.printButton.addEventListener("click", () => window.print());
+
+            document.querySelectorAll(".filter-button").forEach((button) => {
+                button.addEventListener("click", () => {
+                    state.filter = button.dataset.filter || "all";
+                    document.querySelectorAll(".filter-button").forEach((item) => {
+                        item.classList.toggle("active", item === button);
+                    });
+                    renderTests();
+                });
+            });
+
+            elements.searchBox.addEventListener("input", () => {
+                state.search = elements.searchBox.value;
+                renderTests();
+            });
+
+            loadDefaultReport();
+        })();
+    </script>
+</body>
+</html>

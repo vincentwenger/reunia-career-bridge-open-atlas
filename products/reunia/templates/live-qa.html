@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% from 'macros/ui.html' import page_hero %}
+
+{% block title %}Réunia - Live Q&A{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ static_asset('css/pages/live-qa.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="app-page live-qa-page">
+
+    {{ page_hero(
+        'Live Q&A',
+        'See meeting inputs and AI-generated answers as they arrive during the conversation.'
+    ) }}
+
+    <div class="control-panel">
+        <div class="status-block">
+            <div class="status-indicator" id="streamStatus" role="status" aria-live="polite">🟡 Connecting to the live meeting stream...</div>
+            <div class="expiry-notice">⏱️ Streamed history expires automatically after a few hours.</div>
+        </div>
+
+        <div class="controls-wrapper">
+            <div class="filter-container">
+                <span class="filter-label">Filter by Source</span>
+
+                <div class="checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="clipboard" checked data-source-filter> Clipboard
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="speaker" checked data-source-filter> Speaker
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="microphone" checked data-source-filter> Microphone
+                    </label>
+                </div>
+            </div>
+
+            <button class="btn-compact" type="button" data-toggle-fullscreen>⛶ Fullscreen View</button>
+        </div>
+    </div>
+
+    <div id="fullscreen-wrapper">
+        <div class="fullscreen-header" aria-label="Fullscreen controls">
+            <h3 class="fullscreen-title">Live Q&A Fullscreen View</h3>
+            <button class="fullscreen-close-btn" type="button" data-toggle-fullscreen title="Close fullscreen" aria-label="Close fullscreen">✕</button>
+        </div>
+
+        <div class="data-shell">
+            <div class="table-header">
+                <div>
+                    <h2>Real-Time Meeting Feed</h2>
+                    <span>Latest updates appear first · new responses are highlighted</span>
+                </div>
+            </div>
+
+            <div id="table-container" aria-live="polite" aria-busy="true"></div>
+            <button id="new-entry-jump" class="new-entry-jump" type="button" hidden>
+                ↑ New responses
+            </button>
+            <span id="new-entry-status" class="sr-only" aria-live="polite"></span>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ static_asset('js/pages/live-qa.js') }}" defer></script>
+{% endblock %}

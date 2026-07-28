@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Evidence-Based Resume Tailor{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="{{ url_for('index', tab='tailoring') }}">
+        <strong>Evidence-Based Resume Tailor</strong>
+        <span>Truthful, job-specific resume tailoring</span>
+      </a>
+      <nav class="primary-nav" aria-label="Primary navigation">
+        <a class="{{ 'active' if active_tab == 'tailoring' else '' }}" href="{{ url_for('index', tab='tailoring') }}">Resume Workflow</a>
+        <a class="{{ 'active' if active_tab == 'reports' else '' }}" href="{{ url_for('index', tab='reports') }}">Resume Reports</a>
+        <a class="{{ 'active' if active_tab == 'applications' else '' }}" href="{{ url_for('index', tab='applications') }}">Applications</a>
+        <a class="{{ 'active' if active_tab == 'configuration' else '' }}" href="{{ url_for('index', tab='configuration') }}">Configuration</a>
+      </nav>
+    </header>
+    <main class="main-content">
+      <header class="page-header">
+        <div>
+          {% if active_tab == 'reports' %}
+            <h1>Resume Reports</h1>
+            <p>Review the automatically generated reports for the Initial Resume from Step 1, the Job-Aligned Resume from Step 3, and the Final Resume from Step 4.</p>
+          {% elif active_tab == 'applications' %}
+            <h1>Applications</h1>
+            <p>Track which resume you submitted, hiring progress, follow-ups, and the outcomes produced by each application.</p>
+          {% elif active_tab == 'configuration' %}
+            <h1>Configuration</h1>
+            <p>Manage AI models, API readiness, and the verified Candidate Profile.</p>
+          {% else %}
+            <h1>Resume Workflow</h1>
+            <p>Move from job setup to an optimized resume in four clear stages.</p>
+          {% endif %}
+        </div>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack" aria-live="polite">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <div class="loading-overlay" id="loading-overlay" hidden>
+    <div class="loading-card" role="dialog" aria-modal="true" aria-labelledby="loading-title">
+      <div class="spinner" id="loading-spinner"></div>
+      <strong id="loading-title">Processing…</strong>
+      <span id="loading-message">The requested operation is running.</span>
+      <div class="loading-progress" id="loading-progress" hidden aria-live="polite">
+        <div class="loading-progress-header">
+          <span>What the app is working through</span>
+          <span id="loading-elapsed"></span>
+        </div>
+        <ol class="loading-progress-steps" id="loading-progress-steps"></ol>
+        <p class="loading-reassurance" id="loading-reassurance"></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

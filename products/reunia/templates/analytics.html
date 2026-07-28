@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+{% from 'macros/ui.html' import page_hero %}
+
+{% block title %}Réunia - Analytics{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ static_asset('css/pages/analytics.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="app-page analytics-container">
+    {{ page_hero(
+        'Analytics',
+        'See trends across your meetings, including scores, topics, questions, and follow-through.'
+    ) }}
+
+    <section class="analytics-toolbar" aria-label="Analytics filters">
+        <div class="analytics-filter-group">
+            <label for="analytics-period">Time period</label>
+            <select id="analytics-period">
+                <option value="all">All meetings</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Last 12 months</option>
+            </select>
+        </div>
+
+        <div class="analytics-filter-group">
+            <label for="analytics-score-filter">Performance</label>
+            <select id="analytics-score-filter">
+                <option value="all">All scores</option>
+                <option value="strong">Strong: 70–100</option>
+                <option value="developing">Developing: 40–69</option>
+                <option value="focus">Needs focus: below 40</option>
+                <option value="unscored">Not scored</option>
+            </select>
+        </div>
+
+        <div class="analytics-filter-group analytics-search-group">
+            <label for="analytics-search">Find meetings</label>
+            <div class="analytics-search-shell">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m20 20-3.7-3.7"></path>
+                </svg>
+                <input id="analytics-search" type="search" placeholder="Search names, summaries, wins, or actions..." autocomplete="off">
+            </div>
+        </div>
+
+        <button class="analytics-refresh-button" id="analytics-refresh" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 11a8 8 0 1 0 2 5.3"></path>
+                <path d="M20 4v7h-7"></path>
+            </svg>
+            Refresh
+        </button>
+    </section>
+
+    <div class="analytics-status" id="analytics-status" role="status" aria-live="polite">
+        Loading your meeting analytics...
+    </div>
+
+    <section class="analytics-kpi-grid" aria-label="Analytics overview">
+        <article class="analytics-kpi-card">
+            <span class="analytics-kpi-icon analytics-kpi-icon-blue" aria-hidden="true">▦</span>
+            <div>
+                <span class="analytics-kpi-label">Meetings analyzed</span>
+                <strong id="analytics-total-meetings">—</strong>
+                <small id="analytics-meeting-period">Across your selected period</small>
+            </div>
+        </article>
+
+        <article class="analytics-kpi-card">
+            <span class="analytics-kpi-icon analytics-kpi-icon-green" aria-hidden="true">↗</span>
+            <div>
+                <span class="analytics-kpi-label">Average performance</span>
+                <strong id="analytics-average-score">—</strong>
+                <small id="analytics-score-trend">Waiting for scored meetings</small>
+            </div>
+        </article>
+
+        <article class="analytics-kpi-card">
+            <span class="analytics-kpi-icon analytics-kpi-icon-purple" aria-hidden="true">?</span>
+            <div>
+                <span class="analytics-kpi-label">Questions captured</span>
+                <strong id="analytics-total-questions">—</strong>
+                <small id="analytics-average-questions">Across answers and open questions</small>
+            </div>
+        </article>
+
+        <article class="analytics-kpi-card">
+            <span class="analytics-kpi-icon analytics-kpi-icon-amber" aria-hidden="true">✓</span>
+            <div>
+                <span class="analytics-kpi-label">Action items</span>
+                <strong id="analytics-total-actions">—</strong>
+                <small id="analytics-average-actions">Follow-up items across meetings</small>
+            </div>
+        </article>
+    </section>
+
+    <section class="analytics-dashboard-grid">
+        <article class="analytics-card analytics-card-wide analytics-trend-card">
+            <header class="analytics-card-header">
+                <div>
+                    <span class="analytics-card-kicker">Performance over time</span>
+                    <h2>Meeting score trend</h2>
+                    <p>Your most recent scored meetings, shown in chronological order.</p>
+                </div>
+                <span class="analytics-card-badge" id="analytics-trend-count">0 scored meetings</span>
+            </header>
+
+            <div class="analytics-chart-shell" id="analytics-trend-shell">
+                <svg id="analytics-trend-chart" class="analytics-line-chart" viewBox="0 0 820 280" role="img" aria-labelledby="analytics-trend-title analytics-trend-description">
+                    <title id="analytics-trend-title">Meeting performance score trend</title>
+                    <desc id="analytics-trend-description">A chart of meeting scores over time.</desc>
+                </svg>
+                <div class="analytics-empty-state" id="analytics-trend-empty" hidden>
+                    <span aria-hidden="true">📈</span>
+                    <strong>No score trend yet</strong>
+                    <p>Scored meetings will appear here after they are analyzed.</p>
+                </div>
+            </div>
+        </article>
+
+        <article class="analytics-card analytics-distribution-card">
+            <header class="analytics-card-header">
+                <div>
+                    <span class="analytics-card-kicker">Performance mix</span>
+                    <h2>Score distribution</h2>
+                    <p>How meetings are distributed across score ranges.</p>
+                </div>
+            </header>
+
+            <div class="analytics-distribution-list" id="analytics-score-distribution">
+                <div class="analytics-distribution-row" data-distribution="strong">
+                    <div><span>Strong</span><strong>0</strong></div>
+                    <div class="analytics-progress-track"><span></span></div>
+                    <small>70–100</small>
+                </div>
+                <div class="analytics-distribution-row" data-distribution="developing">
+                    <div><span>Developing</span><strong>0</strong></div>
+                    <div class="analytics-progress-track"><span></span></div>
+                    <small>40–69</small>
+                </div>
+                <div class="analytics-distribution-row" data-distribution="focus">
+                    <div><span>Needs focus</span><strong>0</strong></div>
+                    <div class="analytics-progress-track"><span></span></div>
+                    <small>Below 40</small>
+                </div>
+                <div class="analytics-distribution-row" data-distribution="unscored">
+                    <div><span>Not scored</span><strong>0</strong></div>
+                    <div class="analytics-progress-track"><span></span></div>
+                    <small>Analysis unavailable</small>
+                </div>
+            </div>
+        </article>
+
+        <article class="analytics-card analytics-speaking-card">
+            <header class="analytics-card-header">
+                <div>
+                    <span class="analytics-card-kicker">Communication habits</span>
+                    <h2>Speaking averages</h2>
+                    <p>Average form metrics for meetings with available data.</p>
+                </div>
+            </header>
+
+            <div class="analytics-speaking-grid">
+                <div class="analytics-speaking-metric">
+                    <span>Pace</span>
+                    <strong id="analytics-average-pace">—</strong>
+                    <small>words per minute</small>
+                </div>
+                <div class="analytics-speaking-metric">
+                    <span>Filler words</span>
+                    <strong id="analytics-average-fillers">—</strong>
+                    <small>per meeting</small>
+                </div>
+                <div class="analytics-speaking-metric">
+                    <span>Power words</span>
+                    <strong id="analytics-average-power">—</strong>
+                    <small>per meeting</small>
+                </div>
+                <div class="analytics-speaking-metric">
+                    <span>Negative tone</span>
+                    <strong id="analytics-average-negative-tone">—</strong>
+                    <small>signals per meeting</small>
+                </div>
+                <div class="analytics-speaking-metric">
+                    <span>Pauses</span>
+                    <strong id="analytics-average-pauses">—</strong>
+                    <small>per meeting</small>
+                </div>
+                <div class="analytics-speaking-metric">
+                    <span>Form score</span>
+                    <strong id="analytics-average-form-score">—</strong>
+                    <small>average out of 100</small>
+                </div>
+            </div>
+        </article>
+
+        <article class="analytics-card analytics-list-card">
+            <header class="analytics-card-header">
+                <div>
+                    <span class="analytics-card-kicker">Question intelligence</span>
+                    <h2>Most asked questions</h2>
+                    <p>Recurring or frequently captured questions across meetings.</p>
+                </div>
+            </header>
+            <ol class="analytics-ranked-list" id="analytics-question-list"></ol>
+            <div class="analytics-empty-list" id="analytics-question-empty" hidden>No questions are available for the selected meetings.</div>
+        </article>
+
+        <article class="analytics-card analytics-list-card">
+            <header class="analytics-card-header">
+                <div>
+                    <span class="analytics-card-kicker">Conversation themes</span>
+                    <h2>Common topics</h2>
+                    <p>Frequently used meaningful terms from meeting names, summaries, and insights.</p>
+                </div>
+            </header>
+            <div class="analytics-topic-cloud" id="analytics-topic-cloud"></div>
+            <div class="analytics-empty-list" id="analytics-topic-empty" hidden>No common topics are available for the selected meetings.</div>
+        </article>
+
+        <article class="analytics-card analytics-list-card">
+            <header class="analytics-card-header">
+                <div>
+                    <span class="analytics-card-kicker">Coaching patterns</span>
+                    <h2>Recurring improvement areas</h2>
+                    <p>The coaching recommendations that appear most often.</p>
+                </div>
+            </header>
+            <ol class="analytics-ranked-list" id="analytics-improvement-list"></ol>
+            <div class="analytics-empty-list" id="analytics-improvement-empty" hidden>No improvement areas are available for the selected meetings.</div>
+        </article>
+
+        <article class="analytics-card analytics-card-wide analytics-table-card">
+            <header class="analytics-card-header analytics-card-header-row">
+                <div>
+                    <span class="analytics-card-kicker">Meeting details</span>
+                    <h2>Recent meeting performance</h2>
+                    <p>Compare the latest meetings included in the current filters.</p>
+                </div>
+                <a class="analytics-review-link" href="{{ request.script_root }}/meeting-review.html">Open Meeting Review <span aria-hidden="true">→</span></a>
+            </header>
+
+            <div class="analytics-table-scroll">
+                <table class="analytics-meeting-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Meeting</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Overall</th>
+                            <th scope="col">Content</th>
+                            <th scope="col">Form</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analytics-meeting-table-body"></tbody>
+                </table>
+            </div>
+            <div class="analytics-empty-list" id="analytics-table-empty" hidden>No meetings match the selected filters.</div>
+        </article>
+    </section>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ static_asset('js/meeting-utils.js') }}" defer></script>
+<script src="{{ static_asset('js/pages/analytics.js') }}" defer></script>
+{% endblock %}

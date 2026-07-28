@@ -1,0 +1,41 @@
+<div class="meeting-topic-backdrop" id="meeting-topic-modal" hidden>
+    <section class="meeting-topic-dialog" role="dialog" aria-modal="true" aria-labelledby="meeting-topic-title" tabindex="-1">
+        <header class="meeting-topic-header">
+            <div>
+                <p class="meeting-topic-eyebrow">Meeting organization</p>
+                <h2 id="meeting-topic-title">Manage topics</h2>
+                <p>Rename, merge, or remove topics across your saved meetings.</p>
+            </div>
+            <button class="meeting-topic-close" type="button" id="meeting-topic-close" aria-label="Close topic manager">×</button>
+        </header>
+
+        <div class="meeting-topic-body">
+            <section class="meeting-topic-section" aria-labelledby="meeting-topic-merge-title">
+                <div class="meeting-topic-section-heading">
+                    <h3 id="meeting-topic-merge-title">Merge duplicate topics</h3>
+                    <p>Move every meeting from one topic into another topic.</p>
+                </div>
+                <div class="meeting-topic-merge-grid">
+                    <label>
+                        <span>Topic to merge</span>
+                        <select id="meeting-topic-merge-source"></select>
+                    </label>
+                    <span class="meeting-topic-merge-arrow" aria-hidden="true">→</span>
+                    <label>
+                        <span>Keep this topic</span>
+                        <select id="meeting-topic-merge-target"></select>
+                    </label>
+                    <button type="button" id="meeting-topic-merge-button">Merge topics</button>
+                </div>
+            </section>
+
+            <section class="meeting-topic-section" aria-labelledby="meeting-topic-list-title">
+                <div class="meeting-topic-section-heading">
+                    <h3 id="meeting-topic-list-title">All topics</h3>
+                    <p>Renaming a topic updates every meeting that uses it.</p>
+                </div>
+                <div class="meeting-topic-list" id="meeting-topic-list" aria-live="polite"></div>
+            </section>
+        </div>
+    </section>
+</div>
