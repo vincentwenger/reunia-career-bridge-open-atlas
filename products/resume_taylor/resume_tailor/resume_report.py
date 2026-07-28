@@ -62,13 +62,13 @@ _SECTION_WEIGHTS = {
 # Show users where each report category is primarily improved. Categories that
 # receive an additional final safety check also identify that verification stage.
 _SECTION_WORKFLOW_OWNERSHIP: dict[str, tuple[str, str, str, str]] = {
-    "Hard skills": ("Review Job Alignment", "draft", "", ""),
-    "Evidence & Gaps": ("Review Job Alignment", "draft", "", ""),
-    "Content Quality": ("Optimize & Export", "final", "", ""),
-    "Searchability": ("Optimize & Export", "final", "", ""),
-    "Recruiter tips": ("Optimize & Export", "final", "", ""),
-    "Formatting": ("Optimize & Export", "final", "", ""),
-    "Soft skills": ("Optimize & Export", "final", "", ""),
+    "Hard skills": ("Review Tailored Resume", "review", "", ""),
+    "Evidence & Gaps": ("Evidence Review and Export", "evidence_export", "", ""),
+    "Content Quality": ("Improve Resume Quality", "quality", "", ""),
+    "Searchability": ("Improve Resume Quality", "quality", "", ""),
+    "Recruiter tips": ("Improve Resume Quality", "quality", "", ""),
+    "Formatting": ("Finalize Resume", "finalize", "", ""),
+    "Soft skills": ("Improve Resume Quality", "quality", "", ""),
 }
 
 

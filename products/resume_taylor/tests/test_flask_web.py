@@ -26,16 +26,14 @@ def test_flask_ui_preserves_complete_workflow(project_root):
 
     labels = [
         "Initial Resume Report", "Start tailoring", "Create tailored resume",
-        "Setup — Job &amp; Resume", "Confirm Your Experience", "Review Job Alignment",
-        "Optimize &amp; Export", "View detailed job requirement analysis", "Additional experience confirmation",
+        "Career and Job Setup", "Confirm Relevant Experience", "Review Tailored Resume",
+        "Improve Resume Quality", "Finalize Resume", "Evidence Review and Export",
+        "View detailed job requirement analysis", "Additional experience confirmation",
         "Approve &amp; optimize resume", "Job-Aligned Resume → Final Resume",
         "Final Resume Report", "Rerun optimization", "Download PDF", "Download Word (.docx)",
     ]
     for label in labels:
         assert label in template
-    assert "Improve Resume Quality" not in template
-    assert "Finalize Resume" not in template
-    assert "Verify &amp; Export Resume" not in template
     assert "Evidence verification" not in template
     assert "Resume Workflow" in base
     assert "Resume Reports" in base
@@ -82,23 +80,24 @@ def test_nested_report_tabs_are_scoped_to_their_own_tab_container(project_root):
 def test_workflow_stage_names_align_with_report_stages(project_root):
     template = (project_root / "templates" / "index.html").read_text(encoding="utf-8")
 
-    initial = template.index("<h2>Setup — Job &amp; Resume</h2>")
-    confirmation = template.index("<h2>Confirm Your Experience</h2>")
-    tailored_review = template.index("<h2>Review Job Alignment</h2>")
-    final = template.index("<h2>Optimize &amp; Export</h2>")
-    assert initial < confirmation < tailored_review < final
-    assert "<h2>Improve Resume Quality</h2>" not in template
-    assert "<h2>Finalize Resume</h2>" not in template
-    assert "<h2>Verify &amp; Export Resume</h2>" not in template
+    initial = template.index("<h2>Career and Job Setup</h2>")
+    confirmation = template.index("<h2>Confirm Relevant Experience</h2>")
+    tailored_review = template.index("<h2>Review Tailored Resume</h2>")
+    quality = template.index("<h2>Improve Resume Quality</h2>")
+    finalize = template.index("<h2>Finalize Resume</h2>")
+    export = template.index("<h2>Evidence Review and Export</h2>")
+    assert initial < confirmation < tailored_review < quality < finalize < export
 
 def test_workflow_stage_purposes_and_report_ownership_are_visible(project_root):
     template = (project_root / "templates" / "index.html").read_text(encoding="utf-8")
 
     assert "Decision:</strong> Approve the Job-Aligned Resume or edit the wording before optimization." in template
-    assert "Purpose:</strong> Apply safe quality improvements, choose a Word style, and download the Final Resume." in template
+    assert "Purpose:</strong> Apply safe, score-protected improvements before the final formatting and evidence review steps." in template
+    assert "Purpose:</strong> Review the strongest resume version and choose its final format and visual presentation." in template
+    assert "Decision:</strong> Confirm the final report and export the approved resume for this job application." in template
     for category in ["Content Quality", "Searchability", "Recruiter tips", "Formatting", "Soft skills"]:
         assert category in template
-    assert "Evidence was already reviewed in Step 3 and is not reviewed again here." in template
+    assert "the final evidence audit runs in Step 6" in template
     assert 'class="report-workflow-ownership"' in template
     assert "Primarily improved in:" in template
 

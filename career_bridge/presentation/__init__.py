@@ -1,5 +1,12 @@
 """Framework-neutral presentation definitions for Career Bridge."""
 
+from career_bridge.presentation.application_builder import (
+    APPLICATION_BUILDER_STEPS,
+    ApplicationBuilderStep,
+    ApplicationDashboardItem,
+    application_builder_steps,
+    validate_application_builder_model_alignment,
+)
 from career_bridge.presentation.feature_mapping import (
     REPURPOSED_FEATURES,
     RepurposedFeature,
@@ -14,6 +21,11 @@ from career_bridge.presentation.navigation import (
 )
 
 __all__ = [
+    "APPLICATION_BUILDER_STEPS",
+    "ApplicationBuilderStep",
+    "ApplicationDashboardItem",
+    "application_builder_steps",
+    "validate_application_builder_model_alignment",
     "REPURPOSED_FEATURES",
     "RepurposedFeature",
     "feature_by_legacy_name",

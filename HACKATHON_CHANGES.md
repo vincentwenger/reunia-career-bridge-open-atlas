@@ -124,3 +124,32 @@ Future commits should append adapter-level changes here, including the exact leg
 - Removed candidate-facing Live Q&A and disabled its legacy stream endpoints with HTTP 410 responses, keeping the product practice-only.
 - Kept Admin Analytics and Incidents unchanged, separate, and administrator-only.
 - Preserved legacy storage keys, route aliases, and meeting-shaped persistence fields behind the adapter boundary so existing data remains readable.
+
+## 2026-07-28 — Application Builder module and dashboard
+
+### Multi-application workspace
+
+- Preserved the imported Resume Taylor engine as the Career Bridge **Application Builder** rather than presenting it as the entire product.
+- Added a persistent application dashboard above the resume workflow so one user can manage multiple target roles.
+- Added company, job title, shared application status, resume version, interview readiness, next action, and upcoming deadline/interview fields.
+- Added in-place SQLite schema migration and legacy status normalization.
+- Scoped workflow state by authenticated owner and application ID so applications do not share an active resume session.
+
+### Six-step delivery workflow
+
+- Presented the existing engine through Career and Job Setup, Confirm Relevant Experience, Review Tailored Resume, Improve Resume Quality, Finalize Resume, and Evidence Review and Export.
+- Kept the mature four-snapshot generation lifecycle behind an adapter instead of rewriting resume-generation internals.
+- Updated report ownership, workflow navigation, resume saving, and application progress synchronization.
+
+### Career Bridge composition
+
+- Updated Réunia navigation and calls to action to open `/application-builder/`.
+- Added an authenticated Application Builder WSGI entry point that reuses the Réunia session `user_id`.
+- Added path-based reverse-proxy deployment wiring so Réunia and Resume Taylor retain separate dependency environments despite incompatible OpenAI SDK major versions.
+- Added shared framework-neutral workflow definitions and a dashboard projection aligned with `JobApplication`.
+
+### Intentionally preserved
+
+- No Réunia table was merged into Resume Taylor SQLite storage.
+- No OpenAI SDK dependency was unified.
+- Existing Resume Taylor parsing, generation, evidence, report, editing, and export algorithms remain in place.

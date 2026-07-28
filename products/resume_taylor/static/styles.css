@@ -1961,12 +1961,18 @@ tbody tr:nth-child(even) { background: #fbfdff; }
   background: #e2e8f0;
   color: #334155;
 }
+.application-status.status-draft,
+.application-status.status-considering { background: #e2e8f0; color: #334155; }
+.application-status.status-preparing { background: #e0f2fe; color: #075985; }
+.application-status.status-ready_to_apply,
 .application-status.status-applied { background: #dbeafe; color: #1d4ed8; }
 .application-status.status-screening { background: #ede9fe; color: #6d28d9; }
-.application-status.status-interview { background: #fef3c7; color: #92400e; }
-.application-status.status-offer { background: #dcfce7; color: #166534; }
+.application-status.status-interviewing { background: #fef3c7; color: #92400e; }
+.application-status.status-offered,
+.application-status.status-accepted { background: #dcfce7; color: #166534; }
 .application-status.status-rejected,
 .application-status.status-withdrawn { background: #fee2e2; color: #991b1b; }
+.application-status.status-archived { background: #f1f5f9; color: #64748b; }
 .application-detail-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2381,4 +2387,60 @@ tbody tr:nth-child(even) { background: #fbfdff; }
   .application-fit-recommendation { max-width: none; justify-content: center; }
   .application-fit-checkpoint { align-items: flex-start; flex-direction: column; }
   .application-fit-metrics { grid-template-columns: 1fr; }
+}
+
+/* Career Bridge Application Builder integration */
+.career-builder-topbar { gap: 1.25rem; }
+.application-builder-page-header {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.active-application-banner {
+  background: linear-gradient(135deg, #eef5ff, #f8fbff);
+  border: 1px solid #bfd3f2;
+  border-radius: 14px;
+  display: grid;
+  gap: .8rem;
+  grid-template-columns: 1.2fr .6fr 1.2fr;
+  margin-bottom: 1rem;
+  padding: .85rem 1rem;
+}
+.active-application-banner div { display: grid; gap: .15rem; }
+.active-application-banner span { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 800; }
+.active-application-banner strong { overflow-wrap: anywhere; }
+.application-dashboard-hero { margin-bottom: 1rem; }
+.application-dashboard-heading { align-items: flex-start; display: flex; justify-content: space-between; gap: 1rem; }
+.application-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.application-dashboard-card { display: flex; flex-direction: column; }
+.application-dashboard-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+  margin: .9rem 0;
+}
+.application-dashboard-fields > div {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 0;
+  padding: .65rem .72rem;
+}
+.application-dashboard-fields dt { color: var(--muted); font-size: .76rem; font-weight: 750; margin-bottom: .18rem; }
+.application-dashboard-fields dd { font-weight: 750; margin: 0; overflow-wrap: anywhere; }
+.application-dashboard-fields .application-dashboard-wide { grid-column: 1 / -1; }
+.application-dashboard-actions { margin-top: auto; }
+.application-remove-form { margin-top: .5rem; }
+.application-builder-substage { margin-top: 1rem; }
+
+@media (max-width: 980px) {
+  .application-dashboard-grid { grid-template-columns: 1fr; }
+  .active-application-banner { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .application-builder-page-header,
+  .application-dashboard-heading { flex-direction: column; }
+  .application-dashboard-fields { grid-template-columns: 1fr; }
+  .application-dashboard-fields .application-dashboard-wide { grid-column: auto; }
 }

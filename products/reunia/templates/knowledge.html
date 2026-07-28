@@ -78,7 +78,7 @@
                     Save Career Profile
                 </button>
                 {% else %}
-                <a class="btn knowledge-hero-button knowledge-hero-button-secondary" href="{{ request.script_root }}/application-builder{% if guided_flow %}?guided=1{% endif %}">
+                <a class="btn knowledge-hero-button knowledge-hero-button-secondary" href="{{ request.script_root }}/application-materials{% if guided_flow %}?guided=1{% endif %}">
                     Review Application Materials
                 </a>
                 {% endif %}
@@ -125,7 +125,7 @@
                 <small>Verified projects, achievements, and experience</small>
             </span>
         </a>
-        <a href="{{ request.script_root }}/application-builder" class="preparation-subnav-link {% if preparation_view == 'materials' %}active{% endif %}" {% if preparation_view == 'materials' %}aria-current="page"{% endif %}>
+        <a href="{{ request.script_root }}/application-materials" class="preparation-subnav-link {% if preparation_view == 'materials' %}active{% endif %}" {% if preparation_view == 'materials' %}aria-current="page"{% endif %}>
             <span class="preparation-subnav-icon" aria-hidden="true">◫</span>
             <span>
                 <strong>Application Materials</strong>
@@ -855,7 +855,7 @@
             <a class="guided-flow-continue" href="{{ request.script_root }}/career-profile?guided=1">Continue to Career Profile <span aria-hidden="true">→</span></a>
         </div>
         {% elif preparation_view == 'context' %}
-        <a class="guided-flow-back" href="{{ request.script_root }}/application-builder?guided=1">← Application Materials</a>
+        <a class="guided-flow-back" href="{{ request.script_root }}/application-materials?guided=1">← Application Materials</a>
         <div>
             <a class="guided-flow-skip" href="{{ request.script_root }}/interview-preparation?guided=1">Skip this step</a>
             <a class="guided-flow-continue" href="{{ request.script_root }}/interview-preparation?guided=1">Continue to Evidence Check <span aria-hidden="true">→</span></a>

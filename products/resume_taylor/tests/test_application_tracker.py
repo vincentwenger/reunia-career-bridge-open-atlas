@@ -101,10 +101,13 @@ def test_application_tracker_templates_and_routes_are_present(project_root):
     )
     app_source = (project_root / "app.py").read_text(encoding="utf-8")
 
-    assert ">Applications</a>" in base
+    assert ">Job Applications</a>" in base
     assert "Save as application" in workflow
-    assert "Screening-call rate" in application_template
+    assert "Multi-application dashboard" in application_template
+    for field in ["Company", "Job title", "Application status", "Resume version", "Interview readiness", "Next action", "Upcoming deadline or interview"]:
+        assert field in application_template
     assert "Download submitted resume" in application_template
     assert '@app.post("/applications/from-final")' in app_source
+    assert '@app.get("/applications/<application_id>/builder")' in app_source
     assert '@app.post("/applications/<application_id>/update")' in app_source
     assert '@app.get("/applications/<application_id>/resume")' in app_source

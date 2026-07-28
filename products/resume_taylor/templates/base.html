@@ -3,42 +3,58 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Evidence-Based Resume Tailor{% endblock %}</title>
+  <title>{% block title %}Application Builder · Réunia Career Bridge{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <script defer src="{{ url_for('static', filename='app.js') }}"></script>
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
-      <a class="brand" href="{{ url_for('index', tab='tailoring') }}">
-        <strong>Evidence-Based Resume Tailor</strong>
-        <span>Truthful, job-specific resume tailoring</span>
+    <header class="topbar career-builder-topbar">
+      <a class="brand" href="{{ url_for('index', tab='applications') }}">
+        <strong>Réunia Career Bridge</strong>
+        <span>Application Builder</span>
       </a>
-      <nav class="primary-nav" aria-label="Primary navigation">
-        <a class="{{ 'active' if active_tab == 'tailoring' else '' }}" href="{{ url_for('index', tab='tailoring') }}">Resume Workflow</a>
-        <a class="{{ 'active' if active_tab == 'reports' else '' }}" href="{{ url_for('index', tab='reports') }}">Resume Reports</a>
-        <a class="{{ 'active' if active_tab == 'applications' else '' }}" href="{{ url_for('index', tab='applications') }}">Applications</a>
+      <nav class="primary-nav" aria-label="Application Builder navigation">
+        <a class="{{ 'active' if active_tab == 'applications' else '' }}" href="{{ url_for('index', tab='applications') }}">Job Applications</a>
+        <a class="{{ 'active' if active_tab == 'tailoring' else '' }}" href="{{ url_for('index', tab='tailoring', application_id=active_application.id) if active_application else url_for('index', tab='applications') }}">Resume Workflow</a>
+        <a class="{{ 'active' if active_tab == 'reports' else '' }}" href="{{ url_for('index', tab='reports', application_id=active_application.id) if active_application else url_for('index', tab='reports') }}">Resume Reports</a>
         <a class="{{ 'active' if active_tab == 'configuration' else '' }}" href="{{ url_for('index', tab='configuration') }}">Configuration</a>
+        <a href="{{ career_bridge_home_url }}">Career Bridge</a>
       </nav>
     </header>
     <main class="main-content">
-      <header class="page-header">
+      <header class="page-header application-builder-page-header">
         <div>
           {% if active_tab == 'reports' %}
+            <span class="eyebrow">Application Builder</span>
             <h1>Resume Reports</h1>
-            <p>Review the automatically generated reports for the Initial Resume from Step 1, the Job-Aligned Resume from Step 3, and the Final Resume from Step 4.</p>
+            <p>Review the Initial, Tailored, and Final Resume evidence and quality reports for the selected job application.</p>
           {% elif active_tab == 'applications' %}
-            <h1>Applications</h1>
-            <p>Track which resume you submitted, hiring progress, follow-ups, and the outcomes produced by each application.</p>
+            <span class="eyebrow">Application Builder</span>
+            <h1>Job Applications</h1>
+            <p>Manage every target role from one dashboard, then open the six-step resume workflow for a specific application.</p>
           {% elif active_tab == 'configuration' %}
+            <span class="eyebrow">Application Builder</span>
             <h1>Configuration</h1>
-            <p>Manage AI models, API readiness, and the verified Candidate Profile.</p>
+            <p>Manage AI models, API readiness, and the verified Candidate Profile used by the resume engine.</p>
           {% else %}
-            <h1>Resume Workflow</h1>
-            <p>Move from job setup to an optimized resume in four clear stages.</p>
+            <span class="eyebrow">Application Builder</span>
+            <h1>{% if active_application %}{{ active_application.role }} · {{ active_application.company }}{% else %}Resume Workflow{% endif %}</h1>
+            <p>Move from Career and Job Setup through Evidence Review and Export in six clear stages.</p>
           {% endif %}
         </div>
+        {% if active_tab != 'applications' %}
+          <a class="button secondary" href="{{ url_for('index', tab='applications') }}">← All job applications</a>
+        {% endif %}
       </header>
+
+      {% if active_application and active_tab != 'applications' %}
+        <section class="active-application-banner" aria-label="Selected job application">
+          <div><span>Selected application</span><strong>{{ active_application.company }} · {{ active_application.role }}</strong></div>
+          <div><span>Status</span><strong>{{ active_application.status_label }}</strong></div>
+          <div><span>Next action</span><strong>{{ active_application.next_action_label }}</strong></div>
+        </section>
+      {% endif %}
 
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}

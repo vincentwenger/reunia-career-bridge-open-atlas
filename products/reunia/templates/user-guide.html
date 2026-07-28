@@ -25,7 +25,7 @@
                 <p>Add the target job, resume, and the materials you already have. You can refine the workspace as the application progresses.</p>
             </div>
             {% if session.get('user_id') %}
-            <a class="guide-button guide-button-primary" href="{{ request.script_root }}/application-builder">Build an application <span aria-hidden="true">→</span></a>
+            <a class="guide-button guide-button-primary" href="{{ request.script_root }}/application-builder/">Build an application <span aria-hidden="true">→</span></a>
             {% else %}
             <a class="guide-button guide-button-primary" href="{{ request.script_root }}/login.html">Sign in to start <span aria-hidden="true">→</span></a>
             {% endif %}
@@ -73,7 +73,7 @@
                             <span class="guide-step-stage">Build the application</span>
                             <h3>Connect the target role</h3>
                             <p>Create an Application Workspace with the job posting, resume, company notes, recruiter messages, and selected career evidence.</p>
-                            <a class="guide-text-link" href="{{ request.script_root }}/application-builder">Open Application Builder →</a>
+                            <a class="guide-text-link" href="{{ request.script_root }}/application-builder/">Open Application Builder →</a>
                         </article>
 
                         <div class="guide-step-arrow" aria-hidden="true">→</div>
@@ -112,11 +112,11 @@
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">◫</div>
-                            <div><h3>Application Workspace</h3><p>Create one workspace for each target position so resume work, interview preparation, practice, and follow-up do not become mixed.</p><a href="{{ request.script_root }}/application-builder">Open Application Builder →</a></div>
+                            <div><h3>Application Workspace</h3><p>Create one workspace for each target position so resume work, interview preparation, practice, and follow-up do not become mixed.</p><a href="{{ request.script_root }}/application-builder/">Open Application Builder →</a></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">📄</div>
-                            <div><h3>Application Materials</h3><p>Store the source resume, target job description, company notes, recruiter messages, and application-only files.</p><a href="{{ request.script_root }}/application-builder">Manage Application Materials →</a></div>
+                            <div><h3>Application Materials</h3><p>Store the source resume, target job description, company notes, recruiter messages, and application-only files.</p><a href="{{ request.script_root }}/application-materials">Manage Application Materials →</a></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">▦</div>

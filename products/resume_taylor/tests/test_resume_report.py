@@ -68,13 +68,13 @@ def test_resume_report_sections_identify_primary_workflow_ownership(project_root
         for section in report.sections()
     }
     assert ownership == {
-        "Hard skills": ("Review Job Alignment", "draft", "", ""),
-        "Evidence & Gaps": ("Review Job Alignment", "draft", "", ""),
-        "Content Quality": ("Optimize & Export", "final", "", ""),
-        "Searchability": ("Optimize & Export", "final", "", ""),
-        "Recruiter tips": ("Optimize & Export", "final", "", ""),
-        "Formatting": ("Optimize & Export", "final", "", ""),
-        "Soft skills": ("Optimize & Export", "final", "", ""),
+        "Hard skills": ("Review Tailored Resume", "review", "", ""),
+        "Evidence & Gaps": ("Evidence Review and Export", "evidence_export", "", ""),
+        "Content Quality": ("Improve Resume Quality", "quality", "", ""),
+        "Searchability": ("Improve Resume Quality", "quality", "", ""),
+        "Recruiter tips": ("Improve Resume Quality", "quality", "", ""),
+        "Formatting": ("Finalize Resume", "finalize", "", ""),
+        "Soft skills": ("Improve Resume Quality", "quality", "", ""),
     }
 
 def test_searchability_passes_core_profile_checks(project_root, profile, analysis, proposal):
@@ -814,8 +814,8 @@ def test_evidence_matrix_is_inside_updated_report_workflow(project_root):
     source = (project_root / "resume_tailor" / "resume_report.py").read_text(encoding="utf-8")
 
     assert "section.name == 'Evidence & Gaps'" in template
-    assert '"Evidence & Gaps": ("Review Job Alignment", "draft", "", "")' in source
-    assert "Evidence was already reviewed in Step 3" in template
+    assert '"Evidence & Gaps": ("Evidence Review and Export", "evidence_export", "", "")' in source
+    assert "the final evidence audit runs in Step 6" in template
 
 def test_evidence_gaps_is_scored_and_affects_overall_and_job_match(
     project_root,
@@ -1008,12 +1008,13 @@ def test_initial_resume_proposal_can_reuse_evidence_without_tailored_wording(pro
 def test_confirmation_step_precedes_job_alignment_and_final_optimization(project_root):
     template = (project_root / "templates" / "index.html").read_text(encoding="utf-8")
 
-    confirmation_position = template.index("<h2>Confirm Your Experience</h2>")
-    generated_position = template.index("<h2>Review Job Alignment</h2>")
-    final_position = template.index("<h2>Optimize &amp; Export</h2>")
-    assert confirmation_position < generated_position < final_position
+    confirmation_position = template.index("<h2>Confirm Relevant Experience</h2>")
+    generated_position = template.index("<h2>Review Tailored Resume</h2>")
+    quality_position = template.index("<h2>Improve Resume Quality</h2>")
+    final_position = template.index("<h2>Finalize Resume</h2>")
+    export_position = template.index("<h2>Evidence Review and Export</h2>")
+    assert confirmation_position < generated_position < quality_position < final_position < export_position
     assert "Create tailored resume" in template
-    assert "Optimize &amp; Export" in template
 
 def test_content_quality_contains_new_diagnostic_checks(project_root, profile, analysis, proposal):
     report = build_resume_report(

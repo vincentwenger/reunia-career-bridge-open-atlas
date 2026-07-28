@@ -9,8 +9,13 @@ job to the resume-tailoring and interview-practice lifecycle.
 """
 
 from career_bridge.presentation import (
+    APPLICATION_BUILDER_STEPS,
     CAREER_NAVIGATION,
+    ApplicationBuilderStep,
+    ApplicationDashboardItem,
     CareerNavigationSection,
+    application_builder_steps,
+    validate_application_builder_model_alignment,
     career_navigation,
     validate_navigation_model_alignment,
 )
@@ -55,6 +60,11 @@ from career_bridge.domain import (
 )
 
 __all__ = [
+    "APPLICATION_BUILDER_STEPS",
+    "ApplicationBuilderStep",
+    "ApplicationDashboardItem",
+    "application_builder_steps",
+    "validate_application_builder_model_alignment",
     "validate_navigation_model_alignment",
     "career_navigation",
     "CareerNavigationSection",

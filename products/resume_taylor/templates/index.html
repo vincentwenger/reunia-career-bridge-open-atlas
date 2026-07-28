@@ -317,7 +317,7 @@
             <span class="quality-overview-divider" aria-hidden="true">·</span>
             Ready for review
           </h3>
-          <p>Review the Draft comparison below. <strong>Job Alignment</strong> is the overall change category. Changes directly supported by answers from Confirm Your Experience are labeled <strong>Verified Experience</strong>.</p>
+          <p>Review the Draft comparison below. <strong>Job Alignment</strong> is the overall change category. Changes directly supported by answers from Confirm Relevant Experience are labeled <strong>Verified Experience</strong>.</p>
         </div>
         <div class="quality-overview-status" aria-label="Tailored resume review status">
           {% if changes.has_changes %}<span class="quality-summary-chip actionable"><strong>{{ changes.total_changes }}</strong> changes</span>{% endif %}
@@ -880,7 +880,7 @@
       <summary>Which actions call OpenAI?</summary>
       <ul class="compact-list">
         <li><strong>Routine model:</strong> Initial Report analysis, tailoring, confirmation refinement, and individual suggested fixes.</li>
-        <li><strong>Evidence model:</strong> Claim review during Confirm Your Experience and Review Job Alignment.</li>
+        <li><strong>Evidence model:</strong> Claim review during Confirm Relevant Experience and Review Tailored Resume.</li>
         <li><strong>Local only:</strong> Resume Report scoring after analysis, text differences, editing, deterministic bulk fixes, and PDF/Word export.</li>
       </ul>
     </details>
@@ -923,26 +923,26 @@
 {% elif active_tab == 'reports' %}
 
   <section class="page-intro report-page-intro">
-    <span class="eyebrow">Four-step workflow · Three report snapshots</span>
+    <span class="eyebrow">Six-step Application Builder · Three report snapshots</span>
     <h2>Resume reports by workflow stage</h2>
-    <p>Reports are generated automatically when each corresponding resume version is created or changed. This tab is for reviewing scores, recommendations, and progress across the Initial Resume, Job-Aligned Resume, and Final Resume. Step 4 keeps only quality improvements that preserve or improve the protected report scores, then prepares the PDF and Word export options.</p>
+    <p>Reports are generated automatically when each corresponding resume version is created or changed. This tab is for reviewing scores, recommendations, and progress across the Initial Resume, Job-Aligned Resume, and Final Resume. Steps 4–6 improve quality, finalize presentation, verify evidence, and prepare the PDF and Word export options.</p>
   </section>
 
   <section class="report-version-map" aria-label="Resume report versions and corresponding workflow steps">
     <article class="report-version-map-card">
       <span class="workflow-range-badge">Step 1</span>
       <h3>Initial Resume</h3>
-      <p>Your original resume from <strong>Setup — Job &amp; Resume</strong>. This read-only version remains the comparison baseline.</p>
+      <p>Your original resume from <strong>Career and Job Setup</strong>. This read-only version remains the comparison baseline.</p>
     </article>
     <article class="report-version-map-card featured">
       <span class="workflow-range-badge">Step 3</span>
       <h3>Job-Aligned Resume</h3>
-      <p>Created after <strong>Confirm Your Experience</strong> and reviewed in <strong>Review Job Alignment</strong>.</p>
+      <p>Created after <strong>Confirm Relevant Experience</strong> and reviewed in <strong>Review Tailored Resume</strong>.</p>
     </article>
     <article class="report-version-map-card">
-      <span class="workflow-range-badge">Step 4</span>
+      <span class="workflow-range-badge">Steps 4–6</span>
       <h3>Final Resume</h3>
-      <p>The version created and reviewed during <strong>Optimize &amp; Export</strong>.</p>
+      <p>The approved version produced across <strong>Improve Resume Quality</strong>, <strong>Finalize Resume</strong>, and <strong>Evidence Review and Export</strong>.</p>
     </article>
   </section>
 
@@ -955,7 +955,7 @@
         <span>Job-Aligned Resume</span><small>Step 3</small>
       </button>
       <button type="button" class="tab-button report-version-tab {% if report_view_name == 'final' %}active{% endif %}" data-tab-target="reports-final" role="tab">
-        <span>Final Resume</span><small>Step 4</small>
+        <span>Final Resume</span><small>Steps 4–6</small>
       </button>
       <button type="button" class="tab-button report-version-tab {% if report_view_name == 'comparison' %}active{% endif %}" data-tab-target="reports-comparison" role="tab">
         <span>Comparison</span><small>Across versions</small>
@@ -965,7 +965,7 @@
     <section class="tab-panel {% if report_view_name == 'initial' %}active{% endif %}" id="reports-initial" data-tab-panel role="tabpanel">
       <div class="card">
         <div class="report-stage-context">
-          <span class="workflow-range-badge">Step 1 · Setup — Job &amp; Resume</span>
+          <span class="workflow-range-badge">Step 1 · Career and Job Setup</span>
           <p>This report evaluates the original resume before any tailoring begins.</p>
         </div>
         <div class="section-heading">
@@ -992,7 +992,7 @@
     <section class="tab-panel {% if report_view_name == 'draft' %}active{% endif %}" id="reports-draft" data-tab-panel role="tabpanel">
       <div class="card">
         <div class="report-stage-context">
-          <span class="workflow-range-badge">Step 3 · Review Job Alignment</span>
+          <span class="workflow-range-badge">Step 3 · Review Tailored Resume</span>
           <p>This report scores the exact Job-Aligned Resume saved at the end of Step 3.</p>
         </div>
         <div class="section-heading">
@@ -1006,7 +1006,7 @@
         </div>
         {% if not input_is_current %}<div class="alert alert-info">The report will be generated automatically when the Job-Aligned Resume is created in Step 3.</div>{% endif %}
         {% if draft_report_stale %}<div class="alert alert-warning">The Job-Aligned Resume changed after this report snapshot. Saving the current Step 3 resume refreshes it automatically; use Rerun report to refresh it now.</div>{% endif %}
-        {% if state.updated_report_error %}<div class="alert alert-warning"><strong>Automatic generation failed.</strong> {{ state.updated_report_error }} Review Job Alignment remains available; use Retry report after correcting the problem.</div>{% endif %}
+        {% if state.updated_report_error %}<div class="alert alert-warning"><strong>Automatic generation failed.</strong> {{ state.updated_report_error }} Review Tailored Resume remains available; use Retry report after correcting the problem.</div>{% endif %}
         {% if draft_report %}
           {% if state.updated_report_created_at %}<p class="caption">Generated automatically: {{ state.updated_report_created_at }}</p>{% endif %}
           {{ report_panel(draft_report, 'draft') }}
@@ -1020,11 +1020,11 @@
     <section class="tab-panel {% if report_view_name == 'final' %}active{% endif %}" id="reports-final" data-tab-panel role="tabpanel">
       <div class="card">
         <div class="report-stage-context">
-          <span class="workflow-range-badge">Step 4 · Optimize &amp; Export</span>
-          <p>This report is created as soon as Step 4 optimization runs and is refreshed after saved Final Resume edits.</p>
+          <span class="workflow-range-badge">Steps 4–6 · Quality, Finalize, Evidence &amp; Export</span>
+          <p>This report is created during Step 4 and finalized across Steps 5–6 after saved Final Resume edits and evidence review.</p>
         </div>
         <div class="section-heading">
-          <div><h2>Final Resume Report</h2><p>Generated automatically after Step 4 optimization and refreshed after every saved Final Resume edit.</p></div>
+          <div><h2>Final Resume Report</h2><p>Generated during Improve Resume Quality and refreshed through Finalize Resume and Evidence Review and Export.</p></div>
           <div class="button-row">
             {% if state.final_report or state.final_report_error or final_report_stale %}
               <form action="{{ url_for('run_final_report') }}" method="post" class="loading-form inline-form">
@@ -1044,7 +1044,7 @@
           {% if final_report_created_at %}<p class="caption">Generated automatically: {{ final_report_created_at }}</p>{% endif %}
           {{ report_panel(final_report, 'final') }}
         {% else %}
-          <div class="empty-state"><h3>Waiting for Step 4</h3><p>The Final Resume Report is created automatically when optimization completes.</p></div>
+          <div class="empty-state"><h3>Waiting for Steps 4–6</h3><p>The Final Resume Report begins during quality improvement and is finalized before export.</p></div>
         {% endif %}
       </div>
     </section>
@@ -1117,8 +1117,8 @@
       {% if draft_report %}<strong>{{ score(draft_report.overall) }}</strong><em>Generated automatically</em>{% elif state.updated_report_error %}<strong>Retry</strong><em>Automatic generation failed</em>{% elif draft_report_stale %}<strong>Refresh</strong><em>Updates with Step 3</em>{% else %}<strong>Pending</strong><em>Generated in Step 3</em>{% endif %}
     </a>
     <a class="report-status-card" href="{{ url_for('index', tab='reports', report='final') }}#reports-final">
-      <span>Final report · Step 4</span>
-      {% if final_report %}<strong>{{ score(final_report.overall) }}</strong><em>{{ 'Refresh pending' if final_report_stale else ('Page verification complete' if state.final_report_exact else 'Page verification finishing') }}</em>{% elif state.final_report_error %}<strong>Retry</strong><em>Export remains available</em>{% else %}<strong>Pending</strong><em>Generated in Step 4</em>{% endif %}
+      <span>Final report · Steps 4–6</span>
+      {% if final_report %}<strong>{{ score(final_report.overall) }}</strong><em>{{ 'Refresh pending' if final_report_stale else ('Page verification complete' if state.final_report_exact else 'Page verification finishing') }}</em>{% elif state.final_report_error %}<strong>Retry</strong><em>Export remains available</em>{% else %}<strong>Pending</strong><em>Generated across Steps 4–6</em>{% endif %}
     </a>
     <a class="report-status-card" href="{{ url_for('index', tab='reports', report='comparison') }}#reports-comparison">
       <span>Improvement</span>
@@ -1147,10 +1147,10 @@
 
   <div class="alert alert-info">The professional profile and job description are sent to the selected OpenAI model when you generate or audit a proposal. Contact details are excluded from model prompts.</div>
 
-  <div class="workflow-stage-panel" data-workflow-stage-panel="initial" {% if selected_workflow_stage != 'initial' %}hidden{% endif %}>
+  <div class="workflow-stage-panel" data-workflow-stage-panel="initial" {% if selected_workflow_panel != 'initial' %}hidden{% endif %}>
   <section class="card workflow-stage-intro" id="job-input">
     <div class="step-heading">
-      <div><span class="step-number step-label">1</span><h2>Setup — Job &amp; Resume</h2></div>
+      <div><span class="step-number step-label">1</span><h2>Career and Job Setup</h2></div>
       <p>Review the original resume and add the target job description. Analyze the job and resume to identify any relevant experience that needs confirmation. Analysis uses <code>{{ models.analysis_tailoring_model }}</code>.</p>
     </div>
   </section>
@@ -1159,7 +1159,7 @@
       <div class="workflow-snapshot-banner">
         <div>
           <span class="eyebrow">Completed-step snapshot</span>
-          <strong>Step 1 · Setup — Job &amp; Resume</strong>
+          <strong>Step 1 · Career and Job Setup</strong>
           <p>These are the exact job inputs used when tailoring started. Later workflow activity does not replace this saved view.</p>
         </div>
         <span class="caption">Saved {{ setup_snapshot.captured_at }}</span>
@@ -1188,7 +1188,7 @@
         class="loading-form"
         data-loading-title="Analyzing job &amp; resume…"
         data-loading-message="The app is reviewing the target role and finding the most relevant experience to confirm."
-        data-loading-steps="Reading the target job requirements|Comparing the role with your original resume|Identifying high-value experience to confirm|Preparing Confirm Your Experience"
+        data-loading-steps="Reading the target job requirements|Comparing the role with your original resume|Identifying high-value experience to confirm|Preparing Confirm Relevant Experience"
         data-loading-step-details="Finding the role's main responsibilities, skills, and priorities.|Matching the job needs with experience already supported by your resume.|Creating focused questions only where an additional fact could strengthen the tailored resume.|Saving the analysis and opening Step 2."
         data-loading-step-timings="2500,8500,17500"
         data-loading-reassurance="Some analyses take longer when the job description or resume contains many detailed requirements."
@@ -1223,7 +1223,7 @@
         <span>Reviewing this step does not change the active resume. Edit only when the job inputs need to be replaced.</span>
       </div>
       <div class="workflow-action-content">
-        <div class="workflow-action-controls"><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='initial', edit='setup') }}#job-input">Edit this step</a></div>
+        <div class="workflow-action-controls"><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='setup', edit='setup') }}#job-input">Edit this step</a></div>
         <span class="caption">Restarting from Step 1 will replace all later workflow results.</span>
       </div>
     </div>
@@ -1232,7 +1232,7 @@
       <div class="workflow-action-copy">
         <span class="eyebrow">Next step</span>
         <strong>Start tailoring</strong>
-        <span>Analyze the target role and open Confirm Your Experience.</span>
+        <span>Analyze the target role and open Confirm Relevant Experience.</span>
       </div>
       <div class="workflow-action-content">
         <div class="workflow-action-controls">
@@ -1252,13 +1252,13 @@
   {% endif %}
   </div>
 
-  <div class="workflow-stage-panel" data-workflow-stage-panel="confirmation" {% if selected_workflow_stage != 'confirmation' %}hidden{% endif %}>
+  <div class="workflow-stage-panel" data-workflow-stage-panel="confirmation" {% if selected_workflow_panel != 'confirmation' %}hidden{% endif %}>
   {% if analysis and proposal %}
     {% if not input_is_current %}<div class="alert alert-warning">The job description, target title, or analysis model changed after this analysis was created. Return to Setup and start tailoring again.</div>{% endif %}
 
     <section class="card workflow-stage-intro" id="confirmation-stage">
       <div class="step-heading">
-        <div><span class="step-number step-label">2</span><h2>Confirm Your Experience</h2></div>
+        <div><span class="step-number step-label">2</span><h2>Confirm Relevant Experience</h2></div>
         {% if state.confirmation_follow_up_count %}
           <p>Answer this one final set of targeted facts identified after the transformed resume was reviewed. No additional question round will follow.</p>
         {% else %}
@@ -1305,7 +1305,7 @@
           data-confirmation-form
           data-loading-title="{% if state.confirmation_follow_up_count %}Rechecking evidence…{% else %}Creating tailored resume…{% endif %}"
           data-loading-message="{% if state.confirmation_follow_up_count %}The app is applying the final follow-up answers and replacing any remaining uncertainty with safer source-backed wording.{% else %}The app is applying your confirmed evidence and generating the editable tailored resume.{% endif %}"
-          data-loading-steps="{% if state.confirmation_follow_up_count %}Applying your final answers|Rechecking the affected resume content|Replacing remaining uncertainty safely|Preparing Review Job Alignment{% else %}Applying your confirmed answers|Updating the job-aligned wording|Checking every statement against evidence|Preparing Review Job Alignment{% endif %}"
+          data-loading-steps="{% if state.confirmation_follow_up_count %}Applying your final answers|Rechecking the affected resume content|Replacing remaining uncertainty safely|Preparing Review Tailored Resume{% else %}Applying your confirmed answers|Updating the job-aligned wording|Checking every statement against evidence|Preparing Review Tailored Resume{% endif %}"
           data-loading-step-details="{% if state.confirmation_follow_up_count %}Updating only the statements that needed clarification.|Confirming the revised wording is supported by your information.|Removing or softening anything that still cannot be verified.|Saving the updated editable resume and opening Step 3.{% else %}Adding only experience and details you marked as accurate.|Tailoring the summary, skills, and bullets to the target role.|Looking for unsupported or unclear wording before Step 3.|Saving the editable resume and opening the comparison.{% endif %}"
           data-loading-step-timings="2500,9000,18000"
           data-loading-reassurance="{% if state.confirmation_follow_up_count %}Some stages can take longer when several statements need a final evidence check.{% else %}Some resumes take longer when several confirmed details need to be incorporated and checked.{% endif %}"
@@ -1397,7 +1397,7 @@
           <div class="workflow-action-copy">
             <span class="eyebrow">Next step</span>
             <strong>{% if state.confirmation_follow_up_count %}Apply final evidence answers{% else %}Create tailored resume{% endif %}</strong>
-            <span>{% if state.confirmation_follow_up_count %}Apply this final question set; remaining uncertainty will use safer wording automatically.{% else %}Use only the evidence you confirmed and open Review Job Alignment.{% endif %}</span>
+            <span>{% if state.confirmation_follow_up_count %}Apply this final question set; remaining uncertainty will use safer wording automatically.{% else %}Use only the evidence you confirmed and open Review Tailored Resume.{% endif %}</span>
           </div>
           <div class="workflow-action-content">
             <div class="workflow-action-controls">
@@ -1411,7 +1411,7 @@
           <div class="workflow-snapshot-banner">
             <div>
               <span class="eyebrow">Completed-step snapshot</span>
-              <strong>Step 2 · Confirm Your Experience</strong>
+              <strong>Step 2 · Confirm Relevant Experience</strong>
               <p>These are the saved confirmation answers used to create the tailored resume.</p>
             </div>
             <span class="caption">Saved {{ confirmation_snapshot.captured_at }}</span>
@@ -1451,16 +1451,16 @@
     </section>
   {% else %}
     <section class="card" id="confirmation-stage">
-      <div class="empty-state"><h3>Experience confirmation has not started</h3><p>Return to Setup and start tailoring first.</p><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='initial') }}#job-input">Return to Setup</a></div>
+      <div class="empty-state"><h3>Experience confirmation has not started</h3><p>Return to Setup and start tailoring first.</p><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='setup') }}#job-input">Return to Setup</a></div>
     </section>
   {% endif %}
   </div>
 
   {% if proposal_data and state.confirmation_complete %}
-    <div class="workflow-stage-panel" data-workflow-stage-panel="draft" {% if selected_workflow_stage != 'draft' %}hidden{% endif %}>
+    <div class="workflow-stage-panel" data-workflow-stage-panel="draft" {% if selected_workflow_panel != 'draft' %}hidden{% endif %}>
       <section class="card workflow-stage-intro" id="draft-stage">
         <div class="step-heading">
-          <div><span class="step-number step-label">3</span><h2>Review Job Alignment</h2></div>
+          <div><span class="step-number step-label">3</span><h2>Review Tailored Resume</h2></div>
           <p class="workflow-stage-purpose"><strong>Decision:</strong> Approve the Job-Aligned Resume or edit the wording before optimization.</p>
           <p class="workflow-stage-guidance">Focus on what changed, why it changed, and whether the result accurately represents your experience. Detailed diagnostics and report results remain available but secondary.</p>
         </div>
@@ -1497,8 +1497,8 @@
           </div>
           <div class="workflow-action-content">
             <div class="workflow-action-controls">
-              <a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='final') }}#final-review">Open Optimize &amp; Export</a>
-              <form action="{{ url_for('reopen_workflow_stage', stage='draft') }}" method="post" class="inline-form">
+              <a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='quality') }}#final-review">Open Improve Resume Quality</a>
+              <form action="{{ url_for('reopen_workflow_stage', stage='review') }}" method="post" class="inline-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="button text" type="submit" data-confirm-reopen="Editing Step 3 will clear the Final Resume, optimization report, and export. Continue?">Edit this step</button>
               </form>
@@ -1509,12 +1509,12 @@
       {% endif %}
     </div>
 
-    <div class="workflow-stage-panel" data-workflow-stage-panel="final" {% if selected_workflow_stage != 'final' %}hidden{% endif %}>
-      <section class="card workflow-stage-intro" id="final-review">
+    <div class="workflow-stage-panel" data-workflow-stage-panel="final" {% if selected_workflow_panel != 'final' %}hidden{% endif %}>
+      <section class="card workflow-stage-intro" id="resume-quality"><span id="final-review" aria-hidden="true"></span>
         <div class="step-heading">
-          <div><span class="step-number step-label">4</span><h2>Optimize &amp; Export</h2></div>
-          <p class="workflow-stage-purpose"><strong>Purpose:</strong> Apply safe quality improvements, choose a Word style, and download the Final Resume.</p>
-          <p class="workflow-stage-guidance">This step focuses on <strong>Content Quality</strong>, <strong>Searchability</strong>, <strong>Recruiter tips</strong>, <strong>Formatting</strong>, and <strong>Soft skills</strong>. Evidence was already reviewed in Step 3 and is not reviewed again here.</p>
+          <div><span class="step-number step-label">4</span><h2>Improve Resume Quality</h2></div>
+          <p class="workflow-stage-purpose"><strong>Purpose:</strong> Apply safe, score-protected improvements before the final formatting and evidence review steps.</p>
+          <p class="workflow-stage-guidance">This step focuses on <strong>Content Quality</strong>, <strong>Searchability</strong>, <strong>Recruiter tips</strong>, and <strong>Soft skills</strong>. Visual presentation is finalized in Step 5, and the final evidence audit runs in Step 6.</p>
         </div>
       </section>
 
@@ -1592,6 +1592,14 @@
               <span class="quality-check-passed">✓ Ready</span>
               {% if optimization_remaining %}<span class="quality-summary-chip advisory"><strong>{{ optimization_remaining|length }}</strong> advisory</span>{% endif %}
             </div>
+          </div>
+        </section>
+
+        <section class="card workflow-stage-intro application-builder-substage" id="finalize-resume">
+          <div class="step-heading">
+            <div><span class="step-number step-label">5</span><h2>Finalize Resume</h2></div>
+            <p class="workflow-stage-purpose"><strong>Purpose:</strong> Review the strongest resume version and choose its final format and visual presentation.</p>
+            <p class="workflow-stage-guidance">Formatting choices change presentation only. They do not add unsupported experience or rerun the evidence decisions from earlier steps.</p>
           </div>
         </section>
 
@@ -1706,9 +1714,17 @@
           <div class="alert alert-warning">PDF export encountered an unexpected error. The Word download remains available. Retry the PDF after reviewing the final resume.</div>
         {% endif %}
 
+        <section class="card workflow-stage-intro application-builder-substage" id="evidence-review-export">
+          <div class="step-heading">
+            <div><span class="step-number step-label">6</span><h2>Evidence Review and Export</h2></div>
+            <p class="workflow-stage-purpose"><strong>Decision:</strong> Confirm the final report and export the approved resume for this job application.</p>
+            <p class="workflow-stage-guidance">Use PDF by default to preserve formatting. The exact final resume remains attached to the selected application when you save it.</p>
+          </div>
+        </section>
+
         <div class="workflow-action-bar workflow-stage-action final-workflow-action" id="final-resume-actions" aria-label="Final resume actions">
           <div class="workflow-action-copy">
-            <span class="eyebrow">Step 4 complete</span>
+            <span class="eyebrow">Step 6 · Evidence Review and Export</span>
             <strong>Export Final Resume</strong>
             <span>PDF is recommended because it preserves the selected design. Use Word only when an employer specifically requests a .docx file. Remaining report recommendations are advisory.</span>
           </div>
@@ -1737,19 +1753,19 @@
         <section class="card" id="final-optimization-not-started">
           <div class="empty-state">
             <h3>Resume optimization has not started</h3>
-            <p>Complete Review Job Alignment and select Optimize &amp; Export.</p>
-            <a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='draft') }}#tailored-resume">Open Review Job Alignment</a>
+            <p>Complete Review Tailored Resume and select Improve Resume Quality.</p>
+            <a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='review') }}#tailored-resume">Open Review Tailored Resume</a>
           </div>
         </section>
       {% endif %}
     </div>
-  {% elif selected_workflow_stage == 'draft' %}
+  {% elif selected_workflow_panel == 'draft' %}
     <div class="workflow-stage-panel">
-      <section class="card" id="draft-stage"><div class="empty-state"><h3>The tailored resume has not been created</h3><p>Complete Confirm Your Experience and select Create tailored resume first.</p><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='confirmation') }}#confirmation-stage">Open Confirm Your Experience</a></div></section>
+      <section class="card" id="draft-stage"><div class="empty-state"><h3>The tailored resume has not been created</h3><p>Complete Confirm Relevant Experience and select Create tailored resume first.</p><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='confirmation') }}#confirmation-stage">Open Confirm Relevant Experience</a></div></section>
     </div>
-  {% elif selected_workflow_stage == 'final' %}
+  {% elif selected_workflow_panel == 'final' %}
     <div class="workflow-stage-panel">
-      <section class="card" id="final-review"><div class="empty-state"><h3>Final optimization has not started</h3><p>Complete Review Job Alignment and select Optimize &amp; Export.</p><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='draft') }}#tailored-resume">Open Review Job Alignment</a></div></section>
+      <section class="card" id="final-review"><div class="empty-state"><h3>Final optimization has not started</h3><p>Complete Review Tailored Resume and select Improve Resume Quality.</p><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='review') }}#tailored-resume">Open Review Tailored Resume</a></div></section>
     </div>
   {% endif %}
 {% endif %}

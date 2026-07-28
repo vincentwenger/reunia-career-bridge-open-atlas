@@ -56,16 +56,18 @@ The launcher opens `http://127.0.0.1:5000` in the default browser and starts Fla
 
 The interface uses one guided resume workflow plus dedicated Reports and Configuration screens. Resume editing is embedded directly in the stage where it is needed, so users do not have to move through a separate editor screen.
 
-### Resume Workflow
+### Application Builder workflow
 
-The main screen guides the user through four focused stages. Only three meaningful resume versions are named: **Initial Resume**, **Job-Aligned Resume**, and **Final Resume**.
+The module opens on a multi-application dashboard. Each application stores its company, job title, status, resume version, interview readiness, next action, and upcoming deadline or interview. Opening an application starts or resumes its own six-step resume workflow. Only three meaningful resume versions are named: **Initial Resume**, **Job-Aligned Resume**, and **Final Resume**.
 
-1. **Setup — Job & Resume**: review the read-only original resume, enter the target job title and job description, then select **Start tailoring**.
-2. **Confirm Your Experience**: answer only the additional evidence questions needed for the target role. Confirmed content is stored as traceable evidence and attached to the appropriate work experience. The workflow cannot continue until required questions are answered or explicitly marked as not applicable.
-3. **Review Job Alignment**: review **Initial Resume → Job-Aligned Resume**, inspect the discreet **Why this changed** explanations, and correct any inaccurate wording. The completed Step 3 snapshot becomes the fixed baseline for final optimization.
-4. **Optimize & Export**: run the Final Resume Report, use the **Content Quality**, **Searchability**, **Recruiter tips**, **Formatting**, and **Soft skills** findings as the optimization checklist, apply every safe improvement, choose the career stage, resume format, and visual design, then export the Final Resume as PDF or Word. The page shows **Job-Aligned Resume → Final Resume** only when content changed. Remaining report recommendations are advisory and never trigger a second evidence-review gate. Select **Save as application** to preserve the exact Final Resume snapshot and open the Applications tracker.
+1. **Career and Job Setup**: review the read-only source resume, enter the target company, title, and job description, then start the analysis.
+2. **Confirm Relevant Experience**: answer only the evidence questions needed for the target role. Confirmed content is stored as traceable evidence and attached to the appropriate work experience.
+3. **Review Tailored Resume**: review **Initial Resume → Job-Aligned Resume**, inspect the discreet **Why this changed** explanations, and correct any inaccurate wording.
+4. **Improve Resume Quality**: use the protected report scores to apply safe content, searchability, recruiter, and soft-skill improvements.
+5. **Finalize Resume**: choose the career stage, resume format, and visual design, then review the strongest final version.
+6. **Evidence Review and Export**: review the final evidence report and export PDF or Word. Saving the final resume attaches the exact snapshot to the selected job application.
 
-Step 4 does not create a meaningless intermediate version when no safe content change is required. It reports that the Job-Aligned Resume is already the current Final Resume and keeps both PDF and Word download options available.
+The delivery layer maps these six user-facing steps onto the mature internal `initial`, `confirmation`, `draft`, and `final` snapshots. This preserves the existing resume engine while making its responsibilities clearer inside Career Bridge.
 
 The embedded editors show live additions in green, removals in red with strikethrough, version comparison, and resume quality-check controls. Evidence notes and matched requirements remain available under **Why this changed → View supporting details**. Editing the Final Resume refreshes the Final Resume Report and the PDF/Word export source when the changes are saved.
 
@@ -75,7 +77,7 @@ The reports tab contains four views:
 
 - **Initial Resume (Step 1)** — automatically scores the original Candidate Profile as an immutable baseline when tailoring starts.
 - **Job-Aligned Resume (Step 3)** — automatically scores the exact resume created after experience confirmation and refreshes after every saved Step 3 change.
-- **Final Resume (Step 4)** — automatically scores the current Final Resume during Optimize & Export, refreshes after saved Final Resume edits, and creates the styled export source immediately after safe improvements are applied; PDF is the primary download and Word remains available when an employer requests DOCX.
+- **Final Resume (Steps 4–6)** — begins during Improve Resume Quality, refreshes after saved Final Resume edits, and is finalized during Evidence Review and Export; PDF is the primary download and Word remains available when an employer requests DOCX.
 - **Comparison** — supports Initial → Job-Aligned, Job-Aligned → Final, and Initial → Final score comparisons.
 
 The Job-Aligned and Final Resume Reports include:
@@ -92,13 +94,13 @@ Each report category identifies the workflow stage that owns it:
 
 | Report category | Primarily improved in | Also verified in |
 |---|---|---|
-| Hard skills | Review Job Alignment | — |
-| Evidence & Gaps | Review Job Alignment | — |
-| Content Quality | Optimize & Export | — |
-| Searchability | Optimize & Export | — |
-| Recruiter tips | Optimize & Export | — |
-| Formatting | Optimize & Export | — |
-| Soft skills | Optimize & Export | — |
+| Hard skills | Review Tailored Resume | — |
+| Evidence & Gaps | Evidence Review and Export | — |
+| Content Quality | Improve Resume Quality | — |
+| Searchability | Improve Resume Quality | — |
+| Recruiter tips | Improve Resume Quality | — |
+| Formatting | Finalize Resume | Evidence Review and Export |
+| Soft skills | Improve Resume Quality | — |
 
 The Overall Score weights are:
 
@@ -276,23 +278,23 @@ wsgi.py                        WSGI entry point for deployment
 
 ## Tailored Draft change explanations
 
-When the Job-Aligned Resume is compared with the permanent Initial Resume, Review Job Alignment uses one compact **Job Alignment** summary immediately above the Draft comparison instead of separate introductory and explanation panels. The collapsed summary shows the number of applied change groups and keeps the breakdown behind **View details**. Modified, added, rewritten, and intentionally excluded content shows a small **Why this changed** link that reveals one concise reason. Report impact is displayed only when a positive score change can be uniquely and directly attributed to the specific edit; unchanged, negative, duplicate-label, and ambiguous metrics are silently suppressed. Every source bullet must have a structured inclusion decision. If proposal generation omits a bullet record, the app treats that omission as a generation defect and automatically restores the original Candidate Profile wording before the comparison is rendered. The user therefore reviews only real tailoring decisions and never has to resolve internal mapping failures. Full comparison, editable wording, evidence, and technical details remain behind **View comparison and supporting details** so the page stays easy to scan.
+When the Job-Aligned Resume is compared with the permanent Initial Resume, Review Tailored Resume uses one compact **Job Alignment** summary immediately above the Draft comparison instead of separate introductory and explanation panels. The collapsed summary shows the number of applied change groups and keeps the breakdown behind **View details**. Modified, added, rewritten, and intentionally excluded content shows a small **Why this changed** link that reveals one concise reason. Report impact is displayed only when a positive score change can be uniquely and directly attributed to the specific edit; unchanged, negative, duplicate-label, and ambiguous metrics are silently suppressed. Every source bullet must have a structured inclusion decision. If proposal generation omits a bullet record, the app treats that omission as a generation defect and automatically restores the original Candidate Profile wording before the comparison is rendered. The user therefore reviews only real tailoring decisions and never has to resolve internal mapping failures. Full comparison, editable wording, evidence, and technical details remain behind **View comparison and supporting details** so the page stays easy to scan.
 
 
-## Final optimization and suggested improvements
+## Quality improvement, finalization, and export
 
-Step 4 uses the **Final Resume Report** as one consolidated improvement checklist instead of creating separate quality, finalization, and verification stages.
+Steps 4–6 use the **Final Resume Report** as one coordinated checklist while keeping quality improvement, visual finalization, and evidence/export decisions visible as separate user stages.
 
 - The app evaluates **Content Quality**, **Searchability**, **Recruiter tips**, **Formatting**, and **Soft skills**.
 - Safe changes are applied only when they can be supported by the Candidate Profile or confirmed evidence.
 - The stage automatically applies every safe local repair, then deterministic checks run after automatic changes without requiring an additional AI call.
 - The comparison uses the exact saved Step 3 baseline: **Job-Aligned Resume → Final Resume**.
 - When the optimized content is identical to the baseline, the app shows that no safe content change was required instead of creating another named version.
-- The Final Resume Report and styled export source are created together after Step 4 optimization. PDF is the primary download; Word remains the secondary option. Remaining quality recommendations are advisory.
+- The Final Resume Report and styled export source are created together after the quality pass. PDF is the primary download; Word remains the secondary option. Remaining quality recommendations are advisory.
 
-### Step 4 optimization recommendations
+### Improve Resume Quality recommendations
 
-Step 4 does not run another evidence review. It uses the Final Resume Report to apply safe improvements and keeps remaining recommendations advisory. Findings are processed in category-specific batches of at most three. After every batch, the application rebuilds the report and keeps the candidate version only when the overall score, job-match score, Hard Skills, Evidence & Gaps, the combined optimization-category score, and the targeted category all remain equal or improve. A batch that adds validation issues or lowers a protected metric is rolled back automatically. On a rerun, a manually edited Final Resume that scores below the saved Job-Aligned Resume is restored to that stronger baseline before optimization continues.
+Improve Resume Quality applies safe report recommendations and keeps remaining recommendations advisory. The final evidence audit is presented separately in Evidence Review and Export. Findings are processed in category-specific batches of at most three. After every batch, the application rebuilds the report and keeps the candidate version only when the overall score, job-match score, Hard Skills, Evidence & Gaps, the combined optimization-category score, and the targeted category all remain equal or improve. A batch that adds validation issues or lowers a protected metric is rolled back automatically. On a rerun, a manually edited Final Resume that scores below the saved Job-Aligned Resume is restored to that stronger baseline before optimization continues.
 
 ### Performance safeguards
 
