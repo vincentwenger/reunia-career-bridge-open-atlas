@@ -58,3 +58,22 @@ Resume Taylor workflow state also becomes supporting implementation detail. Its 
 7. Create application-scoped `ImprovementAction` records.
 
 Mock interview recording and transcription are the second slice, attached to this existing job application rather than introduced as a separate meeting workflow.
+
+## Career Bridge navigation adapter
+
+The first delivery-layer integration uses the shared `career_bridge.presentation` information architecture. The navigation is ordered around one `JobApplication`, not around Réunia's previous meeting lifecycle.
+
+| Workspace | Shared relationship | Current delivery adapter |
+|---|---|---|
+| Career Profile | `candidate_profile_id`, `career_background_id`, `resume_id`, `evidence_library_id` | Réunia profile workspace |
+| Application Builder | target job, tailored resume versions, status | Authenticated application home; Resume Taylor adapter follows |
+| Interview Preparation | `interview_preparation_id` | Réunia knowledge/materials workspace |
+| Mock Interview | `mock_interview_session_ids` | Réunia recorder |
+| Interview Review | mock session transcripts and scorecards | Réunia meeting review |
+| Career Action Plan | `improvement_action_ids` | Réunia Action Center |
+| Progress | `status`, `status_history`, normalized scores | Réunia analytics |
+| Help & Support | not aggregate-owned | Réunia support workflow |
+
+This is an anti-corruption mapping, not a claim that legacy meeting records have become job applications. Future adapters must resolve the selected application and attach generated resume, preparation, mock-session, score, and action records through the shared repository contracts.
+
+Administration remains outside the eight-step candidate workflow. It is rendered as a separate control only when the session is administrative, and the existing server-side authorization decorator remains authoritative.

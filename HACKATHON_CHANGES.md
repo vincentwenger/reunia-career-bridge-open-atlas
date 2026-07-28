@@ -67,3 +67,47 @@ Future commits should append adapter-level changes here, including the exact leg
 - No imported Réunia or Resume Taylor product code was modified.
 - No legacy route, meeting table, resume workflow table, or database object was merged.
 - No adapter or production migration was introduced in this change.
+
+## 2026-07-28 — Career Bridge navigation
+
+### Shared information architecture
+
+- Added a framework-neutral eight-section navigation definition under `career_bridge/presentation/`.
+- Mapped each product workspace to the `JobApplication` aggregate relationships it owns or presents.
+- Added validation that every referenced relationship remains a real `JobApplication` field.
+- Kept Help & Support outside aggregate ownership while preserving it as the eighth user workspace.
+
+### Réunia delivery adapter
+
+- Replaced the signed-in meeting-oriented navigation with:
+  1. Career Profile
+  2. Application Builder
+  3. Interview Preparation
+  4. Mock Interview
+  5. Interview Review
+  6. Career Action Plan
+  7. Progress
+  8. Help & Support
+- Reused the existing Réunia routes as delivery adapters during incremental migration rather than merging routes or databases.
+- Changed the signed-in brand subtitle to `AI CAREER BRIDGE`.
+- Moved Administration out of the account dropdown into a separate navigation control.
+- Preserved both UI visibility checks and server-side administrator authorization.
+- Added responsive styles and English/French navigation strings.
+
+### Route mapping during migration
+
+- Career Profile → existing authenticated profile workspace.
+- Application Builder → current authenticated application home until the Resume Taylor adapter is mounted.
+- Interview Preparation → existing materials/context/knowledge workspace.
+- Mock Interview → existing recording workflow.
+- Interview Review → existing review and scorecard workflow.
+- Career Action Plan → existing action tracking workflow.
+- Progress → existing user analytics workflow.
+- Help & Support → existing support workflow.
+
+### Intentionally not changed
+
+- No legacy route was deleted.
+- No meeting, resume, action, or analytics database object was renamed.
+- No Resume Taylor Flask routes were mounted into Réunia.
+- No administrator authorization rule was weakened.

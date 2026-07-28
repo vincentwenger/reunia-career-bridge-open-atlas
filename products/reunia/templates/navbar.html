@@ -1,38 +1,38 @@
 {% set home_url = url_for('main.view_index') %}
-{% set knowledge_url = request.script_root ~ '/knowledge.html?view=library' %}
-{% set meeting_materials_url = request.script_root ~ '/knowledge.html?view=materials' %}
-{% set ai_context_url = request.script_root ~ '/knowledge.html?view=context' %}
-{% set knowledge_search_url = request.script_root ~ '/knowledge.html?view=search' %}
-{% set live_qa_url = request.script_root ~ '/live-qa.html' %}
-{% set recorder_url = request.script_root ~ '/meeting-recorder' %}
-{% set meeting_review_url = request.script_root ~ '/meeting-review.html' %}
-{% set action_center_url = request.script_root ~ '/action-center.html' %}
-{% set analytics_url = request.script_root ~ '/analytics.html' %}
+{% set career_profile_url = request.script_root ~ '/profile.html' %}
+{% set application_builder_url = home_url %}
+{% set interview_preparation_url = request.script_root ~ '/knowledge.html?view=materials' %}
+{% set mock_interview_url = request.script_root ~ '/meeting-recorder' %}
+{% set interview_review_url = request.script_root ~ '/meeting-review.html' %}
+{% set career_action_plan_url = request.script_root ~ '/action-center.html' %}
+{% set progress_url = request.script_root ~ '/analytics.html' %}
+{% set support_url = request.script_root ~ '/help-support.html' %}
 {% set admin_analytics_url = request.script_root ~ '/admin/analytics' %}
-{% set profile_url = request.script_root ~ '/profile.html' %}
 {% set settings_url = request.script_root ~ '/settings.html' %}
 {% set guide_url = request.script_root ~ '/user-guide.html' %}
-{% set support_url = request.script_root ~ '/help-support.html' %}
 {% set login_url = request.script_root ~ '/login.html' %}
 {% set logout_url = request.script_root ~ '/logout' %}
 {% set current_path = request.path.rstrip('/') %}
 
-{% set home_active = current_path.endswith('/app') or current_path.endswith('/index.html') %}
-{% set preparation_active = current_path.endswith('/knowledge.html') %}
-{% set preparation_view = request.args.get('view', 'library') if preparation_active else '' %}
-{% if preparation_view not in ['library', 'materials', 'context', 'search'] %}{% set preparation_view = 'library' %}{% endif %}
-{% set live_meeting_active = current_path.endswith('/meeting-recorder') or current_path.endswith('/meeting-recorder.html') or current_path.endswith('/live-qa.html') %}
-{% set review_active = current_path.endswith('/meeting-review.html') or current_path.endswith('/action-center.html') or current_path.endswith('/analytics.html') %}
+{% set career_profile_active = current_path.endswith('/profile.html') %}
+{% set application_builder_active = current_path.endswith('/app') or current_path.endswith('/index.html') %}
+{% set interview_preparation_active = current_path.endswith('/knowledge.html') %}
+{% set mock_interview_active = current_path.endswith('/meeting-recorder') or current_path.endswith('/meeting-recorder.html') or current_path.endswith('/live-qa.html') %}
+{% set interview_review_active = current_path.endswith('/meeting-review.html') %}
+{% set career_action_plan_active = current_path.endswith('/action-center.html') %}
+{% set progress_active = current_path.endswith('/analytics.html') and not current_path.startswith('/admin') %}
+{% set support_active = current_path.endswith('/help-support.html') %}
+{% set administration_active = current_path.endswith('/admin/analytics') %}
 
 <nav class="navbar" id="mainNavbar" aria-label="Primary navigation">
     <div class="nav-container">
-        <a href="{{ home_url }}" class="nav-brand" aria-label="Réunia home">
+        <a href="{{ application_builder_url }}" class="nav-brand" aria-label="Réunia Career Bridge home">
             <span class="brand-icon" aria-hidden="true">
                 <img src="{{ static_asset('icons/favicon-64.png') }}" alt="">
             </span>
             <span class="brand-text">
                 <span class="brand-title">Réunia</span>
-                <span class="brand-subtitle">YOUR AI MEETING COACH</span>
+                <span class="brand-subtitle">AI CAREER BRIDGE</span>
             </span>
         </a>
 
@@ -51,242 +51,143 @@
 
         <div class="nav-content" id="primaryNavContent">
             <ul class="nav-menu">
-                <li class="nav-item">
-                    <a
-                        href="{{ home_url }}"
-                        class="nav-link {% if home_active %}active{% endif %}"
-                        {% if home_active %}aria-current="page"{% endif %}
-                    >
-                        <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M3 10.8 12 3l9 7.8v8.7a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5v-8.7Z"></path>
-                            <path d="M9 21v-6h6v6"></path>
-                        </svg>
-                        <span>Home</span>
-                    </a>
-                </li>
-
                 {% if session.get('user_id') %}
-                    <li class="nav-item nav-category {% if preparation_active %}current-category{% endif %}" data-nav-category>
-                        <button
-                            type="button"
-                            class="nav-category-btn {% if preparation_active %}active{% endif %}"
-                            aria-expanded="false"
-                            aria-haspopup="menu"
-                            aria-controls="preparationMenu"
+                    <li class="nav-item">
+                        <a
+                            href="{{ career_profile_url }}"
+                            class="nav-link {% if career_profile_active %}active{% endif %}"
+                            data-career-section="career_profile"
+                            {% if career_profile_active %}aria-current="page"{% endif %}
                         >
-                            <svg class="nav-category-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M20 21a8 8 0 0 0-16 0"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            <span>Career Profile</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a
+                            href="{{ application_builder_url }}"
+                            class="nav-link {% if application_builder_active %}active{% endif %}"
+                            data-career-section="application_builder"
+                            {% if application_builder_active %}aria-current="page"{% endif %}
+                        >
+                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"></path>
+                                <path d="M8 8h8M8 12h8M8 16h5"></path>
+                            </svg>
+                            <span>Application Builder</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a
+                            href="{{ interview_preparation_url }}"
+                            class="nav-link {% if interview_preparation_active %}active{% endif %}"
+                            data-career-section="interview_preparation"
+                            {% if interview_preparation_active %}aria-current="page"{% endif %}
+                        >
+                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"></path>
                                 <path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20"></path>
                                 <path d="M9 7h7M9 11h5"></path>
                             </svg>
-                            <span>Meeting Preparation</span>
-                            <svg class="category-arrow" viewBox="0 0 20 20" aria-hidden="true">
-                                <path d="m6 8 4 4 4-4"></path>
-                            </svg>
-                        </button>
-
-                        <div class="nav-category-menu nav-category-menu-wide" id="preparationMenu" role="menu" hidden>
-                            <div class="nav-category-heading">
-                                <strong>Meeting Preparation</strong>
-                                <span>Organize reusable knowledge, prepare one meeting, and guide the AI.</span>
-                            </div>
-                            <a
-                                href="{{ knowledge_url }}"
-                                class="nav-category-link {% if preparation_active and preparation_view == 'library' %}active{% endif %}"
-                                role="menuitem"
-                                {% if preparation_active and preparation_view == 'library' %}aria-current="page"{% endif %}
-                            >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M4 5h16v14H4z"></path>
-                                    <path d="M8 3v4M16 3v4M8 11h8M8 15h5"></path>
-                                </svg>
-                                <span>
-                                    <strong>Document Library</strong>
-                                    <small>Store permanent documents for reuse across meetings</small>
-                                </span>
-                            </a>
-                            <a
-                                href="{{ meeting_materials_url }}"
-                                class="nav-category-link {% if preparation_active and preparation_view == 'materials' %}active{% endif %}"
-                                role="menuitem"
-                                {% if preparation_active and preparation_view == 'materials' %}aria-current="page"{% endif %}
-                            >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M4 6h6l2 2h8v11H4z"></path>
-                                    <path d="M8 12h8M8 16h5"></path>
-                                </svg>
-                                <span>
-                                    <strong>Meeting Materials</strong>
-                                    <small>Select library files or add temporary meeting files</small>
-                                </span>
-                            </a>
-                            <a
-                                href="{{ ai_context_url }}"
-                                class="nav-category-link {% if preparation_active and preparation_view == 'context' %}active{% endif %}"
-                                role="menuitem"
-                                {% if preparation_active and preparation_view == 'context' %}aria-current="page"{% endif %}
-                            >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="m12 3 1.5 4.2L18 9l-4.5 1.8L12 15l-1.5-4.2L6 9l4.5-1.8L12 3Z"></path>
-                                    <path d="m18.5 15 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z"></path>
-                                </svg>
-                                <span>
-                                    <strong>AI Context</strong>
-                                    <small>Configure reusable and meeting-specific guidance</small>
-                                </span>
-                            </a>
-                            <a
-                                href="{{ knowledge_search_url }}"
-                                class="nav-category-link {% if preparation_active and preparation_view == 'search' %}active{% endif %}"
-                                role="menuitem"
-                                {% if preparation_active and preparation_view == 'search' %}aria-current="page"{% endif %}
-                            >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <circle cx="10.5" cy="10.5" r="6.5"></circle>
-                                    <path d="m15.5 15.5 5 5"></path>
-                                </svg>
-                                <span>
-                                    <strong>Knowledge Search</strong>
-                                    <small>Ask documents, meeting materials, and meeting history</small>
-                                </span>
-                            </a>
-                        </div>
+                            <span>Interview Preparation</span>
+                        </a>
                     </li>
-
-                    <li class="nav-item nav-category {% if live_meeting_active %}current-category{% endif %}" data-nav-category>
-                        <button
-                            type="button"
-                            class="nav-category-btn {% if live_meeting_active %}active{% endif %}"
-                            aria-expanded="false"
-                            aria-haspopup="menu"
-                            aria-controls="liveMeetingMenu"
+                    <li class="nav-item">
+                        <a
+                            href="{{ mock_interview_url }}"
+                            class="nav-link {% if mock_interview_active %}active{% endif %}"
+                            data-career-section="mock_interview"
+                            {% if mock_interview_active %}aria-current="page"{% endif %}
                         >
-                            <svg class="nav-category-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <circle cx="12" cy="12" r="8"></circle>
-                                <path d="M10 8.5 16 12l-6 3.5v-7Z"></path>
+                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <rect x="8" y="3" width="8" height="12" rx="4"></rect>
+                                <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path>
                             </svg>
-                            <span>Live Meeting</span>
-                            <svg class="category-arrow" viewBox="0 0 20 20" aria-hidden="true">
-                                <path d="m6 8 4 4 4-4"></path>
-                            </svg>
-                        </button>
-
-                        <div class="nav-category-menu" id="liveMeetingMenu" role="menu" hidden>
-                            <div class="nav-category-heading">
-                                <strong>Live Meeting</strong>
-                                <span>Capture the conversation and get assistance while it is happening.</span>
-                            </div>
-                            <a
-                                href="{{ recorder_url }}"
-                                class="nav-category-link {% if current_path.endswith('/meeting-recorder') or current_path.endswith('/meeting-recorder.html') %}active{% endif %}"
-                                role="menuitem"
-                                {% if current_path.endswith('/meeting-recorder') or current_path.endswith('/meeting-recorder.html') %}aria-current="page"{% endif %}
-                            >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <rect x="8" y="3" width="8" height="12" rx="4"></rect>
-                                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path>
-                                </svg>
-                                <span>
-                                    <strong>Meeting Recorder</strong>
-                                    <small>Record microphone and meeting audio in your browser</small>
-                                </span>
-                            </a>
-                            <a
-                                href="{{ live_qa_url }}"
-                                class="nav-category-link {% if current_path.endswith('/live-qa.html') %}active{% endif %}"
-                                role="menuitem"
-                                {% if current_path.endswith('/live-qa.html') %}aria-current="page"{% endif %}
-                            >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M21 11.5a8.4 8.4 0 0 1-1 4 8.7 8.7 0 0 1-7.7 4.7 8.4 8.4 0 0 1-4-.9L3 21l1.7-5.3a8.4 8.4 0 0 1-.9-4A8.7 8.7 0 0 1 8.5 4a8.4 8.4 0 0 1 4-.9h.5a8.6 8.6 0 0 1 8 8v.4Z"></path>
-                                    <path d="M9.4 9.2a2.7 2.7 0 1 1 4.6 2c-.9.7-2 1.2-2 2.4M12 16.6h.01"></path>
-                                </svg>
-                                <span>
-                                    <strong>Live Q&amp;A</strong>
-                                    <small>Get real-time answers and assistance during the meeting</small>
-                                </span>
-                            </a>
-                        </div>
+                            <span>Mock Interview</span>
+                        </a>
                     </li>
-
-                    <li class="nav-item nav-category {% if review_active %}current-category{% endif %}" data-nav-category>
-                        <button
-                            type="button"
-                            class="nav-category-btn {% if review_active %}active{% endif %}"
-                            aria-expanded="false"
-                            aria-haspopup="menu"
-                            aria-controls="reviewFollowUpMenu"
+                    <li class="nav-item">
+                        <a
+                            href="{{ interview_review_url }}"
+                            class="nav-link {% if interview_review_active %}active{% endif %}"
+                            data-career-section="interview_review"
+                            {% if interview_review_active %}aria-current="page"{% endif %}
                         >
-                            <svg class="nav-category-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z"></path>
                                 <path d="M8 8h8M8 12h5M8 16h7"></path>
                             </svg>
-                            <span>Review &amp; Follow-Up</span>
-                            <svg class="category-arrow" viewBox="0 0 20 20" aria-hidden="true">
-                                <path d="m6 8 4 4 4-4"></path>
+                            <span>Interview Review</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a
+                            href="{{ career_action_plan_url }}"
+                            class="nav-link {% if career_action_plan_active %}active{% endif %}"
+                            data-career-section="career_action_plan"
+                            {% if career_action_plan_active %}aria-current="page"{% endif %}
+                        >
+                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+                                <path d="m7.5 12 2.5 2.5 6-6"></path>
+                                <path d="M15 15h2"></path>
                             </svg>
-                        </button>
-
-                        <div class="nav-category-menu nav-category-menu-end" id="reviewFollowUpMenu" role="menu" hidden>
-                            <div class="nav-category-heading">
-                                <strong>Review &amp; Follow-Up</strong>
-                                <span>Understand what happened, complete commitments, and track trends.</span>
-                            </div>
-                            <a
-                                href="{{ meeting_review_url }}"
-                                class="nav-category-link {% if current_path.endswith('/meeting-review.html') %}active{% endif %}"
-                                role="menuitem"
-                                {% if current_path.endswith('/meeting-review.html') %}aria-current="page"{% endif %}
-                            >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z"></path>
-                                    <path d="M8 8h8M8 12h5M8 16h7"></path>
-                                </svg>
-                                <span>
-                                    <strong>Meeting Review</strong>
-                                    <small>Review summaries, transcripts, questions, and scorecards</small>
-                                </span>
-                            </a>
-                            <a
-                                href="{{ action_center_url }}"
-                                class="nav-category-link {% if current_path.endswith('/action-center.html') %}active{% endif %}"
-                                role="menuitem"
-                                {% if current_path.endswith('/action-center.html') %}aria-current="page"{% endif %}
-                            >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <rect x="3" y="4" width="18" height="16" rx="3"></rect>
-                                    <path d="m7.5 12 2.5 2.5 6-6"></path>
-                                    <path d="M15 15h2"></path>
-                                </svg>
-                                <span>
-                                    <strong>Action Center</strong>
-                                    <small>Prioritize, track, and complete actions from every meeting</small>
-                                </span>
-                            </a>
-                            <a
-                                href="{{ analytics_url }}"
-                                class="nav-category-link {% if current_path.endswith('/analytics.html') %}active{% endif %}"
-                                role="menuitem"
-                                {% if current_path.endswith('/analytics.html') %}aria-current="page"{% endif %}
-                            >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M4 20V10"></path>
-                                    <path d="M10 20V4"></path>
-                                    <path d="M16 20v-7"></path>
-                                    <path d="M22 20H2"></path>
-                                </svg>
-                                <span>
-                                    <strong>Analytics</strong>
-                                    <small>Discover recurring questions, topics, and performance trends</small>
-                                </span>
-                            </a>
-                        </div>
+                            <span>Career Action Plan</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a
+                            href="{{ progress_url }}"
+                            class="nav-link {% if progress_active %}active{% endif %}"
+                            data-career-section="progress"
+                            {% if progress_active %}aria-current="page"{% endif %}
+                        >
+                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 20V10"></path>
+                                <path d="M10 20V4"></path>
+                                <path d="M16 20v-7"></path>
+                                <path d="M22 20H2"></path>
+                            </svg>
+                            <span>Progress</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a
+                            href="{{ support_url }}"
+                            class="nav-link {% if support_active %}active{% endif %}"
+                            data-career-section="help_support"
+                            {% if support_active %}aria-current="page"{% endif %}
+                        >
+                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <path d="M9.7 9a2.5 2.5 0 1 1 4.3 1.7c-.9.8-2 1.2-2 2.8"></path>
+                                <path d="M12 17h.01"></path>
+                            </svg>
+                            <span>Help &amp; Support</span>
+                        </a>
                     </li>
                 {% endif %}
             </ul>
 
             <div class="nav-auth">
                 {% if session.get('user_id') %}
+                    {% if is_admin_session %}
+                        <a
+                            href="{{ admin_analytics_url }}"
+                            class="admin-nav-link {% if administration_active %}active{% endif %}"
+                            {% if administration_active %}aria-current="page"{% endif %}
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3 4.5 6v5.5c0 4.5 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5 7.5-9.5V6L12 3Z"></path>
+                                <path d="M9 12h6M12 9v6"></path>
+                            </svg>
+                            <span>Administration</span>
+                        </a>
+                    {% endif %}
+
                     <div class="nav-item user-dropdown" id="accountDropdown">
                         <button
                             type="button"
@@ -320,30 +221,12 @@
                             </div>
 
                             <div class="dropdown-menu-group">
-                                {% if is_admin_session %}
-                                    <a href="{{ admin_analytics_url }}" role="menuitem">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M4 20V10"></path>
-                                            <path d="M10 20V4"></path>
-                                            <path d="M16 20v-7"></path>
-                                            <path d="M22 20H2"></path>
-                                        </svg>
-                                        <span><strong>Admin Analytics</strong><small>Visitors, users, and active time</small></span>
-                                    </a>
-                                {% endif %}
-                                <a href="{{ profile_url }}" role="menuitem">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M20 21a8 8 0 0 0-16 0"></path>
-                                        <circle cx="12" cy="7" r="4"></circle>
-                                    </svg>
-                                    <span><strong>Profile</strong><small>Manage your personal details</small></span>
-                                </a>
                                 <a href="{{ settings_url }}" role="menuitem">
                                     <svg viewBox="0 0 24 24" aria-hidden="true">
                                         <circle cx="12" cy="12" r="3"></circle>
                                         <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path>
                                     </svg>
-                                    <span><strong>Settings</strong><small>Configure your AI assistant</small></span>
+                                    <span><strong>Settings</strong><small>Configure your account and AI preferences</small></span>
                                 </a>
                                 <a href="{{ guide_url }}" role="menuitem">
                                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -351,15 +234,7 @@
                                         <path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20"></path>
                                         <path d="M9 7h7M9 11h5"></path>
                                     </svg>
-                                    <span><strong>User Guide</strong><small>Learn the workflow and main features</small></span>
-                                </a>
-                                <a href="{{ support_url }}" role="menuitem">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <circle cx="12" cy="12" r="9"></circle>
-                                        <path d="M9.7 9a2.5 2.5 0 1 1 4.3 1.7c-.9.8-2 1.2-2 2.8"></path>
-                                        <path d="M12 17h.01"></path>
-                                    </svg>
-                                    <span><strong>Help &amp; Support</strong><small>Questions, problems, and feedback</small></span>
+                                    <span><strong>User Guide</strong><small>Learn the Career Bridge workflow</small></span>
                                 </a>
                             </div>
 
@@ -393,8 +268,8 @@
                     </a>
                     <a
                         href="{{ support_url }}"
-                        class="support-nav-link {% if current_path.endswith('/help-support.html') %}active{% endif %}"
-                        {% if current_path.endswith('/help-support.html') %}aria-current="page"{% endif %}
+                        class="support-nav-link {% if support_active %}active{% endif %}"
+                        {% if support_active %}aria-current="page"{% endif %}
                     >
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <circle cx="12" cy="12" r="9"></circle>
