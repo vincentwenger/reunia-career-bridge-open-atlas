@@ -64,12 +64,12 @@ let meetingsData = [];
         switchTab(['summary', 'scorecard', 'transcript', 'ask-ai'].includes(requestedTab) ? requestedTab : 'summary', false);
 
         try {
-            const transcriptUrl = window.AppUI?.appUrl('/api/transcripts') || '/api/transcripts';
-            const actionUrl = window.AppUI?.appUrl('/api/actions') || '/api/actions';
+            const transcriptUrl = window.AppUI?.appUrl('/api/career/interview-reviews') || '/api/career/interview-reviews';
+            const actionUrl = window.AppUI?.appUrl('/api/career/actions') || '/api/career/actions';
             const [response, actionResponse] = await Promise.all([
                 fetch(transcriptUrl),
                 fetch(actionUrl).catch(error => {
-                    console.warn('Action Center data is unavailable in Meeting Review:', error);
+                    console.warn('Career Action Plan data is unavailable in Interview Review:', error);
                     return null;
                 })
             ]);
@@ -86,12 +86,12 @@ let meetingsData = [];
                 updateMeetingReview(requestedMeetingIndex >= 0 ? requestedMeetingIndex : 0);
             }
         } catch (error) {
-            console.error('Error loading meeting reviews:', error);
+            console.error('Error loading interview reviews:', error);
             meetingList?.setAttribute('aria-busy', 'false');
             meetingList.innerHTML = `
                 <div class="no-records-state">
-                    <strong>Unable to load meetings</strong>
-                    The meeting service returned an invalid response or is temporarily unavailable.
+                    <strong>Unable to load mock interviews</strong>
+                    The mock-interview service returned an invalid response or is temporarily unavailable.
                 </div>
             `;
         }
@@ -265,8 +265,8 @@ let meetingsData = [];
         if (!meetingsData || meetingsData.length === 0) {
             meetingList.innerHTML = `
                 <div class="no-records-state">
-                    <strong>No meetings found</strong>
-                    Open the Browser Recorder to create your first meeting review.
+                    <strong>No mock interviews found</strong>
+                    Open Mock Interview to create your first interview review.
                 </div>
             `;
             return;
@@ -276,7 +276,7 @@ let meetingsData = [];
         if (filteredMeetings.length === 0) {
             meetingList.innerHTML = `
                 <div class="no-records-state">
-                    <strong>No matching meetings</strong>
+                    <strong>No matching mock interviews</strong>
                     Adjust the search, topic, or date filters and try again.
                 </div>
             `;
@@ -423,12 +423,12 @@ let meetingsData = [];
             </span>
             ${isEditing
                 ? `<label class="meeting-edit-field">
-                        <span class="meeting-edit-label">Meeting name</span>
-                        <input class="meeting-name-input" type="text" maxlength="200" value="${escapeHtml(meetingName)}" aria-label="Edit meeting name" ${isSaving ? 'disabled' : ''}>
+                        <span class="meeting-edit-label">Mock interview name</span>
+                        <input class="meeting-name-input" type="text" maxlength="200" value="${escapeHtml(meetingName)}" aria-label="Edit mock-interview name" ${isSaving ? 'disabled' : ''}>
                    </label>
                    <label class="meeting-edit-field">
                         <span class="meeting-edit-label">Summary</span>
-                        <textarea class="meeting-summary-input" maxlength="5000" aria-label="Edit meeting summary" ${isSaving ? 'disabled' : ''}>${escapeHtml(getMeetingSummary(meeting))}</textarea>
+                        <textarea class="meeting-summary-input" maxlength="5000" aria-label="Edit interview summary" ${isSaving ? 'disabled' : ''}>${escapeHtml(getMeetingSummary(meeting))}</textarea>
                    </label>
                    <div class="meeting-edit-field meeting-topic-editor" data-topic-editor>
                         <span class="meeting-edit-label">Topics</span>
@@ -602,7 +602,7 @@ let meetingsData = [];
     }
 
     async function updateMeetingDetailsOnServer(payload) {
-        const response = await fetch(window.AppUI?.appUrl('/api/transcripts') || '/api/transcripts', {
+        const response = await fetch(window.AppUI?.appUrl('/api/career/interview-reviews') || '/api/career/interview-reviews', {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json'
@@ -610,7 +610,7 @@ let meetingsData = [];
             body: JSON.stringify(payload)
         });
         if (!response.ok) {
-            throw new Error(await readApiError(response, 'The meeting details could not be updated.'));
+            throw new Error(await readApiError(response, 'The mock-interview details could not be updated.'));
         }
     }
 
@@ -626,7 +626,7 @@ let meetingsData = [];
         const currentTopics = getMeetingTopics(meeting);
 
         if (!newName) {
-            window.AppUI?.showToast('The meeting name cannot be empty.', {type: 'error'});
+            window.AppUI?.showToast('The mock-interview name cannot be empty.', {type: 'error'});
             nameInput.focus();
             return;
         }
@@ -654,17 +654,17 @@ let meetingsData = [];
 
             if (selectedMeetingIndex === index) {
                 document.getElementById('summary-content').textContent =
-                    newSummary || 'No executive summary provided.';
+                    newSummary || 'No interview summary provided.';
             }
 
             refreshMeetingOrganizerControls();
             renderMeetingList();
             if (selectedMeetingIndex === index) renderSelectedMeetingTopics(meeting);
         } catch (error) {
-            console.error('Error updating meeting details:', error);
+            console.error('Error updating mock-interview details:', error);
             savingMeetingIndex = null;
             renderMeetingList();
-            window.AppUI?.showToast(`Unable to update the meeting details: ${error.message}`, {type: 'error'});
+            window.AppUI?.showToast(`Unable to update the mock-interview details: ${error.message}`, {type: 'error'});
         }
     }
 
@@ -686,9 +686,9 @@ let meetingsData = [];
         const meetingName = getMeetingName(meeting, index);
         const meetingDate = formatUserFriendlyDate(getMeetingDate(meeting));
         const confirmed = await window.AppUI.confirm({
-            title: 'Delete meeting?',
+            title: 'Delete mock interview?',
             message: `Delete "${meetingName}" from ${meetingDate}? This action cannot be undone.`,
-            confirmLabel: 'Delete meeting',
+            confirmLabel: 'Delete mock interview',
             danger: true
         });
 
@@ -701,7 +701,7 @@ let meetingsData = [];
         try {
             const payload = getMeetingDeletePayload(meeting, index);
 
-            const response = await fetch(window.AppUI?.appUrl('/api/transcripts') || '/api/transcripts', {
+            const response = await fetch(window.AppUI?.appUrl('/api/career/interview-reviews') || '/api/career/interview-reviews', {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json'
@@ -710,7 +710,7 @@ let meetingsData = [];
             });
 
             if (!response.ok) {
-                let errorMessage = 'The meeting could not be deleted.';
+                let errorMessage = 'The mock interview could not be deleted.';
 
                 // A Fetch response body can only be consumed once. Read it as
                 // text first, then parse that text as JSON when possible.
@@ -756,8 +756,8 @@ let meetingsData = [];
                 renderMeetingList();
             }
         } catch (error) {
-            console.error('Error deleting meeting:', error);
-            window.AppUI?.showToast(`Unable to delete the meeting: ${error.message}`, {type: 'error'});
+            console.error('Error deleting mock interview:', error);
+            window.AppUI?.showToast(`Unable to delete the mock interview: ${error.message}`, {type: 'error'});
             deleteButton.disabled = false;
             deleteButton.innerHTML = originalButtonContent;
         }
@@ -793,7 +793,7 @@ let meetingsData = [];
             chip.type = 'button';
             chip.className = 'meeting-topic-chip';
             chip.textContent = topic;
-            chip.setAttribute('aria-label', `Filter meetings by ${topic}`);
+            chip.setAttribute('aria-label', `Filter mock interviews by ${topic}`);
             chip.addEventListener('click', () => selectTopicFilter(topic));
             container.appendChild(chip);
         });
@@ -814,7 +814,7 @@ let meetingsData = [];
             }
             const confirmed = await window.AppUI.confirm({
                 title: 'Merge topics?',
-                message: `Replace “${source}” with “${target}” across all matching meetings?`,
+                message: `Replace “${source}” with “${target}” across all matching mock interviews?`,
                 confirmLabel: 'Merge topics'
             });
             if (confirmed) await applyTopicOperation('merge', source, target);
@@ -828,7 +828,7 @@ let meetingsData = [];
     function openTopicManager() {
         const stats = getTopicStats();
         if (stats.length === 0) {
-            window.AppUI?.showToast('Add a topic to a meeting before opening topic management.', {type: 'error'});
+            window.AppUI?.showToast('Add a topic to a mock interview before opening topic management.', {type: 'error'});
             return;
         }
         const modal = document.getElementById('meeting-topic-modal');
@@ -900,7 +900,7 @@ let meetingsData = [];
 
             const count = document.createElement('span');
             count.className = 'meeting-topic-count';
-            count.textContent = `${topic.count} ${topic.count === 1 ? 'meeting' : 'meetings'}`;
+            count.textContent = `${topic.count} ${topic.count === 1 ? 'mock interview' : 'mock interviews'}`;
 
             const input = document.createElement('input');
             input.type = 'text';
@@ -928,7 +928,7 @@ let meetingsData = [];
             remove.addEventListener('click', async () => {
                 const confirmed = await window.AppUI.confirm({
                     title: 'Delete topic?',
-                    message: `Remove “${topic.name}” from ${topic.count} ${topic.count === 1 ? 'meeting' : 'meetings'}? The meetings will not be deleted.`,
+                    message: `Remove “${topic.name}” from ${topic.count} ${topic.count === 1 ? 'mock interview' : 'mock interviews'}? The mock interviews will not be deleted.`,
                     confirmLabel: 'Delete topic',
                     danger: true
                 });
@@ -980,7 +980,7 @@ let meetingsData = [];
             if (selectedMeetingIndex !== null) renderSelectedMeetingTopics(meetingsData[selectedMeetingIndex]);
             renderTopicManager();
             window.AppUI?.showToast(
-                `${result.updated_meetings || 0} ${Number(result.updated_meetings) === 1 ? 'meeting updated' : 'meetings updated'}.`,
+                `${result.updated_meetings || 0} ${Number(result.updated_meetings) === 1 ? 'mock interview updated' : 'mock interviews updated'}.`,
                 {type: 'success'}
             );
             closeAfterUpdate = getTopicStats().length === 0;
@@ -1008,7 +1008,7 @@ let meetingsData = [];
         const link = document.getElementById('action-center-link');
         if (!link) return;
 
-        const baseUrl = window.AppUI?.appUrl('/action-center.html') || '/action-center.html';
+        const baseUrl = window.AppUI?.appUrl('/career-action-plan') || '/career-action-plan';
         if (!meeting || index === null) {
             link.href = baseUrl;
             return;
@@ -1016,14 +1016,14 @@ let meetingsData = [];
 
         const meetingId = getMeetingKnowledgeId(meeting, index);
         link.href = `${baseUrl}?meeting=${encodeURIComponent(meetingId)}`;
-        link.setAttribute('aria-label', `Manage actions from ${getMeetingName(meeting, index)} in Action Center`);
+        link.setAttribute('aria-label', `Manage actions from ${getMeetingName(meeting, index)} in Career Action Plan`);
     }
 
     function clearMeetingReview() {
         currentTranscript = '';
         updateActionCenterLink();
         document.getElementById('summary-content').textContent =
-            'Select a meeting from the library to view its executive summary, key wins, improvement areas, action items, and open questions.';
+            'Select a mock interview from the library to view its executive summary, key wins, improvement areas, action items, and open questions.';
 
         document.getElementById('final-weighted-grade').textContent = '-';
         document.getElementById('overall-score-title').textContent = 'Overall Performance Score';
@@ -1031,7 +1031,7 @@ let meetingsData = [];
         document.getElementById('overall-evidence-badge').className = 'score-evidence-badge evidence-insufficient';
         document.getElementById('score-circle-label').textContent = 'out of 100';
         document.getElementById('score-description').textContent =
-            'Select a meeting to view the weighted aggregate of content quality, communication form, and meeting effectiveness metrics.';
+            'Select a mock interview to view the weighted aggregate of answer relevance, evidence, structure, clarity, and delivery.';
         document.getElementById('content-average-score').textContent = '-';
         document.getElementById('form-average-score').textContent = '-';
         document.getElementById('content-evidence-status').textContent = 'Insufficient evidence';
@@ -1046,16 +1046,16 @@ let meetingsData = [];
 
         document.getElementById('content-grading-container').innerHTML = `
             <div class="no-records-state">
-                <strong>No meeting selected</strong>
-                Select a meeting from the library to view content grading.
+                <strong>No mock interview selected</strong>
+                Select a mock interview from the library to view content grading.
             </div>
         `;
 
         [
-            ['key-wins-list', 'No meeting selected.'],
-            ['improvement-areas-list', 'No meeting selected.'],
-            ['action-items-list', 'No meeting selected.'],
-            ['open-questions-list', 'No meeting selected.']
+            ['key-wins-list', 'No mock interview selected.'],
+            ['improvement-areas-list', 'No mock interview selected.'],
+            ['action-items-list', 'No mock interview selected.'],
+            ['open-questions-list', 'No mock interview selected.']
         ].forEach(([elementId, message]) => {
             document.getElementById(elementId).innerHTML =
                 `<li class="empty-message">${escapeHtml(message)}</li>`;
@@ -1097,7 +1097,7 @@ let meetingsData = [];
         resetFormMetricDetails();
         document.getElementById('transcript-search').value = '';
         document.getElementById('transcript-content').textContent =
-            'Select a meeting from the library to view the full transcript.';
+            'Select a mock interview from the library to view the full transcript.';
         clearMeetingAskContext();
         renderSelectedMeetingTopics(null);
         updateMeetingShareContext(null, null);
@@ -1119,7 +1119,7 @@ let meetingsData = [];
         document.getElementById('score-description').textContent = getScoreDescription(finalScore, meeting);
         updateScoreCircle(finalScore);
 
-        document.getElementById('summary-content').textContent = getMeetingSummary(meeting) || 'No executive summary provided.';
+        document.getElementById('summary-content').textContent = getMeetingSummary(meeting) || 'No interview summary provided.';
         renderSelectedMeetingTopics(meeting);
 
         const contentAverageScore = parseFloat(getValue(meeting.content_average_score, ''));
@@ -1283,7 +1283,7 @@ let meetingsData = [];
 
         try {
             const response = await fetch(
-                `${window.AppUI?.appUrl('/api/actions') || '/api/actions'}/${encodeURIComponent(actionId)}`,
+                `${window.AppUI?.appUrl('/api/career/actions') || '/api/career/actions'}/${encodeURIComponent(actionId)}`,
                 {
                     method: 'PATCH',
                     headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
@@ -1418,9 +1418,9 @@ let meetingsData = [];
         const date = document.getElementById('ask-ai-meeting-date');
         const question = document.getElementById('meeting-ask-question');
         const answerPanel = document.getElementById('meeting-answer-panel');
-        if (name) name.textContent = 'No meeting selected';
-        if (date) date.textContent = 'Select a meeting from the library before asking a question.';
-        if (question) question.placeholder = 'Select a meeting before asking a question...';
+        if (name) name.textContent = 'No mock interview selected';
+        if (date) date.textContent = 'Select a mock interview from the library before asking a question.';
+        if (question) question.placeholder = 'Select a mock interview before asking a question...';
         if (answerPanel) answerPanel.hidden = true;
     }
 
@@ -1437,8 +1437,8 @@ let meetingsData = [];
 
     function getMeetingAskScopeSummary(includeRelated) {
         return includeRelated
-            ? 'Using the selected meeting plus related documents and previous meetings.'
-            : 'Using only the selected meeting.';
+            ? 'Using the selected mock interview plus Career Evidence Library documents and previous practice sessions.'
+            : 'Using only the selected mock interview.';
     }
 
     function renderMeetingAnswerSources(sources) {
@@ -1490,7 +1490,7 @@ let meetingsData = [];
 
             if (!prompt || !submit) return;
             if (selectedMeetingIndex === null) {
-                window.AppUI?.showToast('Select a meeting before asking a question.', {type: 'error'});
+                window.AppUI?.showToast('Select a mock interview before asking a question.', {type: 'error'});
                 return;
             }
 
@@ -1510,19 +1510,19 @@ let meetingsData = [];
             answerPanel.hidden = false;
             answerPanel.setAttribute('aria-busy', 'true');
             answerContent.textContent = useRelatedKnowledge
-                ? 'Searching this meeting and related knowledge...'
-                : 'Searching the selected meeting...';
+                ? 'Searching this mock interview and related knowledge...'
+                : 'Searching the selected mock interview...';
             document.getElementById('meeting-answer-sources').hidden = true;
 
             try {
-                const endpoint = window.AppUI?.appUrl('/api/knowledge/ask') || '/api/knowledge/ask';
+                const endpoint = window.AppUI?.appUrl('/api/career/evidence/search') || '/api/career/evidence/search';
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
                 });
                 const result = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(result.error || 'The meeting question could not be answered.');
+                if (!response.ok) throw new Error(result.error || 'The interview question could not be answered.');
                 answerContent.textContent = result.answer || 'No answer was returned.';
                 renderMeetingAnswerSources(result.sources || result.meeting_sources || []);
             } catch (error) {
@@ -1531,7 +1531,7 @@ let meetingsData = [];
             } finally {
                 answerPanel.setAttribute('aria-busy', 'false');
                 submit.disabled = false;
-                submit.textContent = 'Ask about meeting';
+                submit.textContent = 'Ask about interview';
             }
         });
 
@@ -1572,24 +1572,24 @@ let meetingsData = [];
             trigger.disabled = !identity;
             trigger.setAttribute(
                 'aria-label',
-                identity ? `Share ${getMeetingName(meeting, index)}` : 'Select a meeting before sharing'
+                identity ? `Share ${getMeetingName(meeting, index)}` : 'Select a mock interview before sharing'
             );
         }
         if (title) {
             title.textContent = identity
                 ? `${getMeetingName(meeting, index)} · ${formatUserFriendlyDate(identity.timestamp)}`
-                : 'Select a meeting before creating a share link.';
+                : 'Select a mock interview before creating a share link.';
         }
     }
 
     function openMeetingShareModal() {
         if (selectedMeetingIndex === null) {
-            window.AppUI?.showToast('Select a meeting before sharing.', {type: 'error'});
+            window.AppUI?.showToast('Select a mock interview before sharing.', {type: 'error'});
             return;
         }
         const meeting = meetingsData[selectedMeetingIndex];
         if (!getMeetingShareIdentity(meeting)) {
-            window.AppUI?.showToast('This meeting is missing the information required to create a share link.', {type: 'error'});
+            window.AppUI?.showToast('This mock interview is missing the information required to create a share link.', {type: 'error'});
             return;
         }
         const modal = document.getElementById('meeting-share-modal');
@@ -1668,7 +1668,7 @@ let meetingsData = [];
         const list = document.getElementById('meeting-share-list');
         if (!list) return;
         if (!meetingShareRecords.length) {
-            list.innerHTML = '<p class="meeting-share-empty">No share links created for this meeting.</p>';
+            list.innerHTML = '<p class="meeting-share-empty">No share links created for this mock interview.</p>';
             return;
         }
         list.replaceChildren();

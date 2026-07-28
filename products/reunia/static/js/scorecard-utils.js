@@ -25,24 +25,24 @@ function getScoreDescription(score, meeting = null) {
         const status = String(getValue(evidence.overall_grade_status, '') || '').toLowerCase();
 
         if (status === 'insufficient') {
-            return evidenceSummary || 'Not enough meeting content was available to calculate a reliable performance score.';
+            return evidenceSummary || 'Not enough mock-interview content was available to calculate a reliable performance score.';
         }
         if (status === 'preliminary' && evidenceSummary) {
             return evidenceSummary;
         }
         if (score === null || isNaN(score)) {
-            return 'No complete score was generated for this meeting.';
+            return 'No complete score was generated for this mock interview.';
         }
 
         if (score >= 70) {
-            return 'Strong meeting performance. The session shows solid communication, useful content, and positive execution signals.';
+            return 'Strong interview performance. The session shows solid communication, useful content, and positive execution signals.';
         }
 
         if (score >= 40) {
-            return 'Moderate meeting performance. The session includes useful material but has clear opportunities for improvement.';
+            return 'Moderate interview performance. The session includes useful material but has clear opportunities for improvement.';
         }
 
-        return 'Low meeting performance. The scorecard indicates significant improvement opportunities in content, communication, or delivery.';
+        return 'Low interview performance. The scorecard indicates significant improvement opportunities in content, communication, or delivery.';
     }
 
 function evidenceLabel(level) {
@@ -80,11 +80,11 @@ function renderScorecardEvidence(meeting) {
             if (formStatus) formStatus.textContent = 'Evidence not recorded';
             if (contentNote) {
                 contentNote.hidden = false;
-                contentNote.textContent = 'This meeting was graded before evidence-aware scoring was added. Reprocess it to calculate evidence confidence.';
+                contentNote.textContent = 'This mock interview was graded before evidence-aware scoring was added. Reprocess it to calculate evidence confidence.';
             }
             if (formNote) {
                 formNote.hidden = false;
-                formNote.textContent = 'This meeting was graded before word-count and sample-size checks were added.';
+                formNote.textContent = 'This mock interview was graded before word-count and sample-size checks were added.';
             }
             return;
         }
@@ -112,18 +112,18 @@ function renderScorecardEvidence(meeting) {
         if (contentNote) {
             contentNote.hidden = false;
             contentNote.textContent = String(contentLevel).toLowerCase() === 'reliable'
-                ? `Reliable Content grade based on ${responseCount} substantive responses and ${wordCount} eligible words.`
+                ? `Reliable Answer-quality grade based on ${responseCount} substantive responses and ${wordCount} eligible words.`
                 : String(contentLevel).toLowerCase() === 'limited'
-                    ? `Preliminary Content grade based on ${responseCount} substantive responses and ${wordCount} eligible words. More evidence is needed to judge consistency and depth.`
-                    : `Content grade unavailable: ${responseCount} substantive responses and ${wordCount} eligible words do not provide enough evidence.`;
+                    ? `Preliminary Answer-quality grade based on ${responseCount} substantive responses and ${wordCount} eligible words. More evidence is needed to judge consistency and depth.`
+                    : `Answer-quality grade unavailable: ${responseCount} substantive responses and ${wordCount} eligible words do not provide enough evidence.`;
         }
         if (formNote) {
             formNote.hidden = false;
             formNote.textContent = String(formLevel).toLowerCase() === 'reliable'
-                ? `Reliable Form grade based on ${wordCount} eligible spoken words.`
+                ? `Reliable Delivery grade based on ${wordCount} eligible spoken words.`
                 : String(formLevel).toLowerCase() === 'limited'
-                    ? `Preliminary Form grade based on ${wordCount} eligible spoken words. Strong raw grades are moderated until approximately 300 words are available.`
-                    : `Form grade unavailable: only ${wordCount} eligible spoken words were available; at least 60 are recommended.`;
+                    ? `Preliminary Delivery grade based on ${wordCount} eligible spoken words. Strong raw grades are moderated until approximately 300 words are available.`
+                    : `Delivery grade unavailable: only ${wordCount} eligible spoken words were available; at least 60 are recommended.`;
         }
     }
 
@@ -197,26 +197,26 @@ function renderContentGrades(meeting) {
 const FORM_METRIC_DETAIL_CONFIG = {
         filler_words: {
             title: 'Filler Words',
-            description: 'Every filler-word occurrence detected in the selected meeting.',
-            emptyMessage: 'No filler words were detected for this meeting.',
+            description: 'Every filler-word occurrence detected in the selected mock interview.',
+            emptyMessage: 'No filler words were detected for this mock interview.',
             listClass: 'word-detail-list'
         },
         power_words: {
             title: 'Power Words',
-            description: 'Confident, positive, persuasive, or action-oriented words and phrases detected in the selected meeting.',
-            emptyMessage: 'No power words were detected for this meeting.',
+            description: 'Confident, positive, persuasive, or action-oriented words and phrases detected in the selected mock interview.',
+            emptyMessage: 'No power words were detected for this mock interview.',
             listClass: 'word-detail-list'
         },
         negative_words: {
             title: 'Negative Words',
-            description: 'Weak, uncertain, apologetic, pessimistic, or unnecessarily negative words and phrases detected in the selected meeting.',
-            emptyMessage: 'No negative words were detected for this meeting.',
+            description: 'Weak, uncertain, apologetic, pessimistic, or unnecessarily negative words and phrases detected in the selected mock interview.',
+            emptyMessage: 'No negative words were detected for this mock interview.',
             listClass: 'word-detail-list'
         },
         negative_tone: {
             title: 'Negative Tone',
             description: 'Transcript excerpts that indicate a negative, uncertain, defensive, dismissive, or unprofessional tone.',
-            emptyMessage: 'No negative-tone excerpts were detected for this meeting.',
+            emptyMessage: 'No negative-tone excerpts were detected for this mock interview.',
             listClass: 'tone-detail-list'
         }
     };

@@ -2,8 +2,8 @@
 
 (function () {
     const STORAGE_KEY = 'meeting-assistant-action-center-v1';
-    const API_ACTIONS = '/api/actions';
-    const API_MEETINGS = '/api/transcripts';
+    const API_ACTIONS = '/api/career/actions';
+    const API_MEETINGS = '/api/career/interview-reviews';
     const PRIORITY_WEIGHT = {urgent: 4, high: 3, medium: 2, low: 1, none: 0};
     const STATUS_LABELS = {
         not_started: 'Not started',
@@ -150,7 +150,7 @@
         try {
             actionsResponse = await fetch(appUrl(API_ACTIONS), {headers: {'Accept': 'application/json'}});
         } catch (error) {
-            console.warn('Action API unavailable; using meeting-derived actions.', error);
+            console.warn('Action API unavailable; using interview-derived actions.', error);
         }
 
         if (actionsResponse?.ok) {
@@ -178,11 +178,11 @@
                     elements.storageStatus.textContent =
                         'Browser-saved actions were migrated and are now synchronized with your account.';
                 } else if (!elements.storageStatus.textContent.includes('could not be migrated')) {
-                    elements.storageStatus.textContent = 'Changes are synchronized with your Action Center data.';
+                    elements.storageStatus.textContent = 'Changes are synchronized with your Career Action Plan data.';
                 }
             } catch (error) {
                 console.error('Invalid action response:', error);
-                await loadMeetingFallback('The action service returned invalid data. Showing actions extracted from meetings.');
+                await loadMeetingFallback('The action service returned invalid data. Showing actions extracted from mock interviews.');
             }
         } else {
             await loadMeetingFallback();
@@ -236,19 +236,19 @@
         await loadMeetingsForReference(true);
         state.actions = mergeWithLocalState(extractActionsFromMeetings(state.meetings));
         elements.storageStatus.textContent = message ||
-            'Action API not detected. Changes are saved in this browser and remain linked to the source meetings.';
+            'Action API not detected. Changes are saved in this browser and remain linked to the source mock interviews.';
     }
 
     async function loadMeetingsForReference(required) {
         try {
             const response = await fetch(appUrl(API_MEETINGS), {headers: {'Accept': 'application/json'}});
-            if (!response.ok) throw new Error(`Meeting request failed with ${response.status}`);
+            if (!response.ok) throw new Error(`Mock-interview request failed with ${response.status}`);
             state.meetings = sortMeetingsByDate(ensureArrayPayload(await response.json()));
         } catch (error) {
-            console.error('Unable to load meetings for Action Center:', error);
+            console.error('Unable to load mock interviews for Career Action Plan:', error);
             state.meetings = [];
             if (required) {
-                elements.storageStatus.textContent = 'Meeting actions could not be loaded. You can still add manual actions in this browser.';
+                elements.storageStatus.textContent = 'Interview-derived actions could not be loaded. You can still add manual actions in this browser.';
                 state.actions = mergeWithLocalState([]);
             }
         }
@@ -296,7 +296,7 @@
             objectValue.meeting_id || objectValue.transcript_id || context.meetingId || ''
         );
         const meetingName = String(
-            objectValue.meeting_name || objectValue.meeting || context.meetingName || 'No linked meeting'
+            objectValue.meeting_name || objectValue.meeting || context.meetingName || 'No linked application'
         );
         const rawStatus = String(objectValue.status || (objectValue.completed ? 'done' : 'not_started')).toLowerCase();
         const rawPriority = String(objectValue.priority || 'none').toLowerCase();
@@ -356,7 +356,7 @@
                 deletedIds: Array.isArray(parsed.deletedIds) ? parsed.deletedIds : []
             };
         } catch (error) {
-            console.warn('Unable to read Action Center browser data:', error);
+            console.warn('Unable to read Career Action Plan browser data:', error);
             return {overrides: {}, manualActions: [], deletedIds: []};
         }
     }
@@ -402,8 +402,8 @@
         replaceSelectOptions(elements.ownerFilter, [{value: 'all', label: 'All owners'}].concat(
             owners.map(owner => ({value: owner, label: owner}))
         ));
-        replaceSelectOptions(elements.meetingFilter, [{value: 'all', label: 'All meetings'}].concat(meetings));
-        replaceSelectOptions(elements.formMeeting, [{value: '', label: 'No linked meeting'}].concat(meetings));
+        replaceSelectOptions(elements.meetingFilter, [{value: 'all', label: 'All applications'}].concat(meetings));
+        replaceSelectOptions(elements.formMeeting, [{value: '', label: 'No linked application'}].concat(meetings));
 
         if (Array.from(elements.ownerFilter.options).some(option => option.value === ownerValue)) {
             elements.ownerFilter.value = ownerValue;
@@ -542,7 +542,7 @@
                 elements.emptyTitle.textContent = filtered ? 'No actions match these filters' : 'No actions yet';
                 elements.emptyMessage.textContent = filtered
                     ? 'Clear or change a filter to see more actions.'
-                    : 'Add an action manually or capture action items during a meeting.';
+                    : 'Add an action manually or create improvement actions from an Interview Review.';
             }
             return;
         }
@@ -590,7 +590,7 @@
         taskMeta.className = 'action-task-meta';
         const sourceChip = document.createElement('span');
         sourceChip.className = 'action-source-chip';
-        sourceChip.textContent = action.source === 'meeting' ? 'AI meeting action' : 'Manual action';
+        sourceChip.textContent = action.source === 'meeting' ? 'Interview coaching action' : 'Manual action';
         taskMeta.appendChild(sourceChip);
         if (action.status === 'blocked') {
             const blockedChip = document.createElement('span');
@@ -604,8 +604,8 @@
         if (action.meeting_id) {
             const link = document.createElement('a');
             link.className = 'action-meeting-link';
-            link.href = `${appUrl('/meeting-review.html')}?meeting=${encodeURIComponent(action.meeting_id)}`;
-            link.textContent = action.meeting_name || 'Open meeting';
+            link.href = `${appUrl('/interview-review')}?meeting=${encodeURIComponent(action.meeting_id)}`;
+            link.textContent = action.meeting_name || 'Open mock interview';
             meetingCell.appendChild(link);
             if (action.meeting_date) {
                 const date = document.createElement('span');
@@ -616,7 +616,7 @@
         } else {
             const noMeeting = document.createElement('span');
             noMeeting.className = 'action-date-empty';
-            noMeeting.textContent = 'No linked meeting';
+            noMeeting.textContent = 'No linked application';
             meetingCell.appendChild(noMeeting);
         }
 
@@ -912,7 +912,7 @@
     }
 
     function getSelectedMeetingReference(meetingId) {
-        if (!meetingId) return {id: '', name: 'No linked meeting', date: ''};
+        if (!meetingId) return {id: '', name: 'No linked application', date: ''};
         const meetingIndex = state.meetings.findIndex((meeting, index) => getMeetingId(meeting, index) === meetingId);
         if (meetingIndex >= 0) {
             return {
@@ -922,7 +922,7 @@
             };
         }
         const existing = state.actions.find(action => action.meeting_id === meetingId);
-        return {id: meetingId, name: existing?.meeting_name || 'Linked meeting', date: existing?.meeting_date || ''};
+        return {id: meetingId, name: existing?.meeting_name || 'Linked application', date: existing?.meeting_date || ''};
     }
 
     async function createAction(changes) {
@@ -999,7 +999,7 @@
     async function deleteAction(action) {
         const confirmed = await window.AppUI.confirm({
             title: 'Delete action?',
-            message: `Delete “${action.description}”? This removes it from the Action Center.`,
+            message: `Delete “${action.description}”? This removes it from the Career Action Plan.`,
             confirmLabel: 'Delete action',
             danger: true
         });

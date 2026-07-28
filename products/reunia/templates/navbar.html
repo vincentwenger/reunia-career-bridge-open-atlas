@@ -1,11 +1,11 @@
 {% set home_url = url_for('main.view_index') %}
-{% set career_profile_url = request.script_root ~ '/profile.html' %}
-{% set application_builder_url = home_url %}
-{% set interview_preparation_url = request.script_root ~ '/knowledge.html?view=materials' %}
-{% set mock_interview_url = request.script_root ~ '/meeting-recorder' %}
-{% set interview_review_url = request.script_root ~ '/meeting-review.html' %}
-{% set career_action_plan_url = request.script_root ~ '/action-center.html' %}
-{% set progress_url = request.script_root ~ '/analytics.html' %}
+{% set career_profile_url = request.script_root ~ '/career-profile' %}
+{% set application_builder_url = request.script_root ~ '/application-builder' %}
+{% set interview_preparation_url = request.script_root ~ '/interview-preparation' %}
+{% set mock_interview_url = request.script_root ~ '/mock-interview' %}
+{% set interview_review_url = request.script_root ~ '/interview-review' %}
+{% set career_action_plan_url = request.script_root ~ '/career-action-plan' %}
+{% set progress_url = request.script_root ~ '/progress' %}
 {% set support_url = request.script_root ~ '/help-support.html' %}
 {% set admin_analytics_url = request.script_root ~ '/admin/analytics' %}
 {% set settings_url = request.script_root ~ '/settings.html' %}
@@ -14,13 +14,13 @@
 {% set logout_url = request.script_root ~ '/logout' %}
 {% set current_path = request.path.rstrip('/') %}
 
-{% set career_profile_active = current_path.endswith('/profile.html') %}
-{% set application_builder_active = current_path.endswith('/app') or current_path.endswith('/index.html') %}
-{% set interview_preparation_active = current_path.endswith('/knowledge.html') %}
-{% set mock_interview_active = current_path.endswith('/meeting-recorder') or current_path.endswith('/meeting-recorder.html') or current_path.endswith('/live-qa.html') %}
-{% set interview_review_active = current_path.endswith('/meeting-review.html') %}
-{% set career_action_plan_active = current_path.endswith('/action-center.html') %}
-{% set progress_active = current_path.endswith('/analytics.html') and not current_path.startswith('/admin') %}
+{% set career_profile_active = current_path.endswith('/career-profile') or (current_path.endswith('/knowledge.html') and request.args.get('view') == 'context') %}
+{% set application_builder_active = current_path.endswith('/application-builder') or current_path.endswith('/application-workspace') or (current_path.endswith('/knowledge.html') and request.args.get('view') == 'materials') %}
+{% set interview_preparation_active = current_path.endswith('/interview-preparation') or current_path.endswith('/career-evidence-library') or (current_path.endswith('/knowledge.html') and request.args.get('view') in ['library', 'search']) %}
+{% set mock_interview_active = current_path.endswith('/mock-interview') or current_path.endswith('/meeting-recorder') or current_path.endswith('/meeting-recorder.html') %}
+{% set interview_review_active = current_path.endswith('/interview-review') or current_path.endswith('/meeting-review.html') %}
+{% set career_action_plan_active = current_path.endswith('/career-action-plan') or current_path.endswith('/action-center.html') %}
+{% set progress_active = (current_path.endswith('/progress') or current_path.endswith('/analytics.html')) and not current_path.startswith('/admin') %}
 {% set support_active = current_path.endswith('/help-support.html') %}
 {% set administration_active = current_path.endswith('/admin/analytics') %}
 

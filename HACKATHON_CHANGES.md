@@ -111,3 +111,16 @@ Future commits should append adapter-level changes here, including the exact leg
 - No meeting, resume, action, or analytics database object was renamed.
 - No Resume Taylor Flask routes were mounted into Réunia.
 - No administrator authorization rule was weakened.
+
+## 2026-07-28 — Réunia feature repurposing
+
+- Added the canonical legacy-to-Career Bridge feature map in `career_bridge/presentation/feature_mapping.py`.
+- Added clean career-facing pages and preferred `/api/career/*` adapter aliases while retaining imported routes for migration compatibility.
+- Repurposed Meeting Preparation into Interview Preparation centered on the company, target role, interviewers, likely questions, and verified evidence.
+- Repurposed Meeting Materials, AI Context, Knowledge Search, and Meeting Package into Application Materials, Career Profile, Career Evidence Library, and one Application Workspace per target position.
+- Repurposed the browser recorder and review workflow into mock-interview practice, transcription, Interview Review, and an Interview Scorecard covering relevance, evidence, structure, clarity, and delivery.
+- Repurposed Action Center and Analytics into Career Action Plan and Career Progress.
+- Removed Windows Desktop Recorder entry points from the MVP; its download and ingestion compatibility endpoints now return HTTP 410.
+- Removed candidate-facing Live Q&A and disabled its legacy stream endpoints with HTTP 410 responses, keeping the product practice-only.
+- Kept Admin Analytics and Incidents unchanged, separate, and administrator-only.
+- Preserved legacy storage keys, route aliases, and meeting-shaped persistence fields behind the adapter boundary so existing data remains readable.

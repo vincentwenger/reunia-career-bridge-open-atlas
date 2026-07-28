@@ -12,7 +12,7 @@
 
     {{ page_hero(
         'Settings',
-        'Manage your AI experience, live assistance, meeting follow-up, privacy, and sharing defaults.'
+        'Manage AI preferences, interview review, career follow-up, privacy, and sharing defaults.'
     ) }}
 
     <div class="settings-layout">
@@ -27,8 +27,7 @@
                 <span class="settings-mobile-label">Settings category <span class="settings-mobile-dirty" hidden>· Unsaved changes</span></span>
                 <select id="settings-category-select" class="form-control">
                     <option value="global-settings">General &amp; AI</option>
-                    <option value="live-qa-settings">Live meeting assistance</option>
-                    <option value="meeting-review-settings">Review &amp; follow-up</option>
+                    <option value="meeting-review-settings">Interview review &amp; action plan</option>
                     <option value="privacy-sharing-settings">Privacy &amp; sharing</option>
                 </select>
             </label>
@@ -52,22 +51,6 @@
 
                 <button
                     type="button"
-                    class="scope-card live-qa"
-                    data-settings-target="live-qa-settings"
-                    aria-controls="live-qa-settings"
-                    aria-pressed="false"
-                >
-                    <span class="scope-card-icon" aria-hidden="true">💬</span>
-                    <span class="scope-card-copy">
-                        <span class="scope-card-title">Live meeting assistance</span>
-                        <span class="scope-card-description">Live Q&amp;A behavior and automation</span>
-                    </span>
-                    <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
-                    <span class="scope-arrow" aria-hidden="true">›</span>
-                </button>
-
-                <button
-                    type="button"
                     class="scope-card meeting-review"
                     data-settings-target="meeting-review-settings"
                     aria-controls="meeting-review-settings"
@@ -75,8 +58,8 @@
                 >
                     <span class="scope-card-icon" aria-hidden="true">📊</span>
                     <span class="scope-card-copy">
-                        <span class="scope-card-title">Review &amp; follow-up</span>
-                        <span class="scope-card-description">Summaries, tasks, and scorecards</span>
+                        <span class="scope-card-title">Interview review &amp; action plan</span>
+                        <span class="scope-card-description">Coaching, action items, and scorecards</span>
                     </span>
                     <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
                     <span class="scope-arrow" aria-hidden="true">›</span>
@@ -100,7 +83,7 @@
             </nav>
 
             <div class="scope-note">
-                Changes affect future activity unless a setting says otherwise. Existing meetings and links stay unchanged.
+                Changes affect future activity unless a setting says otherwise. Existing mock-interview reviews and links stay unchanged.
             </div>
         </aside>
 
@@ -123,8 +106,8 @@
                                     <div class="category-eyebrow">Category 1</div>
                                     <h2>Global Settings</h2>
                                     <p>
-                                        These preferences apply throughout Réunia, including Live Q&amp;A,
-                                        transcript processing, and meeting analysis where applicable.
+                                        These preferences apply throughout Réunia, including Career Profile,
+                                        evidence search, mock-interview transcription, and interview analysis.
                                     </p>
                                 </div>
                             </div>
@@ -184,160 +167,10 @@
                                             </select>
 
                                             <span class="form-help">
-                                                Used by Live Q&amp;A and other AI features unless a feature-specific model is configured. The server-side cost policy can restrict higher-cost presets.
+                                                Used by Career Profile, Career Evidence Library, interview preparation, and review unless a feature-specific model is configured. The server-side cost policy can restrict higher-cost presets.
                                             </span>
                                         </div>
 
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="category-section" id="live-qa-settings" hidden>
-                        <div class="category-header live-qa">
-                            <div class="category-heading">
-                                <div class="category-icon">💬</div>
-                                <div>
-                                    <div class="category-eyebrow">Category 2</div>
-                                    <h2>Live Q&amp;A Settings</h2>
-                                    <p>
-                                        The settings in this category affect only Live Questions &amp; Answers.
-                                        Audio and clipboard prompts are generated automatically from Meeting Preparation → AI Context. These settings control automation, answer updates, and retention.
-                                    </p>
-                                </div>
-                            </div>
-                            <span class="scope-badge">Live Q&amp;A only</span>
-                        </div>
-
-                        <div class="category-body">
-                            <div class="subsection">
-                                <div class="subsection-heading">
-                                    <div class="subsection-number">1</div>
-                                    <div>
-                                        <h3>Automation, Updates &amp; Retention <span class="field-scope">LIVE Q&amp;A ONLY</span></h3>
-                                        <p>Control which local sources generate answers, how frequently partial answers refresh, and how long history remains visible.</p>
-                                    </div>
-                                </div>
-
-                                <div class="settings-box highlight-box">
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label class="form-label" for="retentionHours">Message Expiration</label>
-
-                                            <input
-                                                type="number"
-                                                id="retentionHours"
-                                                name="retentionHours"
-                                                class="form-control"
-                                                min="1"
-                                                max="24"
-                                                step="1"
-                                                value="{{ settings.retentionHours if settings and settings.retentionHours else '1' }}"
-                                            >
-
-                                            <span class="form-help">
-                                                Number of hours streamed Live Q&amp;A history remains visible.
-                                            </span>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="form-label" for="liveQaAnswerUpdateFrequency">Live answer update frequency</label>
-
-                                            <select
-                                                id="liveQaAnswerUpdateFrequency"
-                                                name="liveQaAnswerUpdateFrequency"
-                                                class="form-control"
-                                            >
-                                                <option value="fast" {% if settings and settings.liveQaAnswerUpdateFrequency == 'fast' %}selected{% endif %}>
-                                                    Faster updates — about every 1 second
-                                                </option>
-                                                <option value="balanced" {% if settings and settings.liveQaAnswerUpdateFrequency == 'balanced' %}selected{% endif %}>
-                                                    Balanced — about every 2 seconds (recommended)
-                                                </option>
-                                                <option value="efficient" {% if not settings or settings.liveQaAnswerUpdateFrequency == 'efficient' %}selected{% endif %}>
-                                                    Lower resource usage — about every 5 seconds
-                                                </option>
-                                            </select>
-
-                                            <span class="form-help">
-                                                Controls how often partial AI answers appear in the Real-Time Meeting Feed. Faster updates may use more system resources, but do not make the AI model generate answers faster.
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div class="automation-settings">
-                                        <h3 class="section-title automation-settings-title">
-                                            ⚡ Automatic AI Triggers
-                                        </h3>
-
-                                        <p class="section-description">
-                                            Select which sources should automatically generate answers in Live Q&amp;A.
-                                        </p>
-
-                                        <div class="source-toggle-list">
-
-                                            <label class="source-toggle" for="aiClipboard">
-                                                <div class="source-text">
-                                                    <div class="source-icon">📋</div>
-                                                    <div>
-                                                        <span class="source-title">Clipboard</span>
-                                                        <span class="source-description">
-                                                            Generate a Live Q&amp;A answer when clipboard text is captured.
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <input
-                                                    type="checkbox"
-                                                    id="aiClipboard"
-                                                    name="aiClipboard"
-                                                    {% if settings and (settings.aiClipboard or settings.autoAskClipboard) %}checked{% endif %}
-                                                >
-                                                <span class="switch"></span>
-                                            </label>
-
-                                            <label class="source-toggle" for="aiSpeaker">
-                                                <div class="source-text">
-                                                    <div class="source-icon">🔊</div>
-                                                    <div>
-                                                        <span class="source-title">Speaker Output</span>
-                                                        <span class="source-description">
-                                                            Generate a Live Q&amp;A answer for incoming speaker audio.
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <input
-                                                    type="checkbox"
-                                                    id="aiSpeaker"
-                                                    name="aiSpeaker"
-                                                    {% if settings and (settings.aiSpeaker or settings.autoAskSpeaker) %}checked{% endif %}
-                                                >
-                                                <span class="switch"></span>
-                                            </label>
-
-                                            <label class="source-toggle" for="aiMicrophone">
-                                                <div class="source-text">
-                                                    <div class="source-icon">🎙</div>
-                                                    <div>
-                                                        <span class="source-title">Microphone Input</span>
-                                                        <span class="source-description">
-                                                            Generate a Live Q&amp;A answer for microphone speech.
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                <input
-                                                    type="checkbox"
-                                                    id="aiMicrophone"
-                                                    name="aiMicrophone"
-                                                    {% if settings and (settings.aiMicrophone or settings.autoAskMicrophone) %}checked{% endif %}
-                                                >
-                                                <span class="switch"></span>
-                                            </label>
-
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -349,15 +182,15 @@
                             <div class="category-heading">
                                 <div class="category-icon">📊</div>
                                 <div>
-                                    <div class="category-eyebrow">Category 3</div>
-                                    <h2>Meeting Review Settings</h2>
+                                    <div class="category-eyebrow">Category 2</div>
+                                    <h2>Interview Review Settings</h2>
                                     <p>
-                                        These settings affect only the Scorecard tab on the Meeting Review page.
+                                        These settings affect only the Scorecard tab on the Interview Review page.
                                         Choose which recorded audio source or sources should be evaluated.
                                     </p>
                                 </div>
                             </div>
-                            <span class="scope-badge">Meeting Review only</span>
+                            <span class="scope-badge">Interview Review only</span>
                         </div>
 
                         <div class="category-body">
@@ -365,8 +198,8 @@
                                 <div class="subsection-heading">
                                     <div class="subsection-number">1</div>
                                     <div>
-                                        <h3>Review Generation <span class="field-scope">MEETING REVIEW ONLY</span></h3>
-                                        <p>Choose the level of detail and which structured results are generated after transcription.</p>
+                                        <h3>Review Generation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
+                                        <p>Choose the level of detail and which structured coaching results are generated after mock-interview transcription.</p>
                                     </div>
                                 </div>
 
@@ -387,7 +220,7 @@
                                             <label class="source-toggle" for="meetingExtractActionItems">
                                                 <div class="source-text">
                                                     <div class="source-icon" aria-hidden="true">📝</div>
-                                                    <div><span class="source-title">Extract action items</span><span class="source-description">Add detected follow-up tasks to Meeting Review and Action Center.</span></div>
+                                                    <div><span class="source-title">Extract action items</span><span class="source-description">Add detected improvement tasks to Interview Review and Career Action Plan.</span></div>
                                                 </div>
                                                 <input type="checkbox" id="meetingExtractActionItems" name="meetingExtractActionItems" {% if not settings or settings.meetingExtractActionItems %}checked{% endif %}>
                                                 <span class="switch"></span>
@@ -395,7 +228,7 @@
                                             <label class="source-toggle" for="meetingGenerateScorecard">
                                                 <div class="source-text">
                                                     <div class="source-icon">📈</div>
-                                    <div><span class="source-title">Generate scorecard</span><span class="source-description">Evaluate newly processed meetings for answer content and speaking form. Turning this off skips the scorecard AI request.</span></div>
+                                    <div><span class="source-title">Generate scorecard</span><span class="source-description">Evaluate newly processed mock interviews for answer relevance, evidence, structure, clarity, and delivery. Turning this off skips the scorecard AI request.</span></div>
                                                 </div>
                                                 <input type="checkbox" id="meetingGenerateScorecard" name="meetingGenerateScorecard" {% if not settings or settings.meetingGenerateScorecard %}checked{% endif %}>
                                                 <span class="switch"></span>
@@ -409,7 +242,7 @@
                                 <div class="subsection-heading">
                                     <div class="subsection-number">2</div>
                                     <div>
-                                        <h3>Scorecard Evaluation <span class="field-scope">MEETING REVIEW ONLY</span></h3>
+                                        <h3>Scorecard Evaluation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
                                         <p>Select the audio source containing the answers that the scorecard should evaluate.</p>
                                     </div>
                                 </div>
@@ -433,7 +266,7 @@
                                                         <span class="scorecard-source-copy">
                                                             <span class="scorecard-source-title">All Audio Sources</span>
                                                             <span class="scorecard-source-description">
-                                                                Evaluate microphone and speaker audio, using either or both when available.
+                                                                Evaluate candidate and interviewer-prompt audio, using either or both when available.
                                                             </span>
                                                         </span>
                                                     </span>
@@ -493,7 +326,7 @@
                             <div class="category-heading">
                                 <div class="category-icon">🔒</div>
                                 <div>
-                                    <div class="category-eyebrow">Category 4</div>
+                                    <div class="category-eyebrow">Category 3</div>
                                     <h2>Data &amp; Privacy</h2>
                                     <p>Automatically remove newly saved content after the selected period.</p>
                                 </div>
@@ -504,12 +337,12 @@
                             <div class="subsection">
                                 <div class="subsection-heading">
                                     <div class="subsection-number">1</div>
-                                    <div><h3>Retention periods</h3><p>Expired records are removed when meeting history or the document library is accessed.</p></div>
+                                    <div><h3>Retention periods</h3><p>Expired records are removed when Interview Review or the Career Evidence Library is accessed.</p></div>
                                 </div>
                                 <div class="settings-box highlight-box">
                                     <div class="form-grid">
                                         <div class="form-group retention-control" data-retention-control>
-                                            <label class="form-label" for="meetingRetentionDays">Saved meetings</label>
+                                            <label class="form-label" for="meetingRetentionDays">Saved mock interviews</label>
                                             <select id="meetingRetentionDays" name="meetingRetentionDays" class="form-control">
                                                 <option value="0" {% if settings and settings.meetingRetentionDays == 0 %}selected{% endif %}>Keep until I delete them</option>
                                                 <option value="7" {% if not settings or settings.meetingRetentionDays == 7 %}selected{% endif %}>Delete after 7 days</option>
@@ -517,8 +350,8 @@
                                                 <option value="90" {% if settings and settings.meetingRetentionDays == 90 %}selected{% endif %}>Delete after 90 days</option>
                                                 <option value="365" {% if settings and settings.meetingRetentionDays == 365 %}selected{% endif %}>Delete after 1 year</option>
                                             </select>
-                                            <span class="form-help">Applies only to newly saved meetings, including their transcripts and analysis.</span>
-                                            <span class="retention-warning" data-retention-warning hidden>Automatic deletion is enabled for newly saved meetings.</span>
+                                            <span class="form-help">Applies only to newly saved mock interviews, including their transcripts and coaching analysis.</span>
+                                            <span class="retention-warning" data-retention-warning hidden>Automatic deletion is enabled for newly saved mock interviews.</span>
                                         </div>
                                         <div class="form-group retention-control" data-retention-control>
                                             <label class="form-label" for="documentRetentionDays">Uploaded documents</label>
@@ -545,7 +378,7 @@
                                 <div>
                                     <div class="category-eyebrow">Category 5</div>
                                     <h2>Sharing Defaults</h2>
-                                    <p>These values prefill and secure new public meeting links.</p>
+                                    <p>These values prefill and secure new public Interview Review links.</p>
                                 </div>
                             </div>
                             <span class="scope-badge">New links only</span>

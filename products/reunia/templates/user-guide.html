@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% from 'macros/ui.html' import page_hero %}
 
-{% block title %}User Guide - Réunia{% endblock %}
+{% block title %}User Guide - Réunia Career Bridge{% endblock %}
 
-{% block meta_description %}Learn how to prepare, record, review, share, and follow up on meetings with Réunia.{% endblock %}
+{% block meta_description %}Learn how to build job applications, prepare evidence, practice mock interviews, review coaching, and track progress with Réunia Career Bridge.{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/user-guide.css') }}">
@@ -13,19 +13,19 @@
 <div class="app-page guide-page" id="userGuidePage">
     {{ page_hero(
         'User Guide',
-        'A practical guide to preparing, recording, reviewing, and following up on meetings.'
+        'A practical guide to building applications, preparing interviews, practicing answers, and improving over time.'
     ) }}
 
     <main class="guide-main" aria-labelledby="guide-quick-start-title">
-        <section class="guide-welcome" aria-label="Start a meeting">
+        <section class="guide-welcome" aria-label="Start a job application">
             <div class="guide-welcome-icon" aria-hidden="true">▶</div>
             <div>
-                <span class="guide-eyebrow">First meeting</span>
-                <h2>Start with the Browser Meeting Recorder.</h2>
-                <p>Preparation is optional. Open the recorder, allow microphone access, and select <strong>Start recording</strong>.</p>
+                <span class="guide-eyebrow">First application</span>
+                <h2>Start with an Application Workspace.</h2>
+                <p>Add the target job, resume, and the materials you already have. You can refine the workspace as the application progresses.</p>
             </div>
             {% if session.get('user_id') %}
-            <a class="guide-button guide-button-primary" href="{{ request.script_root }}/meeting-recorder">Start a recording <span aria-hidden="true">→</span></a>
+            <a class="guide-button guide-button-primary" href="{{ request.script_root }}/application-builder">Build an application <span aria-hidden="true">→</span></a>
             {% else %}
             <a class="guide-button guide-button-primary" href="{{ request.script_root }}/login.html">Sign in to start <span aria-hidden="true">→</span></a>
             {% endif %}
@@ -34,11 +34,11 @@
         <section class="guide-search-card" aria-labelledby="guide-search-title">
             <div>
                 <h2 id="guide-search-title">Find help quickly</h2>
-                <p>Search for a page, feature, or problem.</p>
+                <p>Search for a workspace, feature, or problem.</p>
             </div>
             <label class="guide-search" for="guideSearch">
                 <span aria-hidden="true">⌕</span>
-                <input id="guideSearch" type="search" placeholder="Try “share”, “scorecard”, or “missing meeting”" autocomplete="off">
+                <input id="guideSearch" type="search" placeholder="Try “application”, “scorecard”, or “recording”" autocomplete="off">
                 <button id="clearGuideSearch" type="button" hidden>Clear</button>
             </label>
             <p class="guide-search-status" id="guideSearchStatus" role="status" aria-live="polite"></p>
@@ -50,9 +50,9 @@
                     <span class="guide-sidebar-label">On this page</span>
                     <nav id="guideSectionNav">
                         <a class="is-active" href="#quick-start">Quick start</a>
-                        <a href="#preparation">Meeting Preparation</a>
-                        <a href="#live-meeting">Live Meeting</a>
-                        <a href="#review-follow-up">Review &amp; Follow-Up</a>
+                        <a href="#profile-application">Profile &amp; application</a>
+                        <a href="#prepare-practice">Prepare &amp; practice</a>
+                        <a href="#review-improve">Review &amp; improve</a>
                         <a href="#settings-account">Settings &amp; account</a>
                         <a href="#troubleshooting">Common problems</a>
                     </nav>
@@ -62,259 +62,146 @@
             <div class="guide-content">
                 <section class="guide-section" id="quick-start" data-guide-section aria-labelledby="guide-quick-start-title">
                     <header class="guide-section-heading">
-                        <span class="guide-eyebrow">The basic workflow</span>
-                        <h2 id="guide-quick-start-title">Use the app in three simple steps</h2>
-                        <p>The navigation follows the same before, during, and after-meeting workflow.</p>
+                        <span class="guide-eyebrow">The connected workflow</span>
+                        <h2 id="guide-quick-start-title">Use Career Bridge in three stages</h2>
+                        <p>The job application is the central workspace. Preparation, practice, review, and follow-up all remain connected to it.</p>
                     </header>
 
                     <div class="guide-steps">
-                        <article class="guide-step guide-step-optional" data-guide-search-item>
-                            <div class="guide-step-topline">
-                                <span class="guide-step-number">1</span>
-                                <span class="guide-label">Optional</span>
-                            </div>
-                            <span class="guide-step-stage">Before the meeting</span>
-                            <h3>Prepare</h3>
-                            <p>Create a meeting package with relevant files and AI guidance when you want more informed live answers and analysis.</p>
-                            <a class="guide-text-link" href="{{ request.script_root }}/knowledge.html?view=materials">Open Meeting Materials →</a>
-                        </article>
-
-                        <div class="guide-step-arrow" aria-hidden="true">→</div>
-
                         <article class="guide-step guide-step-important" data-guide-search-item>
-                            <div class="guide-step-topline">
-                                <span class="guide-step-number">2</span>
-                                <span class="guide-label guide-label-primary">Start here</span>
-                            </div>
-                            <span class="guide-step-stage">During the meeting</span>
-                            <h3>Record</h3>
-                            <p>Use the Browser Meeting Recorder. Link a prepared meeting when relevant, then record your microphone and optional shared audio.</p>
-                            <a class="guide-button guide-button-primary guide-button-full" href="{{ request.script_root }}/meeting-recorder">Open Browser Recorder</a>
+                            <div class="guide-step-topline"><span class="guide-step-number">1</span><span class="guide-label guide-label-primary">Start here</span></div>
+                            <span class="guide-step-stage">Build the application</span>
+                            <h3>Connect the target role</h3>
+                            <p>Create an Application Workspace with the job posting, resume, company notes, recruiter messages, and selected career evidence.</p>
+                            <a class="guide-text-link" href="{{ request.script_root }}/application-builder">Open Application Builder →</a>
                         </article>
 
                         <div class="guide-step-arrow" aria-hidden="true">→</div>
 
                         <article class="guide-step" data-guide-search-item>
-                            <div class="guide-step-topline">
-                                <span class="guide-step-number">3</span>
-                                <span class="guide-label">After the meeting</span>
-                            </div>
-                            <span class="guide-step-stage">Review and follow up</span>
-                            <h3>Understand &amp; act</h3>
-                            <p>Review the summary, scorecard, transcript, and AI answers. Then share results and manage follow-up actions.</p>
-                            <a class="guide-text-link" href="{{ request.script_root }}/meeting-review.html">Open Meeting Review →</a>
+                            <div class="guide-step-topline"><span class="guide-step-number">2</span><span class="guide-label">Prepare</span></div>
+                            <span class="guide-step-stage">Before the interview</span>
+                            <h3>Plan and practice answers</h3>
+                            <p>Use verified evidence to prepare likely questions, then record a browser-based mock interview.</p>
+                            <a class="guide-text-link" href="{{ request.script_root }}/interview-preparation">Open Interview Preparation →</a>
+                        </article>
+
+                        <div class="guide-step-arrow" aria-hidden="true">→</div>
+
+                        <article class="guide-step" data-guide-search-item>
+                            <div class="guide-step-topline"><span class="guide-step-number">3</span><span class="guide-label">Improve</span></div>
+                            <span class="guide-step-stage">After practice</span>
+                            <h3>Review and act</h3>
+                            <p>Review the transcript and Interview Scorecard, create improvement actions, and monitor progress across applications.</p>
+                            <a class="guide-text-link" href="{{ request.script_root }}/interview-review">Open Interview Review →</a>
                         </article>
                     </div>
                 </section>
 
-                <section class="guide-section" id="preparation" data-guide-section aria-labelledby="preparation-title">
+                <section class="guide-section" id="profile-application" data-guide-section aria-labelledby="profile-application-title">
                     <header class="guide-section-heading">
-                        <span class="guide-eyebrow">Before the meeting · Optional</span>
-                        <h2 id="preparation-title">Meeting Preparation</h2>
-                        <p>Use only the preparation tools that help with your meeting. You can record without completing this section.</p>
+                        <span class="guide-eyebrow">Reusable context plus target-role context</span>
+                        <h2 id="profile-application-title">Career Profile &amp; Application Builder</h2>
+                        <p>Keep reusable candidate information separate from application-specific materials.</p>
                     </header>
 
                     <div class="guide-feature-grid guide-feature-grid-two">
                         <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">▦</div>
-                            <div>
-                                <h3>Document Library</h3>
-                                <p>Upload reusable PDF, Word, Excel, text, or Markdown files. Organize them into collections, then reuse them in future meetings.</p>
-                                <a href="{{ request.script_root }}/knowledge.html?view=library">Open Document Library →</a>
-                            </div>
+                            <div class="guide-feature-icon" aria-hidden="true">👤</div>
+                            <div><h3>Career Profile</h3><p>Store professional background, accomplishments, preferences, constraints, and reusable answer guidance.</p><a href="{{ request.script_root }}/career-profile">Open Career Profile →</a></div>
                         </article>
-
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">◫</div>
-                            <div>
-                                <h3>Meeting Materials</h3>
-                                <p>Create an upcoming meeting package. Select permanent library files or add temporary files that apply only to that meeting.</p>
-                                <a href="{{ request.script_root }}/knowledge.html?view=materials">Prepare meeting materials →</a>
-                            </div>
+                            <div><h3>Application Workspace</h3><p>Create one workspace for each target position so resume work, interview preparation, practice, and follow-up do not become mixed.</p><a href="{{ request.script_root }}/application-builder">Open Application Builder →</a></div>
                         </article>
-
                         <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">✦</div>
-                            <div>
-                                <h3>AI Context</h3>
-                                <p>Add reusable details such as your company, role, objective, and preferred response style. Add separate instructions for one upcoming meeting when needed.</p>
-                                <a href="{{ request.script_root }}/knowledge.html?view=context">Configure AI Context →</a>
-                            </div>
+                            <div class="guide-feature-icon" aria-hidden="true">📄</div>
+                            <div><h3>Application Materials</h3><p>Store the source resume, target job description, company notes, recruiter messages, and application-only files.</p><a href="{{ request.script_root }}/application-builder">Manage Application Materials →</a></div>
                         </article>
-
                         <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">⌕</div>
-                            <div>
-                                <h3>Knowledge Search</h3>
-                                <p>Ask AI across current meeting materials, your document library, previous meetings, or all knowledge. Use filters to narrow the sources.</p>
-                                <a href="{{ request.script_root }}/knowledge.html?view=search">Open Knowledge Search →</a>
-                            </div>
+                            <div class="guide-feature-icon" aria-hidden="true">▦</div>
+                            <div><h3>Career Evidence Library</h3><p>Upload verified projects, achievements, metrics, work samples, and experience that can support multiple applications.</p><a href="{{ request.script_root }}/career-evidence-library">Open Career Evidence Library →</a></div>
                         </article>
                     </div>
 
                     <details class="guide-detail" data-guide-search-item>
-                        <summary>How to prepare one upcoming meeting</summary>
+                        <summary>How to build one application workspace</summary>
                         <ol>
-                            <li>Open <strong>Meeting Materials</strong> and create or select the upcoming meeting.</li>
-                            <li>Select reusable files from the Document Library and add temporary files when needed.</li>
-                            <li>Save the meeting materials.</li>
-                            <li>Open <strong>AI Context</strong> to add optional meeting-specific objectives or instructions.</li>
-                            <li>In the Browser Recorder, choose the prepared meeting before starting.</li>
+                            <li>Open <strong>Application Builder</strong> and create the target position.</li>
+                            <li>Add the job posting, source resume, company notes, and recruiter messages.</li>
+                            <li>Select verified examples from the <strong>Career Evidence Library</strong>.</li>
+                            <li>Add application-specific objectives or constraints in <strong>Career Profile</strong>.</li>
+                            <li>Save the workspace before starting interview preparation.</li>
                         </ol>
                     </details>
                 </section>
 
-                <section class="guide-section" id="live-meeting" data-guide-section aria-labelledby="live-meeting-title">
+                <section class="guide-section" id="prepare-practice" data-guide-section aria-labelledby="prepare-practice-title">
                     <header class="guide-section-heading">
-                        <span class="guide-eyebrow">During the meeting</span>
-                        <h2 id="live-meeting-title">Live Meeting</h2>
-                        <p>Record the conversation and use Live Q&amp;A when you need help during the meeting.</p>
+                        <span class="guide-eyebrow">Application-specific preparation</span>
+                        <h2 id="prepare-practice-title">Interview Preparation &amp; Mock Interview</h2>
+                        <p>Use AI to organize evidence and practice—not to provide hidden answers during a real employer interview.</p>
                     </header>
 
-                    <article class="guide-process" data-guide-search-item>
-                        <div class="guide-process-heading">
-                            <div class="guide-feature-icon" aria-hidden="true">●</div>
-                            <div>
-                                <h3>Browser Meeting Recorder</h3>
-                                <p>The recommended way to capture a meeting from your browser.</p>
-                            </div>
-                        </div>
-                        <ol class="guide-numbered-list">
-                            <li><span>1</span><div><strong>Open the meeting first.</strong><small>Join the meeting in its browser tab or desktop application before starting the recorder.</small></div></li>
-                            <li><span>2</span><div><strong>Select a prepared meeting when applicable.</strong><small>This links its saved materials and context to the recording. You can also choose not to link one.</small></div></li>
-                            <li><span>3</span><div><strong>Choose your audio.</strong><small>Your microphone is recorded. Turn on <em>Capture shared meeting audio</em> only when you also need the other participants.</small></div></li>
-                            <li><span>4</span><div><strong>Select Start recording.</strong><small>Allow microphone or screen-sharing permissions when the browser asks.</small></div></li>
-                            <li><span>5</span><div><strong>Keep the recorder page open.</strong><small>You can return to the meeting tab, but do not close or refresh the recorder page.</small></div></li>
-                            <li><span>6</span><div><strong>Save or discard.</strong><small>Select <em>Stop &amp; Process</em> to create the meeting review, or <em>Discard Recording</em> to delete the recording.</small></div></li>
-                        </ol>
-                    </article>
-
                     <div class="guide-feature-grid guide-feature-grid-two">
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">💬</div>
-                            <div>
-                                <h3>Live Q&amp;A</h3>
-                                <p>Follow the Real-Time Meeting Feed and view AI answers generated from enabled microphone, speaker, or clipboard sources. A fullscreen view is available.</p>
-                                <a href="{{ request.script_root }}/live-qa.html">Open Live Q&amp;A →</a>
-                            </div>
-                        </article>
-
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">⚙</div>
-                            <div>
-                                <h3>Control automatic answers</h3>
-                                <p>In Settings, choose which live sources automatically create AI answers and how often partial responses are updated.</p>
-                                <a href="{{ request.script_root }}/settings.html">Open Live Q&amp;A Settings →</a>
-                            </div>
-                        </article>
-                    </div>
-
-                    <aside class="guide-note" data-guide-search-item>
-                        <strong>Need advanced desktop capture?</strong>
-                        <span>The optional Windows Desktop Recorder may be offered on the Home page when it is available. It supports configurable recording parameters and clipboard capture.</span>
-                    </aside>
-                </section>
-
-                <section class="guide-section" id="review-follow-up" data-guide-section aria-labelledby="review-follow-up-title">
-                    <header class="guide-section-heading">
-                        <span class="guide-eyebrow">After the meeting</span>
-                        <h2 id="review-follow-up-title">Review &amp; Follow-Up</h2>
-                        <p>Understand what happened, share selected results, and keep commitments moving.</p>
-                    </header>
-
-                    <article class="guide-feature guide-feature-wide" data-guide-search-item>
-                        <div class="guide-feature-icon" aria-hidden="true">▤</div>
-                        <div>
-                            <h3>Meeting Review</h3>
-                            <p>Select a saved meeting, then move between its main views:</p>
-                            <div class="guide-chip-list" aria-label="Meeting Review tabs">
-                                <span><strong>Summary</strong> key wins, improvements, actions, and open questions</span>
-                                <span><strong>Scorecard</strong> overall, content, form, and answer-level evaluation</span>
-                                <span><strong>Transcript</strong> the captured conversation</span>
-                                <span><strong>Ask about this meeting</strong> decisions, unresolved actions, and other questions</span>
-                            </div>
-                            <a href="{{ request.script_root }}/meeting-review.html">Open Meeting Review →</a>
-                        </div>
-                    </article>
-
-                    <div class="guide-feature-grid guide-feature-grid-two">
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">↗</div>
-                            <div>
-                                <h3>Share a meeting</h3>
-                                <p>Create a read-only link containing the summary and optional scorecard or transcript. Set an expiration, optional password, and download permission. Existing links can be refreshed, extended, or revoked.</p>
-                            </div>
-                        </article>
-
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">☑</div>
-                            <div>
-                                <h3>Action Center</h3>
-                                <p>See actions across meetings, add your own, assign owners, set due dates and priorities, update status, and switch between Open, My actions, All, and Closed views.</p>
-                                <a href="{{ request.script_root }}/action-center.html">Open Action Center →</a>
-                            </div>
-                        </article>
-
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">📊</div>
-                            <div>
-                                <h3>Analytics</h3>
-                                <p>Review score trends, score distribution, speaking averages, frequently asked questions, common topics, recurring improvement areas, and recent meeting performance.</p>
-                                <a href="{{ request.script_root }}/analytics.html">Open Analytics →</a>
-                            </div>
-                        </article>
-
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">⌕</div>
-                            <div>
-                                <h3>Ask one meeting or search everything</h3>
-                                <p>Use <strong>Ask about this meeting</strong> for a focused question. Enable related knowledge when useful, or open Knowledge Search to compare documents and multiple meetings.</p>
-                            </div>
+                            <div><h3>Interview Preparation</h3><p>Research the company and role, identify likely questions, and retrieve verified evidence for concise answer planning.</p><a href="{{ request.script_root }}/interview-preparation">Open Interview Preparation →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">●</div>
+                            <div><h3>Mock Interview Recorder</h3><p>Record your microphone and optional interviewer prompt audio in the browser, then process the session for transcription and coaching.</p><a href="{{ request.script_root }}/mock-interview">Open Mock Interview →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">🔒</div>
+                            <div><h3>Practice boundary</h3><p>Candidate-facing Live Q&amp;A is retired. Réunia does not secretly generate answers during real employer interviews.</p></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">🌐</div>
+                            <div><h3>Browser-only MVP</h3><p>The Windows Desktop Recorder is excluded from the Career Bridge MVP. The supported recording path is the browser Mock Interview Recorder.</p></div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="guide-section" id="review-improve" data-guide-section aria-labelledby="review-improve-title">
+                    <header class="guide-section-heading">
+                        <span class="guide-eyebrow">Turn practice into measurable progress</span>
+                        <h2 id="review-improve-title">Interview Review, Action Plan &amp; Progress</h2>
+                        <p>Review one mock interview in detail, then track improvement across the full application portfolio.</p>
+                    </header>
+
+                    <div class="guide-feature-grid guide-feature-grid-two">
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">📋</div>
+                            <div><h3>Interview Review</h3><p>Review the transcript, answer analysis, strengths, improvement areas, and coaching for one mock interview.</p><a href="{{ request.script_root }}/interview-review">Open Interview Review →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">📈</div>
+                            <div><h3>Interview Scorecard</h3><p>Evaluate answer relevance, supporting evidence, structure, clarity, and delivery.</p></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">☑</div>
+                            <div><h3>Career Action Plan</h3><p>Track resume changes, practice needs, applications, recruiter follow-ups, priorities, due dates, and completion.</p><a href="{{ request.script_root }}/career-action-plan">Open Career Action Plan →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">📊</div>
+                            <div><h3>Career Progress</h3><p>Compare readiness and improvement trends across applications and mock interviews.</p><a href="{{ request.script_root }}/progress">Open Career Progress →</a></div>
                         </article>
                     </div>
                 </section>
 
                 <section class="guide-section" id="settings-account" data-guide-section aria-labelledby="settings-account-title">
                     <header class="guide-section-heading">
-                        <span class="guide-eyebrow">Personalize the app</span>
+                        <span class="guide-eyebrow">Personalize the product</span>
                         <h2 id="settings-account-title">Settings &amp; account</h2>
                         <p>Most users can keep the defaults and change these options only when needed.</p>
                     </header>
 
                     <div class="guide-feature-grid guide-feature-grid-two">
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">🌐</div>
-                            <div>
-                                <h3>Global Settings</h3>
-                                <p>Choose the default AI performance level used by AI-powered features.</p>
-                                <a href="{{ request.script_root }}/settings.html">Open Settings →</a>
-                            </div>
-                        </article>
-
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">💬</div>
-                            <div>
-                                <h3>Live Q&amp;A Settings</h3>
-                                <p>Control retention, answer update frequency, and automatic triggers for clipboard, speaker, and microphone input.</p>
-                            </div>
-                        </article>
-
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">📈</div>
-                            <div>
-                                <h3>Meeting Review Settings</h3>
-                                <p>Choose whether the Scorecard evaluates <strong>Score my answers</strong>, <strong>Score the other participant</strong>, or <strong>All Audio Sources</strong>.</p>
-                            </div>
-                        </article>
-
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">👤</div>
-                            <div>
-                                <h3>Profile and support</h3>
-                                <p>Update your profile from the account menu. Use Help &amp; Support to send a question, problem report, feedback, or optional attachment.</p>
-                                <a href="{{ request.script_root }}/help-support.html">Open Help &amp; Support →</a>
-                            </div>
-                        </article>
+                        <article class="guide-feature" data-guide-search-item><div class="guide-feature-icon" aria-hidden="true">🌐</div><div><h3>General &amp; AI</h3><p>Choose the interface language and default AI performance level.</p><a href="{{ request.script_root }}/settings.html">Open Settings →</a></div></article>
+                        <article class="guide-feature" data-guide-search-item><div class="guide-feature-icon" aria-hidden="true">📈</div><div><h3>Interview Review</h3><p>Choose whether to generate summaries, improvement actions, and scorecards for new mock interviews.</p></div></article>
+                        <article class="guide-feature" data-guide-search-item><div class="guide-feature-icon" aria-hidden="true">🔒</div><div><h3>Privacy &amp; sharing</h3><p>Configure retention and the defaults used when sharing an interview review.</p></div></article>
+                        <article class="guide-feature" data-guide-search-item><div class="guide-feature-icon" aria-hidden="true">✉</div><div><h3>Profile and support</h3><p>Update your account profile from the account menu or contact support with a question or problem report.</p><a href="{{ request.script_root }}/help-support.html">Open Help &amp; Support →</a></div></article>
                     </div>
                 </section>
 
@@ -324,53 +211,22 @@
                         <h2 id="troubleshooting-title">Common problems</h2>
                         <p>Open a question for the most likely solution.</p>
                     </header>
-
                     <div class="guide-faq">
-                        <details data-guide-search-item>
-                            <summary>The recording will not start</summary>
-                            <p>Use a current desktop version of Chrome or Edge. Allow microphone access when prompted. When capturing shared meeting audio, select a tab, window, or screen that the browser can share.</p>
-                        </details>
-                        <details data-guide-search-item>
-                            <summary>The other participants are missing from the recording</summary>
-                            <p>Before recording, turn on <strong>Capture shared meeting audio</strong>. When the browser asks what to share, select the meeting source and enable its audio-sharing option. Microphone capture alone records only your side.</p>
-                        </details>
-                        <details data-guide-search-item>
-                            <summary>The Real-Time Meeting Feed is empty</summary>
-                            <p>Confirm that the recorder or connected live source is running. In Live Q&amp;A Settings, verify that automatic answers are enabled for the source you expect: microphone, speaker, or clipboard.</p>
-                        </details>
-                        <details data-guide-search-item>
-                            <summary>My meeting is missing from Meeting Review</summary>
-                            <p>Confirm that you selected <strong>Stop &amp; Process</strong>, kept the recorder page open, and waited for the saved confirmation. A discarded recording will not appear in Meeting Review.</p>
-                        </details>
-                        <details data-guide-search-item>
-                            <summary>Knowledge Search did not find the information</summary>
-                            <p>Check the selected search scope and filters. Confirm that the relevant document was uploaded, the meeting package was saved, or the previous meeting finished processing. Try a shorter, more specific question.</p>
-                        </details>
-                        <details data-guide-search-item>
-                            <summary>The Scorecard evaluated the wrong speaker</summary>
-                            <p>Open Meeting Review Settings and change <strong>Scorecard Source</strong> to your microphone, the other participant’s speaker audio, or all available audio sources.</p>
-                        </details>
-                        <details data-guide-search-item>
-                            <summary>An action is not visible</summary>
-                            <p>Clear the Action Center filters and check the Closed view. Open actions, completed actions, owner, meeting, due date, priority, status, and search filters can all change what is displayed.</p>
-                        </details>
+                        <details data-guide-search-item><summary>The mock-interview recording will not start</summary><p>Use a current desktop version of Chrome or Edge and allow microphone access when prompted. Shared interviewer audio also requires selecting a browser tab, window, or screen with audio sharing enabled.</p></details>
+                        <details data-guide-search-item><summary>My practice session is missing from Interview Review</summary><p>Select <strong>Stop &amp; Process</strong>, keep the recorder page open, and wait for the saved confirmation. A discarded recording is not added to Interview Review.</p></details>
+                        <details data-guide-search-item><summary>Career Evidence Library did not find an example</summary><p>Confirm that the evidence was uploaded, the correct application workspace is selected, and the search scope includes the intended source. Try a shorter, more specific question.</p></details>
+                        <details data-guide-search-item><summary>The Interview Scorecard evaluated the wrong audio</summary><p>Open Settings and adjust the scorecard source for future mock interviews.</p></details>
+                        <details data-guide-search-item><summary>An improvement action is not visible</summary><p>Clear Career Action Plan filters and check the Closed view. Owner, application, due date, priority, status, and search filters can change what is displayed.</p></details>
                     </div>
                 </section>
 
                 <section class="guide-safety" data-guide-search-item aria-labelledby="safety-title">
                     <span class="guide-safety-icon" aria-hidden="true">🛡</span>
-                    <div>
-                        <h2 id="safety-title">Record and share responsibly</h2>
-                        <p>Inform participants and obtain any consent required by applicable laws and workplace rules. Review sensitive transcript content before creating a share link.</p>
-                    </div>
+                    <div><h2 id="safety-title">Use recording for authorized practice</h2><p>Record only mock-interview sessions or other conversations you are authorized to capture. Review sensitive transcript content before creating a share link.</p></div>
                 </section>
 
                 <section class="guide-support" aria-labelledby="support-title">
-                    <div>
-                        <span class="guide-eyebrow guide-eyebrow-light">Still stuck?</span>
-                        <h2 id="support-title">Send a support request.</h2>
-                        <p>Include what you were trying to do, what happened, and a screenshot or file when useful.</p>
-                    </div>
+                    <div><span class="guide-eyebrow guide-eyebrow-light">Still stuck?</span><h2 id="support-title">Send a support request.</h2><p>Include the application workspace or feature, what you were trying to do, and what happened.</p></div>
                     <a class="guide-button guide-button-light" href="{{ request.script_root }}/help-support.html">Open Help &amp; Support <span aria-hidden="true">→</span></a>
                 </section>
             </div>

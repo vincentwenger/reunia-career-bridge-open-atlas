@@ -35,7 +35,7 @@ _OUTPUT_STRUCTURE = """
 
 
 _COMMON_REQUIREMENTS = """
-Perform both parts of the scorecard in this single response.
+Evaluate this mock interview in one response. The Interview Scorecard must cover answer relevance, evidence, structure, clarity, and delivery.
 
 CONTENT GRADING REQUIREMENTS:
 
@@ -44,7 +44,10 @@ CONTENT GRADING REQUIREMENTS:
 - Copy each answer verbatim from eligible source lines, excluding only source labels.
   Do not summarize or paraphrase it.
 - Before including an item, verify that its answer appears in at least one eligible source line.
-- Evaluate how directly, clearly, completely, and effectively the answer addresses the question.
+- Evaluate relevance: how directly and completely the answer addresses the question.
+- Evaluate evidence: whether the candidate supports claims with concrete, credible accomplishments or examples visible in the transcript.
+- Evaluate structure: whether the answer follows a coherent sequence such as STAR, problem-action-result, or another easy-to-follow pattern.
+- Reflect relevance, evidence, and structure in relevance_analysis and the content grade.
 - Grade only demonstrated quality. The absence of visible weaknesses is not evidence of excellent performance.
 - Do not award A-range grades merely because an answer or meeting is short. A-range grades require clear,
   affirmative evidence of relevance, depth, completeness, specificity, and effective reasoning in the answer itself.
@@ -59,7 +62,7 @@ CONTENT GRADING REQUIREMENTS:
 
 FORM GRADING REQUIREMENTS:
 
-- Analyze the eligible speech as one communication sample.
+- Analyze the eligible candidate speech as one communication sample for clarity and delivery.
 - Treat sample size separately from observed quality. Few detected problems in a short sample do not justify an A-range grade.
 - A-range form grades require enough repeated evidence to demonstrate consistency, not merely zero detected issues.
 - When the eligible sample is short, keep the assessment conservative and explicitly mention the evidence limitation.
@@ -80,7 +83,7 @@ FORM GRADING REQUIREMENTS:
 - Do not invent words, phrases, pauses, or tone examples.
 - Preserve repeated occurrences so list lengths match their corresponding counts.
 - Use empty lists and a count of 0 when no examples are found.
-- overall_assessment must be concise, professional, actionable, and identify when the available sample is too short
+- overall_assessment must summarize clarity and delivery, remain concise, professional and actionable, and identify when the available sample is too short
   to support a confident communication assessment.
 
 Use only these grades in both sections:
@@ -96,13 +99,13 @@ Do not include Markdown, code fences, comments, or explanatory text outside the 
 
 def _build_prompt(source_rules: str) -> str:
     return f"""
-You are an expert meeting scorecard analyst.
+You are an expert mock-interview coach and interview scorecard analyst.
 
 {source_rules.strip()}
 
 {_COMMON_REQUIREMENTS.format(output_structure=_OUTPUT_STRUCTURE)}
 
-Meeting transcript:
+Mock interview transcript:
 {{{{MEETING_TRANSCRIPT}}}}
 """.strip()
 

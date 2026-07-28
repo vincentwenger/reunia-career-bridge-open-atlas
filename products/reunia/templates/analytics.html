@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'macros/ui.html' import page_hero %}
 
-{% block title %}Réunia - Analytics{% endblock %}
+{% block title %}Réunia - Career Progress{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/analytics.css') }}">
@@ -10,15 +10,15 @@
 {% block content %}
 <div class="app-page analytics-container">
     {{ page_hero(
-        'Analytics',
-        'See trends across your meetings, including scores, topics, questions, and follow-through.'
+        'Career Progress',
+        'See readiness and improvement trends across applications and mock interviews.'
     ) }}
 
-    <section class="analytics-toolbar" aria-label="Analytics filters">
+    <section class="analytics-toolbar" aria-label="Career Progress filters">
         <div class="analytics-filter-group">
             <label for="analytics-period">Time period</label>
             <select id="analytics-period">
-                <option value="all">All meetings</option>
+                <option value="all">All mock interviews</option>
                 <option value="30">Last 30 days</option>
                 <option value="90">Last 90 days</option>
                 <option value="365">Last 12 months</option>
@@ -37,13 +37,13 @@
         </div>
 
         <div class="analytics-filter-group analytics-search-group">
-            <label for="analytics-search">Find meetings</label>
+            <label for="analytics-search">Find mock interviews</label>
             <div class="analytics-search-shell">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="11" cy="11" r="7"></circle>
                     <path d="m20 20-3.7-3.7"></path>
                 </svg>
-                <input id="analytics-search" type="search" placeholder="Search names, summaries, wins, or actions..." autocomplete="off">
+                <input id="analytics-search" type="search" placeholder="Search applications, roles, coaching, or actions..." autocomplete="off">
             </div>
         </div>
 
@@ -57,14 +57,14 @@
     </section>
 
     <div class="analytics-status" id="analytics-status" role="status" aria-live="polite">
-        Loading your meeting analytics...
+        Loading Career Progress...
     </div>
 
-    <section class="analytics-kpi-grid" aria-label="Analytics overview">
+    <section class="analytics-kpi-grid" aria-label="Career Progress overview">
         <article class="analytics-kpi-card">
             <span class="analytics-kpi-icon analytics-kpi-icon-blue" aria-hidden="true">▦</span>
             <div>
-                <span class="analytics-kpi-label">Meetings analyzed</span>
+                <span class="analytics-kpi-label">Mock Interviews analyzed</span>
                 <strong id="analytics-total-meetings">—</strong>
                 <small id="analytics-meeting-period">Across your selected period</small>
             </div>
@@ -75,7 +75,7 @@
             <div>
                 <span class="analytics-kpi-label">Average performance</span>
                 <strong id="analytics-average-score">—</strong>
-                <small id="analytics-score-trend">Waiting for scored meetings</small>
+                <small id="analytics-score-trend">Waiting for scored mock interviews</small>
             </div>
         </article>
 
@@ -93,7 +93,7 @@
             <div>
                 <span class="analytics-kpi-label">Action items</span>
                 <strong id="analytics-total-actions">—</strong>
-                <small id="analytics-average-actions">Follow-up items across meetings</small>
+                <small id="analytics-average-actions">Follow-up items across mock interviews</small>
             </div>
         </article>
     </section>
@@ -103,21 +103,21 @@
             <header class="analytics-card-header">
                 <div>
                     <span class="analytics-card-kicker">Performance over time</span>
-                    <h2>Meeting score trend</h2>
-                    <p>Your most recent scored meetings, shown in chronological order.</p>
+                    <h2>Interview score trend</h2>
+                    <p>Your most recent scored mock interviews, shown in chronological order.</p>
                 </div>
-                <span class="analytics-card-badge" id="analytics-trend-count">0 scored meetings</span>
+                <span class="analytics-card-badge" id="analytics-trend-count">0 scored mock interviews</span>
             </header>
 
             <div class="analytics-chart-shell" id="analytics-trend-shell">
                 <svg id="analytics-trend-chart" class="analytics-line-chart" viewBox="0 0 820 280" role="img" aria-labelledby="analytics-trend-title analytics-trend-description">
-                    <title id="analytics-trend-title">Meeting performance score trend</title>
-                    <desc id="analytics-trend-description">A chart of meeting scores over time.</desc>
+                    <title id="analytics-trend-title">Interview performance score trend</title>
+                    <desc id="analytics-trend-description">A chart of mock-interview scores over time.</desc>
                 </svg>
                 <div class="analytics-empty-state" id="analytics-trend-empty" hidden>
                     <span aria-hidden="true">📈</span>
                     <strong>No score trend yet</strong>
-                    <p>Scored meetings will appear here after they are analyzed.</p>
+                    <p>Scored mock interviews will appear here after they are analyzed.</p>
                 </div>
             </div>
         </article>
@@ -127,7 +127,7 @@
                 <div>
                     <span class="analytics-card-kicker">Performance mix</span>
                     <h2>Score distribution</h2>
-                    <p>How meetings are distributed across score ranges.</p>
+                    <p>How mock interviews are distributed across score ranges.</p>
                 </div>
             </header>
 
@@ -160,7 +160,7 @@
                 <div>
                     <span class="analytics-card-kicker">Communication habits</span>
                     <h2>Speaking averages</h2>
-                    <p>Average form metrics for meetings with available data.</p>
+                    <p>Average delivery metrics for mock interviews with available data.</p>
                 </div>
             </header>
 
@@ -173,22 +173,22 @@
                 <div class="analytics-speaking-metric">
                     <span>Filler words</span>
                     <strong id="analytics-average-fillers">—</strong>
-                    <small>per meeting</small>
+                    <small>per mock interview</small>
                 </div>
                 <div class="analytics-speaking-metric">
                     <span>Power words</span>
                     <strong id="analytics-average-power">—</strong>
-                    <small>per meeting</small>
+                    <small>per mock interview</small>
                 </div>
                 <div class="analytics-speaking-metric">
                     <span>Negative tone</span>
                     <strong id="analytics-average-negative-tone">—</strong>
-                    <small>signals per meeting</small>
+                    <small>signals per mock interview</small>
                 </div>
                 <div class="analytics-speaking-metric">
                     <span>Pauses</span>
                     <strong id="analytics-average-pauses">—</strong>
-                    <small>per meeting</small>
+                    <small>per mock interview</small>
                 </div>
                 <div class="analytics-speaking-metric">
                     <span>Form score</span>
@@ -203,11 +203,11 @@
                 <div>
                     <span class="analytics-card-kicker">Question intelligence</span>
                     <h2>Most asked questions</h2>
-                    <p>Recurring or frequently captured questions across meetings.</p>
+                    <p>Recurring or frequently captured questions across mock interviews.</p>
                 </div>
             </header>
             <ol class="analytics-ranked-list" id="analytics-question-list"></ol>
-            <div class="analytics-empty-list" id="analytics-question-empty" hidden>No questions are available for the selected meetings.</div>
+            <div class="analytics-empty-list" id="analytics-question-empty" hidden>No questions are available for the selected mock interviews.</div>
         </article>
 
         <article class="analytics-card analytics-list-card">
@@ -215,11 +215,11 @@
                 <div>
                     <span class="analytics-card-kicker">Conversation themes</span>
                     <h2>Common topics</h2>
-                    <p>Frequently used meaningful terms from meeting names, summaries, and insights.</p>
+                    <p>Frequently used meaningful terms from target roles, summaries, and insights.</p>
                 </div>
             </header>
             <div class="analytics-topic-cloud" id="analytics-topic-cloud"></div>
-            <div class="analytics-empty-list" id="analytics-topic-empty" hidden>No common topics are available for the selected meetings.</div>
+            <div class="analytics-empty-list" id="analytics-topic-empty" hidden>No common topics are available for the selected mock interviews.</div>
         </article>
 
         <article class="analytics-card analytics-list-card">
@@ -231,35 +231,35 @@
                 </div>
             </header>
             <ol class="analytics-ranked-list" id="analytics-improvement-list"></ol>
-            <div class="analytics-empty-list" id="analytics-improvement-empty" hidden>No improvement areas are available for the selected meetings.</div>
+            <div class="analytics-empty-list" id="analytics-improvement-empty" hidden>No improvement areas are available for the selected mock interviews.</div>
         </article>
 
         <article class="analytics-card analytics-card-wide analytics-table-card">
             <header class="analytics-card-header analytics-card-header-row">
                 <div>
-                    <span class="analytics-card-kicker">Meeting details</span>
-                    <h2>Recent meeting performance</h2>
-                    <p>Compare the latest meetings included in the current filters.</p>
+                    <span class="analytics-card-kicker">Mock-interview details</span>
+                    <h2>Recent mock-interview performance</h2>
+                    <p>Compare the latest mock interviews included in the current filters.</p>
                 </div>
-                <a class="analytics-review-link" href="{{ request.script_root }}/meeting-review.html">Open Meeting Review <span aria-hidden="true">→</span></a>
+                <a class="analytics-review-link" href="{{ request.script_root }}/interview-review">Open Interview Review <span aria-hidden="true">→</span></a>
             </header>
 
             <div class="analytics-table-scroll">
                 <table class="analytics-meeting-table">
                     <thead>
                         <tr>
-                            <th scope="col">Meeting</th>
+                            <th scope="col">Mock Interview</th>
                             <th scope="col">Date</th>
                             <th scope="col">Overall</th>
-                            <th scope="col">Content</th>
-                            <th scope="col">Form</th>
-                            <th scope="col">Actions</th>
+                            <th scope="col">Answer quality</th>
+                            <th scope="col">Delivery</th>
+                            <th scope="col">Plan actions</th>
                         </tr>
                     </thead>
                     <tbody id="analytics-meeting-table-body"></tbody>
                 </table>
             </div>
-            <div class="analytics-empty-list" id="analytics-table-empty" hidden>No meetings match the selected filters.</div>
+            <div class="analytics-empty-list" id="analytics-table-empty" hidden>No mock interviews match the selected filters.</div>
         </article>
     </section>
 </div>

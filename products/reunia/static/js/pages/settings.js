@@ -19,13 +19,9 @@ document.addEventListener('DOMContentLoaded', function () {
             title: 'General & AI',
             description: 'Set your application language and the default AI performance level used across Réunia.'
         },
-        'live-qa-settings': {
-            title: 'Live meeting assistance',
-            description: 'Control Live Q&A history, answer updates, and the sources that automatically generate answers.'
-        },
         'meeting-review-settings': {
             title: 'Review & follow-up',
-            description: 'Choose how newly processed meetings generate summaries, action items, and scorecards.'
+            description: 'Choose how mock interviews generate coaching, action items, and interview scorecards.'
         },
         'privacy-sharing-settings': {
             title: 'Privacy & sharing',
@@ -252,34 +248,18 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const retentionHoursValue = parseInt(document.getElementById('retentionHours').value, 10);
         const selectedScorecardSource = document.querySelector('input[name="scorecard_source"]:checked');
         const scorecardSourceValue = selectedScorecardSource ? selectedScorecardSource.value : '';
-        const answerUpdateFrequency = document.getElementById('liveQaAnswerUpdateFrequency').value;
         const languageValue = document.getElementById('language')?.value || 'en';
         const meetingRetentionDays = parseInt(document.getElementById('meetingRetentionDays').value, 10);
         const documentRetentionDays = parseInt(document.getElementById('documentRetentionDays').value, 10);
         const shareDefaultExpirationDays = parseInt(document.getElementById('shareDefaultExpirationDays').value, 10);
         const meetingSummaryDetail = document.getElementById('meetingSummaryDetail').value;
 
-        if (isNaN(retentionHoursValue) || retentionHoursValue < 1 || retentionHoursValue > 24) {
-            showToast('error', 'Message expiration must be between 1 and 24 hours.');
-            showSettingsScope('live-qa-settings');
-            document.getElementById('retentionHours').focus();
-            return;
-        }
-
         if (!['en', 'fr'].includes(languageValue)) {
             showToast('error', window.AppI18n?.t('Please select a valid application language.') || 'Please select a valid application language.');
             showSettingsScope('global-settings');
             document.getElementById('language')?.focus();
-            return;
-        }
-
-        if (!['fast', 'balanced', 'efficient'].includes(answerUpdateFrequency)) {
-            showToast('error', 'Please select a valid Live answer update frequency.');
-            showSettingsScope('live-qa-settings');
-            document.getElementById('liveQaAnswerUpdateFrequency').focus();
             return;
         }
 
@@ -307,22 +287,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (!['brief', 'standard', 'detailed'].includes(meetingSummaryDetail)) {
-            showToast('error', 'Please select a valid meeting summary detail level.');
+            showToast('error', 'Please select a valid interview-review summary detail level.');
             showSettingsScope('meeting-review-settings');
             return;
         }
 
         const settingsData = {
             language: languageValue,
-            retentionHours: retentionHoursValue,
             aiModelPreset: document.getElementById('aiModelPreset').value,
-            liveQaAnswerUpdateFrequency: answerUpdateFrequency,
-            autoAskClipboard: document.getElementById('aiClipboard').checked,
-            autoAskSpeaker: document.getElementById('aiSpeaker').checked,
-            autoAskMicrophone: document.getElementById('aiMicrophone').checked,
-            aiClipboard: document.getElementById('aiClipboard').checked,
-            aiSpeaker: document.getElementById('aiSpeaker').checked,
-            aiMicrophone: document.getElementById('aiMicrophone').checked,
             scorecard_source: scorecardSourceValue,
             meetingRetentionDays,
             documentRetentionDays,

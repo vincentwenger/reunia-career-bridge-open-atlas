@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 
-{% block title %}Réunia - Home{% endblock %}
+{% block title %}Réunia Career Bridge - Application Workspace{% endblock %}
 
-{% block meta_description %}Start a guided meeting journey with Réunia, from optional preparation to recording and review.{% endblock %}
+{% block meta_description %}Build a job application, prepare evidence-backed interview answers, practice, review, and improve with Réunia Career Bridge.{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/index.css') }}">
@@ -14,36 +14,32 @@
 <main
     class="home-page"
     data-authenticated="true"
-    data-guided-url="{{ request.script_root }}/knowledge.html?view=materials&amp;guided=1"
-    data-recorder-url="{{ request.script_root }}/meeting-recorder"
-    data-review-url="{{ request.script_root }}/meeting-review.html"
+    data-guided-url="{{ request.script_root }}/application-builder?guided=1"
+    data-recorder-url="{{ request.script_root }}/mock-interview"
+    data-review-url="{{ request.script_root }}/interview-review"
 >
     <section class="home-start-card" aria-labelledby="home-title">
         <div class="home-start-copy">
             <span class="home-kicker">Réunia</span>
-            <span class="home-brand-subtitle">YOUR AI MEETING COACH</span>
-            <h1 id="home-title">Ready for your next meeting?</h1>
-            <p id="home-primary-description">Follow a simple guided path. Prepare what is useful, skip what is not, then record your meeting.</p>
+            <span class="home-brand-subtitle">AI CAREER BRIDGE</span>
+            <h1 id="home-title">Build your next job application.</h1>
+            <p id="home-primary-description">Create one Application Workspace for each target position, connect your materials and career evidence, then prepare and practice for the interview.</p>
 
             <div class="home-smart-status" id="home-smart-status" role="status" hidden>
                 <span class="home-smart-status-dot" aria-hidden="true"></span>
                 <span id="home-smart-status-text"></span>
             </div>
 
-            <a
-                class="home-primary-action"
-                id="home-primary-action"
-                href="{{ request.script_root }}/knowledge.html?view=materials&amp;guided=1"
-            >
-                <span id="home-primary-action-label">Get started</span>
+            <a class="home-primary-action" id="home-primary-action" href="{{ request.script_root }}/application-builder?guided=1">
+                <span id="home-primary-action-label">Create application workspace</span>
                 <span aria-hidden="true">→</span>
             </a>
 
             <p class="home-flow-note">
-                Meeting Materials <span aria-hidden="true">→</span>
-                AI Context <span aria-hidden="true">→</span>
-                Preparation Check <span aria-hidden="true">→</span>
-                <strong>Record</strong>
+                Application Materials <span aria-hidden="true">→</span>
+                Career Profile <span aria-hidden="true">→</span>
+                Interview Preparation <span aria-hidden="true">→</span>
+                <strong>Mock Interview</strong>
             </p>
         </div>
 
@@ -56,71 +52,55 @@
                     <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                 </svg>
             </div>
-            <span class="home-visual-label home-visual-label-one">Prepare</span>
-            <span class="home-visual-label home-visual-label-two">Record</span>
-            <span class="home-visual-label home-visual-label-three">Review</span>
+            <span class="home-visual-label home-visual-label-one">Build</span>
+            <span class="home-visual-label home-visual-label-two">Practice</span>
+            <span class="home-visual-label home-visual-label-three">Improve</span>
         </div>
     </section>
 
     <section class="home-quick-access" aria-labelledby="quick-access-title">
         <div class="home-section-heading">
-            <div>
-                <span>Returning to Réunia?</span>
-                <h2 id="quick-access-title">Quick access</h2>
-            </div>
-            <p>Open an existing area without starting the guided flow.</p>
+            <div><span>Your Career Bridge</span><h2 id="quick-access-title">Continue your work</h2></div>
+            <p>Open the workspace that matches your next career step.</p>
         </div>
 
-        <nav class="home-quick-grid" aria-label="Réunia tools">
-            <a href="{{ request.script_root }}/meeting-review.html">
-                <span class="home-quick-icon" aria-hidden="true">▤</span>
-                <span><strong>Meeting history</strong><small>Review summaries, transcripts, and scorecards</small></span>
+        <nav class="home-quick-grid" aria-label="Career Bridge tools">
+            <a href="{{ request.script_root }}/career-profile">
+                <span class="home-quick-icon" aria-hidden="true">◎</span>
+                <span><strong>Career Profile</strong><small>Background, accomplishments, preferences, and constraints</small></span>
                 <span aria-hidden="true">→</span>
             </a>
-            <a href="{{ request.script_root }}/knowledge.html?view=library">
+            <a href="{{ request.script_root }}/interview-preparation">
                 <span class="home-quick-icon" aria-hidden="true">▦</span>
-                <span><strong>Document Library</strong><small>Manage reusable meeting documents</small></span>
+                <span><strong>Career Evidence Library</strong><small>Find verified projects, achievements, and experience</small></span>
                 <span aria-hidden="true">→</span>
             </a>
-            <a href="{{ request.script_root }}/action-center.html">
+            <a href="{{ request.script_root }}/interview-review">
+                <span class="home-quick-icon" aria-hidden="true">▤</span>
+                <span><strong>Interview Review</strong><small>Review mock answers, transcripts, and scorecards</small></span>
+                <span aria-hidden="true">→</span>
+            </a>
+            <a href="{{ request.script_root }}/career-action-plan">
                 <span class="home-quick-icon" aria-hidden="true">✓</span>
-                <span><strong>Action Center</strong><small>Track open and completed commitments</small></span>
-                <span aria-hidden="true">→</span>
-            </a>
-            <a href="{{ request.script_root }}/analytics.html">
-                <span class="home-quick-icon" aria-hidden="true">↗</span>
-                <span><strong>Analytics</strong><small>See meeting trends and performance</small></span>
+                <span><strong>Career Action Plan</strong><small>Track resume changes, practice, applications, and follow-ups</small></span>
                 <span aria-hidden="true">→</span>
             </a>
         </nav>
-
-        {% if desktop_recorder_available | default(false) %}
-        <p class="home-desktop-link">
-            Need advanced recording controls or clipboard capture?
-            <a href="{{ url_for('main.download_desktop_client') }}" download>Download the Windows Desktop Recorder</a>
-        </p>
-        {% endif %}
     </section>
 
     <section class="home-continue" id="home-continue" aria-labelledby="home-continue-title" hidden>
         <div class="home-continue-icon" aria-hidden="true">↗</div>
         <div class="home-continue-copy">
             <span>Continue where you left off</span>
-            <h2 id="home-continue-title">Latest meeting</h2>
-            <p id="home-continue-summary">Open your most recent meeting review.</p>
+            <h2 id="home-continue-title">Latest mock interview</h2>
+            <p id="home-continue-summary">Open your most recent interview review.</p>
         </div>
-        <a class="home-continue-link" id="home-continue-link" href="{{ request.script_root }}/meeting-review.html">
-            Review meeting
-            <span aria-hidden="true">→</span>
-        </a>
+        <a class="home-continue-link" id="home-continue-link" href="{{ request.script_root }}/interview-review">Review interview <span aria-hidden="true">→</span></a>
     </section>
 
-    <aside class="home-recording-note" aria-label="Responsible recording reminder">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 3 5 6v5c0 4.8 2.9 8.1 7 10 4.1-1.9 7-5.2 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-            <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span>Inform participants and obtain any consent required before recording.</span>
+    <aside class="home-recording-note" aria-label="Practice-mode reminder">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.9 8.1 7 10 4.1-1.9 7-5.2 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Mock Interview is for practice. Réunia does not provide hidden answers during a real employer interview.</span>
     </aside>
 </main>
 {% endblock %}
