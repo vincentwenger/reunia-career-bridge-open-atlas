@@ -1,0 +1,3 @@
+# Keep the product dependency list as the source of truth and add the
+# production WSGI server used by the Lightsail container.
+-r products/resume_taylor/requirements-deploy.txt
