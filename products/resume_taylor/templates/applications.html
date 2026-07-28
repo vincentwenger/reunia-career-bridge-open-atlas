@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% macro percentage(value) -%}{{ "%.1f"|format(value) }}%{%- endmacro %}
+
+{% block title %}Applications · Evidence-Based Resume Tailor{% endblock %}
+
+{% block content %}
+<section class="applications-summary" aria-labelledby="applications-summary-title">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">Outcome tracking</span>
+      <h2 id="applications-summary-title">Application results</h2>
+      <p>Measure what happens after submission while keeping the exact submitted resume attached to each application.</p>
+    </div>
+  </div>
+
+  <div class="application-metric-grid">
+    <div class="metric-card"><span>Applications tracked</span><strong>{{ application_metrics.tracked }}</strong><em>{{ application_metrics.submitted }} submitted</em></div>
+    <div class="metric-card"><span>Screening-call rate</span><strong>{{ percentage(application_metrics.screening_rate) }}</strong><em>{{ application_metrics.screening_count }} screening result{% if application_metrics.screening_count != 1 %}s{% endif %}</em></div>
+    <div class="metric-card"><span>Interview rate</span><strong>{{ percentage(application_metrics.interview_rate) }}</strong><em>{{ application_metrics.interview_count }} interview result{% if application_metrics.interview_count != 1 %}s{% endif %}</em></div>
+    <div class="metric-card"><span>Offer rate</span><strong>{{ percentage(application_metrics.offer_rate) }}</strong><em>{{ application_metrics.offer_count }} offer{% if application_metrics.offer_count != 1 %}s{% endif %}</em></div>
+    <div class="metric-card"><span>Interview fit score</span><strong>{% if application_metrics.average_interview_alignment is not none %}{{ percentage(application_metrics.average_interview_alignment) }}{% else %}—{% endif %}</strong><em>Average saved fit score for interviewed applications</em></div>
+    <div class="metric-card"><span>Follow-ups due</span><strong>{{ application_metrics.follow_ups_due }}</strong><em>Based on the saved follow-up date</em></div>
+  </div>
+
+  <div class="alert alert-info application-insight-note">
+    These metrics describe your recorded applications. They can reveal patterns, but they do not prove that a resume score or template caused an employer response.
+  </div>
+</section>
+
+<section class="card application-add-card" id="add-application">
+  <div class="section-heading">
+    <div>
+      <h2>Add an application</h2>
+      <p>The fastest option is <strong>Save as application</strong> after creating a Final Resume. Use this form for applications submitted outside the current workflow.</p>
+    </div>
+  </div>
+  <details {% if not applications %}open{% endif %}>
+    <summary>Add an application manually</summary>
+    <form action="{{ url_for('create_application_record') }}" method="post" class="stack-form application-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="field-grid two">
+        <div><label for="new-company">Company</label><input id="new-company" name="company" type="text" required></div>
+        <div><label for="new-role">Role</label><input id="new-role" name="role" type="text" required></div>
+        <div><label for="new-application-date">Application date</label><input id="new-application-date" name="application_date" type="date" value="{{ default_application_date }}"></div>
+        <div>
+          <label for="new-status">Current stage</label>
+          <select id="new-status" name="status">
+            {% for value, label in application_status_options %}<option value="{{ value }}" {% if value == 'applied' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="new-resume-version">Resume version used</label>
+          <select id="new-resume-version" name="resume_version">
+            {% for version in resume_version_options %}<option value="{{ version }}">{{ version }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="new-resume-style">Resume template</label>
+          <select id="new-resume-style" name="resume_style">
+            {% for option in resume_style_options %}<option value="{{ option.key }}">{{ option.label }} — {{ option.audience }}</option>{% endfor %}
+          </select>
+        </div>
+        <div><label for="new-alignment-score">Application fit score</label><input id="new-alignment-score" name="alignment_score" type="number" min="0" max="100" step="0.1" placeholder="For example, 84.5"></div>
+        <div><label for="new-follow-up">Next follow-up date</label><input id="new-follow-up" name="next_follow_up_date" type="date"></div>
+      </div>
+      <label for="new-job-url">Job posting link</label>
+      <input id="new-job-url" name="job_url" type="url" placeholder="https://…">
+      <label for="new-notes">Notes</label>
+      <textarea id="new-notes" name="notes" rows="3" placeholder="Recruiter name, application source, next action, or other context"></textarea>
+      <div class="button-row"><button class="button primary" type="submit">Add application</button></div>
+    </form>
+  </details>
+</section>
+
+<section class="applications-list" aria-labelledby="applications-list-title">
+  <div class="section-heading">
+    <div>
+      <h2 id="applications-list-title">Tracked applications</h2>
+      <p>Update the stage and outcomes as the hiring process progresses.</p>
+    </div>
+  </div>
+
+  {% if applications %}
+    <div class="application-card-list">
+      {% for application in applications %}
+        <article class="card application-card" id="application-{{ application.id }}">
+          <header class="application-card-header">
+            <div>
+              <span class="application-status status-{{ application.status }}">{{ application.status_label }}</span>
+              <h3>{{ application.role }}</h3>
+              <p>{{ application.company }}</p>
+            </div>
+            <div class="application-card-date">
+              <span>Application date</span>
+              <strong>{{ application.application_date }}</strong>
+            </div>
+          </header>
+
+          <div class="application-detail-grid">
+            <div><span>Resume version</span><strong>{{ application.resume_version }}</strong></div>
+            <div><span>Template</span><strong>{{ resume_style_labels.get(application.resume_style, application.resume_style or 'Not recorded') }}</strong></div>
+            <div><span>Application fit score</span><strong>{% if application.alignment_score is not none %}{{ percentage(application.alignment_score) }}{% else %}Not recorded{% endif %}</strong></div>
+            <div><span>Exact resume snapshot</span><strong>{{ 'Saved' if application.has_resume_snapshot else 'Not attached' }}</strong></div>
+          </div>
+
+          <div class="application-outcomes" aria-label="Recorded outcomes">
+            <span class="outcome-chip {% if application.screening_received %}achieved{% endif %}">Screening call {% if application.screening_received %}✓{% else %}—{% endif %}</span>
+            <span class="outcome-chip {% if application.interview_received %}achieved{% endif %}">Interview {% if application.interview_received %}✓{% else %}—{% endif %}</span>
+            <span class="outcome-chip {% if application.offer_received %}achieved{% endif %}">Offer {% if application.offer_received %}✓{% else %}—{% endif %}</span>
+            {% if application.next_follow_up_date %}<span class="outcome-chip follow-up">Follow up {{ application.next_follow_up_date }}</span>{% endif %}
+          </div>
+
+          {% if application.job_url %}<p class="application-job-link"><a href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer">Open saved job posting</a></p>{% endif %}
+          {% if application.notes %}<p class="application-notes">{{ application.notes }}</p>{% endif %}
+
+          <details class="application-edit-details">
+            <summary>Update application</summary>
+            <form action="{{ url_for('update_application_record', application_id=application.id) }}" method="post" class="stack-form application-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <div class="field-grid two">
+                <div><label for="company-{{ application.id }}">Company</label><input id="company-{{ application.id }}" name="company" type="text" value="{{ application.company }}" required></div>
+                <div><label for="role-{{ application.id }}">Role</label><input id="role-{{ application.id }}" name="role" type="text" value="{{ application.role }}" required></div>
+                <div><label for="date-{{ application.id }}">Application date</label><input id="date-{{ application.id }}" name="application_date" type="date" value="{{ application.application_date }}"></div>
+                <div>
+                  <label for="status-{{ application.id }}">Current stage</label>
+                  <select id="status-{{ application.id }}" name="status">
+                    {% for value, label in application_status_options %}<option value="{{ value }}" {% if application.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div><label for="follow-up-{{ application.id }}">Next follow-up date</label><input id="follow-up-{{ application.id }}" name="next_follow_up_date" type="date" value="{{ application.next_follow_up_date }}"></div>
+                <div><label for="job-url-{{ application.id }}">Job posting link</label><input id="job-url-{{ application.id }}" name="job_url" type="url" value="{{ application.job_url }}" placeholder="https://…"></div>
+              </div>
+
+              <fieldset class="application-outcome-fields">
+                <legend>Hiring outcomes received</legend>
+                <label class="checkbox-row"><input type="checkbox" name="screening_received" {% if application.screening_received %}checked{% endif %}> Screening call</label>
+                <label class="checkbox-row"><input type="checkbox" name="interview_received" {% if application.interview_received %}checked{% endif %}> Interview</label>
+                <label class="checkbox-row"><input type="checkbox" name="offer_received" {% if application.offer_received %}checked{% endif %}> Offer</label>
+              </fieldset>
+
+              <label for="notes-{{ application.id }}">Notes</label>
+              <textarea id="notes-{{ application.id }}" name="notes" rows="3">{{ application.notes }}</textarea>
+              <div class="button-row"><button class="button primary" type="submit">Save changes</button></div>
+            </form>
+          </details>
+
+          <footer class="application-card-actions">
+            {% if application.has_resume_snapshot %}<a class="button secondary" href="{{ url_for('download_application_resume', application_id=application.id) }}">Download submitted resume</a>{% endif %}
+            <form action="{{ url_for('delete_application_record', application_id=application.id) }}" method="post" class="inline-form" data-confirm-submit="Remove this application record?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button class="button text application-delete-button" type="submit">Remove</button>
+            </form>
+          </footer>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>No applications tracked yet</h3>
+      <p>Create a Final Resume and select <strong>Save as application</strong>, or add an existing application manually above.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
