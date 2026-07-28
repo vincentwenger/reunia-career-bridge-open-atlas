@@ -4,10 +4,10 @@
             <div class="meeting-ask-heading">
                 <span class="meeting-ask-icon" aria-hidden="true">✦</span>
                 <div>
-                    <p class="meeting-ask-eyebrow">Selected meeting</p>
-                    <h3 id="meeting-ask-title">Ask about this meeting</h3>
+                    <p class="meeting-ask-eyebrow">Selected mock interview</p>
+                    <h3 id="meeting-ask-title">Ask about this interview</h3>
                     <p>
-                        Ask questions about this meeting’s transcript, decisions, action items, and analysis.
+                        Ask questions about this mock interview’s transcript, decisions, action items, and analysis.
                     </p>
                 </div>
             </div>
@@ -15,7 +15,7 @@
             <a
                 class="meeting-knowledge-link"
                 id="open-meeting-knowledge-link"
-                href="{{ request.script_root }}/knowledge.html?view=search"
+                href="{{ request.script_root }}/interview-preparation"
             >
                 Search all knowledge
                 <span aria-hidden="true">→</span>
@@ -23,9 +23,9 @@
         </div>
 
         <div class="selected-meeting-context" id="selected-meeting-context" aria-live="polite">
-            <span class="selected-meeting-context-label">Current meeting</span>
-            <strong id="ask-ai-meeting-name">No meeting selected</strong>
-            <span id="ask-ai-meeting-date">Select a meeting from the library before asking a question.</span>
+            <span class="selected-meeting-context-label">Current mock interview</span>
+            <strong id="ask-ai-meeting-name">No mock interview selected</strong>
+            <span id="ask-ai-meeting-date">Select a mock interview from the library before asking a question.</span>
         </div>
 
         <form id="meeting-ask-form">
@@ -33,32 +33,32 @@
                 <input type="checkbox" id="meeting-include-related" name="include_related_knowledge">
                 <span class="meeting-related-toggle-copy">
                     <strong>Include related knowledge</strong>
-                    <small>Also use relevant uploaded documents and previous meetings. The selected meeting remains the primary source.</small>
+                    <small>Also use relevant career evidence, application materials, and previous practice sessions. The selected mock interview remains the primary source.</small>
                 </span>
             </label>
 
-            <div class="meeting-ask-suggestions" aria-label="Suggested questions about this meeting">
+            <div class="meeting-ask-suggestions" aria-label="Suggested questions about this mock interview">
                 <span>Try asking:</span>
-                <button type="button" data-meeting-ask-suggestion="What decisions were made in this meeting?">What decisions were made?</button>
-                <button type="button" data-meeting-ask-suggestion="Which action items from this meeting are still unresolved?">Which tasks remain open?</button>
-                <button type="button" data-meeting-ask-suggestion="What should I improve based on this meeting's scorecard and analysis?">What should I improve?</button>
+                <button type="button" data-meeting-ask-suggestion="Which answers in this mock interview were strongest and why?">Which answers were strongest?</button>
+                <button type="button" data-meeting-ask-suggestion="Which improvement actions from this mock interview should I prioritize?">Which actions matter most?</button>
+                <button type="button" data-meeting-ask-suggestion="What should I improve based on this mock interview's scorecard and analysis?">What should I improve?</button>
             </div>
 
             <label class="meeting-ask-question" for="meeting-ask-question">
-                <span class="sr-only">Question about the selected meeting</span>
+                <span class="sr-only">Question about the selected mock interview</span>
                 <textarea
                     id="meeting-ask-question"
                     name="question"
                     rows="5"
-                    placeholder="Select a meeting before asking a question..."
+                    placeholder="Select a mock interview before asking a question..."
                     required
                 ></textarea>
             </label>
 
             <div class="meeting-ask-actions">
-                <p id="meeting-ask-scope-summary">Using only the selected meeting.</p>
+                <p id="meeting-ask-scope-summary">Using only the selected mock interview.</p>
                 <button class="btn-primary meeting-ask-submit" type="submit" id="meeting-ask-submit">
-                    Ask about meeting
+                    Ask about interview
                 </button>
             </div>
         </form>

@@ -9,12 +9,16 @@ from meeting_assistant.utils.authentication import api_auth_required, login_requ
 from meeting_assistant.utils.exceptions import ValidationError
 
 
+@actions_bp.get("/career-action-plan")
 @actions_bp.get("/action-center.html")
 @login_required
 def action_center_page():
     return render_template("action-center.html")
 
 
+@actions_bp.route(
+    "/api/career/actions", methods=["GET", "POST", "PATCH", "PUT", "DELETE"]
+)
 @actions_bp.route("/api/actions", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
 @api_auth_required
 def actions_collection():
@@ -53,6 +57,10 @@ def actions_collection():
     return jsonify(result)
 
 
+@actions_bp.route(
+    "/api/career/actions/<string:action_id>",
+    methods=["GET", "PATCH", "PUT", "DELETE"],
+)
 @actions_bp.route(
     "/api/actions/<string:action_id>",
     methods=["GET", "PATCH", "PUT", "DELETE"],

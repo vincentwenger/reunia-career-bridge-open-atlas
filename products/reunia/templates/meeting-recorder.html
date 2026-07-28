@@ -2,7 +2,7 @@
 {% from 'macros/ui.html' import page_hero %}
 {% set guided_flow = request.args.get('guided') == '1' %}
 
-{% block title %}Réunia - Browser Recorder{% endblock %}
+{% block title %}Réunia - Mock Interview Recorder{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/meeting-recorder.css') }}">
@@ -16,15 +16,6 @@
     id="browserRecorderPage"
     data-storage-scope="{{ session.get('user_id') or 'default' }}"
     data-guided-flow="{{ 'true' if guided_flow else 'false' }}"
-    data-live-chunk-window-ms="{{ (config.RECORDER_LIVE_CHUNK_WINDOW_SECONDS * 1000) | int }}"
-    data-live-chunk-interval-ms="{{ (config.RECORDER_LIVE_CHUNK_INTERVAL_SECONDS * 1000) | int }}"
-    data-live-queue-limit="{{ config.RECORDER_LIVE_QUEUE_LIMIT }}"
-    data-live-retry-count="{{ config.RECORDER_LIVE_RETRY_COUNT }}"
-    data-live-retry-base-ms="{{ config.RECORDER_LIVE_RETRY_BASE_MILLISECONDS }}"
-    data-live-min-chunk-bytes="{{ config.RECORDER_LIVE_MIN_CHUNK_BYTES }}"
-    data-live-max-minutes="{{ config.AI_LIVE_QA_MAX_MINUTES_PER_MEETING }}"
-    data-live-speech-level-threshold="{{ config.RECORDER_LIVE_SPEECH_LEVEL_THRESHOLD }}"
-    data-live-min-speech-ratio="{{ config.RECORDER_LIVE_MIN_SPEECH_RATIO }}"
     data-final-segment-duration-ms="{{ (config.RECORDER_FINAL_SEGMENT_SECONDS * 1000) | int }}"
     data-final-segment-retry-count="{{ config.RECORDER_FINAL_SEGMENT_RETRY_COUNT }}"
     data-final-segment-retry-base-ms="{{ config.RECORDER_FINAL_SEGMENT_RETRY_BASE_MILLISECONDS }}"
@@ -32,23 +23,23 @@
     data-final-max-segment-bytes="{{ config.RECORDER_MAX_FILE_BYTES }}"
 >
     {{ page_hero(
-        'Browser Meeting Recorder',
-        'Record your microphone and, optionally, shared meeting audio. Réunia securely saves short audio segments while you record, then processes the meeting when you stop.'
+        'Mock Interview Recorder',
+        'Practice interview answers using your microphone and, optionally, interviewer prompt audio. Réunia transcribes and analyzes the session when you stop.'
     ) }}
 
     {% if guided_flow %}
-    <section class="recorder-guided-flow" aria-label="Guided meeting flow progress">
+    <section class="recorder-guided-flow" aria-label="Guided application flow progress">
         <div class="recorder-guided-heading">
             <div>
-                <span>Guided meeting flow</span>
-                <strong>Final step: record your meeting</strong>
+                <span>Guided application flow</span>
+                <strong>Final step: practice your interview</strong>
             </div>
             <span class="recorder-required-badge">Required</span>
         </div>
         <ol>
-            <li class="complete"><span>✓</span><div><strong>Meeting Materials</strong><small>Complete or skipped</small></div></li>
-            <li class="complete"><span>✓</span><div><strong>AI Context</strong><small>Complete or skipped</small></div></li>
-            <li class="complete"><span>✓</span><div><strong>Preparation Check</strong><small>Complete or skipped</small></div></li>
+            <li class="complete"><span>✓</span><div><strong>Application Materials</strong><small>Complete or skipped</small></div></li>
+            <li class="complete"><span>✓</span><div><strong>Career Profile</strong><small>Complete or skipped</small></div></li>
+            <li class="complete"><span>✓</span><div><strong>Evidence Check</strong><small>Complete or skipped</small></div></li>
             <li class="active"><span>4</span><div><strong>Record</strong><small>Required</small></div></li>
         </ol>
         <p>There is no Skip option on this step. Start the recording when you are ready.</p>
@@ -60,8 +51,8 @@
             <div class="recorder-card-header">
                 <div>
                     <span class="recorder-eyebrow">New recording</span>
-                    <h2 id="recorder-heading">Prepare your meeting</h2>
-                    <p>For the best result, open this page over HTTPS in desktop Chrome or Edge, then share the actual meeting tab with audio enabled.</p>
+                    <h2 id="recorder-heading">Prepare your mock interview</h2>
+                    <p>For the best result, use desktop Chrome or Edge and answer naturally as though you were speaking with an interviewer.</p>
                 </div>
                 <div class="recorder-status-badge" id="recorderStatusBadge" data-state="ready">
                     <span class="recorder-status-dot" aria-hidden="true"></span>
@@ -72,19 +63,19 @@
             <div class="recorder-form-grid">
                 <div class="recorder-package-row">
                     <label class="recorder-field recorder-package-field" for="preparedMeetingSelect">
-                        <span>Prepared meeting <small>(optional)</small></span>
+                        <span>Application workspace <small>(optional)</small></span>
                         <select id="preparedMeetingSelect">
-                            <option value="">Do not link a meeting package</option>
+                            <option value="">Do not link an application workspace</option>
                         </select>
                     </label>
-                    <a class="recorder-package-link" href="{{ request.script_root }}/knowledge.html?view=materials{% if guided_flow %}&amp;guided=1{% endif %}">Prepare a meeting</a>
-                    <small id="preparedMeetingHelp" class="recorder-package-help">Link this recording to materials and context prepared for an upcoming meeting.</small>
+                    <a class="recorder-package-link" href="{{ request.script_root }}/application-builder/">Open Application Builder</a>
+                    <small id="preparedMeetingHelp" class="recorder-package-help">Link this practice session to the target role, materials, and career evidence in an application workspace.</small>
                 </div>
 
                 <label class="recorder-switch-row" for="captureMeetingAudio">
                     <span class="recorder-switch-copy">
-                        <strong>Capture shared meeting audio</strong>
-                        <small>Optional. Turn this on to record audio from the meeting tab, window, or screen you select.</small>
+                        <strong>Capture interviewer prompt audio</strong>
+                        <small>Optional. Turn this on only when interview questions or prompts are playing from another tab or window.</small>
                     </span>
                     <span class="recorder-switch">
                         <input id="captureMeetingAudio" type="checkbox" checked>
@@ -98,7 +89,7 @@
                 <div class="recorder-timer" id="recorderTimer">00:00:00</div>
                 <p class="recorder-stage-title" id="recorderStageTitle">Ready to record</p>
                 <p class="recorder-stage-description" id="recorderStageDescription">
-                    Your browser will ask for microphone access and, optionally, which meeting tab or screen to share.
+                    Your browser will ask for microphone access and, optionally, which prompt tab or screen to share.
                 </p>
 
                 <div class="audio-source-grid">
@@ -124,10 +115,10 @@
                     <article class="audio-source-card is-disabled" id="speakerSourceCard">
                         <div class="audio-source-heading">
                             <span class="audio-source-icon" aria-hidden="true">🔊</span>
-                            <div><strong>Meeting audio</strong><small>Other participants from shared audio</small></div>
+                            <div><strong>Interviewer prompts</strong><small>Questions played from shared audio</small></div>
                             <div class="audio-source-controls">
                                 <span class="source-state" id="speakerState">Disabled</span>
-                                <button class="audio-source-mute" id="speakerMuteButton" type="button" aria-pressed="false" aria-label="Mute meeting audio">
+                                <button class="audio-source-mute" id="speakerMuteButton" type="button" aria-pressed="false" aria-label="Mute interviewer prompt audio">
                                     <svg viewBox="0 0 24 24" aria-hidden="true">
                                         <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
                                         <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
@@ -159,22 +150,8 @@
                         </svg>
                         <span>Discard Recording</span>
                     </button>
-                    <a
-                        class="recorder-button recorder-button-secondary"
-                        id="openLiveQALink"
-                        href="{{ url_for('live_qa.view_live_qa') }}"
-                        target="_blank"
-                        rel="noopener"
-                        hidden
-                    >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-1-1.73V7a2 2 0 0 1 2-2Z"></path>
-                            <path d="M8 9h8M8 13h5"></path>
-                        </svg>
-                        <span>Open Live Q&amp;A</span>
-                    </a>
                     <button class="recorder-button recorder-button-secondary" id="resetRecordingButton" type="button" hidden>
-                        Record another meeting
+                        Practice another interview
                     </button>
                 </div>
 
@@ -227,11 +204,11 @@
                 <div class="recorder-result" id="recorderResult" hidden>
                     <span class="recorder-result-icon" aria-hidden="true">✓</span>
                     <div>
-                        <strong id="recorderResultTitle">Meeting saved</strong>
+                        <strong id="recorderResultTitle">Mock interview saved</strong>
                         <p id="recorderResultMessage"></p>
                         <p class="recorder-quality-warning" id="recorderQualityWarning" hidden></p>
                     </div>
-                    <a id="reviewMeetingLink" href="{{ url_for('transcript.view_transcripts') }}">Open Meeting Review</a>
+                    <a id="reviewMeetingLink" href="{{ request.script_root }}/interview-review">Open Interview Review</a>
                 </div>
             </section>
         </main>
@@ -240,41 +217,29 @@
             <section class="recorder-guide-card recorder-guide-card-accent">
                 <span class="recorder-guide-number">1</span>
                 <div>
-                    <h3>Open your meeting first</h3>
-                    <p>Join Zoom, Teams, Google Meet, or another browser meeting before starting this recorder.</p>
+                    <h3>Choose your practice format</h3>
+                    <p>Practice solo, read prepared questions, or play interviewer prompts from another tab before starting the recorder.</p>
                 </div>
             </section>
             <section class="recorder-guide-card">
                 <span class="recorder-guide-number">2</span>
                 <div>
-                    <h3>Shared audio is optional</h3>
-                    <p>Turn on <strong>Capture shared meeting audio</strong> only when you also want to record other participants. Then select the meeting tab and enable shared audio in the browser picker.</p>
+                    <h3>Prompt audio is optional</h3>
+                    <p>Turn on <strong>Capture interviewer prompt audio</strong> only when you also want to record the interviewer prompts. Then select the prompt tab and enable shared audio in the browser picker.</p>
                 </div>
             </section>
             <section class="recorder-guide-card">
                 <span class="recorder-guide-number">3</span>
                 <div>
                     <h3>Keep this page open</h3>
-                    <p>You can switch back to the meeting. Keep the recorder tab open while it securely saves audio segments and finishes processing.</p>
+                    <p>You can switch between your preparation and recorder tabs. Keep the recorder tab open while it securely saves audio segments and finishes processing.</p>
                 </div>
             </section>
-            {% if desktop_recorder_available | default(false) %}
-            <section class="recorder-desktop-card">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="3" y="4" width="18" height="12" rx="2"></rect>
-                    <path d="M8 20h8M12 16v4"></path>
-                </svg>
-                <div>
-                    <strong>Need configurable recording parameters or clipboard capture?</strong>
-                    <a href="{{ url_for('main.download_desktop_client') }}" download>Download the Windows Desktop Recorder</a>
-                </div>
-            </section>
-            {% endif %}
             <section class="recorder-privacy-card">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.7 7 10 4.1-1.3 7-5.4 7-10V6l-7-3Z"></path><path d="m9 12 2 2 4-4"></path></svg>
                 <div>
-                    <strong>Record with permission</strong>
-                    <p>Make sure all participants know the meeting is being recorded and follow the laws and policies that apply to you.</p>
+                    <strong>Practice mode only</strong>
+                    <p>Use this recorder for mock interviews and personal practice. Réunia does not provide hidden answers during a real employer interview.</p>
                 </div>
             </section>
         </aside>

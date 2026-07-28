@@ -153,7 +153,7 @@ def final_optimization_issue_batches(report: ResumeReport) -> list[list[AuditIss
 
 
 def final_optimization_focus_score(report: ResumeReport) -> float:
-    """Score only the five report categories owned by Optimize & Export."""
+    """Score only the five report categories owned by Improve Resume Quality."""
     sections = {section.name: section for section in report.sections()}
     score = sum(
         sections[name].score() * weight

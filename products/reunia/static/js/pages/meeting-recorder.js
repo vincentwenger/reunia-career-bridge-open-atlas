@@ -211,7 +211,7 @@
 
                 const speakerTracks = displayStream.getAudioTracks();
                 if (!speakerTracks.length) {
-                    throw new Error('No shared audio was received. Select the meeting tab and enable “Share tab audio” or “Share system audio”.');
+                    throw new Error('No interviewer prompt audio was received. Select the prompt tab or screen and enable “Share tab audio” or “Share system audio”.');
                 }
                 speakerAudioStream = new MediaStream(speakerTracks);
                 applyMutePreference('speaker');
@@ -372,7 +372,7 @@
         resetFinalSegmentState();
         cleanupStreams();
         resetRecorder();
-        AppUI.showToast('Recording discarded. No meeting was saved.', {type: 'info'});
+        AppUI.showToast('Recording discarded. No mock interview was saved.', {type: 'info'});
     }
 
     async function retryProcessing() {
@@ -423,7 +423,7 @@
         let response;
         let parsed;
         try {
-            response = await fetch(AppUI.appUrl('/api/meeting-recorder/sessions'), {
+            response = await fetch(AppUI.appUrl('/api/career/mock-interviews/sessions'), {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin',
@@ -452,11 +452,11 @@
         return {
             id: sessionId,
             referenceId: sessionId,
-            segmentUrl: payload.segment_url || AppUI.appUrl(`/api/meeting-recorder/sessions/${encodeURIComponent(sessionId)}/segments`),
-            finalizeUrl: payload.finalize_url || AppUI.appUrl(`/api/meeting-recorder/sessions/${encodeURIComponent(sessionId)}/finalize`),
-            discardUrl: payload.discard_url || AppUI.appUrl(`/api/meeting-recorder/sessions/${encodeURIComponent(sessionId)}`),
-            statusUrl: payload.status_url || AppUI.appUrl(`/api/meeting-recorder/jobs/${encodeURIComponent(sessionId)}`),
-            retryUrl: AppUI.appUrl(`/api/meeting-recorder/jobs/${encodeURIComponent(sessionId)}/retry`),
+            segmentUrl: payload.segment_url || AppUI.appUrl(`/api/career/mock-interviews/sessions/${encodeURIComponent(sessionId)}/segments`),
+            finalizeUrl: payload.finalize_url || AppUI.appUrl(`/api/career/mock-interviews/sessions/${encodeURIComponent(sessionId)}/finalize`),
+            discardUrl: payload.discard_url || AppUI.appUrl(`/api/career/mock-interviews/sessions/${encodeURIComponent(sessionId)}`),
+            statusUrl: payload.status_url || AppUI.appUrl(`/api/career/mock-interviews/jobs/${encodeURIComponent(sessionId)}`),
+            retryUrl: AppUI.appUrl(`/api/career/mock-interviews/jobs/${encodeURIComponent(sessionId)}/retry`),
             preparedMeeting: preparedMeeting || null,
             failedSegments: new Map(),
             capturedBytes: {MICROPHONE: 0, SPEAKER: 0},
@@ -617,7 +617,7 @@
     async function uploadFinalSegmentWithRetry(session, segment) {
         if (segment.blob.size > finalMaxSegmentBytes) {
             throw createProcessingError(
-                'One audio segment is larger than the safe transcription limit. Keep this tab open and retry, or use the Windows Desktop Recorder.',
+                'One audio segment is larger than the safe transcription limit. Keep this tab open, retry, or record a shorter mock-interview segment.',
                 {
                     referenceId: session.id,
                     httpStatus: 413,
@@ -724,7 +724,7 @@
         const generation = ++pollGeneration;
         setPhase('processing');
         configureProcessingPanel(
-            recording.jobFailed ? 'Retrying meeting processing' : 'Finishing audio uploads',
+            recording.jobFailed ? 'Retrying mock interview processing' : 'Finishing audio uploads',
             recording.jobFailed
                 ? 'The saved audio segments are being queued again.'
                 : 'Keep this page open while the remaining audio segments are uploaded securely.'
@@ -890,7 +890,7 @@
             if (job.status === 'failed') {
                 if (pendingRecording) pendingRecording.jobFailed = true;
                 showFailure(createProcessingError(
-                    job.error || 'The meeting could not be processed.',
+                    job.error || 'The mock interview could not be processed.',
                     {
                         referenceId: jobReference,
                         httpStatus: job.failure_status_code || 'Background job',
@@ -908,16 +908,16 @@
         const stageTitles = {
             recording: 'Saving recording segments',
             uploading_segments: 'Saving recording segments',
-            queued: 'Waiting to process your meeting',
+            queued: 'Waiting to process your mock interview',
             transcribing_microphone: 'Transcribing microphone audio',
-            transcribing_speaker: 'Transcribing shared meeting audio',
+            transcribing_speaker: 'Transcribing interviewer prompt audio',
             cleaning_transcript: 'Improving transcript quality',
-            analyzing: 'Generating meeting insights',
-            saving: 'Saving Meeting Review'
+            analyzing: 'Generating interview coaching',
+            saving: 'Saving Interview Review'
         };
         configureProcessingPanel(
-            stageTitles[job.stage] || 'Processing your meeting',
-            job.stage_message || 'Your meeting is being processed.'
+            stageTitles[job.stage] || 'Processing your mock interview',
+            job.stage_message || 'Your mock interview is being processed.'
         );
     }
 
@@ -926,15 +926,15 @@
         progressPanel.hidden = true;
         errorPanel.hidden = true;
         resultPanel.hidden = false;
-        resultTitle.textContent = 'Meeting saved';
+        resultTitle.textContent = 'Mock interview saved';
         const linkedMeeting = pendingRecording?.preparedMeeting || null;
         finalizePreparedMeeting(linkedMeeting, payload);
         resultMessage.textContent = linkedMeeting
-            ? `${payload.message || 'Your transcript and analysis are ready.'} The prepared package “${linkedMeeting.title}” was linked to this meeting.`
+            ? `${payload.message || 'Your transcript and analysis are ready.'} The application workspace “${linkedMeeting.title}” was linked to this mock interview.`
             : (payload.message || 'Your transcript and analysis are ready.');
         qualityWarning.textContent = payload.quality_warning || '';
         qualityWarning.hidden = !payload.quality_warning;
-        reviewLink.href = payload.review_url || AppUI.appUrl('/meeting-review.html');
+        reviewLink.href = payload.review_url || AppUI.appUrl('/interview-review');
         pendingRecording = null;
         recordingUploadSession = null;
         microphoneChunks = [];
@@ -950,7 +950,7 @@
             source: 'browser_recorder',
             duration_seconds: payload.duration_seconds || 0
         }, `meeting-success-${payload.job_id || payload.reference_id || payload.meeting_id || Date.now()}`);
-        AppUI.showToast('Meeting saved successfully.', {type: 'success'});
+        AppUI.showToast('Mock interview saved successfully.', {type: 'success'});
     }
 
     function showFailure(error) {
@@ -1098,7 +1098,7 @@
 
     function buildDiagnosticDetails(error, recording) {
         const lines = [
-            'Meeting Recorder Processing Error',
+            'Mock Interview Recorder Processing Error',
             `Reference ID: ${error.referenceId || 'Unavailable'}`,
             `Time: ${new Date().toISOString()}`,
             `Message: ${error.message}`,
@@ -1165,14 +1165,14 @@
 
     function readableHttpFailure(status, statusText, responseText) {
         if (status === 401) return 'Your session expired before the recording could be processed. Sign in again in another tab, then retry here without refreshing this page.';
-        if (status === 413) return 'One audio segment exceeded the safe upload limit. Keep this tab open and retry, or use the Windows Desktop Recorder.';
+        if (status === 413) return 'One audio segment exceeded the safe upload limit. Keep this tab open, retry, or record a shorter mock-interview segment.';
         if (status === 429) return 'The service is temporarily rate limited. Wait briefly, then retry processing.';
-        if (status === 502) return 'A server or transcription service failed while processing the meeting.';
-        if (status === 503) return 'The meeting service is temporarily unavailable.';
-        if (status === 504) return 'The server took too long to respond while processing the meeting.';
+        if (status === 502) return 'A server or transcription service failed while processing the mock interview.';
+        if (status === 503) return 'The mock interview service is temporarily unavailable.';
+        if (status === 504) return 'The server took too long to respond while processing the mock interview.';
         const plainText = stripHtml(responseText).trim();
         if (plainText) return truncate(plainText, 700);
-        return `The meeting could not be processed (${status || 'network error'}${statusText ? ` ${statusText}` : ''}).`;
+        return `The mock interview could not be processed (${status || 'network error'}${statusText ? ` ${statusText}` : ''}).`;
     }
 
     function createProcessingError(message, details) {
@@ -1223,7 +1223,7 @@
         const date = scheduled && !Number.isNaN(scheduled.getTime())
             ? scheduled.toLocaleString(window.AppI18n?.locale || undefined, {dateStyle: 'medium', timeStyle: 'short'})
             : 'Draft';
-        return `${meeting.title || 'Untitled meeting'} · ${date}`;
+        return `${meeting.title || 'Untitled application'} · ${date}`;
     }
 
     async function initializePreparedMeetings() {
@@ -1231,21 +1231,23 @@
         const selectedValue = preparedMeetingSelect.value;
         let activeMeetingId = '';
         try {
-            const response = await fetch(AppUI.appUrl('/api/knowledge/upcoming-meetings'), {
+            const response = await fetch(AppUI.appUrl('/api/career/application-workspaces'), {
                 credentials: 'same-origin',
                 headers: {'Accept': 'application/json'}
             });
             if (response.ok) {
                 const result = await response.json();
-                preparedMeetingsCache = Array.isArray(result.meetings) ? result.meetings : [];
-                activeMeetingId = String(result.active_meeting_id || '');
+                preparedMeetingsCache = Array.isArray(result.application_workspaces)
+                    ? result.application_workspaces
+                    : (Array.isArray(result.meetings) ? result.meetings : []);
+                activeMeetingId = String(result.active_application_workspace_id || result.active_meeting_id || '');
                 writeStorage(UPCOMING_MEETINGS_KEY, preparedMeetingsCache);
             }
         } catch (error) {
             // Keep the previous browser cache available when the server is temporarily unreachable.
         }
         const meetings = activePreparedMeetings();
-        preparedMeetingSelect.replaceChildren(new Option('Do not link a meeting package', ''));
+        preparedMeetingSelect.replaceChildren(new Option('Do not link an application workspace', ''));
         meetings.forEach(function (meeting) {
             preparedMeetingSelect.add(new Option(preparedMeetingLabel(meeting), String(meeting.id)));
         });
@@ -1256,8 +1258,8 @@
         preparedMeetingSelect.disabled = phase !== 'ready';
         if (preparedMeetingHelp) {
             preparedMeetingHelp.textContent = meetings.length
-                ? 'Link this recording to materials and context prepared for an upcoming meeting.'
-                : 'No upcoming meeting packages are available. Create one in Meeting Materials, or record without linking.';
+                ? 'Link this recording to materials and context prepared for an upcoming interview.'
+                : 'No upcoming application workspaces are available. Create one in Application Materials, or record without linking.';
         }
     }
 
@@ -1269,364 +1271,17 @@
         }) || null;
     }
 
-    function startLiveQAStreaming() {
-        if (!enableLiveQAInput?.checked) return;
-        const preparedMeeting = getSelectedPreparedMeeting();
-        const session = {
-            id: `browser-live-${createReferenceId()}`,
-            preparedMeetingId: String(preparedMeeting?.id || ''),
-            startedAt: new Date(),
-            cancelled: false,
-            captureStopped: false,
-            controllers: new Set(),
-            sources: [],
-            failureLogged: false,
-            costLimitNotified: false
-        };
-        liveQASession = session;
+    // Real-time interview assistance is intentionally retired. These no-op
+    // compatibility hooks keep the imported recorder lifecycle stable while
+    // the candidate-facing product supports practice recording only.
+    function startLiveQAStreaming() {}
 
-        if (liveQAMicrophoneInput?.checked) {
-            registerLiveQASource(session, 'microphone', microphoneStream);
-        }
-        if (liveQASpeakerInput?.checked && speakerAudioStream) {
-            registerLiveQASource(session, 'speaker', speakerAudioStream);
-        }
-        if (!session.sources.length) liveQASession = null;
+    async function stopLiveQAStreaming() {
+        liveQASession = null;
     }
 
-    function registerLiveQASource(session, source, stream) {
-        if (!stream?.getAudioTracks?.().some(function (track) {
-            return track.readyState === 'live';
-        })) return;
-
-        const state = {
-            source: source,
-            stream: stream,
-            sequence: 0,
-            queue: [],
-            processing: false,
-            lastTranscript: '',
-            questionContext: '',
-            activeWindows: new Set(),
-            intervalId: null
-        };
-        session.sources.push(state);
-        beginLiveCaptureWindow(session, state);
-        state.intervalId = window.setInterval(function () {
-            beginLiveCaptureWindow(session, state);
-        }, liveChunkIntervalMs);
-    }
-
-    function beginLiveCaptureWindow(session, state) {
-        if (session.cancelled || session.captureStopped || phase !== 'recording') return;
-        const elapsedMs = Date.now() - session.startedAt.getTime();
-        if (liveMaxMinutes > 0 && elapsedMs >= liveMaxMinutes * 60 * 1000) {
-            if (state.intervalId !== null) {
-                window.clearInterval(state.intervalId);
-                state.intervalId = null;
-            }
-            if (!session.costLimitNotified) {
-                session.costLimitNotified = true;
-                AppUI.showToast('Automatic Live Q&A stopped at its configured time limit to control AI cost.', {
-                    type: 'info',
-                    duration: 7000
-                });
-            }
-            return;
-        }
-        if (!state.stream?.getAudioTracks?.().some(function (track) {
-            return track.readyState === 'live' && track.enabled;
-        })) return;
-
-        const chunks = [];
-        let recorder;
-        try {
-            recorder = buildRecorder(state.stream, chunks);
-        } catch (error) {
-            logLiveQAFailure(session, error);
-            return;
-        }
-
-        const sequence = state.sequence++;
-        const chunkId = `${session.id}-${state.source}-${sequence}`;
-        let resolveStopped;
-        const stopped = new Promise(function (resolve) {
-            resolveStopped = resolve;
-        });
-        const activity = audioActivity[state.source] || {frames: 0, speechFrames: 0, maxLevel: 0};
-        const captureWindow = {
-            recorder: recorder,
-            chunks: chunks,
-            sequence: sequence,
-            chunkId: chunkId,
-            startedAt: new Date(),
-            activityStartFrames: activity.frames,
-            activityStartSpeechFrames: activity.speechFrames,
-            activityStartMaxLevel: activity.maxLevel,
-            timerId: null,
-            suppressUpload: false,
-            finished: false,
-            stopped: stopped,
-            resolveStopped: resolveStopped
-        };
-        state.activeWindows.add(captureWindow);
-
-        recorder.addEventListener('stop', function () {
-            finalizeLiveCaptureWindow(session, state, captureWindow);
-        }, {once: true});
-        recorder.addEventListener('error', function (event) {
-            captureWindow.suppressUpload = true;
-            logLiveQAFailure(session, event.error || new Error('A live audio window could not be recorded.'));
-        }, {once: true});
-
-        try {
-            recorder.start();
-            captureWindow.timerId = window.setTimeout(function () {
-                stopLiveCaptureWindow(captureWindow, false);
-            }, liveChunkWindowMs);
-        } catch (error) {
-            captureWindow.suppressUpload = true;
-            finalizeLiveCaptureWindow(session, state, captureWindow);
-            logLiveQAFailure(session, error);
-        }
-    }
-
-    function stopLiveCaptureWindow(captureWindow, suppressUpload) {
-        if (!captureWindow || captureWindow.finished) return captureWindow?.stopped || Promise.resolve();
-        captureWindow.suppressUpload = captureWindow.suppressUpload || Boolean(suppressUpload);
-        if (captureWindow.timerId !== null) {
-            window.clearTimeout(captureWindow.timerId);
-            captureWindow.timerId = null;
-        }
-        if (captureWindow.recorder?.state && captureWindow.recorder.state !== 'inactive') {
-            try {
-                captureWindow.recorder.stop();
-            } catch (error) {
-                captureWindow.suppressUpload = true;
-                captureWindow.finished = true;
-                captureWindow.resolveStopped();
-            }
-        } else {
-            captureWindow.finished = true;
-            captureWindow.resolveStopped();
-        }
-        return captureWindow.stopped;
-    }
-
-    function finalizeLiveCaptureWindow(session, state, captureWindow) {
-        if (captureWindow.finished) return;
-        captureWindow.finished = true;
-        if (captureWindow.timerId !== null) {
-            window.clearTimeout(captureWindow.timerId);
-            captureWindow.timerId = null;
-        }
-        state.activeWindows.delete(captureWindow);
-
-        const durationMs = Date.now() - captureWindow.startedAt.getTime();
-        const blob = new Blob(captureWindow.chunks, {
-            type: captureWindow.recorder?.mimeType || supportedMimeType || 'audio/webm'
-        });
-        const activity = audioActivity[state.source] || {frames: 0, speechFrames: 0, maxLevel: 0};
-        const totalFrames = Math.max(0, activity.frames - captureWindow.activityStartFrames);
-        const speechFrames = Math.max(0, activity.speechFrames - captureWindow.activityStartSpeechFrames);
-        const speechRatio = totalFrames ? speechFrames / totalFrames : 0;
-        const hasSpeech = speechRatio >= liveMinSpeechRatio || activity.maxLevel > captureWindow.activityStartMaxLevel + liveSpeechLevelThreshold;
-        if (
-            !session.cancelled
-            && !captureWindow.suppressUpload
-            && durationMs >= 1000
-            && blob.size >= liveMinChunkBytes
-            && hasSpeech
-        ) {
-            enqueueLiveChunk(session, state, {
-                blob: blob,
-                chunkId: captureWindow.chunkId,
-                sequence: captureWindow.sequence,
-                startedAt: captureWindow.startedAt
-            });
-        }
-        captureWindow.resolveStopped();
-        maybeReleaseLiveQASession(session);
-    }
-
-    function enqueueLiveChunk(session, state, item) {
-        if (session.cancelled) return;
-        while (state.queue.length >= liveQueueLimit) {
-            state.queue.shift();
-        }
-        state.queue.push(item);
-        void processLiveQueue(session, state);
-    }
-
-    async function processLiveQueue(session, state) {
-        if (state.processing || session.cancelled) return;
-        state.processing = true;
-        try {
-            while (state.queue.length && !session.cancelled) {
-                const item = state.queue.shift();
-                try {
-                    const payload = await uploadLiveChunk(session, state, item);
-                    if (payload?.status === 'cancelled') {
-                        session.cancelled = true;
-                        break;
-                    }
-                    if (payload?.transcript) {
-                        state.lastTranscript = String(payload.transcript).slice(-4000);
-                    }
-                    if (payload && Object.prototype.hasOwnProperty.call(payload, 'question_context')) {
-                        state.questionContext = String(payload.question_context || '').slice(-1600);
-                    }
-                } catch (error) {
-                    if (!session.cancelled && error?.name !== 'AbortError') {
-                        logLiveQAFailure(session, error);
-                    }
-                }
-            }
-        } finally {
-            state.processing = false;
-            maybeReleaseLiveQASession(session);
-        }
-    }
-
-    async function uploadLiveChunk(session, state, item) {
-        let lastError = null;
-        for (let attempt = 0; attempt <= liveRetryCount; attempt += 1) {
-            if (session.cancelled) return {status: 'cancelled'};
-
-            const formData = new FormData();
-            formData.append('recording_id', session.id);
-            formData.append('chunk_id', item.chunkId);
-            formData.append('source', state.source);
-            formData.append('sequence', String(item.sequence));
-            formData.append('started_at', item.startedAt.toISOString());
-            formData.append('prepared_meeting_id', session.preparedMeetingId);
-            formData.append('previous_transcript', state.lastTranscript);
-            formData.append('question_context', state.questionContext);
-            formData.append('language', window.AppI18n?.language || document.documentElement.lang || 'en');
-            formData.append('live_qa_opt_in', 'true');
-            formData.append('elapsed_seconds', String(Math.max(0, (Date.now() - session.startedAt.getTime()) / 1000)));
-            formData.append(
-                'audio_chunk',
-                item.blob,
-                `${state.source}-${item.sequence}${mimeExtension(item.blob.type)}`
-            );
-
-            const controller = new AbortController();
-            session.controllers.add(controller);
-            try {
-                const response = await fetch(AppUI.appUrl('/api/meeting-recorder/live-chunk'), {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'same-origin',
-                    signal: controller.signal,
-                    headers: {
-                        'X-Recorder-Reference': item.chunkId,
-                        'Accept': 'application/json'
-                    }
-                });
-                const parsed = await readResponse(response);
-                if (!response.ok) {
-                    const error = new Error(
-                        parsed.payload?.error
-                        || `Live Q&A returned HTTP ${response.status}.`
-                    );
-                    error.httpStatus = response.status;
-                    throw error;
-                }
-                return parsed.payload || {};
-            } catch (error) {
-                lastError = error;
-                if (controller.signal.aborted || session.cancelled) throw error;
-                const status = Number(error?.httpStatus) || 0;
-                const retryable = !status || status >= 500;
-                if (!retryable || attempt >= liveRetryCount) throw error;
-                await delay(liveRetryBaseMs * Math.pow(2, attempt));
-            } finally {
-                session.controllers.delete(controller);
-            }
-        }
-        throw lastError || new Error('The live audio segment could not be sent.');
-    }
-
-    async function stopLiveQAStreaming(options) {
-        const session = liveQASession;
-        if (!session) return;
-        const discard = Boolean(options?.discard);
-        const flushPartial = Boolean(options?.flushPartial);
-        if (discard) {
-            await cancelLiveQASession(session, {notifyServer: true, keepalive: false});
-            return;
-        }
-
-        session.captureStopped = true;
-        const stopPromises = [];
-        session.sources.forEach(function (state) {
-            if (state.intervalId !== null) {
-                window.clearInterval(state.intervalId);
-                state.intervalId = null;
-            }
-            Array.from(state.activeWindows).forEach(function (captureWindow) {
-                stopPromises.push(stopLiveCaptureWindow(captureWindow, !flushPartial));
-            });
-        });
-        await Promise.allSettled(stopPromises);
-        maybeReleaseLiveQASession(session);
-    }
-
-    async function cancelLiveQASession(session, options) {
-        if (!session) return;
-        session.cancelled = true;
-        session.captureStopped = true;
-
-        // Notify the server first so an in-flight transcription can observe the
-        // cancellation before it creates a Live Q&A entry.
-        let cancellationRequest = null;
-        if (options?.notifyServer) {
-            cancellationRequest = fetch(
-                AppUI.appUrl(`/api/meeting-recorder/live-session/${encodeURIComponent(session.id)}`),
-                {
-                    method: 'DELETE',
-                    credentials: 'same-origin',
-                    keepalive: Boolean(options.keepalive),
-                    headers: {'Accept': 'application/json'}
-                }
-            ).catch(function () {
-                // Client-side aborting still prevents queued chunks from being sent.
-            });
-        }
-
-        const stopPromises = [];
-        session.sources.forEach(function (state) {
-            if (state.intervalId !== null) {
-                window.clearInterval(state.intervalId);
-                state.intervalId = null;
-            }
-            state.queue = [];
-            Array.from(state.activeWindows).forEach(function (captureWindow) {
-                stopPromises.push(stopLiveCaptureWindow(captureWindow, true));
-            });
-        });
-        session.controllers.forEach(function (controller) {
-            controller.abort();
-        });
-        session.controllers.clear();
-        await Promise.allSettled(stopPromises);
-        if (cancellationRequest && !options?.keepalive) await cancellationRequest;
-        if (liveQASession === session) liveQASession = null;
-    }
-
-    function maybeReleaseLiveQASession(session) {
-        if (!session.captureStopped || session.cancelled) return;
-        const busy = session.sources.some(function (state) {
-            return state.processing || state.queue.length || state.activeWindows.size;
-        });
-        if (!busy && liveQASession === session) liveQASession = null;
-    }
-
-    function logLiveQAFailure(session, error) {
-        if (session.failureLogged) return;
-        session.failureLogged = true;
-        console.warn('Browser Recorder Live Q&A update failed. The recording continues.', error);
+    async function cancelLiveQASession() {
+        liveQASession = null;
     }
 
     function finalizePreparedMeeting(preparedMeeting, payload) {
@@ -1650,7 +1305,7 @@
         preparedMeetingsCache = activePreparedMeetings().filter(function (meeting) {
             return String(meeting.id) !== String(preparedMeeting.id);
         });
-        fetch(AppUI.appUrl(`/api/knowledge/upcoming-meetings/${encodeURIComponent(preparedMeeting.id)}`), {
+        fetch(AppUI.appUrl(`/api/career/application-workspaces/${encodeURIComponent(preparedMeeting.id)}`), {
             method: 'PUT',
             credentials: 'same-origin',
             headers: {'Content-Type': 'application/json'},
@@ -1673,7 +1328,7 @@
     preparedMeetingSelect?.addEventListener('change', async function () {
         const selected = getSelectedPreparedMeeting();
         try {
-            await fetch(AppUI.appUrl('/api/knowledge/active-meeting'), {
+            await fetch(AppUI.appUrl('/api/career/active-application'), {
                 method: 'PUT',
                 credentials: 'same-origin',
                 headers: {'Content-Type': 'application/json'},
@@ -1685,7 +1340,7 @@
         if (!preparedMeetingHelp) return;
         preparedMeetingHelp.textContent = selected
             ? `This recording will be linked to “${selected.title}” and its saved materials.`
-            : 'Link this recording to materials and context prepared for an upcoming meeting.';
+            : 'Link this recording to materials and context prepared for an upcoming interview.';
     });
 
     function getAudioTracks(source) {
@@ -1750,7 +1405,7 @@
         const microphoneConnected = getAudioTracks('microphone').some(function (track) {
             return track.readyState === 'live';
         });
-        const speakerConnected = getAudioTracks('meeting audio').some(function (track) {
+        const speakerConnected = getAudioTracks('interviewer prompt audio').some(function (track) {
             return track.readyState === 'live';
         });
 
@@ -1763,7 +1418,7 @@
             microphoneConnected
         );
         updateMuteControl(
-            'meeting audio',
+            'interviewer prompt audio',
             speakerMuteButton,
             speakerState,
             speakerSourceCard,
@@ -2061,13 +1716,13 @@
         statusBadge.dataset.state = nextPhase;
         if (openLiveQALink) openLiveQALink.hidden = nextPhase !== 'recording';
         const copy = {
-            ready: ['Ready', 'Ready to record', 'Your browser will ask for microphone access and, optionally, which meeting tab or screen to share.'],
+            ready: ['Ready', 'Ready to record', 'Your browser will ask for microphone access and, optionally, which interviewer-prompt tab or screen to share.'],
             connecting: ['Connecting', 'Connecting audio sources', 'Approve the browser permission prompts to continue.'],
-            recording: ['Recording', 'Recording in progress', 'Audio is being saved in short secure segments while you record. Choose Stop & Process when the meeting ends.'],
+            recording: ['Recording', 'Recording in progress', 'Audio is being saved in short secure segments while you record. Choose Stop & Process when the practice session ends.'],
             stopping: ['Stopping', 'Finalizing audio', 'Saving the last audio segments before processing begins.'],
             discarding: ['Discarding', 'Discarding recording', 'Stopping capture and deleting the current audio without saving or processing it.'],
-            processing: ['Processing', 'Creating your meeting review', 'The saved audio segments are being transcribed and analyzed.'],
-            complete: ['Saved', 'Meeting ready', 'Your meeting is available in Meeting Review.'],
+            processing: ['Processing', 'Creating your interview review', 'The saved audio segments are being transcribed and analyzed.'],
+            complete: ['Saved', 'Mock interview ready', 'Your mock interview is available in Interview Review.'],
             error: ['Action needed', 'Recording not saved', 'The detailed error is shown below. Retry processing or send the diagnostic information directly to support.']
         }[nextPhase] || ['Ready', 'Ready to record', ''];
         statusText.textContent = copy[0];

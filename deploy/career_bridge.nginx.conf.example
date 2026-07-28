@@ -1,0 +1,33 @@
+# Example path-based composition for Career Bridge.
+# Réunia remains in its OpenAI 1.x environment on port 5000.
+# Application Builder remains in its OpenAI 2.x environment on port 5001.
+
+upstream reunia_service {
+    server 127.0.0.1:5000;
+}
+
+upstream application_builder_service {
+    server 127.0.0.1:5001;
+}
+
+server {
+    listen 80;
+    server_name career-bridge.example.com;
+
+    location /application-builder/ {
+        # The trailing slash strips the public prefix before forwarding. The
+        # Application Builder WSGI middleware restores SCRIPT_NAME so url_for()
+        # emits /application-builder/... links.
+        proxy_pass http://application_builder_service/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location / {
+        proxy_pass http://reunia_service;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}

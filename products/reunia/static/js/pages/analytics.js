@@ -56,13 +56,13 @@
 
     async function loadAnalytics() {
         setLoading(true);
-        setStatus('Loading your meeting analytics...');
+        setStatus('Loading your career progress...');
 
         try {
-            const endpoint = window.AppUI?.appUrl('/api/transcripts') || '/api/transcripts';
+            const endpoint = window.AppUI?.appUrl('/api/career/interview-reviews') || '/api/career/interview-reviews';
             const response = await fetch(endpoint, {headers: {'Accept': 'application/json'}});
             if (!response.ok) {
-                throw new Error(`Unable to load meetings (${response.status}).`);
+                throw new Error(`Unable to load mock interviews (${response.status}).`);
             }
 
             const payload = await response.json();
@@ -72,8 +72,8 @@
             state.meetings = [];
             state.filteredMeetings = [];
             renderDashboard([]);
-            setStatus(error.message || 'Unable to load analytics.', true);
-            window.AppUI?.showToast(error.message || 'Unable to load analytics.', {type: 'error'});
+            setStatus(error.message || 'Unable to load career progress.', true);
+            window.AppUI?.showToast(error.message || 'Unable to load career progress.', {type: 'error'});
         } finally {
             setLoading(false);
         }
@@ -117,7 +117,7 @@
 
         renderDashboard(state.filteredMeetings);
         const selectedDescription = getSelectedPeriodDescription(periodDays);
-        setStatus(`${state.filteredMeetings.length} of ${state.meetings.length} meetings shown · ${selectedDescription}`);
+        setStatus(`${state.filteredMeetings.length} of ${state.meetings.length} mock interviews shown · ${selectedDescription}`);
     }
 
     function renderDashboard(meetings) {
@@ -149,13 +149,13 @@
         const trend = getScoreTrend(meetings);
 
         setText('analytics-total-meetings', String(meetings.length));
-        setText('analytics-meeting-period', meetings.length === 1 ? '1 meeting matches the filters' : `${meetings.length} meetings match the filters`);
+        setText('analytics-meeting-period', meetings.length === 1 ? '1 mock interview matches the filters' : `${meetings.length} mock interviews match the filters`);
         setText('analytics-average-score', formatNumber(averageScore, 1));
         setText('analytics-score-trend', trend.label);
         setText('analytics-total-questions', String(questions.length));
-        setText('analytics-average-questions', meetings.length ? `${formatNumber(questions.length / meetings.length, 1)} per meeting` : 'Across answers and open questions');
+        setText('analytics-average-questions', meetings.length ? `${formatNumber(questions.length / meetings.length, 1)} per mock interview` : 'Across answers and open questions');
         setText('analytics-total-actions', String(actionCount));
-        setText('analytics-average-actions', meetings.length ? `${formatNumber(actionCount / meetings.length, 1)} per meeting` : 'Follow-up items across meetings');
+        setText('analytics-average-actions', meetings.length ? `${formatNumber(actionCount / meetings.length, 1)} per mock interview` : 'Career-plan actions across applications');
     }
 
     function renderTrend(meetings) {
@@ -170,7 +170,7 @@
             .sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0))
             .slice(-12);
 
-        setText('analytics-trend-count', `${points.length} scored ${points.length === 1 ? 'meeting' : 'meetings'}`);
+        setText('analytics-trend-count', `${points.length} scored ${points.length === 1 ? 'mock interview' : 'mock interviews'}`);
 
         const svg = elements['analytics-trend-chart'];
         const empty = elements['analytics-trend-empty'];
@@ -185,11 +185,11 @@
 
         svg.replaceChildren();
         const chartTitle = createSvg('title', {id: 'analytics-trend-title'});
-        chartTitle.textContent = 'Meeting performance score trend';
+        chartTitle.textContent = 'Interview performance score trend';
         const chartDescription = createSvg('desc', {id: 'analytics-trend-description'});
         chartDescription.textContent = points.length
-            ? 'A chart of meeting performance scores over time.'
-            : 'No scored meetings are available for the selected filters.';
+            ? 'A chart of mock-interview performance scores over time.'
+            : 'No scored mock interviews are available for the selected filters.';
         svg.append(chartTitle, chartDescription);
 
         empty.hidden = points.length === 0;
@@ -464,7 +464,7 @@
             .sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0))
             .map(item => item.score);
 
-        if (chronologicalScores.length < 2) return {value: null, label: 'Add more scored meetings to see a trend'};
+        if (chronologicalScores.length < 2) return {value: null, label: 'Add more scored mock interviews to see a trend'};
         const split = Math.max(1, Math.floor(chronologicalScores.length / 2));
         const earlier = average(chronologicalScores.slice(0, split));
         const recent = average(chronologicalScores.slice(split));
@@ -472,7 +472,7 @@
         if (Math.abs(difference) < 0.05) return {value: 0, label: 'Performance is steady across the period'};
         return {
             value: difference,
-            label: `${difference > 0 ? 'Up' : 'Down'} ${Math.abs(difference).toFixed(1)} points versus earlier meetings`
+            label: `${difference > 0 ? 'Up' : 'Down'} ${Math.abs(difference).toFixed(1)} points versus earlier mock interviews`
         };
     }
 

@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 
-def test_guided_workflow_model_covers_four_stage_states(project_root):
+def test_guided_workflow_model_covers_six_step_states(project_root):
     app_source = (project_root / "app.py").read_text(encoding="utf-8")
 
     assert "def build_guided_workflow(" in app_source
     for status in ["not_started", "in_progress", "completed", "needs_attention"]:
         assert f'"{status}"' in app_source
-    for title in ['"Setup — Job & Resume"', '"Confirm Your Experience"', '"Review Job Alignment"', '"Optimize & Export"']:
+    for title in ['"Career and Job Setup"', '"Confirm Relevant Experience"', '"Review Tailored Resume"', '"Improve Resume Quality"', '"Finalize Resume"', '"Evidence Review and Export"']:
         assert title in app_source
-    workflow = app_source.split("def build_guided_workflow(", 1)[1].split("def final_audit_blockers", 1)[0]
-    assert '"Improve Resume Quality"' not in workflow
-    assert '"Finalize Resume"' not in workflow
+    workflow = app_source.split("def build_guided_workflow(", 1)[1].split("def report_view", 1)[0]
+    assert workflow.count("Application Builder") >= 1
+    assert "evidence_export" in workflow
 
 def test_guided_workflow_is_rendered_on_tailoring_page(project_root):
     template = (project_root / "templates" / "index.html").read_text(encoding="utf-8")
@@ -26,12 +26,13 @@ def test_guided_workflow_is_rendered_on_tailoring_page(project_root):
     assert ".workflow-step-needs_attention" in styles
 
 
-def test_tailoring_page_defaults_to_current_four_step_stage(project_root):
+def test_tailoring_page_defaults_to_current_six_step_stage(project_root):
     app_source = (project_root / "app.py").read_text(encoding="utf-8")
     template = (project_root / "templates" / "index.html").read_text(encoding="utf-8")
 
     assert 'active_guided_stage = guided_stage_for_state(current)' in app_source
-    assert 'request.args.get("stage", active_guided_stage)' in app_source
+    assert 'normalize_workflow_step(' in app_source
+    assert 'request.args.get("stage")' in app_source
     assert 'if selected_workflow_stage in {"quality", "review"}' not in app_source
     assert 'active_tab == "editor"' not in app_source
     for stage in ["initial", "confirmation", "draft", "final"]:
@@ -46,9 +47,9 @@ def test_step_three_has_one_consolidated_primary_action(project_root):
     draft_start = template.index('data-workflow-stage-panel="draft"')
     final_start = template.index('data-workflow-stage-panel="final"')
     draft_panel = template[draft_start:final_start]
-    assert "Review Job Alignment" in draft_panel
+    assert "Review Tailored Resume" in draft_panel
     assert "Approve &amp; optimize resume" in template
-    assert "Optimize &amp; Export" in draft_panel
+    assert "Improve Resume Quality" in draft_panel
     assert "start_final_stage" in template
     assert "Verify resume evidence" not in draft_panel
 
@@ -64,7 +65,7 @@ def test_setup_analysis_modal_shows_plain_language_progress(project_root):
         "Reading the target job requirements",
         "Comparing the role with your original resume",
         "Identifying high-value experience to confirm",
-        "Preparing Confirm Your Experience",
+        "Preparing Confirm Relevant Experience",
     ]:
         assert label in setup_form
 
@@ -99,7 +100,7 @@ def test_confirmation_progress_modal_covers_initial_and_follow_up_processing(pro
         "Applying your final answers",
         "Rechecking the affected resume content",
         "Replacing remaining uncertainty safely",
-        "Preparing Review Job Alignment",
+        "Preparing Review Tailored Resume",
     ]:
         assert label in template
 

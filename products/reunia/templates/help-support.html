@@ -16,7 +16,7 @@
 >
     {{ page_hero(
         'Help & Support',
-        'Find guidance for the current meeting workflow, troubleshoot a problem, or contact the Réunia team.'
+        'Find guidance for your application and interview workflow, troubleshoot a problem, or contact the Réunia team.'
     ) }}
 
     <section class="support-shortcuts" aria-labelledby="support-shortcuts-title">
@@ -36,29 +36,29 @@
                 <span class="support-shortcut-arrow" aria-hidden="true">→</span>
             </a>
 
-            <a class="support-shortcut-card" href="{{ request.script_root }}/knowledge.html?view=materials">
+            <a class="support-shortcut-card" href="{{ request.script_root }}/application-builder/">
                 <span class="support-shortcut-icon" aria-hidden="true">🧠</span>
                 <span>
-                    <strong>Meeting Preparation</strong>
-                    <small>Document Library, Meeting Materials, AI Context, and Knowledge Search.</small>
+                    <strong>Application &amp; Interview Preparation</strong>
+                    <small>Application Workspace, Application Materials, Career Profile, and Career Evidence Library.</small>
                 </span>
                 <span class="support-shortcut-arrow" aria-hidden="true">→</span>
             </a>
 
-            <a class="support-shortcut-card" href="{{ request.script_root }}/meeting-recorder">
+            <a class="support-shortcut-card" href="{{ request.script_root }}/mock-interview">
                 <span class="support-shortcut-icon" aria-hidden="true">●</span>
                 <span>
-                    <strong>Record &amp; get live help</strong>
-                    <small>Browser recording, shared meeting audio, processing, and Live Q&amp;A.</small>
+                    <strong>Practice a mock interview</strong>
+                    <small>Practice recording, optional interviewer prompt audio, transcription, and coaching.</small>
                 </span>
                 <span class="support-shortcut-arrow" aria-hidden="true">→</span>
             </a>
 
-            <a class="support-shortcut-card" href="{{ request.script_root }}/meeting-review.html">
+            <a class="support-shortcut-card" href="{{ request.script_root }}/interview-review">
                 <span class="support-shortcut-icon" aria-hidden="true">📋</span>
                 <span>
-                    <strong>Review &amp; Follow-Up</strong>
-                    <small>Meeting Review, sharing, Action Center, Analytics, and meeting questions.</small>
+                    <strong>Review &amp; Improve</strong>
+                    <small>Interview Review, Interview Scorecard, Career Action Plan, Career Progress, and coaching questions.</small>
                 </span>
                 <span class="support-shortcut-arrow" aria-hidden="true">→</span>
             </a>
@@ -78,7 +78,7 @@
 
             <div class="support-notice" role="note">
                 <span aria-hidden="true">🔒</span>
-                <p>Do not include passwords, API keys, payment details, or confidential meeting content. A screenshot is helpful only when you are allowed to share it.</p>
+                <p>Do not include passwords, API keys, payment details, or confidential employer, application, or interview content. A screenshot is helpful only when you are allowed to share it.</p>
             </div>
 
             <form
@@ -149,14 +149,12 @@
                         <select class="form-control" id="supportArea" name="area" required>
                             <option value="">Select a feature or area</option>
                             <option value="getting-started">Home page or getting started</option>
-                            <option value="preparation">Meeting Preparation</option>
-                            <option value="recorder">Browser Meeting Recorder</option>
-                            <option value="desktop-recorder">Windows Desktop Recorder</option>
-                            <option value="live-qa">Live Q&amp;A</option>
-                            <option value="meeting-review">Meeting Review</option>
-                            <option value="sharing">Meeting sharing</option>
-                            <option value="action-center">Action Center</option>
-                            <option value="analytics">Analytics</option>
+                            <option value="preparation">Application &amp; Interview Preparation</option>
+                            <option value="recorder">Mock Interview Recorder</option>
+                            <option value="meeting-review">Interview Review</option>
+                            <option value="sharing">Interview review sharing</option>
+                            <option value="action-center">Career Action Plan</option>
+                            <option value="analytics">Career Progress</option>
                             <option value="settings">Settings</option>
                             <option value="account">Profile or account</option>
                             <option value="other">Other</option>
@@ -264,47 +262,47 @@
                 <div class="support-faq-list" id="supportFaqList">
                     <details data-support-faq>
                         <summary>Where should I start?</summary>
-                        <p>Use the app in three steps: optionally prepare materials and AI Context, record through Live Meeting, then open Review &amp; Follow-Up for the summary, scorecard, transcript, actions, and analytics.</p>
+                        <p>Use Career Bridge to create an Application Workspace, connect Application Materials and your Career Profile, prepare evidence-backed answers, run a Mock Interview, then review the transcript, Interview Scorecard, Career Action Plan, and Career Progress.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>What is included in Meeting Preparation?</summary>
-                        <p>The Document Library stores reusable files. Meeting Materials creates a package for an upcoming meeting. AI Context adds reusable or meeting-specific guidance. Knowledge Search asks questions across documents, meeting materials, and saved meetings.</p>
+                        <summary>What is included in interview preparation?</summary>
+                        <p>Application Materials stores the resume, job posting, company notes, and recruiter messages for one target position. Career Profile stores professional background, accomplishments, preferences, and constraints. Career Evidence Library searches verified projects, achievements, and experience.</p>
                     </details>
                     <details data-support-faq>
                         <summary>How do I finish or discard a browser recording?</summary>
-                        <p>Select <strong>Stop &amp; Process</strong> to upload, transcribe, analyze, and save the meeting. Select <strong>Discard Recording</strong> when you want to stop without creating a saved meeting.</p>
+                        <p>Select <strong>Stop &amp; Process</strong> to upload, transcribe, analyze, and save the mock-interview session. Select <strong>Discard Recording</strong> to stop without creating a saved practice session.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>Why is shared meeting audio missing?</summary>
-                        <p>Turn on <strong>Capture shared meeting audio</strong> before starting, choose the meeting tab or screen, and enable the browser option to share its audio. Microphone audio is captured separately.</p>
+                        <summary>Why is interviewer prompt audio missing?</summary>
+                        <p>Turn on <strong>Capture interviewer audio</strong> before starting, choose the practice prompt tab or screen, and enable the browser option to share its audio. Microphone audio is captured separately.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>How does Live Q&amp;A work?</summary>
-                        <p>The Real-Time Meeting Feed can receive supported microphone, speaker, and clipboard content. In Live Q&amp;A Settings, choose which sources create automatic AI answers and how frequently partial answers update.</p>
+                        <summary>Does Réunia answer questions during a real interview?</summary>
+                        <p>No. Candidate-facing Live Q&amp;A is retired. Réunia supports interview preparation, browser-based mock interviews, and post-practice coaching rather than hidden real-time assistance.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>Where do I find meeting results?</summary>
-                        <p>Open Meeting Review and select a saved meeting. Use Summary, Scorecard, Transcript, or Ask about this meeting. Sharing controls let you create a read-only link with optional expiration, password, transcript, scorecard, and download access.</p>
+                        <summary>Where do I find mock-interview results?</summary>
+                        <p>Open Interview Review and select a saved practice session. Use Summary, Interview Scorecard, Transcript, or Ask about this interview. Sharing controls can create a read-only link with optional expiration, password, transcript, scorecard, and download access.</p>
                     </details>
                     <details data-support-faq>
                         <summary>How do I find open or completed actions?</summary>
-                        <p>Open Action Center. The default view shows open actions. Use My actions, All, or Closed and refine the list by owner, meeting, due date, priority, status, or search.</p>
+                        <p>Open Career Action Plan. The default view shows open actions. Use My actions, All, or Closed and refine the list by owner, application, due date, priority, status, or search.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>What does Analytics show?</summary>
-                        <p>Analytics summarizes score trends, score distribution, speaking averages, frequently asked questions, common topics, recurring improvement areas, and recent meeting performance.</p>
+                        <summary>What does Career Progress show?</summary>
+                        <p>Career Progress summarizes score trends, answer-quality patterns, recurring improvement areas, completed actions, and readiness across applications and mock interviews.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>Should I use Ask about this meeting or Knowledge Search?</summary>
-                        <p>Use Ask about this meeting for one selected meeting. Use Knowledge Search when you need to search documents, prepared materials, previous meetings, or all available knowledge together.</p>
+                        <summary>Should I use Interview Review or Career Evidence Library?</summary>
+                        <p>Use Interview Review for one selected mock interview. Use Career Evidence Library when you need verified examples, achievements, application materials, or evidence from earlier practice sessions.</p>
                     </details>
                     <details data-support-faq>
                         <summary>What should I include in a problem report?</summary>
-                        <p>Include the feature or page, what you clicked, what happened, what you expected, and the meeting name or approximate time when relevant. Add a screenshot only when it is safe to share.</p>
+                        <p>Include the feature or page, what you clicked, what happened, what you expected, and the application workspace or approximate practice time when relevant. Add a screenshot only when it is safe to share.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>Can I record and share any conversation?</summary>
-                        <p>Only record or share when you are authorized to do so. Inform participants and follow applicable consent laws, workplace rules, and data-handling requirements.</p>
+                        <summary>What may I record and share?</summary>
+                        <p>Use recording for authorized mock-interview practice. Follow applicable consent laws and data-handling rules, and review sensitive content before sharing an Interview Review.</p>
                     </details>
                 </div>
                 <p class="support-faq-empty" id="supportFaqEmpty" hidden>No quick answer matches that search. Send a request and select the closest feature area.</p>
@@ -317,8 +315,8 @@
                     <ul>
                         <li>Name the page or feature where it happened.</li>
                         <li>Describe the last few steps before the issue.</li>
-                        <li>For recording problems, mention the browser, meeting platform, and selected audio sources.</li>
-                        <li>For saved content, include the meeting name or approximate date without pasting confidential content.</li>
+                        <li>For recording problems, mention the browser and selected mock-interview audio sources.</li>
+                        <li>For saved content, include the application workspace or approximate practice date without pasting confidential content.</li>
                     </ul>
                 </div>
             </section>

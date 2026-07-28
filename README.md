@@ -13,6 +13,7 @@ products/resume_taylor/        Original Resume Taylor import
 docs/DOMAIN_MODEL.md           Aggregate relationships and consistency rules
 docs/ARCHITECTURE.md           Integration boundaries and first vertical slice
 docs/MIGRATION_PLAN.md         Incremental adapter and workflow plan
+docs/APPLICATION_BUILDER.md    Multi-application dashboard and runtime integration
 provenance/                    SHA-256 import manifests
 PREEXISTING_COMPONENTS.md      Hackathon provenance and reuse inventory
 HACKATHON_CHANGES.md           New-work development log
@@ -49,9 +50,9 @@ git log --graph --decorate --oneline --all
 
 The original snapshots remain tagged as `reunia-original-import` and `resume-tailor-original-import`. Their independent roots remain available as import branches.
 
-## Run the existing applications
+## Run the Career Bridge services
 
-Use separate virtual environments because their OpenAI SDK constraints currently conflict.
+Use separate virtual environments because the OpenAI SDK constraints still conflict. Réunia remains the authenticated shell, while Resume Taylor is exposed as the Application Builder module at `/application-builder/` through path-based reverse proxying. See `docs/APPLICATION_BUILDER.md` and `deploy/career_bridge.nginx.conf.example`.
 
 ### Réunia
 
@@ -63,15 +64,18 @@ pip install -r requirements.txt
 python app.py
 ```
 
-### Resume Taylor
+### Application Builder service
 
 ```bash
 cd products/resume_taylor
 python -m venv .venv
-# Activate the environment, then:
-pip install -r requirements.txt
-python app.py
+# Activate the environment, then install this product's requirements.
+pip install -r requirements-deploy.txt
+cd ../..
+FLASK_SECRET_KEY='<same value used by Reunia>' gunicorn --bind 127.0.0.1:5001 application_builder_wsgi:application
 ```
+
+The first Application Builder page is a persistent multi-application dashboard. Opening an application starts or resumes its independent six-step resume workflow.
 
 ## Validate the shared foundation
 

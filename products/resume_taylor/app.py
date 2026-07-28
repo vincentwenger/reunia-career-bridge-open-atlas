@@ -32,6 +32,7 @@ from resume_tailor.ai import ResumeAI, ResumeAIError
 from resume_tailor.application_tracker import (
     APPLICATION_STATUS_OPTIONS,
     RESUME_VERSION_OPTIONS,
+    UPCOMING_EVENT_TYPE_OPTIONS,
     SQLiteApplicationStore,
     build_application_metrics,
     normalize_application_status,
@@ -298,7 +299,28 @@ def _proposal_fingerprint(proposal: TailoringProposal | None) -> str:
     return hashlib.sha256(_proposal_json(proposal).encode("utf-8")).hexdigest()
 
 
-WORKFLOW_STEP_ORDER = ("initial", "confirmation", "draft", "final")
+WORKFLOW_SNAPSHOT_STAGE_ORDER = ("initial", "confirmation", "draft", "final")
+WORKFLOW_STEP_ORDER = (
+    "setup",
+    "confirmation",
+    "review",
+    "quality",
+    "finalize",
+    "evidence_export",
+)
+WORKFLOW_STEP_ALIASES = {
+    "initial": "setup",
+    "draft": "review",
+    "final": "finalize",
+}
+WORKFLOW_PANEL_BY_STEP = {
+    "setup": "initial",
+    "confirmation": "confirmation",
+    "review": "draft",
+    "quality": "final",
+    "finalize": "final",
+    "evidence_export": "final",
+}
 
 # User-facing resume names follow the workflow outputs rather than the internal
 # Draft/Final storage lifecycle. Keep these centralized so every comparison,
@@ -318,7 +340,7 @@ def capture_workflow_step_snapshot(
     profile: CandidateProfile | None = None,
 ) -> WorkflowStepSnapshot:
     """Capture the exact server-side state shown when a workflow step is completed."""
-    if stage not in WORKFLOW_STEP_ORDER:
+    if stage not in WORKFLOW_SNAPSHOT_STAGE_ORDER:
         raise ValueError(f"Unknown workflow snapshot stage: {stage}")
     captured = WorkflowStepSnapshot(
         stage=stage,
@@ -357,14 +379,14 @@ def discard_workflow_step_snapshots_after(
     include_stage: bool = False,
 ) -> None:
     """Discard snapshots invalidated by reopening an earlier workflow step."""
-    if stage not in WORKFLOW_STEP_ORDER:
+    if stage not in WORKFLOW_SNAPSHOT_STAGE_ORDER:
         return
-    cutoff = WORKFLOW_STEP_ORDER.index(stage)
+    cutoff = WORKFLOW_SNAPSHOT_STAGE_ORDER.index(stage)
     for key in list(state.workflow_step_snapshots):
         key_index = (
-            WORKFLOW_STEP_ORDER.index(key)
-            if key in WORKFLOW_STEP_ORDER
-            else len(WORKFLOW_STEP_ORDER)
+            WORKFLOW_SNAPSHOT_STAGE_ORDER.index(key)
+            if key in WORKFLOW_SNAPSHOT_STAGE_ORDER
+            else len(WORKFLOW_SNAPSHOT_STAGE_ORDER)
         )
         if key_index > cutoff or (include_stage and key_index == cutoff):
             state.workflow_step_snapshots.pop(key, None)
@@ -513,14 +535,24 @@ def current_application_fit(
 
 
 def guided_stage_for_state(state: WorkflowState) -> str:
-    """Return the user-facing stage for the simplified four-step workflow."""
+    """Return the current user-facing stage in the six-step Application Builder."""
     if state.workflow_stage == "initial":
-        return "initial"
-    if state.workflow_stage == "final":
-        return "final"
+        return "setup"
     if not state.confirmation_complete:
         return "confirmation"
-    return "draft"
+    if state.workflow_stage == "draft":
+        return "quality" if state.quality_review_started else "review"
+    if state.final_resume_bytes is not None:
+        return "evidence_export"
+    if state.final_proposal is not None:
+        return "finalize"
+    return "quality"
+
+
+def normalize_workflow_step(value: str | None, *, fallback: str) -> str:
+    candidate = WORKFLOW_STEP_ALIASES.get((value or "").strip(), (value or "").strip())
+    return candidate if candidate in WORKFLOW_STEP_ORDER else fallback
+
 
 def build_guided_workflow(
     *,
@@ -529,111 +561,103 @@ def build_guided_workflow(
     confirmation_complete: bool,
     blocking_local: bool,
     resume_ready: bool,
+    quality_review_started: bool = False,
+    final_proposal_ready: bool = False,
+    application_id: str = "",
 ) -> dict[str, Any]:
-    """Build the four-stage workflow status shown on the tailoring page."""
+    """Build the canonical six-step Application Builder status."""
     if workflow_stage == "initial":
-        current_key = "initial"
-        headline = "Current stage: Setup — Job & Resume"
-        guidance = (
-            "Review the original resume and target job, then analyze them to identify "
-            "relevant experience requiring confirmation."
-        )
+        current_key = "setup"
+        headline = "Current stage: Career and Job Setup"
+        guidance = "Add the target job and source resume, then analyze the match."
     elif not confirmation_complete:
         current_key = "confirmation"
-        headline = "Current stage: Confirm Your Experience"
-        guidance = "Confirm only relevant additional experience before creating the job-aligned resume."
-    elif workflow_stage == "draft":
-        current_key = "draft"
-        headline = "Current stage: Review Job Alignment"
+        headline = "Current stage: Confirm Relevant Experience"
+        guidance = "Confirm only evidence that truthfully supports this target role."
+    elif workflow_stage == "draft" and not quality_review_started:
+        current_key = "review"
+        headline = "Current stage: Review Tailored Resume"
         guidance = (
-            "Review the Initial Resume → Job-Aligned Resume comparison, make any edits, "
-            "then optimize and export the final version."
+            "Review every tailored change and confirm that the wording remains accurate."
             if input_is_current
-            else "The job inputs or tailoring model changed. Analyze the job and resume again before continuing."
+            else "The job inputs changed. Return to Career and Job Setup before continuing."
         )
-    else:
-        current_key = "final"
-        headline = (
-            "Workflow complete: Final resume ready"
-            if resume_ready
-            else "Current stage: Optimize & Export"
-        )
+    elif workflow_stage != "final":
+        current_key = "quality"
+        headline = "Current stage: Improve Resume Quality"
+        guidance = "Apply score-protected improvements without weakening evidence or job alignment."
+    elif not final_proposal_ready:
+        current_key = "quality"
+        headline = "Current stage: Improve Resume Quality"
         guidance = (
-            "Optimization and the Final Resume Report are complete. Download the Final Resume or review the report."
-            if resume_ready
-            else "Resolve any blocking local validation issue, then run score-protected optimization and export."
+            "Resolve the remaining blocking quality issue before finalizing."
             if blocking_local
-            else "Run the Final Resume Report, apply safe improvements, and export the Final Resume."
+            else "Run the score-protected quality pass."
         )
-
-    initial_status = "in_progress" if workflow_stage == "initial" else "completed"
-    if workflow_stage == "initial":
-        confirmation_status = "not_started"
-    elif not confirmation_complete:
-        confirmation_status = "needs_attention" if not input_is_current else "in_progress"
+    elif not resume_ready:
+        current_key = "finalize"
+        headline = "Current stage: Finalize Resume"
+        guidance = "Choose the final format, career stage, and visual design."
     else:
-        confirmation_status = "completed"
+        current_key = "evidence_export"
+        headline = "Workflow complete: Evidence Review and Export"
+        guidance = "Review the final evidence-backed result and export the approved resume."
 
-    if workflow_stage == "initial" or not confirmation_complete:
-        draft_status = "not_started"
-    elif workflow_stage == "draft":
-        draft_status = "needs_attention" if not input_is_current else "in_progress"
-    else:
-        draft_status = "completed"
-
-    if workflow_stage != "final":
-        final_status = "not_started"
-    elif resume_ready:
-        final_status = "completed"
-    elif blocking_local:
-        final_status = "needs_attention"
-    else:
-        final_status = "in_progress"
-
+    status_rank = {
+        "setup": 1,
+        "confirmation": 2,
+        "review": 3,
+        "quality": 4,
+        "finalize": 5,
+        "evidence_export": 6,
+    }
+    current_rank = status_rank[current_key]
     labels = {
         "not_started": "Not started",
         "in_progress": "In progress",
         "completed": "Completed",
         "needs_attention": "Needs attention",
     }
-    steps = [
-        {
-            "number": 1,
-            "key": "initial",
-            "title": "Setup — Job & Resume",
-            "description": "Add the target job and analyze it with the original resume.",
-            "status": initial_status,
-            "status_label": labels[initial_status],
-            "href": url_for("index", tab="tailoring", stage="initial") + "#job-input",
-        },
-        {
-            "number": 2,
-            "key": "confirmation",
-            "title": "Confirm Your Experience",
-            "description": "Confirm relevant experience before resume generation.",
-            "status": confirmation_status,
-            "status_label": labels[confirmation_status],
-            "href": url_for("index", tab="tailoring", stage="confirmation") + "#confirmation-stage",
-        },
-        {
-            "number": 3,
-            "key": "draft",
-            "title": "Review Job Alignment",
-            "description": "Review the tailored resume against the original resume.",
-            "status": draft_status,
-            "status_label": labels[draft_status],
-            "href": url_for("index", tab="tailoring", stage="draft") + "#tailored-resume",
-        },
-        {
-            "number": 4,
-            "key": "final",
-            "title": "Optimize & Export",
-            "description": "Apply score-safe quality improvements and export.",
-            "status": final_status,
-            "status_label": labels[final_status],
-            "href": url_for("index", tab="tailoring", stage="final") + "#final-review",
-        },
-    ]
+
+    def step_status(key: str) -> str:
+        rank = status_rank[key]
+        if rank < current_rank:
+            return "completed"
+        if rank > current_rank:
+            return "not_started"
+        if key in {"confirmation", "review"} and not input_is_current:
+            return "needs_attention"
+        if key == "quality" and blocking_local:
+            return "needs_attention"
+        return "completed" if key == "evidence_export" and resume_ready else "in_progress"
+
+    definitions = (
+        ("setup", "Career and Job Setup", "Add the target job, source resume, and career context.", "#job-input"),
+        ("confirmation", "Confirm Relevant Experience", "Confirm the evidence that may support this application.", "#confirmation-stage"),
+        ("review", "Review Tailored Resume", "Review the tailored resume and every evidence-backed change.", "#tailored-resume"),
+        ("quality", "Improve Resume Quality", "Apply score-protected writing and searchability improvements.", "#resume-quality"),
+        ("finalize", "Finalize Resume", "Choose the final structure, format, and visual design.", "#finalize-resume"),
+        ("evidence_export", "Evidence Review and Export", "Review final evidence and export PDF or Word.", "#evidence-review-export"),
+    )
+    steps = []
+    for number, (key, title, description, anchor) in enumerate(definitions, start=1):
+        status = step_status(key)
+        steps.append(
+            {
+                "number": number,
+                "key": key,
+                "title": title,
+                "description": description,
+                "status": status,
+                "status_label": labels[status],
+                "href": url_for(
+                    "index",
+                    tab="tailoring",
+                    stage=key,
+                    **({"application_id": application_id} if application_id else {}),
+                ) + anchor,
+            }
+        )
     return {
         "current_key": current_key,
         "headline": headline,
@@ -1767,6 +1791,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("FLASK_COOKIE_SECURE", "").casefold() == "true",
+        CAREER_BRIDGE_REQUIRE_AUTH=False,
+        CAREER_BRIDGE_LOGIN_URL="/login.html",
+        CAREER_BRIDGE_HOME_URL="/app",
     )
     if test_config:
         app.config.update(test_config)
@@ -1784,17 +1811,59 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app.extensions["application_store"] = application_store
 
     @app.before_request
-    def load_workflow_state() -> None:
-        session_id = session.get("workflow_sid")
-        if not session_id:
-            session_id = store.new_id()
-            session["workflow_sid"] = session_id
+    def load_workflow_state() -> Response | None:
+        if app.config.get("CAREER_BRIDGE_REQUIRE_AUTH") and not session.get("user_id"):
+            return redirect(str(app.config.get("CAREER_BRIDGE_LOGIN_URL") or "/login.html"))
+
+        owner_id = (
+            str(session.get("user_id") or "").strip()
+            or str(session.get("application_owner_id") or "").strip()
+            or str(session.get("workflow_sid") or "").strip()
+        )
+        if not owner_id:
+            owner_id = store.new_id()
+        session["application_owner_id"] = owner_id
+        # Retain the legacy key because existing application routes and tests use it.
+        session["workflow_sid"] = owner_id
+
+        requested_application_id = (
+            str((request.view_args or {}).get("application_id") or "").strip()
+            or str(request.args.get("application_id") or "").strip()
+            or str(request.form.get("application_id") or "").strip()
+            or str(session.get("active_application_id") or "").strip()
+        )
+        application = (
+            application_store.get(owner_id, requested_application_id)
+            if requested_application_id
+            else None
+        )
+        if requested_application_id and application is None:
+            session.pop("active_application_id", None)
+            requested_application_id = ""
+        elif application is not None:
+            session["active_application_id"] = application.id
+
+        workflow_key = (
+            f"{owner_id}:application:{requested_application_id}"
+            if requested_application_id
+            else f"{owner_id}:application:scratch"
+        )
+        session["active_workflow_key"] = workflow_key
         session.setdefault("csrf_token", secrets.token_urlsafe(24))
         if request.method == "POST":
             submitted = request.form.get("csrf_token", "")
             if not hmac.compare_digest(submitted, session["csrf_token"]):
                 abort(400, description="The form security token is invalid or expired. Refresh and try again.")
-        g.workflow_state = store.get(session_id)
+
+        g.application_owner_id = owner_id
+        g.active_application = application
+        g.workflow_state = store.get(workflow_key)
+        if application is not None:
+            if not g.workflow_state.target_title:
+                g.workflow_state.target_title = application.role
+            if not g.workflow_state.job_description and application.job_description:
+                g.workflow_state.job_description = application.job_description
+        return None
 
     @app.context_processor
     def inject_common_template_values() -> dict[str, Any]:
@@ -1804,6 +1873,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "processing_mode_order": PROCESSING_MODE_ORDER,
             "reasoning_efforts": ("automatic",) + REASONING_EFFORTS,
             "reasoning_effort_label": reasoning_effort_label,
+            "career_bridge_home_url": str(app.config.get("CAREER_BRIDGE_HOME_URL") or "/app"),
+            "active_application": getattr(g, "active_application", None),
         }
 
     def state() -> WorkflowState:
@@ -1829,12 +1900,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         current = state()
         ensure_recommended_resume_style(current)
 
-        active_tab = request.args.get("tab", "tailoring")
+        active_tab = request.args.get("tab", "applications")
         if active_tab not in {"tailoring", "reports", "applications", "configuration"}:
-            active_tab = "tailoring"
+            active_tab = "applications"
 
         if active_tab == "applications":
-            owner_id = session["workflow_sid"]
+            owner_id = g.application_owner_id
             applications = application_store.list_for_owner(owner_id)
             style_options = resume_style_options()
             return render_template(
@@ -1844,6 +1915,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 application_metrics=build_application_metrics(applications),
                 application_status_options=APPLICATION_STATUS_OPTIONS,
                 resume_version_options=RESUME_VERSION_OPTIONS,
+                upcoming_event_type_options=UPCOMING_EVENT_TYPE_OPTIONS,
                 resume_style_options=style_options,
                 resume_style_labels={
                     option["key"]: f'{option["label"]} — {option["audience"]}'
@@ -1853,9 +1925,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             )
 
         active_guided_stage = guided_stage_for_state(current)
-        selected_workflow_stage = request.args.get("stage", active_guided_stage)
-        if selected_workflow_stage not in WORKFLOW_STEP_ORDER:
-            selected_workflow_stage = active_guided_stage
+        selected_workflow_stage = normalize_workflow_step(
+            request.args.get("stage"), fallback=active_guided_stage
+        )
+        selected_workflow_panel = WORKFLOW_PANEL_BY_STEP[selected_workflow_stage]
 
         report_view_name = request.args.get("report", "initial")
         if report_view_name not in {"initial", "draft", "final", "comparison"}:
@@ -1918,7 +1991,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         confirmation_snapshot = current.workflow_step_snapshots.get("confirmation")
         alignment_snapshot = current.workflow_step_snapshots.get("draft")
         edit_setup_snapshot = bool(
-            selected_workflow_stage == "initial"
+            selected_workflow_stage == "setup"
             and current.workflow_stage != "initial"
             and request.args.get("edit") == "setup"
         )
@@ -2019,7 +2092,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             tailor_stage_editor_data["workflow_snapshot"] = True
             tailor_stage_editor_data["snapshot_stage"] = "draft"
             tailor_stage_editor_data["snapshot_label"] = (
-                "Step 3 · Review Job Alignment"
+                "Step 3 · Review Tailored Resume"
             )
             tailor_stage_editor_data["snapshot_captured_at"] = (
                 alignment_snapshot.captured_at
@@ -2177,7 +2250,40 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             confirmation_complete=current.confirmation_complete,
             blocking_local=blocking_local,
             resume_ready=bool(current.final_resume_bytes),
+            quality_review_started=current.quality_review_started,
+            final_proposal_ready=current.final_proposal is not None,
+            application_id=(g.active_application.id if g.active_application else ""),
         )
+
+        if g.active_application is not None:
+            if current.final_resume_bytes:
+                dashboard_resume_version = FINAL_RESUME_LABEL
+            elif current.draft_proposal is not None:
+                dashboard_resume_version = (
+                    f"Tailored Resume v{max(1, current.draft_revision)}"
+                )
+            else:
+                dashboard_resume_version = INITIAL_RESUME_LABEL
+            dashboard_status = g.active_application.status
+            if (
+                dashboard_status in {"draft", "considering"}
+                and guided_workflow["current_key"] != "setup"
+            ):
+                dashboard_status = "preparing"
+            g.active_application = application_store.update_builder_progress(
+                g.application_owner_id,
+                g.active_application.id,
+                workflow_step=guided_workflow["current_key"],
+                resume_version=dashboard_resume_version,
+                company=(
+                    current.analysis.target_company
+                    if current.analysis is not None
+                    else g.active_application.company
+                ),
+                role=current.target_title or g.active_application.role,
+                job_description=current.job_description,
+                status=dashboard_status,
+            )
 
         initial_editor_filename = (
             safe_filename(f"{source_profile.name}_Initial_Resume") + ".docx"
@@ -2189,7 +2295,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             profile, final_resume_title, "docx"
         )
         application_records = application_store.list_for_owner(
-            session["workflow_sid"]
+            g.application_owner_id
         )
         preliminary_fit = (
             preliminary_application_fit(current, application_records)
@@ -2209,6 +2315,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             preliminary_application_fit=preliminary_fit,
             application_fit=application_fit,
             selected_workflow_stage=selected_workflow_stage,
+            selected_workflow_panel=selected_workflow_panel,
             edit_setup_snapshot=edit_setup_snapshot,
             setup_snapshot=setup_snapshot,
             confirmation_snapshot=confirmation_snapshot,
@@ -2544,7 +2651,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         current = state()
         if not current.job_description.strip():
             flash(
-                "Save a job description in Setup — Job & Resume before retrying the report.",
+                "Save a job description in Career and Job Setup before retrying the report.",
                 "error",
             )
             return redirect(url_for("index", tab="reports", report="initial"))
@@ -2629,7 +2736,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             current_input = input_fingerprint(current, models)
             if current.analyzed_input_fingerprint != current_input:
                 raise ValueError(
-                    "The job description or analysis model changed. Return to Setup — Job & Resume and select Start tailoring again."
+                    "The job description or analysis model changed. Return to Career and Job Setup and select Start tailoring again."
                 )
             profile = current.confirmed_profile or current.source_profile
             if _refresh_job_aligned_resume_report(
@@ -2729,7 +2836,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         proposal = current.final_proposal
         if current.analysis is None or proposal is None:
             flash(
-                "Complete Optimize & Export before retrying the Final Resume Report.",
+                "Complete Improve Resume Quality before retrying the Final Resume Report.",
                 "error",
             )
             return redirect(url_for("index", tab="reports", report="final"))
@@ -2737,7 +2844,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             models = resolve_models(current)
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
                 raise ValueError(
-                    "The job description or analysis model changed. Return to Setup — Job & Resume and select Start tailoring again."
+                    "The job description or analysis model changed. Return to Career and Job Setup and select Start tailoring again."
                 )
             profile = current.confirmed_profile or current.source_profile
             _build_final_report_snapshot(
@@ -2772,7 +2879,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             models = resolve_models(current)
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
                 raise ValueError(
-                    "The job description changed. Return to Setup — Job & Resume and select Start tailoring again."
+                    "The job description changed. Return to Career and Job Setup and select Start tailoring again."
                 )
 
             questions = current.provisional_proposal.candidate_questions
@@ -2926,7 +3033,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 flash(
                     f"Your answers were applied and the transformed resume was checked. "
                     f"{count} final targeted follow-up question{'s are' if count != 1 else ' is'} needed "
-                    "before Review Job Alignment. This is the only follow-up round; any "
+                    "before Review Tailored Resume. This is the only follow-up round; any "
                     "remaining uncertainty will use safer source-backed wording automatically.",
                     "warning",
                 )
@@ -2949,7 +3056,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                     proposal=refined,
                     profile=confirmed_profile,
                 )
-                # Review Job Alignment should open immediately. Its report is
+                # Review Tailored Resume should open immediately. Its report is
                 # generated automatically after the page becomes interactive.
                 current.clear_draft_report()
                 completion_message = (
@@ -3028,8 +3135,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/workflow/reopen/<stage>")
     def reopen_workflow_stage(stage: str):
-        """Restore the completed Step 3 snapshot and invalidate Step 4 outputs."""
-        if stage != "draft":
+        """Restore the completed tailored-resume snapshot and invalidate later outputs."""
+        internal_stage = "draft" if stage in {"draft", "review"} else stage
+        if internal_stage != "draft":
             abort(404)
         current = state()
         snapshot = current.workflow_step_snapshots.get("draft")
@@ -3060,11 +3168,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         current.clear_draft_report()
         current.clear_final_report()
         flash(
-            "Review Job Alignment was reopened. Final optimization and export results were cleared; the Job-Aligned Resume Report will refresh automatically.",
+            "Review Tailored Resume was reopened. Quality, finalization, and export results were cleared; the Tailored Resume Report will refresh automatically.",
             "warning",
         )
         return redirect(
-            url_for("index", tab="tailoring", stage="draft") + "#tailored-resume"
+            url_for("index", tab="tailoring", stage="review") + "#tailored-resume"
         )
 
 
@@ -3246,7 +3354,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 raise ValueError("Configure an OpenAI API key before optimizing the resume.")
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
                 raise ValueError(
-                    "The job description or tailoring model changed. Return to Setup — Job & Resume and select Start tailoring again."
+                    "The job description or tailoring model changed. Return to Career and Job Setup and select Start tailoring again."
                 )
 
             profile = current.confirmed_profile or current.source_profile
@@ -3500,7 +3608,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             models = resolve_models(current)
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
                 raise ValueError(
-                    "The job description or tailoring model changed. Return to Setup — Job & Resume and start tailoring again."
+                    "The job description or tailoring model changed. Return to Career and Job Setup and start tailoring again."
                 )
             profile = current.confirmed_profile or current.source_profile
             edited = proposal_from_form(base, request.form, profile)
@@ -3716,7 +3824,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
 
     def _application_owner_id() -> str:
-        return session["workflow_sid"]
+        return str(getattr(g, "application_owner_id", session.get("workflow_sid", "")))
 
     def _optional_score(form_key: str) -> float | None:
         raw_value = request.form.get(form_key, "").strip()
@@ -3727,12 +3835,49 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except ValueError:
             return None
 
+    @app.get("/applications/<application_id>/builder")
+    def open_application_builder(application_id: str):
+        application = application_store.get(_application_owner_id(), application_id)
+        if application is None:
+            abort(404)
+        session["active_application_id"] = application.id
+        workflow_key = f"{_application_owner_id()}:application:{application.id}"
+        current = store.get(workflow_key)
+        if not current.target_title:
+            current.target_title = application.role
+        if not current.job_description and application.job_description:
+            current.job_description = application.job_description
+        return redirect(
+            url_for(
+                "index",
+                tab="tailoring",
+                stage=application.workflow_step or "setup",
+                application_id=application.id,
+            )
+        )
+
+    @app.post("/applications/<application_id>/activate")
+    def activate_application_builder(application_id: str):
+        application = application_store.get(_application_owner_id(), application_id)
+        if application is None:
+            abort(404)
+        session["active_application_id"] = application.id
+        return redirect(
+            url_for(
+                "open_application_builder",
+                application_id=application.id,
+            )
+        )
+
     @app.post("/applications/from-final")
     def save_final_as_application():
         current = state()
         if current.final_resume_bytes is None or current.final_proposal is None:
             flash("Create the Final Resume before saving an application.", "error")
-            return redirect(url_for("index", tab="tailoring", stage="final") + "#final-review")
+            return redirect(
+                url_for("index", tab="tailoring", stage="finalize")
+                + "#finalize-resume"
+            )
 
         analysis = current.analysis
         company = (analysis.target_company if analysis is not None else "").strip()
@@ -3742,6 +3887,40 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             current, application_store.list_for_owner(_application_owner_id())
         )
         resume_fingerprint = hashlib.sha256(current.final_resume_bytes).hexdigest()
+        active = getattr(g, "active_application", None)
+        alignment_score = (
+            fit_assessment.score
+            if fit_assessment is not None
+            else report.job_match_score()
+            if report is not None
+            else None
+        )
+        overall_score = report.overall_score() if report is not None else None
+        resume_filename = (
+            current.final_report_filename
+            or current_final_resume_filename(current, "docx")
+        )
+
+        if active is not None:
+            saved = application_store.attach_resume_snapshot(
+                _application_owner_id(),
+                active.id,
+                resume_version=FINAL_RESUME_LABEL,
+                resume_style=normalize_resume_style(current.resume_style),
+                alignment_score=alignment_score,
+                overall_score=overall_score,
+                resume_filename=resume_filename,
+                resume_bytes=current.final_resume_bytes,
+                resume_fingerprint=resume_fingerprint,
+            )
+            if saved is None:
+                abort(404)
+            flash("Final Resume saved to this job application.", "success")
+            return redirect(
+                url_for("index", tab="applications")
+                + f"#application-{saved.id}"
+            )
+
         existing = application_store.find_snapshot(
             _application_owner_id(),
             resume_fingerprint=resume_fingerprint,
@@ -3749,63 +3928,76 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             role=role or "Role not specified",
         )
         if existing is not None:
-            flash("This Final Resume is already saved in Applications.", "info")
-            return redirect(url_for("index", tab="applications") + f"#application-{existing.id}")
+            flash("This Final Resume is already attached to an application.", "info")
+            return redirect(
+                url_for("index", tab="applications")
+                + f"#application-{existing.id}"
+            )
 
         created = application_store.create(
             _application_owner_id(),
             company=company or "Company not specified",
             role=role or "Role not specified",
-            application_date=datetime.now().date().isoformat(),
-            status="planned",
+            application_date="",
+            status="ready_to_apply",
             resume_version=FINAL_RESUME_LABEL,
             resume_style=normalize_resume_style(current.resume_style),
-            alignment_score=(
-                fit_assessment.score
-                if fit_assessment is not None
-                else report.job_match_score()
-                if report is not None
-                else None
-            ),
-            overall_score=report.overall_score() if report is not None else None,
-            notes="Saved from the completed Final Resume workflow.",
-            resume_filename=current.final_report_filename or current_final_resume_filename(current, "docx"),
+            alignment_score=alignment_score,
+            overall_score=overall_score,
+            notes="Created from the completed Application Builder workflow.",
+            next_action="",
+            workflow_step="evidence_export",
+            job_description=current.job_description,
+            resume_filename=resume_filename,
             resume_bytes=current.final_resume_bytes,
             resume_fingerprint=resume_fingerprint,
         )
-        flash(
-            "Application saved as Planned. Update it after you submit or hear from the employer.",
-            "success",
+        session["active_application_id"] = created.id
+        flash("Application created and Final Resume attached.", "success")
+        return redirect(
+            url_for("index", tab="applications") + f"#application-{created.id}"
         )
-        return redirect(url_for("index", tab="applications") + f"#application-{created.id}")
 
     @app.post("/applications/create")
     def create_application_record():
         company = request.form.get("company", "").strip()
         role = request.form.get("role", "").strip()
         if not company or not role:
-            flash("Company and role are required to add an application.", "error")
-            return redirect(url_for("index", tab="applications") + "#add-application")
+            flash("Company and job title are required.", "error")
+            return redirect(url_for("index", tab="applications") + "#new-application")
 
         created = application_store.create(
             _application_owner_id(),
             company=company,
             role=role,
             job_url=request.form.get("job_url", ""),
-            application_date=normalize_iso_date(
-                request.form.get("application_date"), default_today=True
-            ),
+            application_date=normalize_iso_date(request.form.get("application_date")),
             status=normalize_application_status(request.form.get("status")),
-            resume_version=request.form.get("resume_version", FINAL_RESUME_LABEL),
+            resume_version=request.form.get("resume_version", "Not started"),
             resume_style=normalize_resume_style(request.form.get("resume_style")),
             alignment_score=_optional_score("alignment_score"),
+            interview_readiness=_optional_score("interview_readiness"),
             notes=request.form.get("notes", ""),
+            next_action=request.form.get("next_action", ""),
             next_follow_up_date=normalize_iso_date(
                 request.form.get("next_follow_up_date")
             ),
+            upcoming_event_date=normalize_iso_date(
+                request.form.get("upcoming_event_date")
+            ),
+            upcoming_event_type=request.form.get("upcoming_event_type", ""),
+            job_description=request.form.get("job_description", ""),
+            workflow_step="setup",
         )
-        flash("Application added.", "success")
-        return redirect(url_for("index", tab="applications") + f"#application-{created.id}")
+        session["active_application_id"] = created.id
+        flash("Job application created. Continue with Career and Job Setup.", "success")
+        if request.form.get("start_builder") == "1":
+            return redirect(
+                url_for("open_application_builder", application_id=created.id)
+            )
+        return redirect(
+            url_for("index", tab="applications") + f"#application-{created.id}"
+        )
 
     @app.post("/applications/<application_id>/update")
     def update_application_record(application_id: str):
@@ -3816,22 +4008,33 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             role=request.form.get("role", ""),
             job_url=request.form.get("job_url", ""),
             application_date=request.form.get("application_date", ""),
-            status=request.form.get("status", "planned"),
+            status=request.form.get("status", "draft"),
             screening_received=request.form.get("screening_received") == "on",
             interview_received=request.form.get("interview_received") == "on",
             offer_received=request.form.get("offer_received") == "on",
             notes=request.form.get("notes", ""),
             next_follow_up_date=request.form.get("next_follow_up_date", ""),
+            interview_readiness=_optional_score("interview_readiness"),
+            next_action=request.form.get("next_action", ""),
+            upcoming_event_date=request.form.get("upcoming_event_date", ""),
+            upcoming_event_type=request.form.get("upcoming_event_type", ""),
+            job_description=request.form.get("job_description"),
         )
         if updated is None:
             abort(404)
         flash("Application updated.", "success")
-        return redirect(url_for("index", tab="applications") + f"#application-{updated.id}")
+        return redirect(
+            url_for("index", tab="applications") + f"#application-{updated.id}"
+        )
 
     @app.post("/applications/<application_id>/delete")
     def delete_application_record(application_id: str):
         if not application_store.delete(_application_owner_id(), application_id):
             abort(404)
+        workflow_key = f"{_application_owner_id()}:application:{application_id}"
+        store.delete(workflow_key)
+        if session.get("active_application_id") == application_id:
+            session.pop("active_application_id", None)
         flash("Application removed.", "success")
         return redirect(url_for("index", tab="applications"))
 

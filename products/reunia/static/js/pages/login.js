@@ -25,8 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tabSignup.setAttribute('aria-selected', String(signupMode));
         mainTitle.textContent = signupMode ? 'Create Account' : 'Welcome Back';
         subTitle.textContent = signupMode
-            ? 'Create your workspace to start capturing and analyzing meetings.'
-            : 'Log in to continue reviewing your meeting intelligence dashboard.';
+            ? 'Create your Career Bridge workspace to build applications and practice interviews.'
+            : 'Log in to continue your applications, interview preparation, and progress.';
         if (focus) {
             (signupMode ? document.getElementById('signup-name') : document.getElementById('login-email'))?.focus();
         }

@@ -1,27 +1,27 @@
 {% extends "base.html" %}
 
 {% set guided_flow = request.args.get('guided') == '1' %}
-{% set preparation_view = request.args.get('view', 'library') %}
+{% set preparation_view = route_view | default(request.args.get('view', 'library'), true) %}
 {% if preparation_view not in ['library', 'materials', 'context', 'search'] %}
     {% set preparation_view = 'library' %}
 {% endif %}
 
 {% if preparation_view == 'materials' %}
-    {% set page_title = 'Meeting Materials' %}
-    {% set page_eyebrow = 'Meeting Preparation' %}
-    {% set page_description = 'Choose library files or temporary documents for this meeting.' %}
+    {% set page_title = 'Application Materials' %}
+    {% set page_eyebrow = 'Interview Preparation' %}
+    {% set page_description = 'Choose library files or temporary documents for this application.' %}
 {% elif preparation_view == 'context' %}
-    {% set page_title = 'AI Context' %}
-    {% set page_eyebrow = 'Meeting Preparation' %}
-    {% set page_description = 'Add guidance that helps the AI tailor answers and meeting analysis.' %}
+    {% set page_title = 'Career Profile' %}
+    {% set page_eyebrow = 'Interview Preparation' %}
+    {% set page_description = 'Store professional background, accomplishments, preferences, and constraints used across applications.' %}
 {% elif preparation_view == 'search' %}
-    {% set page_title = 'Knowledge Search' %}
-    {% set page_eyebrow = 'Meeting Preparation' %}
-    {% set page_description = 'Search across your documents, meeting materials, and previous meetings.' %}
+    {% set page_title = 'Interview Preparation' %}
+    {% set page_eyebrow = 'Selected job application' %}
+    {% set page_description = 'Prepare for the company, target role, interviewers, and likely questions using verified career evidence.' %}
 {% else %}
-    {% set page_title = 'Document Library' %}
-    {% set page_eyebrow = 'Meeting Preparation' %}
-    {% set page_description = 'Upload reusable documents for future meetings.' %}
+    {% set page_title = 'Career Evidence Library' %}
+    {% set page_eyebrow = 'Interview Preparation' %}
+    {% set page_description = 'Upload verified projects, achievements, work samples, and career documents.' %}
 {% endif %}
 
 {% block title %}{{ page_title }} - Réunia{% endblock %}
@@ -36,8 +36,8 @@
     id="knowledgePage"
     data-active-view="{{ preparation_view }}"
     data-guided-flow="{{ 'true' if guided_flow else 'false' }}"
-    data-context-endpoint="{{ request.script_root }}/api/knowledge/context"
-    data-materials-endpoint="{{ request.script_root }}/api/knowledge/meeting-materials"
+    data-context-endpoint="{{ request.script_root }}/api/career/profile"
+    data-materials-endpoint="{{ request.script_root }}/api/career/application-materials"
     data-context-storage-scope="{{ assistant_context_storage_scope | default(session.get('user_id') or 'default') }}"
     data-context-enabled="{{ 'true' if assistant_context_enabled | default(true) else 'false' }}"
     data-context-company="{{ assistant_context_company | default('') | e }}"
@@ -70,16 +70,16 @@
                 {% elif preparation_view == 'materials' %}
                 <button class="btn knowledge-hero-button knowledge-hero-button-primary" type="button" data-open-upcoming-meeting-modal>
                     <span aria-hidden="true">＋</span>
-                    Create Meeting
+                    Create Application Workspace
                 </button>
                 {% elif preparation_view == 'context' %}
                 <span class="context-button-status" id="contextStatusBadge">Optional</span>
                 <button class="btn knowledge-hero-button knowledge-hero-button-primary" type="submit" form="assistantContextForm">
-                    Save AI Context
+                    Save Career Profile
                 </button>
                 {% else %}
-                <a class="btn knowledge-hero-button knowledge-hero-button-secondary" href="{{ request.script_root }}/knowledge.html?view=materials{% if guided_flow %}&amp;guided=1{% endif %}">
-                    Review Meeting Materials
+                <a class="btn knowledge-hero-button knowledge-hero-button-secondary" href="{{ request.script_root }}/application-materials{% if guided_flow %}?guided=1{% endif %}">
+                    Review Application Materials
                 </a>
                 {% endif %}
             </div>
@@ -88,26 +88,26 @@
     </header>
 
     {% if guided_flow %}
-    <section class="guided-flow-panel" aria-label="Guided meeting setup">
+    <section class="guided-flow-panel" aria-label="Guided application setup">
         <div class="guided-flow-heading">
             <div>
-                <span>Guided meeting flow</span>
-                <strong>Prepare what is useful, then record</strong>
+                <span>Guided application flow</span>
+                <strong>Build the application, prepare evidence, then practice</strong>
             </div>
             <a href="{{ request.script_root }}/app">Exit guided flow</a>
         </div>
         <ol class="guided-flow-progress">
             <li class="{% if preparation_view == 'materials' %}active{% elif preparation_view in ['context', 'search'] %}complete{% endif %}">
                 <span>{% if preparation_view in ['context', 'search'] %}✓{% else %}1{% endif %}</span>
-                <div><strong>Meeting Materials</strong><small>Optional</small></div>
+                <div><strong>Application Materials</strong><small>Optional</small></div>
             </li>
             <li class="{% if preparation_view == 'context' %}active{% elif preparation_view == 'search' %}complete{% endif %}">
                 <span>{% if preparation_view == 'search' %}✓{% else %}2{% endif %}</span>
-                <div><strong>AI Context</strong><small>Optional</small></div>
+                <div><strong>Career Profile</strong><small>Optional</small></div>
             </li>
             <li class="{% if preparation_view == 'search' %}active{% endif %}">
                 <span>3</span>
-                <div><strong>Preparation Check</strong><small>Optional</small></div>
+                <div><strong>Evidence Check</strong><small>Optional</small></div>
             </li>
             <li>
                 <span>4</span>
@@ -117,33 +117,33 @@
     </section>
     {% else %}
 
-    <nav class="preparation-subnav" aria-label="Meeting preparation sections">
-        <a href="{{ request.script_root }}/knowledge.html?view=library" class="preparation-subnav-link {% if preparation_view == 'library' %}active{% endif %}" {% if preparation_view == 'library' %}aria-current="page"{% endif %}>
+    <nav class="preparation-subnav" aria-label="Career preparation sections">
+        <a href="{{ request.script_root }}/career-evidence-library" class="preparation-subnav-link {% if preparation_view == 'library' %}active{% endif %}" {% if preparation_view == 'library' %}aria-current="page"{% endif %}>
             <span class="preparation-subnav-icon" aria-hidden="true">▦</span>
             <span>
-                <strong>Document Library</strong>
-                <small>Permanent reusable files</small>
+                <strong>Career Evidence Library</strong>
+                <small>Verified projects, achievements, and experience</small>
             </span>
         </a>
-        <a href="{{ request.script_root }}/knowledge.html?view=materials" class="preparation-subnav-link {% if preparation_view == 'materials' %}active{% endif %}" {% if preparation_view == 'materials' %}aria-current="page"{% endif %}>
+        <a href="{{ request.script_root }}/application-materials" class="preparation-subnav-link {% if preparation_view == 'materials' %}active{% endif %}" {% if preparation_view == 'materials' %}aria-current="page"{% endif %}>
             <span class="preparation-subnav-icon" aria-hidden="true">◫</span>
             <span>
-                <strong>Meeting Materials</strong>
-                <small>Files for one meeting</small>
+                <strong>Application Materials</strong>
+                <small>Resume, job posting, notes, and recruiter messages</small>
             </span>
         </a>
-        <a href="{{ request.script_root }}/knowledge.html?view=context" class="preparation-subnav-link {% if preparation_view == 'context' %}active{% endif %}" {% if preparation_view == 'context' %}aria-current="page"{% endif %}>
+        <a href="{{ request.script_root }}/career-profile" class="preparation-subnav-link {% if preparation_view == 'context' %}active{% endif %}" {% if preparation_view == 'context' %}aria-current="page"{% endif %}>
             <span class="preparation-subnav-icon" aria-hidden="true">✦</span>
             <span>
-                <strong>AI Context</strong>
-                <small>Reusable and meeting-specific guidance</small>
+                <strong>Career Profile</strong>
+                <small>Reusable and application-specific guidance</small>
             </span>
         </a>
-        <a href="{{ request.script_root }}/knowledge.html?view=search" class="preparation-subnav-link {% if preparation_view == 'search' %}active{% endif %}" {% if preparation_view == 'search' %}aria-current="page"{% endif %}>
+        <a href="{{ request.script_root }}/interview-preparation" class="preparation-subnav-link {% if preparation_view == 'search' %}active{% endif %}" {% if preparation_view == 'search' %}aria-current="page"{% endif %}>
             <span class="preparation-subnav-icon" aria-hidden="true">⌕</span>
             <span>
-                <strong>Knowledge Search</strong>
-                <small>Search documents and meetings</small>
+                <strong>Interview Preparation</strong>
+                <small>Company, role, interviewers, likely questions, and evidence</small>
             </span>
         </a>
     </nav>
@@ -200,7 +200,7 @@
 
                 <div class="library-help-card">
                     <strong>Permanent storage</strong>
-                    <p>Files in this library can be reused in any meeting and selected from Meeting Materials.</p>
+                    <p>Files in this library can be reused across job applications and selected from Application Materials.</p>
                 </div>
             </aside>
 
@@ -281,20 +281,20 @@
     <section class="preparation-view" id="meeting-materials-view" aria-labelledby="meetingMaterialsTitle">
         <div class="workspace-toolbar-card meeting-package-toolbar-card">
             <div>
-                <p class="section-eyebrow">Meeting package</p>
-                <h2 id="meetingMaterialsTitle">Prepare for an upcoming meeting</h2>
-                <p>Create a meeting package or select one you already scheduled. Completed recordings stay in Meeting Review and are not shown here.</p>
+                <p class="section-eyebrow">Application workspace</p>
+                <h2 id="meetingMaterialsTitle">Prepare for an upcoming interview</h2>
+                <p>Create an application workspace or select one you already scheduled. Completed recordings stay in Interview Review and are not shown here.</p>
             </div>
             <div class="meeting-package-controls">
                 <label class="form-field meeting-selector-field">
-                    <span>Upcoming meeting</span>
+                    <span>Upcoming interview</span>
                     <select id="meetingMaterialsMeeting" data-upcoming-meeting-select>
-                        <option value="">Select an upcoming meeting</option>
+                        <option value="">Select an application workspace</option>
                     </select>
                 </label>
                 <button class="btn btn-secondary create-meeting-button" type="button" data-open-upcoming-meeting-modal>
                     <span aria-hidden="true">＋</span>
-                    Create meeting
+                    Create application workspace
                 </button>
                 <button
                     class="delete-upcoming-meeting-button"
@@ -302,13 +302,13 @@
                     id="deleteUpcomingMeeting"
                     disabled
                     aria-disabled="true"
-                    aria-label="Delete selected upcoming meeting"
-                    title="Select an upcoming meeting to delete"
+                    aria-label="Delete selected upcoming interview"
+                    title="Select an upcoming interview to delete"
                 >
                     <svg class="delete-upcoming-meeting-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" />
                     </svg>
-                    <span class="sr-only">Delete selected upcoming meeting</span>
+                    <span class="sr-only">Delete selected upcoming interview</span>
                 </button>
             </div>
         </div>
@@ -316,17 +316,17 @@
         <section class="workspace-card meeting-details-card" aria-labelledby="meetingDetailsTitle">
             <div class="workspace-card-header meeting-details-header">
                 <div>
-                    <p class="section-eyebrow">Meeting information</p>
-                    <h2 id="meetingDetailsTitle">Meeting details</h2>
-                    <p id="meetingDetailsStatus">Select an upcoming meeting to view its saved title, purpose, participants, and date.</p>
+                    <p class="section-eyebrow">Target position</p>
+                    <h2 id="meetingDetailsTitle">Application workspace details</h2>
+                    <p id="meetingDetailsStatus">Select an application workspace to view its target role, interviewers, objective, and interview date.</p>
                 </div>
-                <button class="btn btn-secondary" type="button" id="saveUpcomingMeetingDetails" disabled aria-disabled="true">Save meeting details</button>
+                <button class="btn btn-secondary" type="button" id="saveUpcomingMeetingDetails" disabled aria-disabled="true">Save application details</button>
             </div>
 
             <div class="meeting-details-grid">
                 <label class="form-field">
-                    <span>Meeting title</span>
-                    <input type="text" id="meetingDetailsTitleInput" maxlength="120" placeholder="Example: Product launch planning" disabled required>
+                    <span>Target role or application name</span>
+                    <input type="text" id="meetingDetailsTitleInput" maxlength="120" placeholder="Example: Senior Software Engineer — Acme" disabled required>
                 </label>
                 <label class="form-field">
                     <span>Date and time <small>(optional)</small></span>
@@ -334,8 +334,8 @@
                 </label>
                 <div class="form-field meeting-details-wide participant-field">
                     <div class="participant-field-heading">
-                        <label for="meetingDetailsParticipantEntry">Participants <small>(optional)</small></label>
-                        <span class="participant-total" aria-label="Participant count">
+                        <label for="meetingDetailsParticipantEntry">Interviewers or contacts <small>(optional)</small></label>
+                        <span class="participant-total" aria-label="Interviewer or contact count">
                             <span aria-hidden="true">·</span>
                             <strong id="meetingDetailsParticipantCount">0</strong>
                         </span>
@@ -353,7 +353,7 @@
                             type="text"
                             id="meetingDetailsParticipantEntry"
                             maxlength="200"
-                            placeholder="Add a participant"
+                            placeholder="Add an interviewer or recruiter"
                             autocomplete="off"
                             disabled
                         >
@@ -362,24 +362,24 @@
                     <small class="participant-field-help">Press Enter or type a comma to add each participant. Names wrap automatically onto additional lines.</small>
                 </div>
                 <label class="form-field meeting-details-wide">
-                    <span>Purpose or agenda <small>(optional)</small></span>
-                    <textarea id="meetingDetailsPurpose" rows="4" maxlength="1200" placeholder="What should be discussed or accomplished?" disabled></textarea>
+                    <span>Interview objective or application notes <small>(optional)</small></span>
+                    <textarea id="meetingDetailsPurpose" rows="4" maxlength="1200" placeholder="What should you demonstrate, clarify, or accomplish?" disabled></textarea>
                 </label>
             </div>
         </section>
 
-        <div class="materials-stats" aria-label="Meeting material summary">
+        <div class="materials-stats" aria-label="Application material summary">
             <article class="material-stat-card">
                 <span class="material-stat-icon" aria-hidden="true">▦</span>
                 <div><strong id="selectedLibraryCount">0</strong><span>Library documents selected</span></div>
             </article>
             <article class="material-stat-card">
                 <span class="material-stat-icon" aria-hidden="true">⏱</span>
-                <div><strong id="temporaryFileCount">0</strong><span>Temporary meeting files</span></div>
+                <div><strong id="temporaryFileCount">0</strong><span>Application-only files</span></div>
             </article>
             <article class="material-stat-card">
                 <span class="material-stat-icon" aria-hidden="true">✓</span>
-                <div><strong id="materialsSaveStatus">Not saved</strong><span>Meeting package status</span></div>
+                <div><strong id="materialsSaveStatus">Not saved</strong><span>Application workspace status</span></div>
             </article>
         </div>
 
@@ -388,10 +388,10 @@
                 <div class="workspace-card-header">
                     <div>
                         <p class="section-eyebrow">Permanent sources</p>
-                        <h2 id="libraryPickerTitle">Select from Document Library</h2>
-                        <p>References stay in the library and can be reused for other meetings.</p>
+                        <h2 id="libraryPickerTitle">Select from Career Evidence Library</h2>
+                        <p>References stay in the Career Evidence Library and can be reused for other applications.</p>
                     </div>
-                    <a class="text-link" href="{{ request.script_root }}/knowledge.html?view=library">Manage library</a>
+                    <a class="text-link" href="{{ request.script_root }}/career-evidence-library">Manage library</a>
                 </div>
 
                 <div class="materials-filter-row">
@@ -431,11 +431,11 @@
             <section class="workspace-card temporary-files-card" aria-labelledby="temporaryFilesTitle">
                 <div class="workspace-card-header">
                     <div>
-                        <p class="section-eyebrow">Meeting-only sources</p>
-                        <h2 id="temporaryFilesTitle">Temporary Meeting Files</h2>
+                        <p class="section-eyebrow">Application-only sources</p>
+                        <h2 id="temporaryFilesTitle">Application-only Files</h2>
                         <p>Use files that should not be added to your permanent library.</p>
                     </div>
-                    <span class="temporary-badge">Meeting only</span>
+                    <span class="temporary-badge">This application only</span>
                 </div>
 
                 <label class="drop-zone temporary-drop-zone" id="temporaryDropZone">
@@ -443,12 +443,12 @@
                     <span class="drop-zone-icon" aria-hidden="true">⇧</span>
                     <strong>Drop temporary files here</strong>
                     <span>or click to choose files</span>
-                    <small>These files will not appear in Document Library.</small>
+                    <small>These files will not appear in Career Evidence Library.</small>
                 </label>
 
                 <div class="temporary-retention-note">
                     <span aria-hidden="true">ⓘ</span>
-                    <p><strong>Temporary by design.</strong> Files are associated only with this meeting and should be deleted when the meeting is deleted or after your configured retention period.</p>
+                    <p><strong>Application-specific by design.</strong> These files stay attached only to this application workspace and follow the configured retention period.</p>
                 </div>
 
                 <div class="temporary-file-list" id="temporaryFileList" aria-live="polite">
@@ -464,10 +464,10 @@
 
         <div class="materials-save-bar">
             <div>
-                <strong>Meeting knowledge package</strong>
-                <span id="materialsPackageSummary">Create or select an upcoming meeting to begin.</span>
+                <strong>Application evidence package</strong>
+                <span id="materialsPackageSummary">Create or select an upcoming interview to begin.</span>
             </div>
-            <button class="btn btn-primary" type="button" id="saveMeetingMaterials" disabled aria-disabled="true">Save Meeting Materials</button>
+            <button class="btn btn-primary" type="button" id="saveMeetingMaterials" disabled aria-disabled="true">Save Application Materials</button>
         </div>
     </section>
     {% endif %}
@@ -477,13 +477,13 @@
         <form id="assistantContextForm">
             <div class="context-layout">
                 <main class="context-main-column">
-                    <div class="context-scope-divider"><span>Applies to all meetings</span></div>
+                    <div class="context-scope-divider"><span>Applies across applications</span></div>
 
                     <section class="workspace-card" aria-labelledby="aiContextTitle">
                         <div class="workspace-card-header context-card-heading">
                             <div>
                                 <h2 id="aiContextTitle">Your default context</h2>
-                                <p>These details are reused across meetings unless instructions for a specific meeting override them.</p>
+                                <p>These details are reused across applications unless application-specific guidance overrides them.</p>
                             </div>
                             <label class="context-enabled">
                                 <input type="checkbox" id="useAssistantContext" name="use_context" value="true" {% if assistant_context_enabled | default(true) %}checked{% endif %}>
@@ -501,13 +501,13 @@
                                 <input type="text" id="contextRole" name="context_role" value="{{ assistant_context_role | default('') }}" placeholder="Example: Chemical Engineer" autocomplete="organization-title">
                             </label>
                             <label class="form-field">
-                                <span>Meeting or task type</span>
+                                <span>Career activity type</span>
                                 <select id="contextType" name="context_type">
                                     <option value="">Select a type</option>
-                                    <option value="interview" {% if assistant_context_type | default('') == 'interview' %}selected{% endif %}>Interview</option>
-                                    <option value="meeting" {% if assistant_context_type | default('') == 'meeting' %}selected{% endif %}>Business meeting</option>
+                                    <option value="interview" {% if assistant_context_type | default('') == 'interview' %}selected{% endif %}>Interview preparation</option>
+                                    <option value="meeting" {% if assistant_context_type | default('') == 'meeting' %}selected{% endif %}>Job application</option>
                                     <option value="sales" {% if assistant_context_type | default('') == 'sales' %}selected{% endif %}>Sales conversation</option>
-                                    <option value="presentation" {% if assistant_context_type | default('') == 'presentation' %}selected{% endif %}>Presentation</option>
+                                    <option value="presentation" {% if assistant_context_type | default('') == 'presentation' %}selected{% endif %}>Career presentation</option>
                                     <option value="project" {% if assistant_context_type | default('') == 'project' %}selected{% endif %}>Project discussion</option>
                                     <option value="research" {% if assistant_context_type | default('') == 'research' %}selected{% endif %}>Research</option>
                                     <option value="support" {% if assistant_context_type | default('') == 'support' %}selected{% endif %}>Customer support</option>
@@ -520,7 +520,7 @@
                             </label>
                             <label class="form-field context-full-width-field">
                                 <span>Default audience</span>
-                                <textarea class="context-expanded-textarea" id="contextAudience" name="context_audience" rows="3" placeholder="Example: Hiring manager and engineering panel">{{ assistant_context_audience | default('') }}</textarea>
+                                <textarea class="context-expanded-textarea" id="contextPreferred roles and audiences" name="context_audience" rows="3" placeholder="Example: Hiring manager and engineering panel">{{ assistant_context_audience | default('') }}</textarea>
                             </label>
                         </div>
 
@@ -536,7 +536,7 @@
                         </label>
                         <label class="form-field">
                             <span>Additional reusable context</span>
-                            <textarea id="contextFreeText" name="context_free_text" rows="6" placeholder="Add background, terminology, constraints, preferences, or instructions that are useful across meetings.">{{ assistant_context_free_text | default('') }}</textarea>
+                            <textarea id="contextFreeText" name="context_free_text" rows="6" placeholder="Add background, terminology, constraints, preferences, or instructions that are useful across applications.">{{ assistant_context_free_text | default('') }}</textarea>
                         </label>
                     </section>
 
@@ -544,7 +544,7 @@
                         <div class="workspace-card-header response-preferences-header">
                             <div>
                                 <h2 id="responsePreferencesTitle">Response preferences <span class="context-optional-label">Optional</span></h2>
-                                <p>Live Q&amp;A uses balanced, ready-to-say answers by default. Customize these reusable preferences only when you want a different response style.</p>
+                                <p>Interview preparation uses concise, evidence-backed guidance by default. Customize these reusable preferences only when you want a different coaching style.</p>
                             </div>
                             <button
                                 class="response-preferences-toggle"
@@ -584,7 +584,7 @@
                                             <option value="concise_structured_action" {% if assistant_context_response_mode | default('ready_to_say') == 'concise_structured_action' %}selected{% endif %}>Concise, structured, and action-oriented</option>
                                             <option value="coaching" {% if assistant_context_response_mode | default('ready_to_say') == 'coaching' %}selected{% endif %}>Coaching guidance</option>
                                         </select>
-                                        <small>Choose whether Live Q&amp;A writes the actual answer in your voice or provides advice about how to answer.</small>
+                                        <small>Choose whether preparation produces a draft answer in your voice or coaching about how to answer.</small>
                                     </label>
                                 </div>
 
@@ -592,31 +592,31 @@
                                     <label class="form-field">
                                         <span>Audio response instructions</span>
                                         <textarea id="contextAudioResponseInstructions" name="context_audio_response_instructions" rows="4" placeholder="Example: Keep the answer conversational, use first-person language, and limit it to about 60 seconds.">{{ assistant_context_audio_response_instructions | default('') }}</textarea>
-                                        <small>Optional instructions applied only to Live Q&amp;A questions from microphone, computer audio, or manual entry. They are added to the automatically generated audio prompt.</small>
+                                        <small>Optional instructions applied when preparing or reviewing spoken interview answers.</small>
                                     </label>
                                     <label class="form-field">
                                         <span>Clipboard response instructions</span>
                                         <textarea id="contextClipboardResponseInstructions" name="context_clipboard_response_instructions" rows="4" placeholder="Example: Respond only using plain text, Python code, or SQL code. Do not include introductory text or concluding commentary.">{{ assistant_context_clipboard_response_instructions | default('') }}</textarea>
-                                        <small>Optional instructions applied only to Live Q&amp;A questions captured from the clipboard. They are added to the automatically generated clipboard prompt.</small>
+                                        <small>Optional instructions applied when analyzing pasted job descriptions, recruiter messages, or interview questions.</small>
                                     </label>
                                 </div>
                             </div>
                         </div>
                     </section>
 
-                    <div class="context-scope-divider context-scope-divider-meeting"><span>Applies only to this meeting</span></div>
+                    <div class="context-scope-divider context-scope-divider-meeting"><span>Applies only to this application</span></div>
 
                     <section class="workspace-card meeting-context-card" aria-labelledby="meetingSpecificContextTitle">
                         <div class="workspace-card-header meeting-override-header">
                             <div>
-                                <h2 id="meetingSpecificContextTitle">Instructions for this meeting <span class="context-optional-label">Optional</span></h2>
-                                <p>Your default context and response preferences will continue to apply. Add only what is different for this meeting.</p>
+                                <h2 id="meetingSpecificContextTitle">Instructions for this application <span class="context-optional-label">Optional</span></h2>
+                                <p>Your default context and response preferences will continue to apply. Add only what is different for this application.</p>
                             </div>
                             <div class="meeting-override-controls">
                                 <label class="form-field compact-meeting-select">
-                                    <span>Upcoming meeting</span>
+                                    <span>Upcoming interview</span>
                                     <select id="contextMeetingSelect" data-upcoming-meeting-select>
-                                        <option value="">No upcoming meeting selected</option>
+                                        <option value="">No upcoming interview selected</option>
                                     </select>
                                 </label>
                                 <button
@@ -626,7 +626,7 @@
                                     aria-expanded="false"
                                     aria-controls="meetingOverridePanel"
                                 >
-                                    <span class="meeting-override-toggle-label">Add meeting-specific context</span>
+                                    <span class="meeting-override-toggle-label">Add application-specific context</span>
                                     <span class="meeting-override-toggle-icon" aria-hidden="true">＋</span>
                                 </button>
                             </div>
@@ -635,12 +635,12 @@
                         <div class="meeting-override-panel" id="meetingOverridePanel" hidden>
                             <div class="form-grid context-form-grid">
                                 <label class="form-field">
-                                    <span>Meeting objective</span>
-                                    <input type="text" id="meetingContextObjective" placeholder="What should happen by the end of this meeting?">
+                                    <span>Interview objective</span>
+                                    <input type="text" id="meetingContextObjective" placeholder="What outcome should this application or interview achieve?">
                                 </label>
                                 <label class="form-field">
-                                    <span>Participants or audience</span>
-                                    <input type="text" id="meetingContextParticipants" placeholder="Names, roles, or decision makers">
+                                    <span>Interviewer, recruiter, or audience</span>
+                                    <input type="text" id="meetingContextParticipants" placeholder="Interviewers, recruiters, hiring managers, or decision makers">
                                 </label>
                             </div>
 
@@ -653,7 +653,7 @@
                                     aria-controls="meetingInstructionsPanel"
                                 >
                                     <span>
-                                        <strong>Special instructions for this meeting</strong>
+                                        <strong>Application and interview constraints</strong>
                                         <small>Optional · priorities, sensitivities, terminology, or temporary response changes</small>
                                     </span>
                                     <span class="meeting-instructions-toggle-icon" aria-hidden="true">＋</span>
@@ -662,7 +662,7 @@
                                 <div class="meeting-instructions-panel" id="meetingInstructionsPanel" hidden>
                                     <div class="meeting-instructions-heading">
                                         <div>
-                                            <strong>Special instructions for this meeting</strong>
+                                            <strong>Application and interview constraints</strong>
                                             <small>Use one open-ended field instead of configuring separate priority, constraint, and instruction inputs.</small>
                                         </div>
                                         <button class="text-button" type="button" id="clearMeetingInstructions" hidden>Clear</button>
@@ -673,12 +673,12 @@
                                         placeholder="Example: Prioritize pricing objections, keep answers concise, and avoid discussing the upcoming reorganization."
                                     ></textarea>
                                     <div class="meeting-instruction-suggestions" aria-label="Suggested instructions">
-                                        <button type="button" data-meeting-instruction="Focus on objections and unresolved concerns.">Focus on objections</button>
+                                        <button type="button" data-meeting-instruction="Focus on the role requirements and likely concerns.">Focus on role requirements</button>
                                         <button type="button" data-meeting-instruction="Keep answers concise and ready to say aloud.">Keep answers concise</button>
-                                        <button type="button" data-meeting-instruction="Highlight unresolved decisions and clear next steps.">Highlight open decisions</button>
-                                        <button type="button" data-meeting-instruction="Avoid discussing confidential or sensitive topics unless directly asked.">Protect sensitive topics</button>
+                                        <button type="button" data-meeting-instruction="Highlight evidence gaps and concrete next steps.">Highlight evidence gaps</button>
+                                        <button type="button" data-meeting-instruction="Avoid unsupported, confidential, or sensitive claims.">Protect sensitive topics</button>
                                     </div>
-                                    <p class="meeting-instructions-note">Your normal Response Preferences still apply unless you add a temporary exception here.</p>
+                                    <p class="meeting-instructions-note">Your normal Interview Response Preferences still apply unless you add an application-specific exception here.</p>
                                 </div>
                             </div>
                         </div>
@@ -689,19 +689,19 @@
                     <div class="context-preview-header">
                         <span class="context-preview-icon" aria-hidden="true">✦</span>
                         <div>
-                            <p class="section-eyebrow">AI input</p>
-                            <h2 id="effectiveContextTitle">Effective Context</h2>
+                            <p class="section-eyebrow">Career foundation</p>
+                            <h2 id="effectiveContextTitle">Effective Career Profile</h2>
                         </div>
                     </div>
-                    <p class="context-preview-description">This preview combines your reusable defaults, response preferences, and the selected meeting’s overrides.</p>
+                    <p class="context-preview-description">This preview combines your reusable defaults, response preferences, and the selected application’s overrides.</p>
                     <div class="context-preview-status" id="effectiveContextStatus">Context is enabled</div>
                     <div class="context-preview-chips" id="effectiveContextChips"></div>
                     <dl class="context-preview-list" id="effectiveContextPreview"></dl>
                     <div class="context-priority-note">
-                        <strong>How the AI uses this</strong>
-                        <span>Reusable context and Response Preferences guide every meeting. Meeting-specific context is attached only to the selected meeting and takes priority when it provides a different value.</span>
+                        <strong>How Career Bridge uses this</strong>
+                        <span>Reusable context and Interview Response Preferences guide every application. Application-specific context is attached only to the selected application and takes priority when it provides a different value.</span>
                     </div>
-                    <button class="btn btn-primary context-save-button" type="submit" id="saveContextButton" disabled aria-disabled="true">Save AI Context</button>
+                    <button class="btn btn-primary context-save-button" type="submit" id="saveContextButton" disabled aria-disabled="true">Save Career Profile</button>
                 </aside>
             </div>
         </form>
@@ -714,9 +714,9 @@
             <main class="workspace-card unified-search-card">
                 <div class="workspace-card-header">
                     <div>
-                        <p class="section-eyebrow">Ask your knowledge</p>
-                        <h2 id="knowledgeSearchTitle">Search across all your knowledge</h2>
-                        <p>Use this broad search for documents, upcoming meeting materials, and previous meetings. For questions about one completed meeting, use Meeting Review.</p>
+                        <p class="section-eyebrow">Prepare evidence-backed answers</p>
+                        <h2 id="knowledgeSearchTitle">Prepare evidence-backed interview answers</h2>
+                        <p>Use the target role, application materials, Career Profile, verified evidence, and previous practice to anticipate questions and build stronger answers.</p>
                     </div>
                 </div>
 
@@ -726,17 +726,17 @@
                         <label class="search-scope-option">
                             <input type="radio" name="search_scope" value="current_meeting" checked>
                             <span class="scope-option-icon" aria-hidden="true">◫</span>
-                            <span><strong>Current Meeting Materials</strong><small>Selected library files and temporary uploads</small></span>
+                            <span><strong>Current Application Materials</strong><small>Selected library files and temporary uploads</small></span>
                         </label>
                         <label class="search-scope-option">
                             <input type="radio" name="search_scope" value="library">
                             <span class="scope-option-icon" aria-hidden="true">▦</span>
-                            <span><strong>Document Library</strong><small>Permanent reusable documents</small></span>
+                            <span><strong>Career Evidence Library</strong><small>Permanent reusable documents</small></span>
                         </label>
                         <label class="search-scope-option">
                             <input type="radio" name="search_scope" value="meetings">
                             <span class="scope-option-icon" aria-hidden="true">◴</span>
-                            <span><strong>Previous Meetings</strong><small>Transcripts, summaries, decisions, and actions</small></span>
+                            <span><strong>Previous Mock Interviews</strong><small>Transcripts, summaries, decisions, and actions</small></span>
                         </label>
                         <label class="search-scope-option">
                             <input type="radio" name="search_scope" value="all">
@@ -748,15 +748,15 @@
                     <div class="search-filter-panel" id="searchFilterPanel">
                         <div class="form-grid search-filter-grid">
                             <label class="form-field" data-search-filter="package">
-                                <span>Meeting package</span>
+                                <span>Application workspace</span>
                                 <select id="knowledgeSearchPackage" data-upcoming-meeting-select>
-                                    <option value="">Select an upcoming meeting</option>
+                                    <option value="">Select an application workspace</option>
                                 </select>
                             </label>
                             <label class="form-field" data-search-filter="meeting">
-                                <span>Completed meeting</span>
+                                <span>Completed mock interview</span>
                                 <select id="knowledgeSearchMeeting" data-completed-meeting-select>
-                                    <option value="">All completed meetings</option>
+                                    <option value="">All completed mock interviews</option>
                                 </select>
                             </label>
                             <label class="form-field" data-search-filter="collection">
@@ -777,15 +777,15 @@
                                 <input type="date" id="knowledgeSearchDateTo">
                             </label>
                             <label class="form-field" data-search-filter="participant">
-                                <span>Participant</span>
+                                <span>Interviewer or contact</span>
                                 <select id="knowledgeSearchParticipant" data-participant-select>
-                                    <option value="">All participants</option>
+                                    <option value="">All interviewers and contacts</option>
                                 </select>
                             </label>
                             <label class="form-field" data-search-filter="content">
                                 <span>Content type</span>
                                 <select id="knowledgeSearchContentType">
-                                    <option value="all">All meeting content</option>
+                                    <option value="all">All interview content</option>
                                     <option value="transcript">Transcript</option>
                                     <option value="summary">Summary</option>
                                     <option value="decisions">Decisions</option>
@@ -798,19 +798,19 @@
 
                     <label class="question-box unified-question-box">
                         <span class="sr-only">Question</span>
-                        <textarea id="knowledgeQuestion" rows="5" placeholder="Ask a question about your documents, current meeting materials, or meeting history..." required></textarea>
+                        <textarea id="knowledgeQuestion" rows="5" placeholder="Ask a question about your documents, current application materials, or mock interview history..." required></textarea>
                         <span class="question-actions">
-                            <span class="search-scope-summary">Searching: <strong id="searchScopeLabel">Current Meeting Materials</strong></span>
+                            <span class="search-scope-summary">Searching: <strong id="searchScopeLabel">Current Application Materials</strong></span>
                             <button class="btn btn-primary" type="submit" id="askButton"><span aria-hidden="true">✦</span> Ask AI</button>
                         </span>
                     </label>
 
                     <div class="knowledge-suggestions" aria-label="Suggested questions">
                         <span>Try asking:</span>
-                        <button type="button" data-knowledge-question="What requirements in these documents should I discuss?">Requirements to discuss</button>
-                        <button type="button" data-knowledge-question="What decisions were made about authentication?">Authentication decisions</button>
-                        <button type="button" data-knowledge-question="Which action items are still unresolved?">Unresolved actions</button>
-                        <button type="button" data-knowledge-question="Compare this meeting's agenda with the previous related meeting.">Compare meetings</button>
+                        <button type="button" data-knowledge-question="Which target-job requirements are supported by my verified evidence?">Matched requirements</button>
+                        <button type="button" data-knowledge-question="Which target-job requirements still need stronger evidence?">Evidence gaps</button>
+                        <button type="button" data-knowledge-question="What interview questions are most likely for this target role?">Likely questions</button>
+                        <button type="button" data-knowledge-question="Compare my latest mock-interview answers with the previous practice session.">Compare practice sessions</button>
                     </div>
                 </form>
 
@@ -830,16 +830,16 @@
             <aside class="search-help-column">
                 <section class="workspace-card search-context-card">
                     <div class="search-help-icon" aria-hidden="true">✦</div>
-                    <h2>AI Context</h2>
-                    <p>Your saved default and meeting-specific context will be included automatically when enabled.</p>
+                    <h2>Career Profile</h2>
+                    <p>Your saved default and application-specific context will be included automatically when enabled.</p>
                     <div class="context-preview-status" id="searchContextStatus">Loading context…</div>
-                    <a class="text-link" href="{{ request.script_root }}/knowledge.html?view=context{% if guided_flow %}&amp;guided=1{% endif %}">Review AI Context</a>
+                    <a class="text-link" href="{{ request.script_root }}/career-profile{% if guided_flow %}?guided=1{% endif %}">Review Career Profile</a>
                 </section>
                 <section class="workspace-card source-guide-card">
                     <h2>Source guide</h2>
-                    <div class="source-guide-item"><span>▦</span><div><strong>Document Library</strong><small>Permanent uploaded files</small></div></div>
-                    <div class="source-guide-item"><span>◫</span><div><strong>Current Meeting</strong><small>Selected and temporary files</small></div></div>
-                    <div class="source-guide-item"><span>◴</span><div><strong>Previous Meetings</strong><small>Transcripts and generated insights</small></div></div>
+                    <div class="source-guide-item"><span>▦</span><div><strong>Career Evidence Library</strong><small>Permanent uploaded files</small></div></div>
+                    <div class="source-guide-item"><span>◫</span><div><strong>Current Application</strong><small>Selected and temporary files</small></div></div>
+                    <div class="source-guide-item"><span>◴</span><div><strong>Previous Mock Interviews</strong><small>Transcripts and generated insights</small></div></div>
                 </section>
             </aside>
         </div>
@@ -847,24 +847,24 @@
     {% endif %}
 
     {% if guided_flow and preparation_view in ['materials', 'context', 'search'] %}
-    <nav class="guided-flow-actions" aria-label="Guided meeting flow actions">
+    <nav class="guided-flow-actions" aria-label="Guided application flow actions">
         {% if preparation_view == 'materials' %}
         <a class="guided-flow-back" href="{{ request.script_root }}/app">← Back to home</a>
         <div>
-            <a class="guided-flow-skip" href="{{ request.script_root }}/knowledge.html?view=context&amp;guided=1">Skip this step</a>
-            <a class="guided-flow-continue" href="{{ request.script_root }}/knowledge.html?view=context&amp;guided=1">Continue to AI Context <span aria-hidden="true">→</span></a>
+            <a class="guided-flow-skip" href="{{ request.script_root }}/career-profile?guided=1">Skip this step</a>
+            <a class="guided-flow-continue" href="{{ request.script_root }}/career-profile?guided=1">Continue to Career Profile <span aria-hidden="true">→</span></a>
         </div>
         {% elif preparation_view == 'context' %}
-        <a class="guided-flow-back" href="{{ request.script_root }}/knowledge.html?view=materials&amp;guided=1">← Meeting Materials</a>
+        <a class="guided-flow-back" href="{{ request.script_root }}/application-materials?guided=1">← Application Materials</a>
         <div>
-            <a class="guided-flow-skip" href="{{ request.script_root }}/knowledge.html?view=search&amp;guided=1">Skip this step</a>
-            <a class="guided-flow-continue" href="{{ request.script_root }}/knowledge.html?view=search&amp;guided=1">Continue to Preparation Check <span aria-hidden="true">→</span></a>
+            <a class="guided-flow-skip" href="{{ request.script_root }}/interview-preparation?guided=1">Skip this step</a>
+            <a class="guided-flow-continue" href="{{ request.script_root }}/interview-preparation?guided=1">Continue to Evidence Check <span aria-hidden="true">→</span></a>
         </div>
         {% else %}
-        <a class="guided-flow-back" href="{{ request.script_root }}/knowledge.html?view=context&amp;guided=1">← AI Context</a>
+        <a class="guided-flow-back" href="{{ request.script_root }}/career-profile?guided=1">← Career Profile</a>
         <div>
-            <a class="guided-flow-skip" href="{{ request.script_root }}/meeting-recorder?guided=1">Skip this step</a>
-            <a class="guided-flow-continue" href="{{ request.script_root }}/meeting-recorder?guided=1">Continue to Recorder <span aria-hidden="true">→</span></a>
+            <a class="guided-flow-skip" href="{{ request.script_root }}/mock-interview?guided=1">Skip this step</a>
+            <a class="guided-flow-continue" href="{{ request.script_root }}/mock-interview?guided=1">Continue to Mock Interview <span aria-hidden="true">→</span></a>
         </div>
         {% endif %}
     </nav>
@@ -877,8 +877,8 @@
     <section class="modal-card" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="uploadModalTitle">
         <div class="modal-header">
             <div>
-                <h2 id="uploadModalTitle">Upload files to Document Library</h2>
-                <p>These documents are permanent and can be reused across meetings.</p>
+                <h2 id="uploadModalTitle">Upload files to Career Evidence Library</h2>
+                <p>These documents are permanent and can be reused across applications.</p>
             </div>
             <button type="button" class="modal-close" data-close-modal aria-label="Close">×</button>
         </div>
@@ -951,15 +951,15 @@
     <section class="modal-card modal-card-small" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="upcomingMeetingModalTitle">
         <div class="modal-header">
             <div>
-                <h2 id="upcomingMeetingModalTitle">Create an upcoming meeting</h2>
-                <p>Add only what you know now. The date, participants, and agenda are optional.</p>
+                <h2 id="upcomingMeetingModalTitle">Create an Application Workspace</h2>
+                <p>Add the target role now. Interview date, interviewers, and notes are optional.</p>
             </div>
             <button type="button" class="modal-close" data-close-modal aria-label="Close">×</button>
         </div>
         <form id="upcomingMeetingForm">
             <label class="form-field">
-                <span>Meeting title</span>
-                <input type="text" id="upcomingMeetingTitle" maxlength="120" placeholder="Example: Product launch planning" required>
+                <span>Target role or application name</span>
+                <input type="text" id="upcomingMeetingTitle" maxlength="120" placeholder="Example: Senior Software Engineer — Acme" required>
             </label>
             <label class="form-field">
                 <span>Date and time <small>(optional)</small></span>
@@ -967,8 +967,8 @@
             </label>
             <div class="form-field participant-field">
                 <div class="participant-field-heading">
-                    <label for="upcomingMeetingParticipantEntry">Participants <small>(optional)</small></label>
-                    <span class="participant-total" aria-label="Participant count">
+                    <label for="upcomingMeetingParticipantEntry">Interviewers or contacts <small>(optional)</small></label>
+                    <span class="participant-total" aria-label="Interviewer or contact count">
                         <span aria-hidden="true">·</span>
                         <strong id="upcomingMeetingParticipantCount">0</strong>
                     </span>
@@ -986,20 +986,20 @@
                         type="text"
                         id="upcomingMeetingParticipantEntry"
                         maxlength="200"
-                        placeholder="Add a participant"
+                        placeholder="Add an interviewer or recruiter"
                         autocomplete="off"
                     >
                 </div>
                 <input type="hidden" id="upcomingMeetingParticipants">
-                <small class="participant-field-help">Press Enter or type a comma to add each participant. You can also paste a comma-separated list.</small>
+                <small class="participant-field-help">Press Enter or type a comma to add each interviewer or contact. You can also paste a comma-separated list.</small>
             </div>
             <label class="form-field">
-                <span>Purpose or agenda <small>(optional)</small></span>
-                <textarea id="upcomingMeetingPurpose" rows="4" maxlength="1200" placeholder="What should be discussed or accomplished?"></textarea>
+                <span>Interview objective or application notes <small>(optional)</small></span>
+                <textarea id="upcomingMeetingPurpose" rows="4" maxlength="1200" placeholder="What should you demonstrate, clarify, or accomplish?"></textarea>
             </label>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                <button type="submit" class="btn btn-primary">Create Meeting</button>
+                <button type="submit" class="btn btn-primary">Create Application Workspace</button>
             </div>
         </form>
     </section>

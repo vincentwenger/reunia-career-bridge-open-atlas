@@ -12,15 +12,15 @@
     const upcomingMeetingsStorageKey = `meetingAssistant.upcomingMeetings.v1.${scopeKey}`;
 
     const endpoints = {
-        upload: appUrl('/api/knowledge/files'),
-        files: appUrl('/api/knowledge/files'),
+        upload: appUrl('/api/career/evidence'),
+        files: appUrl('/api/career/evidence'),
         collections: appUrl('/api/knowledge/collections'),
-        ask: appUrl('/api/knowledge/ask'),
-        transcripts: appUrl('/api/transcripts'),
-        context: root.dataset.contextEndpoint || appUrl('/api/knowledge/context'),
-        materials: root.dataset.materialsEndpoint || appUrl('/api/knowledge/meeting-materials'),
-        meetings: appUrl('/api/knowledge/upcoming-meetings'),
-        activeMeeting: appUrl('/api/knowledge/active-meeting')
+        ask: appUrl('/api/career/evidence/search'),
+        transcripts: appUrl('/api/career/interview-reviews'),
+        context: root.dataset.contextEndpoint || appUrl('/api/career/profile'),
+        materials: root.dataset.materialsEndpoint || appUrl('/api/career/application-materials'),
+        meetings: appUrl('/api/career/application-workspaces'),
+        activeMeeting: appUrl('/api/career/active-application')
     };
 
     const state = {
@@ -107,6 +107,8 @@
     function normalizeMeetingPayload(payload) {
         if (Array.isArray(payload)) return payload;
         if (Array.isArray(payload?.items)) return payload.items;
+        if (Array.isArray(payload?.application_workspaces)) return payload.application_workspaces;
+        if (Array.isArray(payload?.upcoming_interviews)) return payload.upcoming_interviews;
         if (Array.isArray(payload?.meetings)) return payload.meetings;
         if (Array.isArray(payload?.data)) return payload.data;
         return [];
@@ -126,7 +128,7 @@
         return String(
             unwrapValue(meeting?.meeting_name, '') ||
             unwrapValue(meeting?.title, '') ||
-            `Meeting ${index + 1}`
+            `Application Workspace ${index + 1}`
         );
     }
 
@@ -158,7 +160,7 @@
             .filter(record => record && typeof record === 'object' && String(record.id || '').trim())
             .map(record => ({
                 id: String(record.id),
-                title: String(record.title || 'Untitled meeting').trim() || 'Untitled meeting',
+                title: String(record.title || 'Untitled application').trim() || 'Untitled application',
                 scheduled_at: String(record.scheduled_at || ''),
                 participants: Array.isArray(record.participants)
                     ? record.participants.map(item => String(item || '').trim()).filter(Boolean)
@@ -193,10 +195,10 @@
         const deleting = Boolean(state.pendingMeetingDeleteId);
         const disabled = !meeting || deleting;
         const label = deleting
-            ? 'Deleting meeting'
+            ? 'Deleting application workspace'
             : meeting
                 ? `Delete ${meeting.title}`
-                : 'Select an upcoming meeting to delete';
+                : 'Select an upcoming interview to delete';
         button.disabled = disabled;
         button.setAttribute('aria-disabled', String(disabled));
         button.setAttribute('aria-busy', String(deleting));
@@ -211,14 +213,14 @@
         document.querySelectorAll('[data-upcoming-meeting-select]').forEach(select => {
             const previousValue = preferredId || select.value;
             const defaultLabel = select.id === 'contextMeetingSelect'
-                ? 'No upcoming meeting selected'
-                : 'Select an upcoming meeting';
+                ? 'No upcoming interview selected'
+                : 'Select an upcoming interview';
             const firstOption = new Option(defaultLabel, '');
             select.replaceChildren(firstOption);
             meetings.forEach(meeting => select.add(new Option(upcomingMeetingLabel(meeting), meeting.id)));
             select.disabled = meetings.length === 0;
             if (!meetings.length) {
-                firstOption.textContent = 'No upcoming meetings yet';
+                firstOption.textContent = 'No upcoming interviews yet';
             }
             if (previousValue && meetings.some(meeting => meeting.id === previousValue)) {
                 select.value = previousValue;
@@ -235,10 +237,10 @@
 
         try {
             const response = await fetch(endpoints.transcripts, {headers: {'Accept': 'application/json'}});
-            if (!response.ok) throw new Error(`Meeting endpoint returned ${response.status}.`);
+            if (!response.ok) throw new Error(`Application workspace endpoint returned ${response.status}.`);
             state.completedMeetings = normalizeMeetingPayload(await response.json());
         } catch (error) {
-            console.info('Completed meeting list could not be loaded.', error);
+            console.info('Completed mock interview list could not be loaded.', error);
             state.completedMeetings = [];
         }
 
@@ -247,7 +249,7 @@
 
         meetingSelects.forEach(select => {
             const previousValue = select.value;
-            const firstOption = select.options[0]?.cloneNode(true) || new Option('All completed meetings', '');
+            const firstOption = select.options[0]?.cloneNode(true) || new Option('All completed mock interviews', '');
             select.replaceChildren(firstOption);
             state.completedMeetings.forEach((meeting, index) => {
                 const id = meetingId(meeting, index);
@@ -279,10 +281,10 @@
             await fetch(endpoints.activeMeeting, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({meeting_id: meetingId || ''})
+                body: JSON.stringify({application_workspace_id: meetingId || '', meeting_id: meetingId || ''})
             });
         } catch (error) {
-            console.info('Active meeting package could not be synchronized.', error);
+            console.info('Active application workspace could not be synchronized.', error);
         }
     }
 
@@ -290,7 +292,7 @@
         const localMeetings = normalizeUpcomingMeetings(readJsonStorage(upcomingMeetingsStorageKey, []));
         try {
             let response = await fetch(endpoints.meetings, {headers: {'Accept': 'application/json'}});
-            if (!response.ok) throw new Error(`Meeting endpoint returned ${response.status}.`);
+            if (!response.ok) throw new Error(`Application workspace endpoint returned ${response.status}.`);
             let result = await response.json();
             let serverMeetings = normalizeUpcomingMeetings(result.meetings || []);
 
@@ -329,7 +331,7 @@
 
             state.upcomingMeetings = serverMeetings;
             saveUpcomingMeetings();
-            let activeMeetingId = result.active_meeting_id || '';
+            let activeMeetingId = result.active_application_workspace_id || result.active_meeting_id || '';
             if (!activeMeetingId && localMeetings.length) {
                 const preparedLocal = [...localMeetings]
                     .filter(meeting => (state.materials[meeting.id]?.library_file_ids || []).length)
@@ -342,7 +344,7 @@
             populateUpcomingMeetingSelects(activeMeetingId);
             return activeMeetingId;
         } catch (error) {
-            console.info('Upcoming meetings endpoint unavailable; using browser storage.', error);
+            console.info('Upcoming interviews endpoint unavailable; using browser storage.', error);
             state.upcomingMeetings = localMeetings;
             populateUpcomingMeetingSelects();
             return '';
@@ -563,7 +565,7 @@
         };
     }
 
-    // Upcoming meetings used by Meeting Materials and meeting-specific AI context.
+    // Upcoming interviews used by Application Materials and application-specific career profile.
     const upcomingMeetingModal = document.getElementById('upcomingMeetingModal');
     const meetingDetailsTitleInput = document.getElementById('meetingDetailsTitleInput');
     const meetingDetailsDateInput = document.getElementById('meetingDetailsDate');
@@ -652,7 +654,7 @@
             if (meetingDetailsPurposeInput) meetingDetailsPurposeInput.value = '';
             savedUpcomingMeetingDetailsSnapshot = null;
             if (meetingDetailsStatus) {
-                meetingDetailsStatus.textContent = 'Select an upcoming meeting to view its saved title, purpose, participants, and date.';
+                meetingDetailsStatus.textContent = 'Select an upcoming interview to view its saved title, purpose, participants, and date.';
             }
             updateUpcomingMeetingDetailsSaveState();
             return;
@@ -664,7 +666,7 @@
         if (meetingDetailsPurposeInput) meetingDetailsPurposeInput.value = meeting.purpose || '';
         savedUpcomingMeetingDetailsSnapshot = upcomingMeetingDetailsSnapshot();
         if (meetingDetailsStatus) {
-            meetingDetailsStatus.textContent = `Saved details for “${meeting.title}”. Edit any field below to update this meeting.`;
+            meetingDetailsStatus.textContent = `Saved details for “${meeting.title}”. Edit any field below to update this application.`;
         }
         updateUpcomingMeetingDetailsSaveState();
     }
@@ -674,8 +676,8 @@
             const meeting = selectedUpcomingMeeting();
             if (meetingDetailsStatus && meeting) {
                 meetingDetailsStatus.textContent = upcomingMeetingDetailsHaveUnsavedChanges()
-                    ? 'You have unsaved meeting detail changes.'
-                    : `Saved details for “${meeting.title}”. Edit any field below to update this meeting.`;
+                    ? 'You have unsaved application detail changes.'
+                    : `Saved details for “${meeting.title}”. Edit any field below to update this application.`;
             }
             updateUpcomingMeetingDetailsSaveState();
         });
@@ -692,7 +694,7 @@
         event.preventDefault();
         const title = document.getElementById('upcomingMeetingTitle')?.value.trim() || '';
         if (!title) {
-            showToast('Enter a meeting title.', true);
+            showToast('Enter a target role or application name.', true);
             document.getElementById('upcomingMeetingTitle')?.focus();
             return;
         }
@@ -723,10 +725,10 @@
                 body: JSON.stringify({...meeting, activate: true})
             });
             const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.error || 'The meeting could not be created.');
+            if (!response.ok) throw new Error(result.error || 'The application workspace could not be created.');
             Object.assign(meeting, result.meeting || {});
         } catch (error) {
-            console.info('Creating meeting in browser storage.', error);
+            console.info('Creating application workspace in browser storage.', error);
         }
         state.upcomingMeetings = state.upcomingMeetings.filter(item => item.id !== meeting.id);
         state.upcomingMeetings.push(meeting);
@@ -744,7 +746,7 @@
             writeMeetingContextForm({});
             updateEffectiveContextPreview();
         }
-        showToast(scheduledAt ? 'Upcoming meeting created.' : 'Draft meeting created.');
+        showToast(scheduledAt ? 'Upcoming interview created.' : 'Draft application workspace created.');
     });
 
     saveUpcomingMeetingDetailsButton?.addEventListener('click', async () => {
@@ -753,7 +755,7 @@
 
         const details = readUpcomingMeetingDetailsForm();
         if (!details.title) {
-            showToast('Enter a meeting title.', true);
+            showToast('Enter a target role or application name.', true);
             meetingDetailsTitleInput?.focus();
             return;
         }
@@ -769,7 +771,7 @@
                 body: JSON.stringify({...details, activate: true})
             });
             const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.error || 'The meeting details could not be saved.');
+            if (!response.ok) throw new Error(result.error || 'The application details could not be saved.');
 
             const savedMeeting = {
                 ...meeting,
@@ -782,13 +784,13 @@
             );
             saveUpcomingMeetings();
             populateUpcomingMeetingSelects(meeting.id);
-            showToast('Meeting details saved.');
+            showToast('Application details saved.');
         } catch (error) {
-            console.info('Upcoming meeting details could not be saved.', error);
-            showToast(error.message || 'The meeting details could not be saved.', true);
+            console.info('Upcoming interview details could not be saved.', error);
+            showToast(error.message || 'The application details could not be saved.', true);
         } finally {
             isSavingUpcomingMeetingDetails = false;
-            saveUpcomingMeetingDetailsButton.textContent = 'Save meeting details';
+            saveUpcomingMeetingDetailsButton.textContent = 'Save application details';
             updateUpcomingMeetingDetailsSaveState();
         }
     });
@@ -804,9 +806,9 @@
 
         const confirmed = window.AppUI?.confirm
             ? await window.AppUI.confirm({
-                title: 'Delete upcoming meeting?',
-                message: `Delete “${meeting.title}”? Its selected materials, meeting-specific context, and temporary files will also be removed. This action cannot be undone.`,
-                confirmLabel: 'Delete meeting',
+                title: 'Delete upcoming interview?',
+                message: `Delete “${meeting.title}”? Its selected materials, application-specific context, and temporary files will also be removed. This action cannot be undone.`,
+                confirmLabel: 'Delete application',
                 danger: true
             })
             : window.confirm(window.AppI18n?.t(`Delete “${meeting.title}”? This action cannot be undone.`) || `Delete “${meeting.title}”? This action cannot be undone.`);
@@ -822,7 +824,7 @@
             });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(result.error || 'The meeting could not be deleted.');
+                throw new Error(result.error || 'The application workspace could not be deleted.');
             }
 
             state.upcomingMeetings = state.upcomingMeetings.filter(item => item.id !== selectedId);
@@ -846,7 +848,7 @@
                 updateEffectiveContextPreview();
                 updateSaveContextButton();
             }
-            showToast('Upcoming meeting deleted.');
+            showToast('Upcoming interview deleted.');
         } catch (error) {
             showToast(error.message, true);
         } finally {
@@ -917,7 +919,7 @@
             const response = await fetch(endpoints.upload, {method: 'POST', body: formData});
             const result = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(result.error || 'The files could not be uploaded.');
-            showToast(`${files.length} file${files.length === 1 ? '' : 's'} added to Document Library.`);
+            showToast(`${files.length} file${files.length === 1 ? '' : 's'} added to Career Evidence Library.`);
             closeModal(uploadModal);
             window.location.reload();
         } catch (error) {
@@ -1135,7 +1137,7 @@
             const confirmed = window.AppUI?.confirm
                 ? await window.AppUI.confirm({
                     title: 'Delete document?',
-                    message: 'This permanent document will be removed from Document Library and from any meeting package that references it.',
+                    message: 'This permanent document will be removed from Career Evidence Library and from any application workspace that references it.',
                     confirmLabel: 'Delete document',
                     danger: true
                 })
@@ -1156,7 +1158,7 @@
         }
     });
 
-    // Meeting Materials
+    // Application Materials
     const materialsMeeting = document.getElementById('meetingMaterialsMeeting');
     const materialsCheckboxes = Array.from(document.querySelectorAll('.material-library-checkbox'));
     const materialsSearch = document.getElementById('materialsLibrarySearch');
@@ -1241,7 +1243,7 @@
             item.dataset.pending = file.pending ? 'true' : 'false';
             item.innerHTML = `
                 <span class="temporary-file-icon" aria-hidden="true">⏱</span>
-                <span class="temporary-file-copy"><strong>${escapeHtml(file.name || file.filename || 'Temporary file')}</strong><small>${formatBytes(file.size || file.size_bytes)}${file.pending ? ' · Ready to add' : ' · Meeting only'}</small></span>
+                <span class="temporary-file-copy"><strong>${escapeHtml(file.name || file.filename || 'Temporary file')}</strong><small>${formatBytes(file.size || file.size_bytes)}${file.pending ? ' · Ready to add' : ' · This application only'}</small></span>
                 <button type="button" class="temporary-file-remove" aria-label="Remove ${escapeHtml(file.name || file.filename || 'temporary file')}">×</button>
             `;
             list.appendChild(item);
@@ -1268,7 +1270,7 @@
         if (summaryElement) {
             summaryElement.textContent = hasMeeting
                 ? `${selectedCount} library document${selectedCount === 1 ? '' : 's'} and ${temporaryCount} temporary file${temporaryCount === 1 ? '' : 's'} selected.`
-                : 'Create or select an upcoming meeting to begin.';
+                : 'Create or select an upcoming interview to begin.';
         }
         updateSaveMeetingMaterialsButton();
     }
@@ -1313,7 +1315,7 @@
                 }
             }
         } catch (error) {
-            console.info('Meeting materials endpoint unavailable; using browser storage.', error);
+            console.info('Application materials endpoint unavailable; using browser storage.', error);
         }
 
         if (requestId !== materialsLoadRequest || id !== (materialsMeeting?.value || '')) return;
@@ -1329,7 +1331,7 @@
     async function saveMeetingMaterials() {
         const id = materialsMeeting?.value || '';
         if (!id) {
-            showToast('Create or select an upcoming meeting before saving materials.', true);
+            showToast('Create or select an upcoming interview before saving materials.', true);
             materialsMeeting?.focus();
             return;
         }
@@ -1350,16 +1352,16 @@
             });
             if (!response.ok && ![404, 405].includes(response.status)) {
                 const result = await response.json().catch(() => ({}));
-                throw new Error(result.error || 'Meeting materials could not be saved on the server.');
+                throw new Error(result.error || 'Application materials could not be saved on the server.');
             }
-            showToast(response.ok ? 'Meeting materials saved.' : 'Meeting materials saved in this browser.');
+            showToast(response.ok ? 'Application materials saved.' : 'Application materials saved in this browser.');
         } catch (error) {
-            console.info('Saving meeting materials in browser storage.', error);
-            showToast('Meeting materials saved in this browser.');
+            console.info('Saving application materials in browser storage.', error);
+            showToast('Application materials saved in this browser.');
         }
         markMeetingMaterialsSaved();
         isSavingMeetingMaterials = false;
-        if (saveMeetingMaterialsButton) saveMeetingMaterialsButton.textContent = 'Save Meeting Materials';
+        if (saveMeetingMaterialsButton) saveMeetingMaterialsButton.textContent = 'Save Application Materials';
         updateMaterialsSummary();
     }
 
@@ -1382,7 +1384,7 @@
     document.getElementById('uploadTemporaryFiles')?.addEventListener('click', async () => {
         const id = materialsMeeting?.value || '';
         if (!id) {
-            showToast('Create or select an upcoming meeting before adding temporary files.', true);
+            showToast('Create or select an upcoming interview before adding temporary files.', true);
             materialsMeeting?.focus();
             return;
         }
@@ -1409,10 +1411,10 @@
             if (!response.ok) throw new Error(result.error || 'Temporary upload endpoint unavailable.');
             const uploaded = result.files || result.temporary_files || [];
             state.currentTemporaryFiles.push(...uploaded);
-            showToast('Temporary files added to this meeting.');
+            showToast('Temporary files added to this application.');
         } catch (error) {
             state.currentTemporaryFiles.push(...localMetadata);
-            showToast('Temporary file references saved in this browser for this meeting.');
+            showToast('Temporary file references saved in this browser for this application.');
             console.info('Temporary files stored as browser metadata because the upload endpoint is unavailable.', error);
         }
 
@@ -1454,7 +1456,7 @@
         const confirmed = window.AppUI?.confirm
             ? await window.AppUI.confirm({
                 title: 'Clear temporary files?',
-                message: 'This removes all meeting-only files from the selected meeting package.',
+                message: 'This removes all application-only files from the selected application workspace.',
                 confirmLabel: 'Clear files',
                 danger: true
             })
@@ -1484,7 +1486,7 @@
     materialsSelectedOnly?.addEventListener('change', filterMaterialLibrary);
     saveMeetingMaterialsButton?.addEventListener('click', saveMeetingMaterials);
 
-    // AI Context
+    // Career Profile
     function seedContextFromTemplate() {
         return {
             enabled: root.dataset.contextEnabled !== 'false',
@@ -1713,7 +1715,7 @@
         panel.hidden = !open;
 
         const label = toggle.querySelector('.meeting-override-toggle-label');
-        if (label) label.textContent = open ? 'Hide meeting-specific context' : 'Add meeting-specific context';
+        if (label) label.textContent = open ? 'Hide application-specific context' : 'Add application-specific context';
 
         if (focus && open) {
             window.requestAnimationFrame(() => document.getElementById('meetingContextObjective')?.focus());
@@ -1838,7 +1840,7 @@
             ['Audio response instructions', defaultContext.audio_response_instructions],
             ['Clipboard response instructions', defaultContext.clipboard_response_instructions],
             ['Reusable instructions', defaultContext.free_text],
-            ['Special instructions for this meeting', meetingContext.special_instructions]
+            ['Special instructions for this application', meetingContext.special_instructions]
         ].filter(([, value]) => String(value || '').trim());
         preview.replaceChildren();
         if (!rows.length) {
@@ -1890,13 +1892,13 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(serializeContext(context))
             });
-            if (response.ok) return 'AI context saved.';
-            if ([404, 405].includes(response.status)) return 'AI context saved in this browser.';
+            if (response.ok) return 'career profile saved.';
+            if ([404, 405].includes(response.status)) return 'career profile saved in this browser.';
             const result = await response.json().catch(() => ({}));
             throw new Error(result.error || 'Context could not be saved on the server.');
         } catch (error) {
             console.info('Saving context locally.', error);
-            return 'AI context saved in this browser.';
+            return 'career profile saved in this browser.';
         }
     }
 
@@ -1920,7 +1922,7 @@
                     writeJsonStorage(meetingContextStorageKey, state.meetingContexts);
                 }
             } catch (error) {
-                console.info('Meeting context could not be loaded from the server.', error);
+                console.info('Application context could not be loaded from the server.', error);
             }
         }
 
@@ -2010,11 +2012,11 @@
                 });
                 if (!response.ok && ![404, 405].includes(response.status)) {
                     const result = await response.json().catch(() => ({}));
-                    throw new Error(result.error || 'Meeting-specific context could not be saved on the server.');
+                    throw new Error(result.error || 'Application-specific context could not be saved on the server.');
                 }
                 await setActiveMeeting(selectedMeeting);
             } catch (error) {
-                console.info('Meeting-specific context saved in browser only.', error);
+                console.info('Application-specific context saved in browser only.', error);
             }
         }
 
@@ -2028,11 +2030,11 @@
         showToast(message);
 
         isSavingContext = false;
-        if (button) button.textContent = 'Save AI Context';
+        if (button) button.textContent = 'Save Career Profile';
         updateSaveContextButton();
     });
 
-    // Unified Knowledge Search
+    // Unified Career Evidence Library
     const knowledgeForm = document.getElementById('knowledgeQuestionForm');
     const questionInput = document.getElementById('knowledgeQuestion');
     const answerPanel = document.getElementById('answerPanel');
@@ -2047,9 +2049,9 @@
     function updateSearchScopeUi() {
         const scope = selectedSearchScope();
         const labels = {
-            current_meeting: 'Current Meeting Materials',
-            library: 'Document Library',
-            meetings: 'Previous Meetings',
+            current_meeting: 'Current Application Materials',
+            library: 'Career Evidence Library',
+            meetings: 'Previous Mock Interviews',
             all: 'All Knowledge'
         };
         const scopeLabel = document.getElementById('searchScopeLabel');
@@ -2082,7 +2084,7 @@
         const uniqueSources = [];
         const seenSources = new Set();
         (Array.isArray(sources) ? sources : []).forEach(source => {
-            const type = source.source_type || source.type || (source.meeting_name ? 'Previous Meeting' : 'Document');
+            const type = source.source_type || source.type || (source.meeting_name ? 'Previous Mock Interview' : 'Document');
             const title = source.filename || source.display_name || source.meeting_name || source.title || 'Source';
             const identity = source.file_id
                 ? `${String(type).toLowerCase()}|file:${source.file_id}`
@@ -2097,7 +2099,7 @@
         uniqueSources.forEach((source, index) => {
             const item = document.createElement('div');
             item.className = 'knowledge-source-item';
-            const type = source.source_type || source.type || (source.meeting_name ? 'Previous Meeting' : 'Document');
+            const type = source.source_type || source.type || (source.meeting_name ? 'Previous Mock Interview' : 'Document');
             const title = source.filename || source.display_name || source.meeting_name || source.title || `Source ${index + 1}`;
             const detail = source.collection_name || source.meeting_date || source.date || source.section || '';
             item.innerHTML = `<span class="knowledge-source-number">${index + 1}</span><span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(type)}${detail ? ` · ${escapeHtml(detail)}` : ''}</small></span>`;

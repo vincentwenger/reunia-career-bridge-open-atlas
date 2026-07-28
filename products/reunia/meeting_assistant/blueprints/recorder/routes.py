@@ -1,26 +1,21 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from flask import current_app, g, jsonify, render_template, request, url_for
 
 from meeting_assistant.blueprints.recorder import recorder_bp
 from meeting_assistant.services.browser_recorder_job_service import BrowserRecorderJobService
-from meeting_assistant.services.browser_recorder_live_service import BrowserRecorderLiveService
 from meeting_assistant.utils.authentication import api_auth_required, login_required
 from meeting_assistant.utils.exceptions import ApplicationError
 
 
-@recorder_bp.get("/meeting-recorder")
 @recorder_bp.get("/meeting-recorder.html")
+@recorder_bp.get("/meeting-recorder")
+@recorder_bp.get("/mock-interview")
 @login_required
 def view_recorder():
-    desktop_installer = Path(current_app.static_folder or "") / "ReuniaSetup.exe"
-    return render_template(
-        "meeting-recorder.html",
-        desktop_recorder_available=desktop_installer.is_file(),
-    )
+    return render_template("meeting-recorder.html", desktop_recorder_available=False)
 
 
 def _prepared_meeting_from_form() -> dict[str, object]:
@@ -58,6 +53,7 @@ def _recorder_error_response(exc: ApplicationError, reference_id: str, stage: st
 
 
 @recorder_bp.post("/api/meeting-recorder/sessions")
+@recorder_bp.post("/api/career/mock-interviews/sessions")
 @api_auth_required
 def create_recording_session():
     requested_reference_id = str(
@@ -89,6 +85,7 @@ def create_recording_session():
 
 
 @recorder_bp.post("/api/meeting-recorder/sessions/<job_id>/segments")
+@recorder_bp.post("/api/career/mock-interviews/sessions/<job_id>/segments")
 @api_auth_required
 def upload_recording_segment(job_id: str):
     try:
@@ -107,6 +104,7 @@ def upload_recording_segment(job_id: str):
 
 
 @recorder_bp.post("/api/meeting-recorder/sessions/<job_id>/finalize")
+@recorder_bp.post("/api/career/mock-interviews/sessions/<job_id>/finalize")
 @api_auth_required
 def finalize_recording_session(job_id: str):
     try:
@@ -127,6 +125,7 @@ def finalize_recording_session(job_id: str):
 
 
 @recorder_bp.delete("/api/meeting-recorder/sessions/<job_id>")
+@recorder_bp.delete("/api/career/mock-interviews/sessions/<job_id>")
 @api_auth_required
 def discard_recording_session(job_id: str):
     try:
@@ -140,6 +139,7 @@ def discard_recording_session(job_id: str):
 
 
 @recorder_bp.post("/api/meeting-recorder/jobs/<job_id>/retry")
+@recorder_bp.post("/api/career/mock-interviews/jobs/<job_id>/retry")
 @api_auth_required
 def retry_recording_job(job_id: str):
     try:
@@ -159,6 +159,7 @@ def retry_recording_job(job_id: str):
 
 
 @recorder_bp.post("/api/meeting-recorder")
+@recorder_bp.post("/api/career/mock-interviews")
 @api_auth_required
 def submit_recording():
     requested_reference_id = str(
@@ -219,73 +220,30 @@ def submit_recording():
 @recorder_bp.post("/api/meeting-recorder/live-chunk")
 @api_auth_required
 def submit_live_chunk():
-    recording_id = str(request.form.get("recording_id") or "").strip()
-    chunk_id = str(request.form.get("chunk_id") or "").strip()
-
-    try:
-        result = BrowserRecorderLiveService().process_chunk(
-            user_id=g.current_user_id,
-            recording_id=recording_id,
-            chunk_id=chunk_id,
-            source=request.form.get("source", ""),
-            sequence=request.form.get("sequence", ""),
-            audio_chunk=request.files.get("audio_chunk"),
-            prepared_meeting_id=request.form.get("prepared_meeting_id", ""),
-            previous_transcript=request.form.get("previous_transcript", ""),
-            question_context=request.form.get("question_context", ""),
-            language=request.form.get("language", ""),
-            live_qa_opt_in=request.form.get("live_qa_opt_in", ""),
-            elapsed_seconds=request.form.get("elapsed_seconds", ""),
-        )
-    except ApplicationError as exc:
-        current_app.logger.warning(
-            "Live recorder chunk rejected recording=%s chunk=%s status_code=%s error=%s",
-            recording_id or "unavailable",
-            chunk_id or "unavailable",
-            exc.status_code,
-            exc,
-        )
-        return jsonify(
-            {
-                "error": str(exc),
-                "recording_id": recording_id,
-                "chunk_id": chunk_id,
-                "stage": "live_qa",
-            }
-        ), exc.status_code
-    except Exception as exc:  # pragma: no cover - defensive request boundary
-        current_app.logger.exception(
-            "Live recorder chunk failed recording=%s chunk=%s",
-            recording_id or "unavailable",
-            chunk_id or "unavailable",
-            exc_info=exc,
-        )
-        return jsonify(
-            {
-                "error": "The live audio chunk could not be processed.",
-                "recording_id": recording_id,
-                "chunk_id": chunk_id,
-                "stage": "live_qa",
-            }
-        ), 500
-
-    return jsonify(result)
+    """Real-time interview assistance is outside the Career Bridge product boundary."""
+    return jsonify(
+        {
+            "error": "Real-time interview assistance has been retired. Use Mock Interview for practice.",
+            "stage": "retired_live_assistance",
+        }
+    ), 410
 
 
 @recorder_bp.delete("/api/meeting-recorder/live-session/<recording_id>")
 @api_auth_required
 def cancel_live_session(recording_id: str):
-    try:
-        BrowserRecorderLiveService.cancel_session(
-            user_id=g.current_user_id,
-            recording_id=recording_id,
-        )
-    except ApplicationError as exc:
-        return jsonify({"error": str(exc)}), exc.status_code
-    return jsonify({"status": "cancelled", "recording_id": recording_id})
+    """Keep the legacy route explicit while confirming no live session is active."""
+    return jsonify(
+        {
+            "status": "retired",
+            "recording_id": recording_id,
+            "message": "Real-time interview assistance is not available.",
+        }
+    ), 410
 
 
 @recorder_bp.get("/api/meeting-recorder/jobs/<job_id>")
+@recorder_bp.get("/api/career/mock-interviews/jobs/<job_id>")
 @api_auth_required
 def get_recording_job(job_id: str):
     result = BrowserRecorderJobService().get_job(

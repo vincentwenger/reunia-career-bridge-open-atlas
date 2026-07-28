@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'macros/ui.html' import page_hero %}
 
-{% block title %}Réunia - User Profile{% endblock %}
+{% block title %}Réunia - Account Profile{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/profile.css') }}">
@@ -11,8 +11,8 @@
 <div class="app-page profile-page">
 
     {{ page_hero(
-        'User Profile',
-        'Update the personal and professional details used in your Réunia workspace.'
+        'Account Profile',
+        'Manage account identity details. Professional background, accomplishments, preferences, and constraints now live in Career Profile.'
     ) }}
 
     <div class="profile-layout">
@@ -24,7 +24,7 @@
                 </div>
 
                 <h2 class="summary-name" id="summaryName">
-                    {{ user.full_name if user and user.full_name else 'Your Profile' }}
+                    {{ user.full_name if user and user.full_name else 'Your Account' }}
                 </h2>
 
                 <div class="summary-email">
@@ -55,9 +55,9 @@
 
         <main class="profile-card">
             <div class="profile-card-header">
-                <h2>Edit Profile Settings</h2>
+                <h2>Edit Account Details</h2>
                 <p>
-                    Update your personal and professional information. Your email address is used as your account identity
+                    Update your account information. Your email address is used as your account identity
                     and cannot be changed from this page.
                 </p>
             </div>
@@ -132,7 +132,7 @@
                     <div class="form-actions">
                         <div class="save-status-group">
                             <div class="save-note">
-                                Your profile changes will be saved to your Réunia account.
+                                Your account changes will be saved to Réunia.
                                 <span class="save-state" id="profileSaveState" aria-live="polite">Saved</span>
                             </div>
                             <div
@@ -145,7 +145,7 @@
                         </div>
 
                         <button type="submit" class="btn btn-submit" id="saveProfileBtn" aria-busy="false">
-                            Save Profile Changes
+                            Save Account Changes
                         </button>
                     </div>
 

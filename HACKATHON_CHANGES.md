@@ -111,3 +111,45 @@ Future commits should append adapter-level changes here, including the exact leg
 - No meeting, resume, action, or analytics database object was renamed.
 - No Resume Taylor Flask routes were mounted into Réunia.
 - No administrator authorization rule was weakened.
+
+## 2026-07-28 — Réunia feature repurposing
+
+- Added the canonical legacy-to-Career Bridge feature map in `career_bridge/presentation/feature_mapping.py`.
+- Added clean career-facing pages and preferred `/api/career/*` adapter aliases while retaining imported routes for migration compatibility.
+- Repurposed Meeting Preparation into Interview Preparation centered on the company, target role, interviewers, likely questions, and verified evidence.
+- Repurposed Meeting Materials, AI Context, Knowledge Search, and Meeting Package into Application Materials, Career Profile, Career Evidence Library, and one Application Workspace per target position.
+- Repurposed the browser recorder and review workflow into mock-interview practice, transcription, Interview Review, and an Interview Scorecard covering relevance, evidence, structure, clarity, and delivery.
+- Repurposed Action Center and Analytics into Career Action Plan and Career Progress.
+- Removed Windows Desktop Recorder entry points from the MVP; its download and ingestion compatibility endpoints now return HTTP 410.
+- Removed candidate-facing Live Q&A and disabled its legacy stream endpoints with HTTP 410 responses, keeping the product practice-only.
+- Kept Admin Analytics and Incidents unchanged, separate, and administrator-only.
+- Preserved legacy storage keys, route aliases, and meeting-shaped persistence fields behind the adapter boundary so existing data remains readable.
+
+## 2026-07-28 — Application Builder module and dashboard
+
+### Multi-application workspace
+
+- Preserved the imported Resume Taylor engine as the Career Bridge **Application Builder** rather than presenting it as the entire product.
+- Added a persistent application dashboard above the resume workflow so one user can manage multiple target roles.
+- Added company, job title, shared application status, resume version, interview readiness, next action, and upcoming deadline/interview fields.
+- Added in-place SQLite schema migration and legacy status normalization.
+- Scoped workflow state by authenticated owner and application ID so applications do not share an active resume session.
+
+### Six-step delivery workflow
+
+- Presented the existing engine through Career and Job Setup, Confirm Relevant Experience, Review Tailored Resume, Improve Resume Quality, Finalize Resume, and Evidence Review and Export.
+- Kept the mature four-snapshot generation lifecycle behind an adapter instead of rewriting resume-generation internals.
+- Updated report ownership, workflow navigation, resume saving, and application progress synchronization.
+
+### Career Bridge composition
+
+- Updated Réunia navigation and calls to action to open `/application-builder/`.
+- Added an authenticated Application Builder WSGI entry point that reuses the Réunia session `user_id`.
+- Added path-based reverse-proxy deployment wiring so Réunia and Resume Taylor retain separate dependency environments despite incompatible OpenAI SDK major versions.
+- Added shared framework-neutral workflow definitions and a dashboard projection aligned with `JobApplication`.
+
+### Intentionally preserved
+
+- No Réunia table was merged into Resume Taylor SQLite storage.
+- No OpenAI SDK dependency was unified.
+- Existing Resume Taylor parsing, generation, evidence, report, editing, and export algorithms remain in place.

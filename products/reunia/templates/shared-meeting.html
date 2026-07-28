@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="{{ static_asset('css/pages/shared-meeting.css') }}">
 </head>
 <body class="shared-meeting-body" data-app-language="{{ share_language | default('en') }}" data-authenticated="false">
-    <a class="skip-link" href="#shared-meeting-main">Skip to shared meeting</a>
+    <a class="skip-link" href="#shared-meeting-main">Skip to shared interview review</a>
 
     {% set marketing_url = url_for(
         'main.marketing_page',
@@ -46,17 +46,17 @@
         {% if unavailable_message %}
             <section class="shared-unlock-card" aria-labelledby="shared-unavailable-title">
                 <img class="shared-brand-mark" src="{{ static_asset('icons/favicon-64.png') }}" alt="" width="54" height="54" aria-hidden="true">
-                <p class="shared-eyebrow">Shared meeting unavailable</p>
+                <p class="shared-eyebrow">Shared interview review unavailable</p>
                 <h1 id="shared-unavailable-title">This link cannot be opened</h1>
                 <p>{{ unavailable_message }}</p>
-                <p class="shared-security-note">Ask the meeting owner for a new link if you still need access.</p>
+                <p class="shared-security-note">Ask the candidate for a new link if you still need access.</p>
             </section>
         {% elif password_required %}
             <section class="shared-unlock-card" aria-labelledby="shared-unlock-title">
                 <img class="shared-brand-mark" src="{{ static_asset('icons/favicon-64.png') }}" alt="" width="54" height="54" aria-hidden="true">
                 <p class="shared-eyebrow">Private share</p>
-                <h1 id="shared-unlock-title">This meeting is password protected</h1>
-                <p>Enter the password provided by the person who shared this meeting.</p>
+                <h1 id="shared-unlock-title">This interview review is password protected</h1>
+                <p>Enter the password provided by the person who shared this interview review.</p>
                 <form method="post" action="{{ url_for('meeting_shares.unlock_shared_meeting', share_id=share.share_id, lang=share_language) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <label for="share-password">Password</label>
@@ -72,7 +72,7 @@
                     {% if password_error %}
                         <p class="shared-form-error" role="alert">{{ password_error }}</p>
                     {% endif %}
-                    <button type="submit">View shared meeting</button>
+                    <button type="submit">View shared interview review</button>
                 </form>
                 <p class="shared-security-note">The link may expire or be disabled by its owner.</p>
             </section>
@@ -92,8 +92,8 @@
                             <strong>Réunia</strong>
                         </span>
                     </a>
-                    <p class="shared-eyebrow">Shared meeting</p>
-                    <h1 data-i18n-skip>{{ snapshot.meeting_name or 'Shared meeting' }}</h1>
+                    <p class="shared-eyebrow">Shared interview review</p>
+                    <h1 data-i18n-skip>{{ snapshot.meeting_name or 'Shared mock interview' }}</h1>
                     {% if snapshot.meeting_date %}
                         <time datetime="{{ snapshot.meeting_date }}" data-i18n-skip>{{ snapshot.meeting_date[:10] }}</time>
                     {% endif %}
@@ -109,7 +109,7 @@
             <section class="shared-content-card shared-summary-card" aria-labelledby="shared-summary-title">
                 <div class="shared-section-heading">
                     <p class="shared-section-eyebrow">Overview</p>
-                    <h2 id="shared-summary-title">Meeting summary</h2>
+                    <h2 id="shared-summary-title">Interview summary</h2>
                 </div>
                 <p class="shared-summary-text" data-i18n-skip>{{ snapshot.summary or 'No summary was included.' }}</p>
             </section>
@@ -206,7 +206,7 @@
             <aside class="shared-product-cta" aria-labelledby="shared-product-title" data-print-controls>
                 <div class="shared-product-cta-copy">
                     <p class="shared-section-eyebrow">Powered by Réunia</p>
-                    <h2 id="shared-product-title">Turn meetings into clear summaries and action items</h2>
+                    <h2 id="shared-product-title">Turn mock interviews into clear coaching and improvement actions</h2>
                     <p>Prepare with your own documents, capture discussions, ask questions, and keep follow-up work organized.</p>
                 </div>
                 <div class="shared-product-cta-actions">
@@ -216,7 +216,7 @@
                         target="_blank"
                         rel="noopener noreferrer"
                     >Explore Réunia</a>
-                    <small>No account is required to view this shared meeting.</small>
+                    <small>No account is required to view this shared interview review.</small>
                 </div>
             </aside>
 

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'macros/ui.html' import page_hero %}
 
-{% block title %}Réunia - Action Center{% endblock %}
+{% block title %}Réunia - Career Action Plan{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/action-center.css') }}">
@@ -14,11 +14,11 @@
     data-current-user="{{ session.get('full_name') or session.get('email') or session.get('user_id') or '' }}"
 >
     {{ page_hero(
-        'Action Center',
-        'Review open work from every meeting, assign owners and due dates, and mark actions complete.'
+        'Career Action Plan',
+        'Track resume changes, practice needs, applications, recruiter follow-ups, owners, due dates, and completion.'
     ) }}
 
-    <section class="action-command-bar" aria-label="Action Center controls">
+    <section class="action-command-bar" aria-label="Career Action Plan controls">
         <div class="action-command-copy">
             <span class="action-command-kicker">Execution workspace</span>
             <strong>Focus on the work that needs attention now.</strong>
@@ -52,7 +52,7 @@
     <section class="action-workspace">
         <header class="action-workspace-header">
             <div>
-                <span class="action-section-kicker">All meeting actions</span>
+                <span class="action-section-kicker">All career actions</span>
                 <h2>Action register</h2>
                 <p id="action-results-summary" aria-live="polite">Loading actions…</p>
             </div>
@@ -69,13 +69,13 @@
                 <span>Search</span>
                 <div>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.7-3.7"></path></svg>
-                    <input id="action-search" type="search" placeholder="Search actions, meetings, or owners…" autocomplete="off">
+                    <input id="action-search" type="search" placeholder="Search actions, applications, or owners…" autocomplete="off">
                 </div>
             </label>
 
             <label class="action-filter-field" for="action-meeting-filter">
-                <span>Meeting</span>
-                <select id="action-meeting-filter"><option value="all">All meetings</option></select>
+                <span>Application</span>
+                <select id="action-meeting-filter"><option value="all">All applications</option></select>
             </label>
 
             <label class="action-filter-field" for="action-owner-filter">
@@ -126,7 +126,7 @@
                     <option value="due_asc">Due date: earliest</option>
                     <option value="due_desc">Due date: latest</option>
                     <option value="priority">Priority</option>
-                    <option value="meeting">Meeting</option>
+                    <option value="meeting">Application</option>
                     <option value="newest">Newest first</option>
                 </select>
                 <small class="action-sort-description" id="action-sort-description">
@@ -143,7 +143,7 @@
                     <tr>
                         <th scope="col" class="action-complete-column"><span class="sr-only">Complete</span></th>
                         <th scope="col">Action</th>
-                        <th scope="col">Meeting</th>
+                        <th scope="col">Application</th>
                         <th scope="col">Owner</th>
                         <th scope="col">Due date</th>
                         <th scope="col">Priority</th>
@@ -156,8 +156,8 @@
 
             <div class="action-loading-state" id="action-loading-state">
                 <span class="action-spinner" aria-hidden="true"></span>
-                <strong>Collecting actions from your meetings</strong>
-                <p>Combining owners, deadlines, and follow-up items into one view.</p>
+                <strong>Building your career action plan</strong>
+                <p>Combining resume work, practice needs, applications, and recruiter follow-ups into one view.</p>
             </div>
 
             <div class="action-empty-state" id="action-empty-state" hidden>
@@ -190,8 +190,8 @@
 
             <div class="action-form-grid">
                 <label class="action-form-field" for="action-form-meeting">
-                    <span>Meeting</span>
-                    <select id="action-form-meeting"><option value="">No linked meeting</option></select>
+                    <span>Application</span>
+                    <select id="action-form-meeting"><option value="">No linked application</option></select>
                 </label>
 
                 <div class="action-form-field action-owner-field">
@@ -248,7 +248,7 @@
 
             <div class="action-form-note">
                 <span aria-hidden="true">i</span>
-                <p>Meeting Review keeps the original context. Action Center is the place to manage ownership, deadlines, priority, and completion across all meetings.</p>
+                <p>Interview Review keeps the original practice evidence. Career Action Plan manages resume changes, practice needs, applications, follow-ups, ownership, deadlines, priority, and completion.</p>
             </div>
 
             <footer class="action-modal-actions">

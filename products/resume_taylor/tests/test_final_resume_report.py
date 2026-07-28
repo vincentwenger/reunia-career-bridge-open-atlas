@@ -47,6 +47,6 @@ def test_final_report_and_export_are_created_after_optimization(project_root):
     assert "_build_final_report_snapshot(state, profile, proposal, resume_bytes)" in source
     assert '@app.get("/download/final-resume")' in source
     assert '@app.post("/reports/final")' in source
-    assert "Generated automatically after Step 4 optimization" in template
+    assert "Generated during Improve Resume Quality" in template
     assert "Initial → Job-Aligned" in template
     assert "Job-Aligned → Final" in template

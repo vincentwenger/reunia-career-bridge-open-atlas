@@ -3,11 +3,13 @@ from __future__ import annotations
 from resume_tailor.web_state import WorkflowState
 
 
-def test_resume_editor_is_embedded_in_four_step_workflow(project_root):
+def test_resume_editor_is_embedded_in_six_step_application_builder(project_root):
     source = (project_root / "app.py").read_text(encoding="utf-8")
     template = (project_root / "templates" / "index.html").read_text(encoding="utf-8")
 
-    assert 'WORKFLOW_STEP_ORDER = ("initial", "confirmation", "draft", "final")' in source
+    for step in ['"setup"', '"confirmation"', '"review"', '"quality"', '"finalize"', '"evidence_export"']:
+        assert step in source
+    assert 'WORKFLOW_SNAPSHOT_STAGE_ORDER = ("initial", "confirmation", "draft", "final")' in source
     assert 'active_tab == "editor"' not in source
     assert 'active_tab not in {"tailoring", "reports", "applications", "configuration"}' in source
     assert 'data-workflow-stage-panel="draft"' in template

@@ -8,8 +8,8 @@
     const ACTIVE_RECORDING_MAX_AGE_MS = 30000;
     const RECENT_MEETING_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
     const guidedUrl = page.dataset.guidedUrl || '/knowledge.html?view=materials&guided=1';
-    const recorderUrl = page.dataset.recorderUrl || '/meeting-recorder';
-    const reviewUrl = page.dataset.reviewUrl || '/meeting-review.html';
+    const recorderUrl = page.dataset.recorderUrl || '/mock-interview';
+    const reviewUrl = page.dataset.reviewUrl || '/interview-review';
 
     const primaryAction = document.getElementById('home-primary-action');
     const primaryActionLabel = document.getElementById('home-primary-action-label');
@@ -40,25 +40,25 @@
             primaryAction.href = recorderUrl;
             primaryActionLabel.textContent = 'Return to recording';
             primaryDescription.textContent = activeRecording.phase === 'processing'
-                ? 'Your meeting is being processed. Return to the recorder to follow its progress.'
-                : 'A Browser Meeting Recorder session is currently active.';
+                ? 'Your mock interview is being processed. Return to the recorder to follow its progress.'
+                : 'A Mock Interview Recorder session is currently active.';
             showSmartStatus(
                 activeRecording.phase === 'processing'
-                    ? `${meetingName || 'Your meeting'} is being processed.`
-                    : `${meetingName || 'A meeting'} is currently recording.`
+                    ? `${meetingName || 'Your mock interview'} is being processed.`
+                    : `${meetingName || 'A mock interview'} is currently recording.`
             );
             return;
         }
 
         primaryAction.href = guidedUrl;
         primaryActionLabel.textContent = 'Get started';
-        primaryDescription.textContent = 'Follow a simple guided path. Prepare what is useful, skip what is not, then record your meeting.';
+        primaryDescription.textContent = 'Build an application workspace, prepare evidence, then record a mock interview.';
         hideSmartStatus();
     }
 
     async function loadLatestMeeting(activeRecording) {
         try {
-            const endpoint = window.AppUI?.appUrl('/api/transcripts') || '/api/transcripts';
+            const endpoint = window.AppUI?.appUrl('/api/career/interview-reviews') || '/api/career/interview-reviews';
             const response = await fetch(endpoint, {
                 credentials: 'same-origin',
                 headers: {'Accept': 'application/json'}
@@ -85,10 +85,10 @@
             continuePanel.hidden = false;
 
             if (!activeRecording) {
-                showSmartStatus(`${latestMeetingName} is available in Meeting Review.`);
+                showSmartStatus(`${latestMeetingName} is available in Interview Review.`);
             }
         } catch (error) {
-            console.warn('The latest meeting could not be loaded on the homepage:', error);
+            console.warn('The latest mock interview could not be loaded on the homepage:', error);
         }
     }
 

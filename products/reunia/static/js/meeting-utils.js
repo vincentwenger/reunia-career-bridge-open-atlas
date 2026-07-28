@@ -75,7 +75,7 @@ function getMeetingName(meeting, index = 0) {
         getValue(meeting?.meeting_name, '') ||
         getValue(meeting?.name, '') ||
         getValue(meeting?.title, '') ||
-        `Meeting #${index + 1}`
+        `Mock Interview #${index + 1}`
     );
 }
 
@@ -144,7 +144,7 @@ function ensureArrayPayload(payload) {
     if (Array.isArray(unwrapped?.items)) return unwrapped.items;
     if (Array.isArray(unwrapped?.meetings)) return unwrapped.meetings;
     if (Array.isArray(unwrapped?.data)) return unwrapped.data;
-    throw new TypeError('The server returned an invalid meeting list.');
+    throw new TypeError('The server returned an invalid mock-interview list.');
 }
 
 function sortMeetingsByDate(meetings) {
