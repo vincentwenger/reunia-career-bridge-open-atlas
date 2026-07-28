@@ -8,6 +8,13 @@ or document-generation dependency. The imported products remain isolated under
 job to the resume-tailoring and interview-practice lifecycle.
 """
 
+from career_bridge.presentation import (
+    CAREER_NAVIGATION,
+    CareerNavigationSection,
+    career_navigation,
+    validate_navigation_model_alignment,
+)
+
 from career_bridge.domain import (
     ActionPriority,
     ActionStatus,
@@ -48,6 +55,10 @@ from career_bridge.domain import (
 )
 
 __all__ = [
+    "validate_navigation_model_alignment",
+    "career_navigation",
+    "CareerNavigationSection",
+    "CAREER_NAVIGATION",
     "ActionPriority",
     "ActionStatus",
     "ApplicationStatus",

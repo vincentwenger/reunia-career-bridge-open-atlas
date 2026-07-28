@@ -35,6 +35,11 @@ A `JobApplication` connects:
 
 The hydrated `JobApplicationBundle` validates that every child belongs to the same candidate and application.
 
+
+## Career Bridge navigation
+
+The signed-in Réunia shell now presents the product as eight job-application workspaces: Career Profile, Application Builder, Interview Preparation, Mock Interview, Interview Review, Career Action Plan, Progress, and Help & Support. Administration remains separate and administrator-only. Existing Réunia pages are used as delivery adapters while the resume and interview capabilities are migrated behind the shared ports.
+
 ## Git provenance
 
 ```bash
