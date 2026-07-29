@@ -360,6 +360,24 @@ class SQLiteApplicationStore:
                 );
                 CREATE INDEX IF NOT EXISTS interview_preparations_owner_updated_idx
                     ON interview_preparations(owner_id, updated_at DESC);
+                CREATE TABLE IF NOT EXISTS application_impact_snapshots (
+                    application_id TEXT PRIMARY KEY,
+                    owner_id TEXT NOT NULL,
+                    credentials_identified INTEGER NOT NULL DEFAULT 0,
+                    terminology_clarified INTEGER NOT NULL DEFAULT 0,
+                    unsupported_claims_prevented INTEGER NOT NULL DEFAULT 0,
+                    relevant_experience_recovered INTEGER NOT NULL DEFAULT 0,
+                    baseline_alignment_score REAL,
+                    current_alignment_score REAL,
+                    alignment_improvement REAL,
+                    verified_resume_ready INTEGER NOT NULL DEFAULT 0,
+                    details_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(application_id) REFERENCES applications(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS application_impact_owner_updated_idx
+                    ON application_impact_snapshots(owner_id, updated_at DESC);
                 """
             )
             existing = {
@@ -787,6 +805,113 @@ class SQLiteApplicationStore:
                 ),
             )
         return self.get(owner_id, application_id)
+
+    def save_impact_snapshot(
+        self,
+        owner_id: str,
+        application_id: str,
+        snapshot: dict[str, object],
+    ) -> dict[str, object]:
+        """Persist measured Career Bridge outcomes for one job application."""
+
+        if self.get(owner_id, application_id) is None:
+            raise ValueError("The selected application does not exist.")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with self._lock, self._connection:
+            existing = self._connection.execute(
+                "SELECT created_at FROM application_impact_snapshots "
+                "WHERE owner_id = ? AND application_id = ?",
+                (owner_id, application_id),
+            ).fetchone()
+            created_at = existing["created_at"] if existing else now
+            self._connection.execute(
+                """
+                INSERT INTO application_impact_snapshots (
+                    application_id, owner_id, credentials_identified,
+                    terminology_clarified, unsupported_claims_prevented,
+                    relevant_experience_recovered, baseline_alignment_score,
+                    current_alignment_score, alignment_improvement,
+                    verified_resume_ready, details_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(application_id) DO UPDATE SET
+                    owner_id = excluded.owner_id,
+                    credentials_identified = excluded.credentials_identified,
+                    terminology_clarified = excluded.terminology_clarified,
+                    unsupported_claims_prevented = excluded.unsupported_claims_prevented,
+                    relevant_experience_recovered = excluded.relevant_experience_recovered,
+                    baseline_alignment_score = excluded.baseline_alignment_score,
+                    current_alignment_score = excluded.current_alignment_score,
+                    alignment_improvement = excluded.alignment_improvement,
+                    verified_resume_ready = excluded.verified_resume_ready,
+                    details_json = excluded.details_json,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    application_id,
+                    owner_id,
+                    int(snapshot.get("credentials_identified") or 0),
+                    int(snapshot.get("terminology_clarified") or 0),
+                    int(snapshot.get("unsupported_claims_prevented") or 0),
+                    int(snapshot.get("relevant_experience_recovered") or 0),
+                    normalize_optional_score(snapshot.get("baseline_alignment_score")),
+                    normalize_optional_score(snapshot.get("current_alignment_score")),
+                    (
+                        round(float(snapshot["alignment_improvement"]), 1)
+                        if snapshot.get("alignment_improvement") is not None
+                        else None
+                    ),
+                    int(bool(snapshot.get("verified_resume_ready"))),
+                    json.dumps(snapshot, ensure_ascii=False, sort_keys=True, default=str),
+                    created_at,
+                    now,
+                ),
+            )
+        saved = self.get_impact_snapshot(owner_id, application_id)
+        if saved is None:  # pragma: no cover
+            raise RuntimeError("The application impact snapshot was not saved.")
+        return saved
+
+    def get_impact_snapshot(
+        self, owner_id: str, application_id: str
+    ) -> dict[str, object] | None:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT * FROM application_impact_snapshots "
+                "WHERE owner_id = ? AND application_id = ?",
+                (owner_id, application_id),
+            ).fetchone()
+        return self._impact_row(row) if row else None
+
+    def list_impact_snapshots(self, owner_id: str) -> list[dict[str, object]]:
+        with self._lock:
+            rows = self._connection.execute(
+                "SELECT * FROM application_impact_snapshots "
+                "WHERE owner_id = ? ORDER BY updated_at DESC",
+                (owner_id,),
+            ).fetchall()
+        return [self._impact_row(row) for row in rows]
+
+    @staticmethod
+    def _impact_row(row: sqlite3.Row) -> dict[str, object]:
+        try:
+            details = json.loads(row["details_json"] or "{}")
+        except (TypeError, json.JSONDecodeError):
+            details = {}
+        return {
+            "application_id": row["application_id"],
+            "owner_id": row["owner_id"],
+            "credentials_identified": int(row["credentials_identified"] or 0),
+            "terminology_clarified": int(row["terminology_clarified"] or 0),
+            "unsupported_claims_prevented": int(row["unsupported_claims_prevented"] or 0),
+            "relevant_experience_recovered": int(row["relevant_experience_recovered"] or 0),
+            "baseline_alignment_score": row["baseline_alignment_score"],
+            "current_alignment_score": row["current_alignment_score"],
+            "alignment_improvement": row["alignment_improvement"],
+            "verified_resume_ready": bool(row["verified_resume_ready"]),
+            "details": details if isinstance(details, dict) else {},
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
 
     def delete(self, owner_id: str, application_id: str) -> bool:
         with self._lock, self._connection:

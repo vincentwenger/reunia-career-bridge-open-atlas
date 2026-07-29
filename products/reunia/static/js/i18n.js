@@ -31,6 +31,8 @@
         'Interview Scorecard': 'Tableau de score d’entretien',
         'Review & Follow-Up': 'Compte rendu et suivi',
         'Career Progress': 'Progression de carrière',
+        'Impact & Progress': 'Impact et progression',
+        'Social Impact & Career Progress': 'Impact social et progression de carrière',
         'Profile': 'Profil',
         'Settings': 'Paramètres',
         'User Guide': 'Guide utilisateur',

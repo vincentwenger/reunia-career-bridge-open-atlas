@@ -12,8 +12,8 @@
     color: #ffffff;
     background:
         radial-gradient(circle at 92% 0%, rgba(255, 255, 255, 0.12), transparent 32%),
-        linear-gradient(135deg, #0f4c81, #1976d2);
-    box-shadow: 0 10px 24px rgba(15, 76, 129, 0.16);
+        linear-gradient(135deg, #176b5a, #1b826b);
+    box-shadow: 0 10px 24px rgba(23, 107, 90, 0.16);
     margin-bottom: 18px;
 }
 
@@ -85,7 +85,7 @@
 .form-label {
     display: block;
     margin-bottom: 8px;
-    color: #374151;
+    color: #40504b;
     font-size: 13px;
     font-weight: 800;
 }
@@ -94,19 +94,19 @@
 .form-control {
     width: 100%;
     padding: 14px 15px;
-    border: 1px solid #dbe3ef;
+    border: 1px solid #d8e7e2;
     border-radius: 14px;
     outline: none;
-    background: #f8fafc;
+    background: #f8fcfb;
     font-size: 15px;
     transition: 0.2s;
 }
 
 .form-input:focus,
 .form-control:focus {
-    border-color: #1976d2;
+    border-color: #1b826b;
     background: white;
-    box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.12);
+    box-shadow: 0 0 0 4px rgba(27, 130, 107, 0.12);
 }
 
 .flash-messages {
@@ -171,14 +171,14 @@
 .empty-message::before {
     content: "—" !important;
     background: #e5e7eb !important;
-    color: #6b7280 !important;
+    color: #707d79 !important;
 }
 
 .loading-state,
 .no-records-state {
     padding: 36px 22px;
     text-align: center;
-    color: #6b7280;
+    color: #707d79;
     line-height: 1.6;
 }
 
@@ -186,7 +186,7 @@
 .no-records-state strong {
     display: block;
     margin-bottom: 6px;
-    color: #0f4c81;
+    color: #176b5a;
     font-size: 18px;
 }
 
@@ -243,11 +243,11 @@
 
 .app-toast {
     padding: 13px 15px;
-    border: 1px solid #dbe2ef;
+    border: 1px solid #ddede8;
     border-radius: 12px;
-    color: #172033;
+    color: #17342e;
     background: #ffffff;
-    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+    box-shadow: 0 18px 45px rgba(18, 39, 33, 0.16);
     opacity: 0;
     transform: translateY(-8px);
     transition: opacity 0.18s ease, transform 0.18s ease;
@@ -261,7 +261,7 @@
 
 .app-toast-success { border-left: 4px solid #138a61; }
 .app-toast-error { border-left: 4px solid #c53b48; }
-.app-toast-info { border-left: 4px solid #4459e8; }
+.app-toast-info { border-left: 4px solid #56d6b3; }
 
 .app-confirm-backdrop {
     position: fixed;
@@ -270,7 +270,7 @@
     display: grid;
     place-items: center;
     padding: 20px;
-    background: rgba(7, 17, 31, 0.58);
+    background: rgba(10, 28, 23, 0.58);
     backdrop-filter: blur(4px);
 }
 
@@ -279,18 +279,18 @@
     padding: 25px;
     border-radius: 18px;
     background: #ffffff;
-    box-shadow: 0 28px 80px rgba(7, 17, 31, 0.3);
+    box-shadow: 0 28px 80px rgba(10, 28, 23, 0.3);
 }
 
 .app-confirm-card h2 {
     margin: 0;
-    color: #172033;
+    color: #17342e;
     font-size: 1.25rem;
 }
 
 .app-confirm-card p {
     margin: 10px 0 0;
-    color: #667085;
+    color: #667a75;
     line-height: 1.6;
 }
 
@@ -304,19 +304,19 @@
 .app-confirm-actions button {
     min-height: 40px;
     padding: 0 16px;
-    border: 1px solid #dbe2ef;
+    border: 1px solid #ddede8;
     border-radius: 10px;
     background: #ffffff;
-    color: #172033;
+    color: #17342e;
     font: inherit;
     font-weight: 700;
     cursor: pointer;
 }
 
 .app-confirm-submit {
-    border-color: #4459e8 !important;
+    border-color: #56d6b3 !important;
     color: #ffffff !important;
-    background: #4459e8 !important;
+    background: #56d6b3 !important;
 }
 
 .app-confirm-submit.danger {

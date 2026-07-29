@@ -281,6 +281,18 @@ class InMemoryWorkflowStore:
             self._items[session_id] = _StoredState(state, time.time())
             return state
 
+    def peek(self, session_id: str) -> WorkflowState | None:
+        """Return an existing state without creating a new workflow."""
+
+        now = time.time()
+        with self._lock:
+            self._prune_locked(now)
+            stored = self._items.get(session_id)
+            if stored is None:
+                return None
+            stored.touched_at = now
+            return stored.state
+
     def delete(self, session_id: str) -> None:
         with self._lock:
             self._items.pop(session_id, None)

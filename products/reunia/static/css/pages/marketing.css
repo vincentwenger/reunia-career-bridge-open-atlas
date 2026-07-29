@@ -1,16 +1,16 @@
 :root {
-    --mk-primary: #0f4c81;
-    --mk-primary-strong: #0a365f;
-    --mk-primary-soft: #eaf3fb;
-    --mk-accent: #2d86d1;
-    --mk-ink: #172033;
+    --mk-primary: #176b5a;
+    --mk-primary-strong: #135640;
+    --mk-primary-soft: #ecf9f5;
+    --mk-accent: #3fbf96;
+    --mk-ink: #17342e;
     --mk-copy: #4b5b70;
-    --mk-muted: #718096;
-    --mk-line: #dfe7ef;
+    --mk-muted: #748681;
+    --mk-line: #e0eeea;
     --mk-surface: #ffffff;
-    --mk-soft: #f4f8fc;
-    --mk-dark: #10263a;
-    --mk-shadow: 0 24px 70px rgba(19, 56, 86, 0.13);
+    --mk-soft: #f4f8f6;
+    --mk-dark: #15352b;
+    --mk-shadow: 0 24px 70px rgba(26, 79, 62, 0.13);
 }
 
 body.marketing-body {
@@ -45,8 +45,8 @@ body.marketing-body #main-content {
     position: relative;
     overflow: hidden;
     background:
-        radial-gradient(circle at 92% 10%, rgba(62, 146, 218, 0.24), transparent 28%),
-        radial-gradient(circle at 0% 100%, rgba(65, 132, 191, 0.2), transparent 33%),
+        radial-gradient(circle at 92% 10%, rgba(79, 201, 161, 0.24), transparent 28%),
+        radial-gradient(circle at 0% 100%, rgba(79, 177, 145, 0.2), transparent 33%),
         var(--mk-dark);
 }
 
@@ -87,7 +87,7 @@ body.marketing-body #main-content {
 }
 
 .marketing-section-heading-light p {
-    color: #b8c8d6;
+    color: #b6d8cd;
 }
 
 .marketing-kicker {
@@ -102,7 +102,7 @@ body.marketing-body #main-content {
 
 .marketing-section-heading-light .marketing-kicker,
 .marketing-final-cta .marketing-kicker {
-    color: #9bd1ff;
+    color: #abefd9;
 }
 
 .marketing-button {
@@ -128,30 +128,30 @@ body.marketing-body #main-content {
 .marketing-button:focus-visible,
 .marketing-tour-tab:focus-visible,
 .marketing-faq summary:focus-visible {
-    outline: 3px solid rgba(45, 134, 209, 0.34);
+    outline: 3px solid rgba(63, 191, 150, 0.34);
     outline-offset: 3px;
 }
 
 .marketing-button-primary {
     background: var(--mk-primary);
     color: #ffffff;
-    box-shadow: 0 12px 28px rgba(15, 76, 129, 0.23);
+    box-shadow: 0 12px 28px rgba(23, 107, 90, 0.23);
 }
 
 .marketing-button-primary:hover {
     background: var(--mk-primary-strong);
-    box-shadow: 0 16px 34px rgba(15, 76, 129, 0.29);
+    box-shadow: 0 16px 34px rgba(23, 107, 90, 0.29);
 }
 
 .marketing-button-secondary {
-    border-color: #cfdbe7;
+    border-color: #d0e6df;
     background: #ffffff;
     color: var(--mk-primary);
 }
 
 .marketing-button-secondary:hover {
-    border-color: #aabfd2;
-    background: #f8fbfe;
+    border-color: #aad2c5;
+    background: #f9fdfc;
 }
 
 .marketing-button-light {
@@ -190,9 +190,9 @@ body.marketing-body #main-content {
     overflow: hidden;
     padding: 100px 0 112px;
     background:
-        radial-gradient(circle at 78% 22%, rgba(45, 134, 209, 0.14), transparent 26%),
-        radial-gradient(circle at 5% 8%, rgba(15, 76, 129, 0.08), transparent 24%),
-        linear-gradient(180deg, #f7fbff 0%, #ffffff 82%);
+        radial-gradient(circle at 78% 22%, rgba(63, 191, 150, 0.14), transparent 26%),
+        radial-gradient(circle at 5% 8%, rgba(23, 107, 90, 0.08), transparent 24%),
+        linear-gradient(180deg, #f8fefc 0%, #ffffff 82%);
 }
 
 .marketing-hero::before {
@@ -202,9 +202,9 @@ body.marketing-body #main-content {
     height: 560px;
     right: -280px;
     bottom: -310px;
-    border: 1px solid rgba(45, 134, 209, 0.13);
+    border: 1px solid rgba(63, 191, 150, 0.13);
     border-radius: 50%;
-    box-shadow: 0 0 0 80px rgba(45, 134, 209, 0.035), 0 0 0 160px rgba(45, 134, 209, 0.02);
+    box-shadow: 0 0 0 80px rgba(63, 191, 150, 0.035), 0 0 0 160px rgba(63, 191, 150, 0.02);
 }
 
 .marketing-hero-grid {
@@ -221,7 +221,7 @@ body.marketing-body #main-content {
     align-items: center;
     gap: 9px;
     padding: 8px 12px;
-    border: 1px solid #d5e5f2;
+    border: 1px solid #d8efe7;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.85);
     color: var(--mk-primary);
@@ -241,7 +241,7 @@ body.marketing-body #main-content {
 .marketing-hero h1 {
     max-width: 710px;
     margin: 24px 0 24px;
-    color: #10243a;
+    color: #15352b;
     font-size: clamp(44px, 5.4vw, 72px);
     line-height: 0.99;
     letter-spacing: -0.055em;
@@ -306,10 +306,10 @@ body.marketing-body #main-content {
 .marketing-preview-window {
     width: 100%;
     overflow: hidden;
-    border: 1px solid #dbe5ee;
+    border: 1px solid #ddece7;
     border-radius: 22px;
     background: #ffffff;
-    box-shadow: 0 32px 80px rgba(19, 56, 86, 0.2);
+    box-shadow: 0 32px 80px rgba(26, 79, 62, 0.2);
     transform: rotate(0.8deg);
 }
 
@@ -319,15 +319,15 @@ body.marketing-body #main-content {
     align-items: center;
     justify-content: space-between;
     padding: 0 20px;
-    border-bottom: 1px solid #e7edf3;
-    background: #fbfdff;
+    border-bottom: 1px solid #e8f2ef;
+    background: #fbfdfc;
 }
 
 .marketing-preview-brand {
     display: flex;
     align-items: center;
     gap: 9px;
-    color: #20364b;
+    color: #25463c;
     font-size: 13px;
     font-weight: 800;
 }
@@ -369,22 +369,22 @@ body.marketing-body #main-content {
     align-items: center;
     gap: 18px;
     padding-top: 27px;
-    border-right: 1px solid #e9eef4;
-    background: #f7fafd;
+    border-right: 1px solid #eaf3f0;
+    background: #f8fcfb;
 }
 
 .marketing-preview-sidebar span {
     width: 28px;
     height: 8px;
     border-radius: 999px;
-    background: #d7e0e9;
+    background: #d7e9e3;
 }
 
 .marketing-preview-sidebar span.is-active {
     height: 28px;
     border-radius: 9px;
     background: var(--mk-primary);
-    box-shadow: 0 8px 18px rgba(15, 76, 129, 0.22);
+    box-shadow: 0 8px 18px rgba(23, 107, 90, 0.22);
 }
 
 .marketing-preview-content {
@@ -413,7 +413,7 @@ body.marketing-body #main-content {
 }
 
 .marketing-preview-heading strong {
-    color: #203247;
+    color: #244339;
     font-size: 21px;
 }
 
@@ -436,10 +436,10 @@ body.marketing-body #main-content {
 .marketing-preview-card {
     min-height: 184px;
     padding: 18px;
-    border: 1px solid #e4eaf0;
+    border: 1px solid #e4f0ec;
     border-radius: 15px;
     background: #ffffff;
-    box-shadow: 0 10px 24px rgba(29, 59, 84, 0.06);
+    box-shadow: 0 10px 24px rgba(35, 78, 64, 0.06);
 }
 
 .marketing-preview-label {
@@ -454,7 +454,7 @@ body.marketing-body #main-content {
 
 .marketing-preview-card p {
     margin: 0;
-    color: #40546a;
+    color: #465d55;
     font-size: 13px;
     line-height: 1.6;
 }
@@ -468,7 +468,7 @@ body.marketing-body #main-content {
 .marketing-preview-lines span {
     height: 7px;
     border-radius: 999px;
-    background: #edf2f6;
+    background: #edf6f3;
 }
 
 .marketing-preview-lines span:nth-child(2) { width: 88%; }
@@ -487,7 +487,7 @@ body.marketing-body #main-content {
     grid-template-columns: 27px 1fr auto;
     align-items: center;
     gap: 8px;
-    color: #40546a;
+    color: #465d55;
     font-size: 11px;
     font-weight: 700;
 }
@@ -498,7 +498,7 @@ body.marketing-body #main-content {
     display: grid;
     place-items: center;
     border-radius: 8px;
-    background: #edf4fa;
+    background: #eef9f5;
     color: var(--mk-primary);
     font-size: 9px;
 }
@@ -520,14 +520,14 @@ body.marketing-body #main-content {
     gap: 4px;
     padding: 12px 10px;
     border-radius: 12px;
-    background: #f3f7fa;
+    background: #f4f9f7;
     color: #708095;
     font-size: 9px;
     text-align: center;
 }
 
 .marketing-preview-insights strong {
-    color: #1e3449;
+    color: #23443a;
     font-size: 16px;
 }
 
@@ -538,10 +538,10 @@ body.marketing-body #main-content {
     align-items: center;
     gap: 11px;
     padding: 13px 15px;
-    border: 1px solid #dce6ee;
+    border: 1px solid #ddede8;
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 18px 42px rgba(21, 54, 80, 0.16);
+    box-shadow: 0 18px 42px rgba(27, 74, 59, 0.16);
     backdrop-filter: blur(10px);
 }
 
@@ -561,7 +561,7 @@ body.marketing-body #main-content {
 }
 
 .marketing-float-card strong {
-    color: #20364b;
+    color: #25463c;
     font-size: 11px;
 }
 
@@ -589,7 +589,7 @@ body.marketing-body #main-content {
     justify-content: center;
     gap: 2px;
     border-radius: 10px;
-    background: #e9f3fb;
+    background: #ebf9f4;
 }
 
 .marketing-live-wave i {
@@ -615,15 +615,15 @@ body.marketing-body #main-content {
     display: flex;
     flex-direction: column;
     padding: 30px;
-    border: 1px solid #dfe7ef;
+    border: 1px solid #e0eeea;
     border-radius: 20px;
     background: #ffffff;
-    box-shadow: 0 12px 32px rgba(20, 55, 82, 0.06);
+    box-shadow: 0 12px 32px rgba(27, 75, 59, 0.06);
 }
 
 .marketing-workflow-card-featured {
-    border-color: #9cc7e9;
-    box-shadow: 0 18px 42px rgba(15, 76, 129, 0.12);
+    border-color: #a4e1cd;
+    box-shadow: 0 18px 42px rgba(23, 107, 90, 0.12);
 }
 
 .marketing-workflow-card-featured::before {
@@ -659,7 +659,7 @@ body.marketing-body #main-content {
 .marketing-workflow-topline small {
     padding: 5px 8px;
     border-radius: 999px;
-    background: #eef3f7;
+    background: #eff6f4;
     color: #748396;
     font-size: 9px;
     font-weight: 900;
@@ -699,7 +699,7 @@ body.marketing-body #main-content {
 
 .marketing-workflow-card h3 {
     margin: 0 0 12px;
-    color: #172c41;
+    color: #1c3c32;
     font-size: 25px;
 }
 
@@ -738,7 +738,7 @@ body.marketing-body #main-content {
     height: 32px;
     display: grid;
     place-items: center;
-    border: 1px solid #d8e1e9;
+    border: 1px solid #d7eae4;
     border-radius: 50%;
     background: #ffffff;
 }
@@ -753,7 +753,7 @@ body.marketing-body #main-content {
 .marketing-benefit-card {
     min-height: 280px;
     padding: 28px;
-    border: 1px solid #e0e7ee;
+    border: 1px solid #e0eeea;
     border-radius: 18px;
     background: #ffffff;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -761,8 +761,8 @@ body.marketing-body #main-content {
 
 .marketing-benefit-card:hover {
     transform: translateY(-5px);
-    border-color: #b9cee0;
-    box-shadow: 0 18px 40px rgba(18, 55, 83, 0.09);
+    border-color: #bddcd2;
+    box-shadow: 0 18px 40px rgba(25, 76, 59, 0.09);
 }
 
 .marketing-benefit-number {
@@ -775,7 +775,7 @@ body.marketing-body #main-content {
 
 .marketing-benefit-card h3 {
     margin: 0 0 13px;
-    color: #1b3045;
+    color: #204036;
     font-size: 21px;
     line-height: 1.2;
 }
@@ -806,7 +806,7 @@ body.marketing-body #main-content {
 
 .marketing-feature-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(155, 209, 255, 0.36);
+    border-color: rgba(171, 239, 217, 0.36);
     background: rgba(255, 255, 255, 0.085);
 }
 
@@ -817,8 +817,8 @@ body.marketing-body #main-content {
     place-items: center;
     margin-bottom: 24px;
     border-radius: 13px;
-    background: rgba(99, 178, 244, 0.14);
-    color: #9bd1ff;
+    background: rgba(115, 228, 191, 0.14);
+    color: #abefd9;
 }
 
 .marketing-feature-card h3 {
@@ -829,7 +829,7 @@ body.marketing-body #main-content {
 
 .marketing-feature-card p {
     margin: 0;
-    color: #b8c8d6;
+    color: #b6d8cd;
     font-size: 14px;
     line-height: 1.68;
 }
@@ -845,9 +845,9 @@ body.marketing-body #main-content {
     gap: 5px;
     margin: 0 auto 28px;
     padding: 5px;
-    border: 1px solid #dce5ed;
+    border: 1px solid #ddece7;
     border-radius: 14px;
-    background: #f5f8fb;
+    background: #f6faf9;
 }
 
 .marketing-tour-tab {
@@ -865,14 +865,14 @@ body.marketing-body #main-content {
 .marketing-tour-tab.is-active {
     background: #ffffff;
     color: var(--mk-primary);
-    box-shadow: 0 5px 15px rgba(26, 62, 89, 0.1);
+    box-shadow: 0 5px 15px rgba(33, 82, 66, 0.1);
 }
 
 .marketing-tour-stage {
-    border: 1px solid #dce5ed;
+    border: 1px solid #ddece7;
     border-radius: 24px;
-    background: #f7fafd;
-    box-shadow: 0 24px 64px rgba(18, 55, 83, 0.1);
+    background: #f8fcfb;
+    box-shadow: 0 24px 64px rgba(25, 76, 59, 0.1);
 }
 
 .marketing-tour-panel {
@@ -902,7 +902,7 @@ body.marketing-body #main-content {
 
 .marketing-tour-copy h3 {
     margin: 0 0 18px;
-    color: #172c41;
+    color: #1c3c32;
     font-size: 32px;
     line-height: 1.14;
     letter-spacing: -0.025em;
@@ -920,7 +920,7 @@ body.marketing-body #main-content {
     gap: 11px;
     margin: 24px 0 0;
     padding: 0;
-    color: #40546a;
+    color: #465d55;
     font-size: 13px;
     font-weight: 750;
     list-style: none;
@@ -940,16 +940,16 @@ body.marketing-body #main-content {
     top: 6px;
     border-radius: 50%;
     background: var(--mk-accent);
-    box-shadow: 0 0 0 4px rgba(45, 134, 209, 0.1);
+    box-shadow: 0 0 0 4px rgba(63, 191, 150, 0.1);
 }
 
 .marketing-ui {
     min-height: 390px;
     overflow: hidden;
-    border: 1px solid #d5e0ea;
+    border: 1px solid #d6e9e3;
     border-radius: 18px;
     background: #ffffff;
-    box-shadow: 0 18px 42px rgba(18, 55, 83, 0.12);
+    box-shadow: 0 18px 42px rgba(25, 76, 59, 0.12);
 }
 
 .marketing-ui-top {
@@ -958,8 +958,8 @@ body.marketing-body #main-content {
     align-items: center;
     justify-content: space-between;
     padding: 0 20px;
-    border-bottom: 1px solid #e3eaf0;
-    color: #20364b;
+    border-bottom: 1px solid #e3f0ec;
+    color: #25463c;
     font-size: 13px;
     font-weight: 900;
 }
@@ -977,7 +977,7 @@ body.marketing-body #main-content {
     align-items: flex-end;
     gap: 20px;
     padding: 0 20px;
-    border-bottom: 1px solid #e5ebf1;
+    border-bottom: 1px solid #e5f1ed;
     color: #8796a6;
     font-size: 10px;
     font-weight: 800;
@@ -1016,7 +1016,7 @@ body.marketing-body #main-content {
     align-items: center;
     gap: 10px;
     padding: 10px;
-    border: 1px solid #e1e8ee;
+    border: 1px solid #e0efea;
     border-radius: 11px;
 }
 
@@ -1026,7 +1026,7 @@ body.marketing-body #main-content {
     display: grid;
     place-items: center;
     border-radius: 9px;
-    background: #ecf3f9;
+    background: #edf8f4;
     color: var(--mk-primary);
     font-size: 8px;
     font-style: normal;
@@ -1039,7 +1039,7 @@ body.marketing-body #main-content {
 }
 
 .marketing-ui-files strong {
-    color: #2c4055;
+    color: #2d5448;
     font-size: 10px;
 }
 
@@ -1061,9 +1061,9 @@ body.marketing-body #main-content {
 
 .marketing-ui-context {
     padding: 16px;
-    border: 1px solid #d9e5ef;
+    border: 1px solid #dbede7;
     border-radius: 12px;
-    background: #f4f8fc;
+    background: #f4f8f6;
 }
 
 .marketing-ui-context small {
@@ -1076,7 +1076,7 @@ body.marketing-body #main-content {
 
 .marketing-ui-context p {
     margin: 13px 0 0;
-    color: #40546a;
+    color: #465d55;
     font-size: 11px;
     line-height: 1.6;
 }
@@ -1126,7 +1126,7 @@ body.marketing-body #main-content {
 .marketing-waveform i:nth-child(6), .marketing-waveform i:nth-child(7) { height: 66px; }
 
 .marketing-live-center strong {
-    color: #263b50;
+    color: #294d41;
     font-size: 14px;
 }
 
@@ -1143,7 +1143,7 @@ body.marketing-body #main-content {
     gap: 10px;
     margin: 0 20px;
     padding: 9px 9px 9px 14px;
-    border: 1px solid #d8e2ea;
+    border: 1px solid #d8eae4;
     border-radius: 11px;
     color: #98a5b3;
     font-size: 10px;
@@ -1163,7 +1163,7 @@ body.marketing-body #main-content {
     margin: 13px 20px 20px;
     padding: 13px;
     border-radius: 11px;
-    background: #f1f6fa;
+    background: #f2f9f7;
 }
 
 .marketing-live-answer small {
@@ -1176,7 +1176,7 @@ body.marketing-body #main-content {
 
 .marketing-live-answer p {
     margin: 7px 0 0;
-    color: #40546a;
+    color: #465d55;
     font-size: 10px;
     line-height: 1.55;
 }
@@ -1191,7 +1191,7 @@ body.marketing-body #main-content {
 .marketing-review-summary,
 .marketing-review-score {
     padding: 16px;
-    border: 1px solid #e0e7ed;
+    border: 1px solid #dfeee9;
     border-radius: 12px;
 }
 
@@ -1206,7 +1206,7 @@ body.marketing-body #main-content {
 
 .marketing-review-summary h4 {
     margin: 10px 0 8px;
-    color: #2a3e53;
+    color: #2c5145;
     font-size: 13px;
 }
 
@@ -1252,7 +1252,7 @@ body.marketing-body #main-content {
     align-items: center;
     gap: 7px;
     padding: 10px;
-    border: 1px solid #e2e8ee;
+    border: 1px solid #e1efea;
     border-radius: 10px;
     color: #4c5f72;
     font-size: 9px;
@@ -1287,7 +1287,7 @@ body.marketing-body #main-content {
     min-height: 260px;
     overflow: hidden;
     padding: 32px;
-    border: 1px solid #dce5ed;
+    border: 1px solid #ddece7;
     border-radius: 20px;
     background: #ffffff;
 }
@@ -1300,7 +1300,7 @@ body.marketing-body #main-content {
     right: -70px;
     bottom: -80px;
     border-radius: 50%;
-    background: rgba(45, 134, 209, 0.08);
+    background: rgba(63, 191, 150, 0.08);
 }
 
 .marketing-use-case-label {
@@ -1314,7 +1314,7 @@ body.marketing-body #main-content {
 
 .marketing-use-case h3 {
     margin: 0 0 12px;
-    color: #1b3045;
+    color: #204036;
     font-size: 24px;
 }
 
@@ -1330,7 +1330,7 @@ body.marketing-body #main-content {
     display: inline-flex;
     padding: 7px 10px;
     border-radius: 999px;
-    background: #edf4fa;
+    background: #eef9f5;
     color: var(--mk-primary);
     font-size: 10px;
     font-weight: 900;
@@ -1356,8 +1356,8 @@ body.marketing-body #main-content {
     place-items: center;
     border-radius: 28px;
     background:
-        radial-gradient(circle at center, rgba(45, 134, 209, 0.17), transparent 48%),
-        #f4f8fc;
+        radial-gradient(circle at center, rgba(63, 191, 150, 0.17), transparent 48%),
+        #f4f8f6;
 }
 
 .marketing-shield {
@@ -1365,11 +1365,11 @@ body.marketing-body #main-content {
     height: 158px;
     display: grid;
     place-items: center;
-    border: 1px solid #c9ddea;
+    border: 1px solid #cde6de;
     border-radius: 50%;
     background: #ffffff;
     color: var(--mk-primary);
-    box-shadow: 0 20px 55px rgba(15, 76, 129, 0.16);
+    box-shadow: 0 20px 55px rgba(23, 107, 90, 0.16);
 }
 
 .marketing-shield svg {
@@ -1386,10 +1386,10 @@ body.marketing-body #main-content {
     position: absolute;
     width: 230px;
     padding: 14px 16px;
-    border: 1px solid #d8e3ec;
+    border: 1px solid #d9ebe5;
     border-radius: 13px;
     background: #ffffff;
-    box-shadow: 0 14px 34px rgba(24, 57, 83, 0.11);
+    box-shadow: 0 14px 34px rgba(30, 77, 62, 0.11);
 }
 
 .marketing-trust-card:nth-of-type(2) {
@@ -1413,7 +1413,7 @@ body.marketing-body #main-content {
 }
 
 .marketing-trust-card strong {
-    color: #32485d;
+    color: #325d4f;
     font-size: 11px;
     line-height: 1.45;
 }
@@ -1440,7 +1440,7 @@ body.marketing-body #main-content {
 }
 
 .marketing-trust-copy li strong {
-    color: #2a4055;
+    color: #2c5346;
 }
 
 /* Desktop */
@@ -1458,8 +1458,8 @@ body.marketing-body #main-content {
     padding: 64px;
     border-radius: 28px;
     background:
-        radial-gradient(circle at 92% 12%, rgba(55, 143, 216, 0.23), transparent 28%),
-        #edf5fb;
+        radial-gradient(circle at 92% 12%, rgba(73, 198, 158, 0.23), transparent 28%),
+        #eff9f6;
 }
 
 .marketing-desktop-copy h2 {
@@ -1500,10 +1500,10 @@ body.marketing-body #main-content {
 
 .marketing-desktop-window {
     overflow: hidden;
-    border: 1px solid #bccddd;
+    border: 1px solid #bddcd2;
     border-radius: 15px;
     background: #ffffff;
-    box-shadow: 0 24px 60px rgba(19, 56, 86, 0.18);
+    box-shadow: 0 24px 60px rgba(26, 79, 62, 0.18);
     transform: rotate(1deg);
 }
 
@@ -1513,8 +1513,8 @@ body.marketing-body #main-content {
     grid-template-columns: 50px 1fr auto;
     align-items: center;
     padding: 0 13px;
-    border-bottom: 1px solid #dce5ed;
-    background: #f5f8fa;
+    border-bottom: 1px solid #ddece7;
+    background: #f5faf8;
     color: #41556a;
     font-size: 9px;
 }
@@ -1554,7 +1554,7 @@ body.marketing-body #main-content {
 }
 
 .marketing-desktop-body > strong {
-    color: #263b50;
+    color: #294d41;
     font-size: 17px;
 }
 
@@ -1593,13 +1593,13 @@ body.marketing-body #main-content {
     align-items: center;
     justify-content: space-between;
     padding: 10px 0;
-    border-top: 1px solid #e8edf2;
+    border-top: 1px solid #e8f2ef;
     color: #718195;
     font-size: 9px;
 }
 
 .marketing-desktop-body > div b {
-    color: #354b60;
+    color: #346153;
 }
 
 /* FAQ */
@@ -1621,11 +1621,11 @@ body.marketing-body #main-content {
 }
 
 .marketing-faq-list {
-    border-top: 1px solid #dfe6ed;
+    border-top: 1px solid #deeee9;
 }
 
 .marketing-faq details {
-    border-bottom: 1px solid #dfe6ed;
+    border-bottom: 1px solid #deeee9;
 }
 
 .marketing-faq summary {
@@ -1634,7 +1634,7 @@ body.marketing-body #main-content {
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    color: #24394e;
+    color: #284a3f;
     font-size: 16px;
     font-weight: 850;
     cursor: pointer;
@@ -1652,7 +1652,7 @@ body.marketing-body #main-content {
     place-items: center;
     flex: 0 0 auto;
     border-radius: 50%;
-    background: #edf3f8;
+    background: #eef7f4;
     color: var(--mk-primary);
     font-size: 18px;
     transition: transform 0.2s ease;
@@ -1674,8 +1674,8 @@ body.marketing-body #main-content {
 .marketing-final-cta {
     padding: 76px 0;
     background:
-        radial-gradient(circle at 80% 20%, rgba(120, 193, 255, 0.28), transparent 30%),
-        linear-gradient(135deg, #0b3c68 0%, #13598e 100%);
+        radial-gradient(circle at 80% 20%, rgba(142, 233, 204, 0.28), transparent 30%),
+        linear-gradient(135deg, #155e46 0%, #218061 100%);
 }
 
 .marketing-final-cta-inner {
@@ -1700,7 +1700,7 @@ body.marketing-body #main-content {
 
 .marketing-footer {
     padding: 64px 0 26px;
-    background: #0c1d2c;
+    background: #102820;
     color: #ffffff;
 }
 
@@ -1734,7 +1734,7 @@ body.marketing-body #main-content {
 }
 
 .marketing-footer-brand small {
-    color: #8fa7bb;
+    color: #8ac0ae;
     font-size: 9px;
 }
 
@@ -1804,7 +1804,7 @@ body.marketing-body #main-content {
     font-size: 13px;
     font-weight: 800;
     text-decoration: none;
-    box-shadow: 0 8px 18px rgba(15, 76, 129, 0.2);
+    box-shadow: 0 8px 18px rgba(23, 107, 90, 0.2);
 }
 
 .marketing-get-started-btn:hover {

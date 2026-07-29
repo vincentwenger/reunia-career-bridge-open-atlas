@@ -115,10 +115,10 @@ CAREER_NAVIGATION: tuple[CareerNavigationSection, ...] = (
     ),
     CareerNavigationSection(
         key="progress",
-        label="Progress",
+        label="Impact & Progress",
         order=12,
         aggregate_fields=("status", "status_history"),
-        description="Track improvement across job applications and mock interviews.",
+        description="Measure social-impact outcomes and improvement across job applications, resume workflows, mock interviews, and completed actions.",
     ),
     CareerNavigationSection(
         key="help_support",

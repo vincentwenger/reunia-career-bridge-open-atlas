@@ -94,8 +94,8 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
     ),
     RepurposedFeature(
         "Analytics",
-        "Career Progress",
-        "Show improvement across applications and mock interviews.",
+        "Impact & Progress",
+        "Measure translated credentials, protected evidence, recovered experience, alignment gains, interview improvement, and completed actions.",
         "/progress",
     ),
     RepurposedFeature(

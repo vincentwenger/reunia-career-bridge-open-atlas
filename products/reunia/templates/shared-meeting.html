@@ -30,6 +30,7 @@
     <link rel="icon" type="image/x-icon" href="{{ static_asset('icons/favicon.ico') }}">
     <link rel="stylesheet" href="{{ static_asset('css/base.css') }}">
     <link rel="stylesheet" href="{{ static_asset('css/pages/shared-meeting.css') }}">
+    <link rel="stylesheet" href="{{ static_asset('css/career-theme.css') }}">
 </head>
 <body class="shared-meeting-body" data-app-language="{{ share_language | default('en') }}" data-authenticated="false">
     <a class="skip-link" href="#shared-meeting-main">Skip to shared interview review</a>
@@ -117,7 +118,7 @@
             {% set overview_sections = [
                 ('Key wins', snapshot.key_wins or []),
                 ('Improvement areas', snapshot.improvement_areas or []),
-                ('Action items', snapshot.action_items or []),
+                ('Practice actions', snapshot.action_items or []),
                 ('Open questions', snapshot.open_questions or [])
             ] %}
             <div class="shared-insight-grid">
@@ -130,7 +131,7 @@
                                     <li>
                                         {% if item is mapping %}
                                             <strong data-i18n-skip>{{ item.task or item.action or item.text or item.question or 'Item' }}</strong>
-                                            {% if item.owner %}<span><span>Owner:</span> <span data-i18n-skip>{{ item.owner }}</span></span>{% endif %}
+                                            
                                             {% if item.due_date %}<span><span>Due:</span> <span data-i18n-skip>{{ item.due_date }}</span></span>{% endif %}
                                         {% else %}
                                             <span data-i18n-skip>{{ item }}</span>

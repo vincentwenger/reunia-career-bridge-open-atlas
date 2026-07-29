@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         'meeting-review-settings': {
             title: 'Review & follow-up',
-            description: 'Choose how mock interviews generate coaching, action items, and interview scorecards.'
+            description: 'Choose how mock interviews generate answer coaching, practice actions, and interview scorecards.'
         },
         'privacy-sharing-settings': {
             title: 'Privacy & sharing',
@@ -259,8 +259,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const updateFrequencyInput = document.getElementById('liveQaAnswerUpdateFrequency');
         const retentionHoursValue = retentionHoursInput ? parseInt(retentionHoursInput.value, 10) : null;
         const answerUpdateFrequency = updateFrequencyInput?.value || null;
-        const selectedScorecardSource = document.querySelector('input[name="scorecard_source"]:checked');
-        const scorecardSourceValue = selectedScorecardSource ? selectedScorecardSource.value : '';
+        const selectedScorecardSource = document.querySelector('input[name="scorecard_source"]:checked')
+            || document.querySelector('input[name="scorecard_source"]');
+        const scorecardSourceValue = selectedScorecardSource ? selectedScorecardSource.value : 'microphone';
         const languageValue = document.getElementById('language')?.value || 'en';
         const meetingRetentionDays = parseInt(document.getElementById('meetingRetentionDays').value, 10);
         const documentRetentionDays = parseInt(document.getElementById('documentRetentionDays').value, 10);

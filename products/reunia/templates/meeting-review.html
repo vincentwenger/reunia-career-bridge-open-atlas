@@ -12,7 +12,7 @@
 
     {{ page_hero(
         'Interview Review',
-        'Choose a mock interview to review the candidate’s answers, action plan, interview scorecard, transcript, and coaching.'
+        'Choose a mock interview to review the candidate’s answers, practice actions, interview scorecard, transcript, and answer coaching.'
     ) }}
 
     <div class="content-grid">
@@ -20,7 +20,7 @@
         {% set sidebar_title = 'Mock Interview Library' %}
 {% set sidebar_description = 'Select a mock interview to review answers, coaching, scorecard, and transcript.' %}
 {% set sidebar_search_id = 'meeting-search' %}
-{% set sidebar_search_placeholder = 'Search by target role, date, score, answer, transcript, strengths, or action items...' %}
+{% set sidebar_search_placeholder = 'Search by target role, date, score, answer, transcript, strengths, or practice actions...' %}
 {% set sidebar_list_id = 'meeting-list' %}
 {% set sidebar_loading_title = 'Loading mock interviews' %}
 {% set sidebar_loading_message = 'Retrieving your mock-interview history...' %}
@@ -30,7 +30,7 @@
             <section class="tab-shell" id="meeting-review-shell">
                 <div class="tab-nav">
                     <div class="tab-button-group" role="tablist" aria-label="Interview review tabs">
-                        <button class="tab-button active" type="button" id="summary-tab-button" role="tab" aria-selected="true" aria-controls="summary-tab" tabindex="0" data-meeting-tab="summary">Summary</button>
+                        <button class="tab-button active" type="button" id="summary-tab-button" role="tab" aria-selected="true" aria-controls="summary-tab" tabindex="0" data-meeting-tab="summary">Review Summary</button>
                         <button class="tab-button" type="button" id="scorecard-tab-button" role="tab" aria-selected="false" aria-controls="scorecard-tab" tabindex="-1" data-meeting-tab="scorecard">Interview Scorecard</button>
                         <button class="tab-button" type="button" id="transcript-tab-button" role="tab" aria-selected="false" aria-controls="transcript-tab" tabindex="-1" data-meeting-tab="transcript">Transcript</button>
                         <button class="tab-button" type="button" id="ask-ai-tab-button" role="tab" aria-selected="false" aria-controls="ask-ai-tab" tabindex="-1" data-meeting-tab="ask-ai">Ask about this interview</button>

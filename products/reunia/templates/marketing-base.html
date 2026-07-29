@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="{{ static_asset('css/base.css') }}">
     <link rel="stylesheet" href="{{ static_asset('css/navbar.css') }}">
     <link rel="stylesheet" href="{{ static_asset('css/pages/marketing.css') }}">
+    <link rel="stylesheet" href="{{ static_asset('css/career-theme.css') }}">
     {% include 'components/asset_recovery.html' %}
 </head>
 <body class="marketing-body" data-app-root="{{ request.script_root }}" data-app-language="{{ app_language | default('en') }}" data-authenticated="{{ 'true' if session.get('user_id') else 'false' }}" data-analytics-heartbeat="{{ analytics_heartbeat_seconds | default(30) }}">

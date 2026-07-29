@@ -78,7 +78,7 @@
                     <span class="scope-card-icon" aria-hidden="true">📊</span>
                     <span class="scope-card-copy">
                         <span class="scope-card-title">Interview review &amp; action plan</span>
-                        <span class="scope-card-description">Coaching, action items, and scorecards</span>
+                        <span class="scope-card-description">Answer coaching, practice actions, and scorecards</span>
                     </span>
                     <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
                     <span class="scope-arrow" aria-hidden="true">›</span>
@@ -163,35 +163,15 @@
                                 <div class="subsection-heading">
                                     <div class="subsection-number">2</div>
                                     <div>
-                                        <h3>Default AI model</h3>
-                                        <p>Choose the default performance level used for AI-powered features.</p>
+                                        <h3>Candidate Answer Evaluation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
+                                        <p>The MVP scorecard evaluates only the candidate answers recorded during mock-interview practice.</p>
                                     </div>
                                 </div>
-
-                                <div class="settings-box">
-                                    <div class="form-grid">
-                                        <div class="form-group full-span">
-                                            <label class="form-label" for="aiModelPreset">Default AI model</label>
-
-                                            <select id="aiModelPreset" name="aiModelPreset" class="form-control">
-                                                <option value="fast" {% if not settings or settings.aiModelPreset == 'fast' %}selected{% endif %}>
-                                                    Fast — recommended for lowest cost
-                                                </option>
-                                                <option value="balanced" {% if settings and settings.aiModelPreset == 'balanced' %}selected{% endif %} {% if config.AI_MAX_MODEL_PRESET == 'fast' %}disabled{% endif %}>
-                                                    Balanced — higher cost{% if config.AI_MAX_MODEL_PRESET == 'fast' %} (disabled by cost policy){% endif %}
-                                                </option>
-                                                <option value="advanced" {% if settings and settings.aiModelPreset == 'advanced' %}selected{% endif %} {% if config.AI_MAX_MODEL_PRESET != 'advanced' %}disabled{% endif %}>
-                                                    Advanced — highest cost{% if config.AI_MAX_MODEL_PRESET != 'advanced' %} (disabled by cost policy){% endif %}
-                                                </option>
-                                            </select>
-
-                                            <span class="form-help">
-                                                Used by Career Profile, Career Evidence Library, interview preparation, and review unless a feature-specific model is configured. The server-side cost policy can restrict higher-cost presets.
-                                            </span>
-                                        </div>
-
-                                    </div>
+                                <div class="settings-box highlight-box">
+                                    <input type="hidden" name="scorecard_source" value="microphone">
+                                    <p class="form-help">Interviewer prompts provide question context but are not scored as candidate performance.</p>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     </section>
@@ -255,8 +235,8 @@
                                     <div class="category-eyebrow">Category 2</div>
                                     <h2>Interview Review Settings</h2>
                                     <p>
-                                        These settings affect only the Scorecard tab on the Interview Review page.
-                                        Choose which recorded audio source or sources should be evaluated.
+                                        These settings affect mock-interview reviews, practice actions, and the interview-specific scorecard.
+                                        The MVP evaluates candidate answers only.
                                     </p>
                                 </div>
                             </div>
@@ -276,11 +256,11 @@
                                 <div class="settings-box highlight-box">
                                     <div class="form-grid">
                                         <div class="form-group full-span">
-                                            <label class="form-label" for="meetingSummaryDetail">Summary detail</label>
+                                            <label class="form-label" for="meetingSummaryDetail">Review detail</label>
                                             <select id="meetingSummaryDetail" name="meetingSummaryDetail" class="form-control">
-                                                <option value="brief" {% if not settings or settings.meetingSummaryDetail == 'brief' %}selected{% endif %}>Brief — 2 or 3 concise sentences</option>
-                                                <option value="standard" {% if settings and settings.meetingSummaryDetail == 'standard' %}selected{% endif %}>Standard — one clear paragraph</option>
-                                                <option value="detailed" {% if settings and settings.meetingSummaryDetail == 'detailed' %}selected{% endif %}>Detailed — discussion, decisions, risks, and next steps</option>
+                                                <option value="brief" {% if not settings or settings.meetingSummaryDetail == 'brief' %}selected{% endif %}>Brief — key strengths and improvements</option>
+                                                <option value="standard" {% if settings and settings.meetingSummaryDetail == 'standard' %}selected{% endif %}>Standard — strengths, gaps, and next steps</option>
+                                                <option value="detailed" {% if settings and settings.meetingSummaryDetail == 'detailed' %}selected{% endif %}>Detailed — answer-by-answer coaching and practice priorities</option>
                                             </select>
                                         </div>
                                     </div>
@@ -290,7 +270,7 @@
                                             <label class="source-toggle" for="meetingExtractActionItems">
                                                 <div class="source-text">
                                                     <div class="source-icon" aria-hidden="true">📝</div>
-                                                    <div><span class="source-title">Extract action items</span><span class="source-description">Add detected improvement tasks to Interview Review and Career Action Plan.</span></div>
+                                                    <div><span class="source-title">Generate practice actions</span><span class="source-description">Add application-specific practice and follow-up tasks to Interview Review and Career Action Plan.</span></div>
                                                 </div>
                                                 <input type="checkbox" id="meetingExtractActionItems" name="meetingExtractActionItems" {% if not settings or settings.meetingExtractActionItems %}checked{% endif %}>
                                                 <span class="switch"></span>
@@ -312,80 +292,14 @@
                                 <div class="subsection-heading">
                                     <div class="subsection-number">2</div>
                                     <div>
-                                        <h3>Scorecard Evaluation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
-                                        <p>Select the audio source containing the answers that the scorecard should evaluate.</p>
+                                        <h3>Candidate Answer Evaluation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
+                                        <p>The MVP scorecard evaluates only the candidate answers recorded during mock-interview practice.</p>
                                     </div>
                                 </div>
 
                                 <div class="settings-box highlight-box">
-                                    <div class="form-grid">
-                                        <div class="form-group full-span">
-                                            <label class="form-label" for="scorecard_source">Scorecard Source</label>
-
-                                            <div class="scorecard-source-selector" id="scorecard-source-selector" role="radiogroup" aria-label="Scorecard Source">
-                                                <label class="scorecard-source-option" for="scorecardSourceAll">
-                                                    <input
-                                                        type="radio"
-                                                        id="scorecardSourceAll"
-                                                        name="scorecard_source"
-                                                        value="all"
-                                                        {% if settings and settings.scorecard_source == 'all' %}checked{% endif %}
-                                                    >
-                                                    <span class="scorecard-source-choice">
-                                                        <span class="scorecard-source-icon scorecard-source-icon-pair" aria-hidden="true">🎙️🔊</span>
-                                                        <span class="scorecard-source-copy">
-                                                            <span class="scorecard-source-title">All Audio Sources</span>
-                                                            <span class="scorecard-source-description">
-                                                                Evaluate candidate and interviewer-prompt audio, using either or both when available.
-                                                            </span>
-                                                        </span>
-                                                    </span>
-                                                </label>
-
-                                                <label class="scorecard-source-option" for="scorecardSourceMicrophone">
-                                                    <input
-                                                        type="radio"
-                                                        id="scorecardSourceMicrophone"
-                                                        name="scorecard_source"
-                                                        value="microphone"
-                                                        {% if not settings or not settings.scorecard_source or settings.scorecard_source == 'microphone' %}checked{% endif %}
-                                                    >
-                                                    <span class="scorecard-source-choice">
-                                                        <span class="scorecard-source-icon" aria-hidden="true">🎙</span>
-                                                        <span class="scorecard-source-copy">
-                                                            <span class="scorecard-source-title">Score my answers</span>
-                                                            <span class="scorecard-source-description">
-                                                                Use the audio captured from my microphone.
-                                                            </span>
-                                                        </span>
-                                                    </span>
-                                                </label>
-
-                                                <label class="scorecard-source-option" for="scorecardSourceSpeaker">
-                                                    <input
-                                                        type="radio"
-                                                        id="scorecardSourceSpeaker"
-                                                        name="scorecard_source"
-                                                        value="speaker"
-                                                        {% if settings and settings.scorecard_source == 'speaker' %}checked{% endif %}
-                                                    >
-                                                    <span class="scorecard-source-choice">
-                                                        <span class="scorecard-source-icon" aria-hidden="true">🔊</span>
-                                                        <span class="scorecard-source-copy">
-                                                            <span class="scorecard-source-title">Score the other participant</span>
-                                                            <span class="scorecard-source-description">
-                                                                Use the audio captured from the computer speakers.
-                                                            </span>
-                                                        </span>
-                                                    </span>
-                                                </label>
-                                            </div>
-
-                                            <span class="form-help">
-                                                Choose microphone, speaker, or all available audio sources for scorecard evaluation.
-                                            </span>
-                                        </div>
-                                    </div>
+                                    <input type="hidden" name="scorecard_source" value="microphone">
+                                    <p class="form-help">Interviewer prompts provide question context but are not scored as candidate performance.</p>
                                 </div>
                             </div>
                         </div>

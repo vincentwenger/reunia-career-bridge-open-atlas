@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import current_app, g, jsonify, render_template, request
+from flask import current_app, g, jsonify, redirect, render_template, request, url_for
 
 from meeting_assistant.blueprints.actions import actions_bp
 from meeting_assistant.services.action_service import ActionService
@@ -9,8 +9,13 @@ from meeting_assistant.utils.authentication import api_auth_required, login_requ
 from meeting_assistant.utils.exceptions import ValidationError
 
 
-@actions_bp.get("/career-action-plan")
 @actions_bp.get("/action-center.html")
+@login_required
+def legacy_action_center_redirect():
+    return redirect(url_for("actions.action_center_page"), code=302)
+
+
+@actions_bp.get("/career-action-plan")
 @login_required
 def action_center_page():
     return render_template("action-center.html")

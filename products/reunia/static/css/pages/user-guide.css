@@ -1,11 +1,11 @@
 .guide-page {
-    --guide-blue: #1769aa;
-    --guide-blue-dark: #0f4c81;
-    --guide-text: #1f2937;
-    --guide-muted: #64748b;
-    --guide-border: #dfe8f2;
-    --guide-soft: #f6f9fc;
-    --guide-soft-blue: #edf6fd;
+    --guide-blue: #1c806a;
+    --guide-blue-dark: #176b5a;
+    --guide-text: #1e3830;
+    --guide-muted: #697b77;
+    --guide-border: #dce9e5;
+    --guide-soft: #f7fbfa;
+    --guide-soft-blue: #effbf7;
 }
 
 .guide-main {
@@ -24,7 +24,7 @@
     border: 1px solid var(--guide-border);
     border-radius: 20px;
     background: #ffffff;
-    box-shadow: 0 10px 26px rgba(15, 76, 129, 0.07);
+    box-shadow: 0 10px 26px rgba(23, 107, 90, 0.07);
 }
 
 .guide-welcome {
@@ -95,7 +95,7 @@
 }
 
 .guide-eyebrow-light {
-    color: #cfe9ff;
+    color: #d7f7ed;
 }
 
 .guide-button {
@@ -122,11 +122,11 @@
 .guide-button-primary {
     color: #ffffff;
     background: linear-gradient(135deg, var(--guide-blue-dark), var(--guide-blue));
-    box-shadow: 0 8px 18px rgba(15, 76, 129, 0.18);
+    box-shadow: 0 8px 18px rgba(23, 107, 90, 0.18);
 }
 
 .guide-button-primary:hover {
-    box-shadow: 0 11px 23px rgba(15, 76, 129, 0.24);
+    box-shadow: 0 11px 23px rgba(23, 107, 90, 0.24);
 }
 
 .guide-button-full {
@@ -159,18 +159,18 @@
     gap: 9px;
     min-height: 46px;
     padding: 0 12px;
-    border: 1px solid #cfdce8;
+    border: 1px solid #d1e6df;
     border-radius: 13px;
     background: #ffffff;
 }
 
 .guide-search:focus-within {
-    border-color: #7cb4df;
-    box-shadow: 0 0 0 3px rgba(23, 105, 170, 0.12);
+    border-color: #87d4bb;
+    box-shadow: 0 0 0 3px rgba(39, 154, 116, 0.12);
 }
 
 .guide-search > span {
-    color: #64748b;
+    color: #697b77;
     font-size: 20px;
 }
 
@@ -217,7 +217,7 @@
 
 .guide-sidebar-card {
     padding: 14px;
-    box-shadow: 0 8px 20px rgba(15, 76, 129, 0.05);
+    box-shadow: 0 8px 20px rgba(23, 107, 90, 0.05);
 }
 
 .guide-sidebar-label {
@@ -303,9 +303,9 @@
 }
 
 .guide-step-important {
-    border-color: #9bc7eb;
-    background: linear-gradient(180deg, #f2f9ff 0%, #ffffff 100%);
-    box-shadow: 0 12px 24px rgba(23, 105, 170, 0.10);
+    border-color: #a4e2ce;
+    background: linear-gradient(180deg, #f4fdfa 0%, #ffffff 100%);
+    box-shadow: 0 12px 24px rgba(39, 154, 116, 0.10);
 }
 
 .guide-step-optional {
@@ -334,15 +334,15 @@
 .guide-label {
     padding: 5px 9px;
     border-radius: 999px;
-    color: #475569;
-    background: #e8edf3;
+    color: #586762;
+    background: #e8f3ef;
     font-size: 11px;
     font-weight: 800;
 }
 
 .guide-label-primary {
-    color: #0f4c81;
-    background: #dbeefe;
+    color: #176b5a;
+    background: #e0f9f1;
 }
 
 .guide-step-stage {
@@ -446,7 +446,7 @@
     overflow: hidden;
     border: 1px solid var(--guide-border);
     border-radius: 14px;
-    background: #fbfdff;
+    background: #fbfdfc;
 }
 
 .guide-detail summary,
@@ -499,9 +499,9 @@
 
 .guide-process {
     padding: 20px;
-    border: 1px solid #b8d7ee;
+    border: 1px solid #bee8da;
     border-radius: 17px;
-    background: linear-gradient(180deg, #f4faff 0%, #ffffff 100%);
+    background: linear-gradient(180deg, #f6fdfb 0%, #ffffff 100%);
 }
 
 .guide-process-heading {
@@ -580,10 +580,10 @@
     display: flex;
     gap: 8px;
     padding: 14px 16px;
-    border: 1px dashed #b9cbdc;
+    border: 1px dashed #bbdad0;
     border-radius: 13px;
     color: #536579;
-    background: #f8fafc;
+    background: #f8fcfb;
     font-size: 12.5px;
     line-height: 1.55;
 }
@@ -676,8 +676,8 @@
     padding: 25px 27px;
     border: 0;
     color: #ffffff;
-    background: linear-gradient(135deg, #0f4c81, #1769aa);
-    box-shadow: 0 14px 28px rgba(15, 76, 129, 0.18);
+    background: linear-gradient(135deg, #176b5a, #1c806a);
+    box-shadow: 0 14px 28px rgba(23, 107, 90, 0.18);
 }
 
 .guide-support h2 {
@@ -687,7 +687,7 @@
 
 .guide-support p {
     margin-top: 5px;
-    color: #e5f2fc;
+    color: #e8f9f4;
     font-size: 13.5px;
 }
 
@@ -704,7 +704,7 @@
 .guide-search button:focus-visible,
 .guide-detail summary:focus-visible,
 .guide-faq summary:focus-visible {
-    outline: 3px solid rgba(25, 118, 210, 0.28);
+    outline: 3px solid rgba(27, 130, 107, 0.28);
     outline-offset: 3px;
 }
 

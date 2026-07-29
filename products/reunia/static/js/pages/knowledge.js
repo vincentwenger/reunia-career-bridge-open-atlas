@@ -262,7 +262,7 @@
         });
 
         participantSelects.forEach(select => {
-            const firstOption = select.options[0]?.cloneNode(true) || new Option('All participants', '');
+            const firstOption = select.options[0]?.cloneNode(true) || new Option('All interviewers and contacts', '');
             select.replaceChildren(firstOption);
             Array.from(participants).sort((a, b) => a.localeCompare(b)).forEach(name => select.add(new Option(name, name)));
         });
@@ -654,7 +654,7 @@
             if (meetingDetailsPurposeInput) meetingDetailsPurposeInput.value = '';
             savedUpcomingMeetingDetailsSnapshot = null;
             if (meetingDetailsStatus) {
-                meetingDetailsStatus.textContent = 'Select an upcoming interview to view its saved title, purpose, participants, and date.';
+                meetingDetailsStatus.textContent = 'Select a job application to view its target role, notes, interviewer contacts, and interview date.';
             }
             updateUpcomingMeetingDetailsSaveState();
             return;
@@ -2052,7 +2052,7 @@
             current_meeting: 'Current Application Materials',
             library: 'Career Evidence Library',
             meetings: 'Previous Mock Interviews',
-            all: 'All Knowledge'
+            all: 'All Career Sources'
         };
         const scopeLabel = document.getElementById('searchScopeLabel');
         if (scopeLabel) scopeLabel.textContent = labels[scope] || labels.current_meeting;

@@ -25,14 +25,16 @@ def open_interview_preparation():
 @knowledge_bp.get("/knowledge.html")
 @login_required
 def view_knowledge():
+    if request.path == "/knowledge.html":
+        return redirect("/career-evidence-library", code=302)
+
     context = UserService().get_assistant_context(session["user_id"])
     library = KnowledgeService().list_library(str(session["user_id"]))
     route_view = {
         "/career-profile": "context",
         "/application-materials": "materials",
-        "/interview-preparation": "search",
-        "/career-evidence-library": "search",
-    }.get(request.path)
+        "/career-evidence-library": "library",
+    }.get(request.path, "library")
     return render_template(
         "knowledge.html",
         route_view=route_view,

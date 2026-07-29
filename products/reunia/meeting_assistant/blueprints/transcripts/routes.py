@@ -1,4 +1,4 @@
-from flask import current_app, g, jsonify, render_template, request
+from flask import current_app, g, jsonify, redirect, render_template, request, url_for
 
 from meeting_assistant.blueprints.transcripts import transcript_bp
 from meeting_assistant.services.transcript_service import TranscriptService
@@ -7,6 +7,11 @@ from meeting_assistant.utils.authentication import api_auth_required, login_requ
 
 
 @transcript_bp.get("/meeting-review.html")
+@login_required
+def legacy_review_redirect():
+    return redirect(url_for("transcript.view_transcripts"), code=302)
+
+
 @transcript_bp.get("/interview-review")
 @login_required
 def view_transcripts():

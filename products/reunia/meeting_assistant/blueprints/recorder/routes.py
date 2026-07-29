@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from flask import current_app, g, jsonify, render_template, request, session, url_for
+from flask import current_app, g, jsonify, redirect, render_template, request, session, url_for
 
 from meeting_assistant.blueprints.recorder import recorder_bp
 from meeting_assistant.services.browser_recorder_job_service import BrowserRecorderJobService
@@ -18,6 +18,11 @@ from meeting_assistant.utils.feature_access import (
 
 @recorder_bp.get("/meeting-recorder.html")
 @recorder_bp.get("/meeting-recorder")
+@login_required
+def legacy_recorder_redirect():
+    return redirect(url_for("recorder.view_recorder"), code=302)
+
+
 @recorder_bp.get("/mock-interview")
 @login_required
 def view_recorder():

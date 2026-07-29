@@ -19,6 +19,7 @@ from flask import (
     abort,
     flash,
     g,
+    current_app,
     redirect,
     render_template,
     request,
@@ -48,6 +49,7 @@ from resume_tailor.interview_preparation import (
     job_description_fingerprint,
     restrict_workspace_to_evidence,
 )
+from resume_tailor.impact_tracking import build_workflow_impact_snapshot
 from resume_tailor.evidence_fixes import apply_concrete_individual_audit_rephrase
 from resume_tailor.export_naming import final_resume_filename, safe_filename
 from resume_tailor.audit_identity import audit_issue_family
@@ -114,6 +116,7 @@ from resume_tailor.profile_io import (
     load_candidate_profile,
     load_candidate_profile_bytes,
 )
+from resume_tailor.resume_import import extract_resume_text, resume_extension
 from resume_tailor.optimization import (
     FINAL_OPTIMIZATION_SECTIONS,
     final_optimization_actionable_issues,
@@ -2621,20 +2624,48 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.post("/profile/upload")
     def upload_profile():
         uploaded = request.files.get("profile_file")
+        return_to = str(request.form.get("return_to") or "").strip().casefold()
+        redirect_target = (
+            url_for("index", tab="tailoring", stage="setup") + "#resume-import"
+            if return_to == "setup"
+            else url_for("index", tab="configuration") + "#candidate-profile"
+        )
         if not uploaded or not uploaded.filename:
-            flash("Choose a Candidate Profile JSON file.", "error")
-            return redirect(url_for("index", tab="configuration"))
-        try:
-            profile = load_candidate_profile_bytes(uploaded.read())
-        except Exception as exc:
-            flash(f"Could not load Candidate Profile: {exc}", "error")
-            return redirect(url_for("index", tab="configuration"))
+            flash("Choose a PDF, Word, text, Markdown, or Candidate Profile JSON file.", "error")
+            return redirect(redirect_target)
+
+        filename = uploaded.filename
+        data = uploaded.read()
         current = state()
+        try:
+            if resume_extension(filename) == ".json":
+                profile = load_candidate_profile_bytes(data)
+            else:
+                resume_text = extract_resume_text(data, filename)
+                models = resolve_models(current)
+                profile = ResumeAI(
+                    models.analysis_tailoring_model,
+                    reasoning_effort=models.analysis_tailoring_reasoning_effort,
+                ).create_candidate_profile_from_resume(
+                    resume_text=resume_text,
+                    filename=filename,
+                )
+        except (ResumeAIError, ValueError, RuntimeError) as exc:
+            flash(f"Could not import the resume: {exc}", "error")
+            return redirect(redirect_target)
+        except Exception as exc:
+            current_app.logger.exception("Unexpected resume import failure")
+            flash(f"Could not import the resume: {exc}", "error")
+            return redirect(redirect_target)
+
         current.source_profile = profile
-        current.profile_upload_name = uploaded.filename
+        current.profile_upload_name = filename
         current.clear_results()
-        flash("Candidate Profile loaded. Previous analysis results were cleared.", "success")
-        return redirect(url_for("index", tab="configuration"))
+        flash(
+            "International resume imported into the verified Candidate Profile. Previous analysis results were cleared.",
+            "success",
+        )
+        return redirect(redirect_target)
 
     @app.post("/profile/default")
     def restore_default_profile():
@@ -4302,6 +4333,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             )
             if saved is None:
                 abort(404)
+            application_store.save_impact_snapshot(
+                _application_owner_id(),
+                saved.id,
+                build_workflow_impact_snapshot(current),
+            )
             flash("Final Resume saved to this job application.", "success")
             return redirect(
                 url_for("index", tab="applications")
@@ -4338,6 +4374,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             resume_filename=resume_filename,
             resume_bytes=current.final_resume_bytes,
             resume_fingerprint=resume_fingerprint,
+        )
+        application_store.save_impact_snapshot(
+            _application_owner_id(),
+            created.id,
+            build_workflow_impact_snapshot(current),
         )
         session["active_application_id"] = created.id
         flash("Application created and Final Resume attached.", "success")

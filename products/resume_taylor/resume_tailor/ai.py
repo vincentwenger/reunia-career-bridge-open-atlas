@@ -25,6 +25,7 @@ from .models import (
     ProposalAudit,
     TailoringProposal,
 )
+from .resume_import import RESUME_IMPORT_SYSTEM, build_resume_import_prompt
 from .prompts import (
     AUDIT_FIX_SYSTEM,
     AUDIT_SYSTEM,
@@ -155,6 +156,19 @@ class ResumeAI:
             ),
             InterviewPreparationWorkspace,
             operation="create_interview_preparation",
+        )
+
+    def create_candidate_profile_from_resume(
+        self,
+        *,
+        resume_text: str,
+        filename: str,
+    ) -> CandidateProfile:
+        return self._parse(
+            RESUME_IMPORT_SYSTEM,
+            build_resume_import_prompt(resume_text, filename),
+            CandidateProfile,
+            operation="create_candidate_profile_from_resume",
         )
 
     def analyze_job(self, job_description: str, stated_title: str = "") -> JobAnalysis:

@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="{{ static_asset('css/components.css') }}">
     {% block page_styles %}{% endblock %}
     <link rel="stylesheet" href="{{ static_asset('css/app-layout.css') }}">
+    <link rel="stylesheet" href="{{ static_asset('css/career-theme.css') }}">
     {% include 'components/asset_recovery.html' %}
 </head>
 <body class="{% block body_class %}{% endblock %}" data-app-root="{{ request.script_root }}" data-app-language="{{ app_language | default('en') }}" data-authenticated="{{ 'true' if session.get('user_id') else 'false' }}" data-analytics-heartbeat="{{ analytics_heartbeat_seconds | default(30) }}">

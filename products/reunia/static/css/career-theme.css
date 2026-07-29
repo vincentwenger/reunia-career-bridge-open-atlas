@@ -1,0 +1,91 @@
+/*
+ * Réunia Career Bridge visual system
+ *
+ * Primary: deep teal and emerald communicate progress, trust, and forward motion.
+ * Secondary: warm amber highlights deadlines and noteworthy guidance.
+ * Semantic red/orange/green states remain reserved for errors, cautions, and success.
+ */
+:root {
+    --career-ink: #17342e;
+    --career-ink-soft: #40514c;
+    --career-muted: #667a75;
+    --career-primary: #176b5a;
+    --career-primary-dark: #0f473c;
+    --career-primary-bright: #1b826b;
+    --career-emerald: #35a487;
+    --career-mint: #e8f6f2;
+    --career-mint-soft: #f4f8f6;
+    --career-border: #dfe9e6;
+    --career-accent: #c18a38;
+    --career-accent-soft: #fff6df;
+    --career-danger: #b42318;
+    --career-warning: #a95f00;
+
+    /* Shared shell tokens. */
+    --ma-primary: var(--career-primary);
+    --ma-primary-light: var(--career-primary-bright);
+    --ma-text: var(--career-ink);
+    --ma-muted: var(--career-muted);
+    --ma-border: var(--career-border);
+    --ma-page-background: linear-gradient(180deg, var(--career-mint-soft) 0%, #ffffff 100%);
+
+    /* Application Builder tokens. */
+    --bg: #f5f8f7;
+    --surface: #ffffff;
+    --surface-alt: #f8fcfb;
+    --text: var(--career-ink);
+    --muted: var(--career-muted);
+    --border: #dbe8e3;
+    --primary: var(--career-primary);
+    --primary-dark: var(--career-primary-dark);
+    --info: var(--career-primary);
+    --info-bg: #f0f8f5;
+}
+
+html {
+    scrollbar-color: #9fc8bb #eef5f2;
+}
+
+body {
+    accent-color: var(--career-primary-bright);
+}
+
+::selection {
+    color: var(--career-ink);
+    background: #cce9df;
+}
+
+:focus-visible {
+    outline-color: var(--career-primary-bright);
+}
+
+input[type="checkbox"],
+input[type="radio"],
+progress {
+    accent-color: var(--career-primary-bright);
+}
+
+/* Keep shared hero treatments identical across product modules. */
+.page-hero {
+    background:
+        radial-gradient(circle at 92% 0%, rgba(255, 255, 255, 0.13), transparent 32%),
+        linear-gradient(135deg, var(--career-primary), var(--career-primary-bright));
+    box-shadow: 0 12px 28px rgba(23, 107, 90, 0.17);
+}
+
+/* Career-relevant warm accent for deadlines and emphasized guidance. */
+[data-tone="deadline"],
+[data-tone="priority"],
+.career-accent {
+    color: #765414;
+    background: var(--career-accent-soft);
+    border-color: #efd8a9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+    }
+}

@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : '';
             const sourceDescription = source.type === 'prepared_answer'
                 ? 'Prepared answer source'
-                : 'Meeting material source';
+                : 'Application material source';
             const sourceIcon = sourceLabel
                 ? `<span class="answer-source-icon" tabindex="0" role="img" aria-label="${sourceDescription}: ${escapeHtml(sourceLabel)}" data-tooltip="${escapeHtml(sourceLabel)}">📎</span>`
                 : '';
@@ -372,13 +372,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function connectLiveStream() {
         if (document.hidden || eventSource) return;
 
-        setStatus('Connecting to live meeting updates...', 'connecting');
+        setStatus('Connecting to live interview assistance...', 'connecting');
         const source = new EventSource(appUrl('/stream-ui'));
         eventSource = source;
 
         source.onopen = () => {
             if (source !== eventSource) return;
-            setStatus('Live stream connected. Waiting for meeting updates...', 'connected');
+            setStatus('Live assistance connected. Waiting for interview audio...', 'connected');
         };
         source.onmessage = event => {
             if (source !== eventSource) return;

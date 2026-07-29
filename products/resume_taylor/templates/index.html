@@ -903,9 +903,9 @@
     </div>
     <form action="{{ url_for('upload_profile') }}" method="post" enctype="multipart/form-data" class="stack-form loading-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <label for="profile-file">Load a Candidate Profile JSON</label>
-      <input id="profile-file" type="file" name="profile_file" accept="application/json,.json">
-      <button class="button secondary" type="submit">Load Candidate Profile</button>
+      <label for="profile-file">Replace source resume or Candidate Profile</label>
+      <input id="profile-file" type="file" name="profile_file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,.md,application/json,.json">
+      <button class="button secondary" type="submit">Import source resume</button>
     </form>
     {% if state.profile_upload_name %}<p class="caption">Using uploaded profile: {{ state.profile_upload_name }}</p>{% endif %}
     <div class="button-row">
@@ -1148,6 +1148,48 @@
   <div class="alert alert-info">The professional profile, job description, and any optional international career context are sent to the selected OpenAI model when you generate or audit a proposal. Contact details are excluded, and the app does not request immigration or visa information.</div>
 
   <div class="workflow-stage-panel" data-workflow-stage-panel="initial" {% if selected_workflow_panel != 'initial' %}hidden{% endif %}>
+  <section class="card resume-import-card" id="resume-import" aria-labelledby="resume-import-title">
+    <div class="section-heading resume-import-heading">
+      <div>
+        <span class="eyebrow">Hackathon journey · Step 2 of 10</span>
+        <h2 id="resume-import-title">Upload an international resume</h2>
+        <p>Career Bridge converts the source resume into a structured Candidate Profile while preserving international titles, credentials, employers, dates, and wording as evidence.</p>
+      </div>
+      <span class="resume-import-status {{ 'is-ready' if state.profile_upload_name else 'is-pending' }}">
+        {{ 'Resume imported' if state.profile_upload_name else 'Resume needed' }}
+      </span>
+    </div>
+    <div class="resume-import-layout">
+      <div class="resume-import-summary">
+        <span>Current source profile</span>
+        <strong>{{ source_profile.name }}</strong>
+        <small>{{ profile_stats.bullets }} experience bullets · {{ profile_stats.skills }} verified skills</small>
+        {% if state.profile_upload_name %}
+          <em>Imported from {{ state.profile_upload_name }}</em>
+        {% else %}
+          <em>The bundled sample profile is active until a resume is imported.</em>
+        {% endif %}
+      </div>
+      <form
+        action="{{ url_for('upload_profile') }}"
+        method="post"
+        enctype="multipart/form-data"
+        class="resume-import-form loading-form"
+        data-loading-title="Importing international resume…"
+        data-loading-message="The app is extracting only documented facts and building the verified Candidate Profile."
+        data-loading-steps="Reading the resume|Preserving international titles and credentials|Structuring experience evidence|Checking unsupported additions|Opening target-job setup"
+        data-loading-step-details="Extracting text from the uploaded file.|Keeping original terminology for the Career Translation Assessment.|Assigning traceable IDs to roles and accomplishments.|Ensuring the import contains only facts from the source resume.|Returning to the first Application Builder step."
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="return_to" value="setup">
+        <label for="mvp-profile-file">Resume file</label>
+        <input id="mvp-profile-file" type="file" name="profile_file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,.md,application/json,.json" required>
+        <small>PDF, Word, text, Markdown, or an existing Candidate Profile JSON. Scanned PDFs need searchable text.</small>
+        <button class="button primary" type="submit">{{ 'Replace imported resume' if state.profile_upload_name else 'Import resume' }}</button>
+      </form>
+    </div>
+    <div class="alert alert-info compact-alert">The import does not translate titles or invent U.S.-style equivalents. Translation, clarification, and evidence questions happen in the next stages.</div>
+  </section>
   <section class="card workflow-stage-intro" id="job-input">
     <div class="step-heading">
       <div><span class="step-number step-label">1</span><h2>Career and Job Setup</h2></div>

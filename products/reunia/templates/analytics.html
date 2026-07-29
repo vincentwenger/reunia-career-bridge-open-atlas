@@ -1,271 +1,101 @@
 {% extends 'base.html' %}
 {% from 'macros/ui.html' import page_hero %}
 
-{% block title %}Réunia - Career Progress{% endblock %}
+{% block title %}Réunia - Social Impact{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/analytics.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="app-page analytics-container">
+<div class="app-page impact-container">
     {{ page_hero(
-        'Career Progress',
-        'See readiness and improvement trends across applications and mock interviews.'
+        'Social Impact & Career Progress',
+        'Measure how Career Bridge clarifies international experience, protects evidence, improves role alignment, strengthens interview answers, and turns guidance into completed actions.'
     ) }}
 
-    <section class="analytics-toolbar" aria-label="Career Progress filters">
-        <div class="analytics-filter-group">
-            <label for="analytics-period">Time period</label>
-            <select id="analytics-period">
-                <option value="all">All mock interviews</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="365">Last 12 months</option>
-            </select>
+    <section class="impact-toolbar" aria-label="Impact dashboard controls">
+        <div>
+            <span class="impact-eyebrow">Evidence-backed measurement</span>
+            <strong>Every number comes from saved candidate workflow records.</strong>
+            <p id="impact-measurement-note">Loading measurement details...</p>
         </div>
-
-        <div class="analytics-filter-group">
-            <label for="analytics-score-filter">Performance</label>
-            <select id="analytics-score-filter">
-                <option value="all">All scores</option>
-                <option value="strong">Strong: 70–100</option>
-                <option value="developing">Developing: 40–69</option>
-                <option value="focus">Needs focus: below 40</option>
-                <option value="unscored">Not scored</option>
-            </select>
-        </div>
-
-        <div class="analytics-filter-group analytics-search-group">
-            <label for="analytics-search">Find mock interviews</label>
-            <div class="analytics-search-shell">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="11" cy="11" r="7"></circle>
-                    <path d="m20 20-3.7-3.7"></path>
-                </svg>
-                <input id="analytics-search" type="search" placeholder="Search applications, roles, coaching, or actions..." autocomplete="off">
-            </div>
-        </div>
-
-        <button class="analytics-refresh-button" id="analytics-refresh" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20 11a8 8 0 1 0 2 5.3"></path>
-                <path d="M20 4v7h-7"></path>
-            </svg>
-            Refresh
+        <button class="impact-refresh" id="impact-refresh" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0 2 5.3"></path><path d="M20 4v7h-7"></path></svg>
+            Refresh outcomes
         </button>
     </section>
 
-    <div class="analytics-status" id="analytics-status" role="status" aria-live="polite">
-        Loading Career Progress...
-    </div>
+    <div class="impact-status" id="impact-status" role="status" aria-live="polite">Loading measurable outcomes...</div>
 
-    <section class="analytics-kpi-grid" aria-label="Career Progress overview">
-        <article class="analytics-kpi-card">
-            <span class="analytics-kpi-icon analytics-kpi-icon-blue" aria-hidden="true">▦</span>
-            <div>
-                <span class="analytics-kpi-label">Mock Interviews analyzed</span>
-                <strong id="analytics-total-meetings">—</strong>
-                <small id="analytics-meeting-period">Across your selected period</small>
-            </div>
+    <section class="impact-metric-grid" aria-label="Measured social-impact outcomes">
+        <article class="impact-metric-card"><span class="impact-metric-icon">◎</span><div><span>International credentials identified</span><strong id="impact-credentials">—</strong><small>Credential explanations found in Career Translation</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">Aa</span><div><span>Career terminology clarified</span><strong id="impact-terminology">—</strong><small>Titles and regional terms translated for the target market</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">✓</span><div><span>Unsupported resume claims prevented</span><strong id="impact-claims">—</strong><small>Unsupported requirements or claims kept outside the resume</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">↺</span><div><span>Relevant experience recovered</span><strong id="impact-recovered">—</strong><small>Confirmed evidence or hidden accomplishments restored</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">↗</span><div><span>Resume-to-job alignment improvement</span><strong id="impact-alignment">—</strong><small>Average change from Initial to latest measured resume</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">🎙</span><div><span>Mock-interview score improvement</span><strong id="impact-interview">—</strong><small>Change from first to latest scored practice session</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">✦</span><div><span>Weak answers improved</span><strong id="impact-answers">—</strong><small>Low-scoring answers with evidence-safe improved examples</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">☑</span><div><span>Application actions completed</span><strong id="impact-actions">—</strong><small>Completed items in the Career Action Plan</small></div></article>
+    </section>
+
+    <section class="impact-story-grid">
+        <article class="impact-story-card impact-before">
+            <header><span>Before Career Bridge</span><h2>Barriers remain hidden</h2></header>
+            <ul id="impact-before-list"></ul>
         </article>
-
-        <article class="analytics-kpi-card">
-            <span class="analytics-kpi-icon analytics-kpi-icon-green" aria-hidden="true">↗</span>
-            <div>
-                <span class="analytics-kpi-label">Average performance</span>
-                <strong id="analytics-average-score">—</strong>
-                <small id="analytics-score-trend">Waiting for scored mock interviews</small>
-            </div>
-        </article>
-
-        <article class="analytics-kpi-card">
-            <span class="analytics-kpi-icon analytics-kpi-icon-purple" aria-hidden="true">?</span>
-            <div>
-                <span class="analytics-kpi-label">Questions captured</span>
-                <strong id="analytics-total-questions">—</strong>
-                <small id="analytics-average-questions">Across answers and open questions</small>
-            </div>
-        </article>
-
-        <article class="analytics-kpi-card">
-            <span class="analytics-kpi-icon analytics-kpi-icon-amber" aria-hidden="true">✓</span>
-            <div>
-                <span class="analytics-kpi-label">Action items</span>
-                <strong id="analytics-total-actions">—</strong>
-                <small id="analytics-average-actions">Follow-up items across mock interviews</small>
-            </div>
+        <article class="impact-story-card impact-after">
+            <header><span>After Career Bridge</span><h2>Evidence becomes understandable and actionable</h2></header>
+            <ul id="impact-after-list"></ul>
         </article>
     </section>
 
-    <section class="analytics-dashboard-grid">
-        <article class="analytics-card analytics-card-wide analytics-trend-card">
-            <header class="analytics-card-header">
-                <div>
-                    <span class="analytics-card-kicker">Performance over time</span>
-                    <h2>Interview score trend</h2>
-                    <p>Your most recent scored mock interviews, shown in chronological order.</p>
-                </div>
-                <span class="analytics-card-badge" id="analytics-trend-count">0 scored mock interviews</span>
+    <section class="impact-panel-grid">
+        <article class="impact-panel">
+            <header class="impact-panel-header">
+                <div><span class="impact-eyebrow">Resume outcome</span><h2>Alignment change by application</h2><p>Baseline and latest scores appear only after both resume reports exist.</p></div>
+                <a href="{{ request.script_root }}/applications/?tab=applications">Open applications <span aria-hidden="true">→</span></a>
             </header>
+            <div class="impact-alignment-list" id="impact-alignment-list"></div>
+            <div class="impact-empty" id="impact-alignment-empty" hidden>Complete an Initial Resume Report and a later resume report to measure alignment improvement.</div>
+        </article>
 
-            <div class="analytics-chart-shell" id="analytics-trend-shell">
-                <svg id="analytics-trend-chart" class="analytics-line-chart" viewBox="0 0 820 280" role="img" aria-labelledby="analytics-trend-title analytics-trend-description">
-                    <title id="analytics-trend-title">Interview performance score trend</title>
-                    <desc id="analytics-trend-description">A chart of mock-interview scores over time.</desc>
-                </svg>
-                <div class="analytics-empty-state" id="analytics-trend-empty" hidden>
-                    <span aria-hidden="true">📈</span>
-                    <strong>No score trend yet</strong>
-                    <p>Scored mock interviews will appear here after they are analyzed.</p>
-                </div>
+        <article class="impact-panel">
+            <header class="impact-panel-header">
+                <div><span class="impact-eyebrow">Practice outcome</span><h2>Mock-interview score trend</h2><p>Scores are based on observable answer content and communication characteristics.</p></div>
+                <a href="{{ request.script_root }}/interview-review">Open reviews <span aria-hidden="true">→</span></a>
+            </header>
+            <div class="impact-interview-summary">
+                <div><span>First</span><strong id="impact-first-score">—</strong></div>
+                <div><span>Latest</span><strong id="impact-latest-score">—</strong></div>
+                <div><span>Change</span><strong id="impact-score-change">—</strong></div>
             </div>
+            <div class="impact-trend" id="impact-trend"></div>
+            <div class="impact-empty" id="impact-trend-empty" hidden>Complete scored mock interviews to establish a practice trend.</div>
         </article>
+    </section>
 
-        <article class="analytics-card analytics-distribution-card">
-            <header class="analytics-card-header">
-                <div>
-                    <span class="analytics-card-kicker">Performance mix</span>
-                    <h2>Score distribution</h2>
-                    <p>How mock interviews are distributed across score ranges.</p>
-                </div>
-            </header>
+    <section class="impact-panel impact-application-panel">
+        <header class="impact-panel-header">
+            <div><span class="impact-eyebrow">Application-level evidence</span><h2>Outcome ledger</h2><p>See which measurable outcomes belong to each target job application.</p></div>
+            <span class="impact-count-badge" id="impact-application-count">0 measured</span>
+        </header>
+        <div class="impact-table-scroll">
+            <table class="impact-table">
+                <thead><tr><th>Application</th><th>Translation</th><th>Evidence</th><th>Alignment</th><th>Interview practice</th><th>Actions</th><th>Result</th></tr></thead>
+                <tbody id="impact-application-body"></tbody>
+            </table>
+        </div>
+        <div class="impact-empty" id="impact-application-empty" hidden>No application has measurable outcome data yet.</div>
+    </section>
 
-            <div class="analytics-distribution-list" id="analytics-score-distribution">
-                <div class="analytics-distribution-row" data-distribution="strong">
-                    <div><span>Strong</span><strong>0</strong></div>
-                    <div class="analytics-progress-track"><span></span></div>
-                    <small>70–100</small>
-                </div>
-                <div class="analytics-distribution-row" data-distribution="developing">
-                    <div><span>Developing</span><strong>0</strong></div>
-                    <div class="analytics-progress-track"><span></span></div>
-                    <small>40–69</small>
-                </div>
-                <div class="analytics-distribution-row" data-distribution="focus">
-                    <div><span>Needs focus</span><strong>0</strong></div>
-                    <div class="analytics-progress-track"><span></span></div>
-                    <small>Below 40</small>
-                </div>
-                <div class="analytics-distribution-row" data-distribution="unscored">
-                    <div><span>Not scored</span><strong>0</strong></div>
-                    <div class="analytics-progress-track"><span></span></div>
-                    <small>Analysis unavailable</small>
-                </div>
-            </div>
-        </article>
-
-        <article class="analytics-card analytics-speaking-card">
-            <header class="analytics-card-header">
-                <div>
-                    <span class="analytics-card-kicker">Communication habits</span>
-                    <h2>Speaking averages</h2>
-                    <p>Average delivery metrics for mock interviews with available data.</p>
-                </div>
-            </header>
-
-            <div class="analytics-speaking-grid">
-                <div class="analytics-speaking-metric">
-                    <span>Pace</span>
-                    <strong id="analytics-average-pace">—</strong>
-                    <small>words per minute</small>
-                </div>
-                <div class="analytics-speaking-metric">
-                    <span>Filler words</span>
-                    <strong id="analytics-average-fillers">—</strong>
-                    <small>per mock interview</small>
-                </div>
-                <div class="analytics-speaking-metric">
-                    <span>Power words</span>
-                    <strong id="analytics-average-power">—</strong>
-                    <small>per mock interview</small>
-                </div>
-                <div class="analytics-speaking-metric">
-                    <span>Negative tone</span>
-                    <strong id="analytics-average-negative-tone">—</strong>
-                    <small>signals per mock interview</small>
-                </div>
-                <div class="analytics-speaking-metric">
-                    <span>Pauses</span>
-                    <strong id="analytics-average-pauses">—</strong>
-                    <small>per mock interview</small>
-                </div>
-                <div class="analytics-speaking-metric">
-                    <span>Form score</span>
-                    <strong id="analytics-average-form-score">—</strong>
-                    <small>average out of 100</small>
-                </div>
-            </div>
-        </article>
-
-        <article class="analytics-card analytics-list-card">
-            <header class="analytics-card-header">
-                <div>
-                    <span class="analytics-card-kicker">Question intelligence</span>
-                    <h2>Most asked questions</h2>
-                    <p>Recurring or frequently captured questions across mock interviews.</p>
-                </div>
-            </header>
-            <ol class="analytics-ranked-list" id="analytics-question-list"></ol>
-            <div class="analytics-empty-list" id="analytics-question-empty" hidden>No questions are available for the selected mock interviews.</div>
-        </article>
-
-        <article class="analytics-card analytics-list-card">
-            <header class="analytics-card-header">
-                <div>
-                    <span class="analytics-card-kicker">Conversation themes</span>
-                    <h2>Common topics</h2>
-                    <p>Frequently used meaningful terms from target roles, summaries, and insights.</p>
-                </div>
-            </header>
-            <div class="analytics-topic-cloud" id="analytics-topic-cloud"></div>
-            <div class="analytics-empty-list" id="analytics-topic-empty" hidden>No common topics are available for the selected mock interviews.</div>
-        </article>
-
-        <article class="analytics-card analytics-list-card">
-            <header class="analytics-card-header">
-                <div>
-                    <span class="analytics-card-kicker">Coaching patterns</span>
-                    <h2>Recurring improvement areas</h2>
-                    <p>The coaching recommendations that appear most often.</p>
-                </div>
-            </header>
-            <ol class="analytics-ranked-list" id="analytics-improvement-list"></ol>
-            <div class="analytics-empty-list" id="analytics-improvement-empty" hidden>No improvement areas are available for the selected mock interviews.</div>
-        </article>
-
-        <article class="analytics-card analytics-card-wide analytics-table-card">
-            <header class="analytics-card-header analytics-card-header-row">
-                <div>
-                    <span class="analytics-card-kicker">Mock-interview details</span>
-                    <h2>Recent mock-interview performance</h2>
-                    <p>Compare the latest mock interviews included in the current filters.</p>
-                </div>
-                <a class="analytics-review-link" href="{{ request.script_root }}/interview-review">Open Interview Review <span aria-hidden="true">→</span></a>
-            </header>
-
-            <div class="analytics-table-scroll">
-                <table class="analytics-meeting-table">
-                    <thead>
-                        <tr>
-                            <th scope="col">Mock Interview</th>
-                            <th scope="col">Date</th>
-                            <th scope="col">Overall</th>
-                            <th scope="col">Answer quality</th>
-                            <th scope="col">Delivery</th>
-                            <th scope="col">Plan actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="analytics-meeting-table-body"></tbody>
-                </table>
-            </div>
-            <div class="analytics-empty-list" id="analytics-table-empty" hidden>No mock interviews match the selected filters.</div>
-        </article>
+    <section class="impact-integrity">
+        <div class="impact-integrity-icon">i</div>
+        <div><strong>Measurement integrity</strong><p>Career Bridge does not infer sensitive traits, immigration status, personality, or emotion. It counts workflow artifacts, confirmed evidence, report score changes, observable interview criteria, and completed actions. A zero can mean either no issue was found or the related workflow has not yet been completed.</p><ul id="impact-warnings"></ul></div>
     </section>
 </div>
 {% endblock %}
 
 {% block page_scripts %}
-<script src="{{ static_asset('js/meeting-utils.js') }}" defer></script>
 <script src="{{ static_asset('js/pages/analytics.js') }}" defer></script>
 {% endblock %}

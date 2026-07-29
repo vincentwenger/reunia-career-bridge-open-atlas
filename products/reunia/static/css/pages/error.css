@@ -14,9 +14,9 @@
     grid-template-columns: 1fr 1.05fr;
     overflow: hidden;
     background: white;
-    border: 1px solid #eef2f7;
+    border: 1px solid #eff6f4;
     border-radius: 28px;
-    box-shadow: 0 24px 60px rgba(15, 76, 129, 0.18);
+    box-shadow: 0 24px 60px rgba(23, 107, 90, 0.18);
 }
 
 .error-brand-panel {
@@ -27,7 +27,7 @@
     color: white;
     background:
         radial-gradient(circle at top right, rgba(255, 255, 255, 0.22), transparent 34%),
-        linear-gradient(135deg, #0f4c81, #1976d2);
+        linear-gradient(135deg, #176b5a, #1b826b);
 }
 
 .error-brand-panel::after {
@@ -174,14 +174,14 @@
 
 .error-card h1 {
     margin: 0;
-    color: #111827;
+    color: #18231f;
     font-size: 32px;
     letter-spacing: -0.03em;
 }
 
 .error-message {
     margin: 16px 0 30px;
-    color: #4b5563;
+    color: #56625e;
     font-size: 15px;
     line-height: 1.75;
 }
@@ -226,20 +226,20 @@
 
 .secondary-btn {
     padding: 13px;
-    border: 1px solid #dbe3ef;
-    background: #f8fafc;
-    color: #0f4c81;
+    border: 1px solid #d8e7e2;
+    background: #f8fcfb;
+    color: #176b5a;
     font-size: 14px;
 }
 
 .secondary-btn:hover {
-    border-color: #bfdbfe;
-    background: #eef6ff;
+    border-color: #c6e8de;
+    background: #edf8f4;
 }
 
 .action-btn:focus-visible,
 .secondary-btn:focus-visible {
-    outline: 3px solid rgba(15, 76, 129, 0.42);
+    outline: 3px solid rgba(23, 107, 90, 0.42);
     outline-offset: 3px;
 }
 
@@ -248,24 +248,24 @@
     gap: 5px;
     margin-top: 26px;
     padding: 16px;
-    border: 1px solid #dbe3ef;
+    border: 1px solid #d8e7e2;
     border-radius: 16px;
-    background: #f8fafc;
-    color: #4b5563;
+    background: #f8fcfb;
+    color: #56625e;
     font-size: 13px;
     line-height: 1.5;
     text-align: left;
 }
 
 .error-reference strong {
-    color: #0f4c81;
+    color: #176b5a;
 }
 
 .error-reference code {
     width: fit-content;
     max-width: 100%;
     overflow-wrap: anywhere;
-    color: #111827;
+    color: #18231f;
     font-weight: 800;
 }
 

@@ -1,17 +1,17 @@
 :root {
-    --shared-blue: #0f4c81;
-    --shared-blue-light: #1976d2;
-    --shared-ink: #172033;
-    --shared-muted: #667085;
-    --shared-border: #e4eaf2;
+    --shared-blue: #176b5a;
+    --shared-blue-light: #1b826b;
+    --shared-ink: #17342e;
+    --shared-muted: #667a75;
+    --shared-border: #e5f1ed;
     --shared-surface: #ffffff;
 }
 
 .shared-meeting-body {
     min-height: 100vh;
     background:
-        radial-gradient(circle at 10% 0%, rgba(25, 118, 210, 0.11), transparent 30%),
-        linear-gradient(180deg, #f4f8fc 0%, #ffffff 60%);
+        radial-gradient(circle at 10% 0%, rgba(27, 130, 107, 0.11), transparent 30%),
+        linear-gradient(180deg, #f4f8f6 0%, #ffffff 60%);
 }
 
 .shared-meeting-page {
@@ -25,7 +25,7 @@
 .shared-unlock-card {
     border: 1px solid var(--shared-border);
     background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 20px 55px rgba(15, 76, 129, 0.09);
+    box-shadow: 0 20px 55px rgba(23, 107, 90, 0.09);
 }
 
 .shared-meeting-header {
@@ -57,7 +57,7 @@
     height: 38px;
     flex: 0 0 38px;
     border-radius: 11px;
-    box-shadow: 0 8px 20px rgba(15, 76, 129, 0.18);
+    box-shadow: 0 8px 20px rgba(23, 107, 90, 0.18);
     object-fit: contain;
 }
 
@@ -132,7 +132,7 @@
 }
 
 .shared-secondary-button {
-    border: 1px solid #cdd8e6;
+    border: 1px solid #cee5de;
     color: var(--shared-blue);
     background: #ffffff;
 }
@@ -143,7 +143,7 @@
 }
 
 .shared-secondary-button:hover {
-    background: #eef6ff;
+    background: #edf8f4;
 }
 
 .shared-content-card {
@@ -187,10 +187,10 @@
 
 .shared-item-list li {
     padding: 13px 14px;
-    border: 1px solid #edf1f6;
+    border: 1px solid #edf6f3;
     border-radius: 13px;
     color: #344054;
-    background: #f8fafc;
+    background: #f8fcfb;
     line-height: 1.55;
 }
 
@@ -246,9 +246,9 @@
 
 .shared-score-grid > div {
     padding: 17px;
-    border: 1px solid #dce8f5;
+    border: 1px solid #dff2ec;
     border-radius: 15px;
-    background: #f4f9ff;
+    background: #f3faf7;
 }
 
 .shared-score-grid span,
@@ -272,7 +272,7 @@
     margin: 18px 0;
     padding: 18px;
     border-radius: 15px;
-    background: #f8fafc;
+    background: #f8fcfb;
 }
 
 .shared-assessment h3 {
@@ -295,14 +295,14 @@
 .shared-table-wrap th,
 .shared-table-wrap td {
     padding: 13px 12px;
-    border-bottom: 1px solid #e8edf4;
+    border-bottom: 1px solid #e9f3f0;
     text-align: left;
     vertical-align: top;
 }
 
 .shared-table-wrap th {
     color: var(--shared-muted);
-    background: #f8fafc;
+    background: #f8fcfb;
     font-size: 12px;
     text-transform: uppercase;
 }
@@ -339,8 +339,8 @@
     margin: 22px 0 0;
     padding: 20px;
     border-radius: 14px;
-    color: #27364a;
-    background: #f7f9fc;
+    color: #28493f;
+    background: #f8fbfa;
     font-family: inherit;
     line-height: 1.65;
     white-space: pre-wrap;
@@ -354,12 +354,12 @@
     gap: 30px;
     margin-top: 24px;
     padding: 27px 29px;
-    border: 1px solid #d9e8f7;
+    border: 1px solid #dcf4ec;
     border-radius: 20px;
     background:
-        radial-gradient(circle at 95% 0%, rgba(25, 118, 210, 0.13), transparent 42%),
-        linear-gradient(135deg, #f7fbff 0%, #ffffff 72%);
-    box-shadow: 0 16px 40px rgba(15, 76, 129, 0.07);
+        radial-gradient(circle at 95% 0%, rgba(27, 130, 107, 0.13), transparent 42%),
+        linear-gradient(135deg, #f8fefc 0%, #ffffff 72%);
+    box-shadow: 0 16px 40px rgba(23, 107, 90, 0.07);
 }
 
 .shared-product-cta-copy {
@@ -430,7 +430,7 @@
     height: 54px;
     margin: 0 auto 18px;
     border-radius: 16px;
-    box-shadow: 0 10px 24px rgba(15, 76, 129, 0.16);
+    box-shadow: 0 10px 24px rgba(23, 107, 90, 0.16);
     object-fit: contain;
 }
 
@@ -455,14 +455,14 @@
 .shared-unlock-card input {
     width: 100%;
     padding: 13px 14px;
-    border: 1px solid #cfd9e6;
+    border: 1px solid #d0e5df;
     border-radius: 12px;
     outline: none;
 }
 
 .shared-unlock-card input:focus {
     border-color: var(--shared-blue-light);
-    box-shadow: 0 0 0 4px rgba(25, 118, 210, 0.12);
+    box-shadow: 0 0 0 4px rgba(27, 130, 107, 0.12);
 }
 
 .shared-form-error {
@@ -544,9 +544,9 @@
 .shared-scorecard-evidence {
     margin: 0 0 18px;
     padding: 14px 16px;
-    color: #334155;
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
+    color: #40514c;
+    background: #f0f8f5;
+    border: 1px solid #c6e8de;
     border-radius: 14px;
     line-height: 1.6;
 }
@@ -559,14 +559,14 @@
 
 .shared-interview-criteria article {
     padding: 16px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: #f8fcfb;
+    border: 1px solid #e2f0eb;
     border-radius: 15px;
 }
 
 .shared-interview-criteria span {
     display: block;
-    color: #475569;
+    color: #586762;
     font-size: 12px;
     font-weight: 800;
     text-transform: uppercase;
@@ -576,13 +576,13 @@
 .shared-interview-criteria strong {
     display: block;
     margin-top: 8px;
-    color: #0f4c81;
+    color: #176b5a;
     font-size: 24px;
 }
 
 .shared-interview-criteria p {
     margin: 8px 0 0;
-    color: #64748b;
+    color: #697b77;
     font-size: 13px;
     line-height: 1.55;
 }
@@ -590,10 +590,10 @@
 .shared-safety-note {
     margin-top: 18px;
     padding: 15px 17px;
-    color: #334155;
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-left: 5px solid #0284c7;
+    color: #40514c;
+    background: #f2fdf9;
+    border: 1px solid #c3f4e3;
+    border-left: 5px solid #20a97b;
     border-radius: 15px;
     font-size: 13px;
     line-height: 1.65;
@@ -605,14 +605,14 @@
 
 .shared-answer-reviews > h3 {
     margin: 0 0 14px;
-    color: #0f172a;
+    color: #14211e;
 }
 
 .shared-answer-review {
     margin-top: 16px;
     padding: 18px;
     background: #fff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #e2f0eb;
     border-radius: 18px;
 }
 
@@ -624,7 +624,7 @@
 }
 
 .shared-answer-review-heading small {
-    color: #2563eb;
+    color: #1b826b;
     font-weight: 850;
     text-transform: uppercase;
     letter-spacing: .06em;
@@ -632,15 +632,15 @@
 
 .shared-answer-review-heading h4 {
     margin: 5px 0 0;
-    color: #0f172a;
+    color: #14211e;
     line-height: 1.45;
 }
 
 .shared-answer-review-heading > strong {
     flex: 0 0 auto;
     padding: 7px 10px;
-    color: #075985;
-    background: #e0f2fe;
+    color: #155f50;
+    background: #e6f5f1;
     border-radius: 999px;
     font-size: 13px;
 }
@@ -654,15 +654,15 @@
 }
 
 .shared-answer-transcript {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: #f8fcfb;
+    border: 1px solid #e2f0eb;
 }
 
 .shared-answer-transcript p,
 .shared-sample-answer p,
 .shared-practice-action p {
     margin: 7px 0 0;
-    color: #475569;
+    color: #586762;
     line-height: 1.65;
     white-space: pre-wrap;
 }
@@ -676,8 +676,8 @@
 
 .shared-answer-coaching-grid section {
     padding: 14px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: #f8fcfb;
+    border: 1px solid #e2f0eb;
     border-radius: 14px;
 }
 
@@ -685,14 +685,14 @@
 .shared-sample-answer h5,
 .shared-practice-action h5 {
     margin: 0;
-    color: #0f172a;
+    color: #14211e;
     font-size: 13px;
 }
 
 .shared-answer-coaching-grid ul {
     margin: 9px 0 0;
     padding-left: 19px;
-    color: #475569;
+    color: #586762;
 }
 
 .shared-answer-coaching-grid li {

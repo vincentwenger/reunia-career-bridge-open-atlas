@@ -68,10 +68,9 @@
                     Upload Files
                 </button>
                 {% elif preparation_view == 'materials' %}
-                <button class="btn knowledge-hero-button knowledge-hero-button-primary" type="button" data-open-upcoming-meeting-modal>
-                    <span aria-hidden="true">＋</span>
-                    Create Application Workspace
-                </button>
+                <a class="btn knowledge-hero-button knowledge-hero-button-primary" href="{{ request.script_root }}/applications/?tab=applications">
+                    Manage Job Applications
+                </a>
                 {% elif preparation_view == 'context' %}
                 <span class="context-button-status" id="contextStatusBadge">Optional</span>
                 <button class="btn knowledge-hero-button knowledge-hero-button-primary" type="submit" form="assistantContextForm">
@@ -208,7 +207,7 @@
                 <section class="files-panel" aria-labelledby="documentLibraryTitle">
                     <div class="files-panel-header">
                         <div>
-                            <p class="section-eyebrow">General drive</p>
+                            <p class="section-eyebrow">Career evidence</p>
                             <h2 id="documentLibraryTitle">My Documents</h2>
                             <p id="selectedCollectionDescription">All permanent files in your document library</p>
                         </div>
@@ -283,7 +282,7 @@
             <div>
                 <p class="section-eyebrow">Application workspace</p>
                 <h2 id="meetingMaterialsTitle">Prepare for an upcoming interview</h2>
-                <p>Create an application workspace or select one you already scheduled. Completed recordings stay in Interview Review and are not shown here.</p>
+                <p>Select an existing job application. Application workspaces are created and managed from Job Applications.</p>
             </div>
             <div class="meeting-package-controls">
                 <label class="form-field meeting-selector-field">
@@ -292,24 +291,7 @@
                         <option value="">Select an application workspace</option>
                     </select>
                 </label>
-                <button class="btn btn-secondary create-meeting-button" type="button" data-open-upcoming-meeting-modal>
-                    <span aria-hidden="true">＋</span>
-                    Create application workspace
-                </button>
-                <button
-                    class="delete-upcoming-meeting-button"
-                    type="button"
-                    id="deleteUpcomingMeeting"
-                    disabled
-                    aria-disabled="true"
-                    aria-label="Delete selected upcoming interview"
-                    title="Select an upcoming interview to delete"
-                >
-                    <svg class="delete-upcoming-meeting-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" />
-                    </svg>
-                    <span class="sr-only">Delete selected upcoming interview</span>
-                </button>
+                <a class="btn btn-secondary" href="{{ request.script_root }}/applications/?tab=applications">Manage applications</a>
             </div>
         </div>
 
@@ -359,7 +341,7 @@
                         >
                     </div>
                     <input type="hidden" id="meetingDetailsParticipants" disabled>
-                    <small class="participant-field-help">Press Enter or type a comma to add each participant. Names wrap automatically onto additional lines.</small>
+                    <small class="participant-field-help">Press Enter or type a comma to add each interviewer or recruiter contact.</small>
                 </div>
                 <label class="form-field meeting-details-wide">
                     <span>Interview objective or application notes <small>(optional)</small></span>
@@ -736,12 +718,12 @@
                         <label class="search-scope-option">
                             <input type="radio" name="search_scope" value="meetings">
                             <span class="scope-option-icon" aria-hidden="true">◴</span>
-                            <span><strong>Previous Mock Interviews</strong><small>Transcripts, summaries, decisions, and actions</small></span>
+                            <span><strong>Previous Mock Interviews</strong><small>Transcripts, scorecards, coaching, and practice actions</small></span>
                         </label>
                         <label class="search-scope-option">
                             <input type="radio" name="search_scope" value="all">
                             <span class="scope-option-icon" aria-hidden="true">✦</span>
-                            <span><strong>All Knowledge</strong><small>Search every available source</small></span>
+                            <span><strong>All Career Sources</strong><small>Search the selected application, verified evidence, and mock-interview history</small></span>
                         </label>
                     </fieldset>
 
@@ -787,9 +769,9 @@
                                 <select id="knowledgeSearchContentType">
                                     <option value="all">All interview content</option>
                                     <option value="transcript">Transcript</option>
-                                    <option value="summary">Summary</option>
-                                    <option value="decisions">Decisions</option>
-                                    <option value="actions">Action items</option>
+                                    <option value="summary">Review summary</option>
+                                    <option value="decisions">Answer feedback</option>
+                                    <option value="actions">Practice actions</option>
                                     <option value="questions">Questions</option>
                                 </select>
                             </label>
@@ -946,65 +928,6 @@
 </div>
 
 
-{% if preparation_view in ['materials', 'context'] %}
-<div class="modal-backdrop" id="upcomingMeetingModal" hidden>
-    <section class="modal-card modal-card-small" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="upcomingMeetingModalTitle">
-        <div class="modal-header">
-            <div>
-                <h2 id="upcomingMeetingModalTitle">Create an Application Workspace</h2>
-                <p>Add the target role now. Interview date, interviewers, and notes are optional.</p>
-            </div>
-            <button type="button" class="modal-close" data-close-modal aria-label="Close">×</button>
-        </div>
-        <form id="upcomingMeetingForm">
-            <label class="form-field">
-                <span>Target role or application name</span>
-                <input type="text" id="upcomingMeetingTitle" maxlength="120" placeholder="Example: Senior Software Engineer — Acme" required>
-            </label>
-            <label class="form-field">
-                <span>Date and time <small>(optional)</small></span>
-                <input type="datetime-local" id="upcomingMeetingDate">
-            </label>
-            <div class="form-field participant-field">
-                <div class="participant-field-heading">
-                    <label for="upcomingMeetingParticipantEntry">Interviewers or contacts <small>(optional)</small></label>
-                    <span class="participant-total" aria-label="Interviewer or contact count">
-                        <span aria-hidden="true">·</span>
-                        <strong id="upcomingMeetingParticipantCount">0</strong>
-                    </span>
-                </div>
-                <div
-                    class="participant-chip-editor"
-                    id="upcomingMeetingParticipantEditor"
-                    data-participant-editor
-                    data-value-input="upcomingMeetingParticipants"
-                    data-count-target="upcomingMeetingParticipantCount"
-                >
-                    <div class="participant-chip-list" data-participant-list aria-live="polite"></div>
-                    <input
-                        class="participant-chip-entry"
-                        type="text"
-                        id="upcomingMeetingParticipantEntry"
-                        maxlength="200"
-                        placeholder="Add an interviewer or recruiter"
-                        autocomplete="off"
-                    >
-                </div>
-                <input type="hidden" id="upcomingMeetingParticipants">
-                <small class="participant-field-help">Press Enter or type a comma to add each interviewer or contact. You can also paste a comma-separated list.</small>
-            </div>
-            <label class="form-field">
-                <span>Interview objective or application notes <small>(optional)</small></span>
-                <textarea id="upcomingMeetingPurpose" rows="4" maxlength="1200" placeholder="What should you demonstrate, clarify, or accomplish?"></textarea>
-            </label>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                <button type="submit" class="btn btn-primary">Create Application Workspace</button>
-            </div>
-        </form>
-    </section>
-</div>
-{% endif %}
 
 <div class="knowledge-toast" id="toast" role="status" aria-live="polite" hidden></div>
 {% endblock %}

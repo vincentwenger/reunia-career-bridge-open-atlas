@@ -1028,7 +1028,7 @@ let meetingsData = [];
         currentTranscript = '';
         updateActionCenterLink();
         document.getElementById('summary-content').textContent =
-            'Select a mock interview from the library to view its executive summary, key wins, improvement areas, action items, and open questions.';
+            'Select a mock interview from the library to view its interview summary, key wins, improvement areas, practice actions, and follow-up questions.';
 
         document.getElementById('final-weighted-grade').textContent = '-';
         document.getElementById('overall-score-title').textContent = 'Overall Interview Score';
@@ -1133,7 +1133,7 @@ let meetingsData = [];
             : normalizeDynamoDBList(meeting.action_items);
 
         if (actions.length === 0) {
-            actionsEl.innerHTML = `<li class="empty-message">No explicit action items assigned.</li>`;
+            actionsEl.innerHTML = `<li class="empty-message">No practice actions were generated.</li>`;
             return;
         }
 
@@ -1145,9 +1145,6 @@ let meetingsData = [];
             const task = objectValue
                 ? (getValue(objectValue.description, '') || getValue(objectValue.task, '') || getValue(objectValue.text, '') || getValue(objectValue.action, '') || JSON.stringify(objectValue))
                 : String(itemData);
-            const owner = objectValue
-                ? (getValue(objectValue.owner, '') || getValue(objectValue.assignee, '') || 'Unassigned')
-                : 'Unassigned';
             const dueDate = objectValue
                 ? (getValue(objectValue.due_date, '') || getValue(objectValue.deadline, '') || getValue(objectValue.due, ''))
                 : '';
@@ -1181,10 +1178,6 @@ let meetingsData = [];
             const metadata = document.createElement('span');
             metadata.className = 'meeting-action-meta';
 
-            const ownerBadge = document.createElement('span');
-            ownerBadge.className = 'badge badge-owner';
-            ownerBadge.textContent = owner;
-            metadata.appendChild(ownerBadge);
 
             if (dueDate) {
                 const dueBadge = document.createElement('span');

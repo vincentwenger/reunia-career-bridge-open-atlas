@@ -273,7 +273,7 @@
         renderComparison('admin-active-time-trend', data.comparisons?.registered_active_seconds);
 
         const sourceLabels = {
-            documents: 'Document Library',
+            documents: 'Career Evidence Library',
             meetings: 'saved meetings',
             live_qa_answers: 'Live Q&A answers',
             desktop_downloads: 'desktop downloads',
@@ -404,14 +404,14 @@
 
     const featureDescriptions = {
         'Meeting Preparation': 'Accounts that opened or used the meeting-preparation area.',
-        'Document Library': 'Accounts that used their reusable document library.',
-        'Meeting Materials': 'Accounts that selected or uploaded materials for a meeting.',
+        'Career Evidence Library': 'Accounts that used reusable verified career evidence.',
+        'Application Materials': 'Accounts that selected or uploaded materials for a job application.',
         'AI Context': 'Accounts that configured context or response preferences for the AI.',
         'Knowledge Search': 'Accounts that searched or asked questions across their knowledge sources.',
         'Browser Recorder': 'Accounts that used the recorder built into the web application.',
         'Desktop Client': 'Accounts that successfully signed in through the desktop application.',
         'Live Q&A': 'Accounts that started a Live Q&A session or requested an AI answer.',
-        'Meeting Review': 'Accounts that opened a saved meeting for review and follow-up.',
+        'Interview Review': 'Accounts that opened a saved mock interview for review and follow-up.',
         'Career Action Plan': 'Accounts that opened or used the application-linked career planning area.',
         'Analytics': 'Accounts that opened the user-facing Analytics area.',
     };
