@@ -30,7 +30,7 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
         "Meeting Materials",
         "Application Materials",
         "Store the resume, job posting, company notes, and recruiter messages.",
-        "/application-builder",
+        "/applications",
     ),
     RepurposedFeature(
         "AI Context",
@@ -48,7 +48,7 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
         "Meeting Package",
         "Application Workspace",
         "Use one workspace for each target position.",
-        "/application-builder",
+        "/applications",
     ),
     RepurposedFeature(
         "Browser Meeting Recorder",
@@ -96,7 +96,7 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
         "Upcoming Meetings",
         "Upcoming Interviews",
         "Optional calendar integration for interview dates.",
-        "/application-builder",
+        "/applications",
     ),
     RepurposedFeature(
         "Admin Analytics",

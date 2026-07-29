@@ -1,8 +1,9 @@
 {% set home_url = url_for('main.view_index') %}
 {% set career_profile_url = request.script_root ~ '/career-profile' %}
-{% set application_builder_url = request.script_root ~ '/application-builder/' %}
+{% set application_builder_url = request.script_root ~ '/applications/' %}
 {% set interview_preparation_url = request.script_root ~ '/interview-preparation' %}
 {% set mock_interview_url = request.script_root ~ '/mock-interview' %}
+{% set live_interview_assistance_url = request.script_root ~ '/live-qa.html' %}
 {% set interview_review_url = request.script_root ~ '/interview-review' %}
 {% set career_action_plan_url = request.script_root ~ '/career-action-plan' %}
 {% set progress_url = request.script_root ~ '/progress' %}
@@ -15,9 +16,10 @@
 {% set current_path = request.path.rstrip('/') %}
 
 {% set career_profile_active = current_path.endswith('/career-profile') or (current_path.endswith('/knowledge.html') and request.args.get('view') == 'context') %}
-{% set application_builder_active = current_path.endswith('/application-builder') or current_path.endswith('/application-workspace') or (current_path.endswith('/knowledge.html') and request.args.get('view') == 'materials') %}
+{% set application_builder_active = current_path.endswith('/applications') or current_path.endswith('/application-workspace') or (current_path.endswith('/knowledge.html') and request.args.get('view') == 'materials') %}
 {% set interview_preparation_active = current_path.endswith('/interview-preparation') or current_path.endswith('/career-evidence-library') or (current_path.endswith('/knowledge.html') and request.args.get('view') in ['library', 'search']) %}
 {% set mock_interview_active = current_path.endswith('/mock-interview') or current_path.endswith('/meeting-recorder') or current_path.endswith('/meeting-recorder.html') %}
+{% set live_interview_assistance_active = current_path.endswith('/live-qa.html') %}
 {% set interview_review_active = current_path.endswith('/interview-review') or current_path.endswith('/meeting-review.html') %}
 {% set career_action_plan_active = current_path.endswith('/career-action-plan') or current_path.endswith('/action-center.html') %}
 {% set progress_active = (current_path.endswith('/progress') or current_path.endswith('/analytics.html')) and not current_path.startswith('/admin') %}
@@ -109,6 +111,14 @@
                             <span>Mock Interview</span>
                         </a>
                     </li>
+                    {% if live_interview_assistance_enabled %}
+                    <li class="nav-item">
+                        <a href="{{ live_interview_assistance_url }}" class="nav-link {% if live_interview_assistance_active %}active{% endif %}" {% if live_interview_assistance_active %}aria-current="page"{% endif %}>
+                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4V5Z"></path><path d="M8 9h8M8 12h5"></path></svg>
+                            <span>Live Assistance</span>
+                        </a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a
                             href="{{ interview_review_url }}"

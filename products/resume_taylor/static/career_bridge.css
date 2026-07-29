@@ -1,0 +1,307 @@
+/* Application Builder integration with the shared Réunia Career Bridge shell. */
+:root {
+  --bg: #f4f8fc;
+  --surface: #ffffff;
+  --surface-alt: #f7faff;
+  --text: #172033;
+  --muted: #667085;
+  --border: #e1e8f0;
+  --primary: #0f4c81;
+  --primary-dark: #092f53;
+  --success: #138a61;
+  --success-bg: #e8f7f1;
+  --warning: #a95f00;
+  --warning-bg: #fff4e4;
+  --danger: #b42318;
+  --danger-bg: #fff0ef;
+  --info: #185a96;
+  --info-bg: #eef7ff;
+  --shadow: 0 16px 40px rgba(28, 54, 85, 0.08);
+  --radius: 16px;
+}
+
+body.application-builder-body {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f4f8fc 0%, #ffffff 100%);
+  color: var(--text);
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.application-builder-page {
+  min-height: calc(100vh - 96px);
+}
+
+.application-builder-hero {
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.application-builder-hero-eyebrow {
+  margin: 0 0 7px !important;
+  color: #dbeafe !important;
+  font-size: 0.73rem !important;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 1 !important;
+}
+
+.application-builder-hero-actions {
+  min-width: max-content;
+}
+
+.application-builder-hero-button {
+  min-height: 43px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 17px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.application-builder-hero-button:hover {
+  transform: translateY(-1px);
+}
+
+.application-builder-hero-button-primary {
+  color: #0f4c81;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(7, 17, 31, 0.16);
+}
+
+.application-builder-hero-button-primary:hover {
+  color: #0b3b65;
+  background: #f8fbff;
+}
+
+.application-builder-hero-button-secondary {
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.application-builder-hero-button-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.20);
+}
+
+.application-builder-subnav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 22px;
+  padding: 8px;
+  border: 1px solid #dfe8f2;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 32px rgba(28, 54, 85, 0.07);
+}
+
+.application-builder-subnav-link {
+  min-width: 0;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  color: #536176;
+  text-decoration: none;
+  transition: transform 0.17s ease, border-color 0.17s ease, background 0.17s ease, color 0.17s ease;
+}
+
+.application-builder-subnav-link:hover {
+  border-color: #d8e7f5;
+  color: #0f4c81;
+  background: #f4f9ff;
+  transform: translateY(-1px);
+}
+
+.application-builder-subnav-link.active {
+  border-color: #bed7ed;
+  color: #0f4c81;
+  background: linear-gradient(135deg, #e8f4ff, #f1f8ff);
+  box-shadow: inset 0 0 0 1px rgba(25, 118, 210, 0.04);
+}
+
+.application-builder-subnav-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #0f4c81;
+  background: #edf6ff;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.application-builder-subnav-link.active .application-builder-subnav-icon {
+  color: #ffffff;
+  background: linear-gradient(135deg, #0f4c81, #1976d2);
+  box-shadow: 0 7px 18px rgba(15, 76, 129, 0.2);
+}
+
+.application-builder-subnav-link > span:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.application-builder-subnav-link strong {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.88rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.application-builder-subnav-link small {
+  overflow: hidden;
+  color: #7b8798;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.application-builder-content {
+  min-width: 0;
+}
+
+.application-builder-content > :first-child {
+  margin-top: 0;
+}
+
+.application-builder-content .card,
+.application-builder-content .applications-summary,
+.application-builder-content .page-intro,
+.application-builder-content .report-version-map-card,
+.application-builder-content .workflow-navigation,
+.application-builder-content .workflow-stage-intro {
+  border-color: #e1e8f0;
+  box-shadow: 0 16px 40px rgba(28, 54, 85, 0.075);
+}
+
+.application-builder-content .card,
+.application-builder-content .applications-summary,
+.application-builder-content .page-intro {
+  border-radius: 16px;
+}
+
+.application-builder-content .button.primary {
+  background: linear-gradient(135deg, #0f4c81, #1976d2);
+  box-shadow: 0 9px 22px rgba(15, 76, 129, 0.16);
+}
+
+.application-builder-content .button.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1976d2, #092f53);
+  box-shadow: 0 12px 27px rgba(15, 76, 129, 0.23);
+}
+
+.application-builder-content .button.secondary {
+  border-color: #d7e2ed;
+  background: #f8fbfe;
+}
+
+.application-builder-content .button.secondary:hover:not(:disabled) {
+  border-color: #bdd7ee;
+  color: #0f4c81;
+  background: #eef7ff;
+}
+
+.application-builder-content input[type="text"],
+.application-builder-content input[type="file"],
+.application-builder-content input[type="url"],
+.application-builder-content input[type="date"],
+.application-builder-content input[type="number"],
+.application-builder-content input:not([type]),
+.application-builder-content textarea,
+.application-builder-content select {
+  border-color: #dbe5ef;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.application-builder-content input:focus,
+.application-builder-content textarea:focus,
+.application-builder-content select:focus {
+  outline: 3px solid rgba(25, 118, 210, 0.14);
+  border-color: #1976d2;
+}
+
+.application-builder-content .eyebrow {
+  color: #386b98;
+}
+
+.application-builder-content .metric-card {
+  border-color: #e0e8f1;
+  background: linear-gradient(145deg, #ffffff, #f8fbff);
+}
+
+.application-builder-content .application-status,
+.application-builder-content .workflow-range-badge,
+.application-builder-content .step-number {
+  border-color: rgba(15, 76, 129, 0.12);
+}
+
+.active-application-banner {
+  margin: 0 0 20px;
+  border-color: #bed7ed;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #edf7ff, #fbfdff);
+  box-shadow: 0 12px 30px rgba(28, 54, 85, 0.07);
+}
+
+.active-application-banner span {
+  color: #60758a;
+}
+
+.flash-stack {
+  margin: 0 0 18px;
+}
+
+.flash-stack .alert {
+  border-radius: 12px;
+  box-shadow: 0 9px 24px rgba(28, 54, 85, 0.05);
+}
+
+/* The old standalone topbar is intentionally no longer rendered. */
+.career-builder-topbar,
+.topbar.career-builder-topbar {
+  display: none !important;
+}
+
+@media (max-width: 1080px) {
+  .application-builder-subnav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .application-builder-hero-actions {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .application-builder-hero-button {
+    width: 100%;
+  }
+
+  .application-builder-subnav {
+    grid-template-columns: 1fr;
+  }
+
+  .application-builder-subnav-link {
+    min-height: 60px;
+  }
+}

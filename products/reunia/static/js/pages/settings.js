@@ -19,6 +19,10 @@ document.addEventListener('DOMContentLoaded', function () {
             title: 'General & AI',
             description: 'Set your application language and the default AI performance level used across Réunia.'
         },
+        'live-qa-settings': {
+            title: 'Live interview assistance',
+            description: 'Choose approved input sources, feed update frequency, and temporary history retention.'
+        },
         'meeting-review-settings': {
             title: 'Review & follow-up',
             description: 'Choose how mock interviews generate coaching, action items, and interview scorecards.'
@@ -28,6 +32,9 @@ document.addEventListener('DOMContentLoaded', function () {
             description: 'Set retention periods for new content and secure defaults for newly created public links.'
         }
     };
+    if (!document.getElementById('live-qa-settings')) {
+        delete categoryContent['live-qa-settings'];
+    }
 
     let baseline = new Map();
     let dirtyCategories = new Set();
@@ -248,6 +255,10 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        const retentionHoursInput = document.getElementById('retentionHours');
+        const updateFrequencyInput = document.getElementById('liveQaAnswerUpdateFrequency');
+        const retentionHoursValue = retentionHoursInput ? parseInt(retentionHoursInput.value, 10) : null;
+        const answerUpdateFrequency = updateFrequencyInput?.value || null;
         const selectedScorecardSource = document.querySelector('input[name="scorecard_source"]:checked');
         const scorecardSourceValue = selectedScorecardSource ? selectedScorecardSource.value : '';
         const languageValue = document.getElementById('language')?.value || 'en';
@@ -255,6 +266,20 @@ document.addEventListener('DOMContentLoaded', function () {
         const documentRetentionDays = parseInt(document.getElementById('documentRetentionDays').value, 10);
         const shareDefaultExpirationDays = parseInt(document.getElementById('shareDefaultExpirationDays').value, 10);
         const meetingSummaryDetail = document.getElementById('meetingSummaryDetail').value;
+
+        if (retentionHoursInput && (isNaN(retentionHoursValue) || retentionHoursValue < 1 || retentionHoursValue > 24)) {
+            showToast('error', 'Message expiration must be between 1 and 24 hours.');
+            showSettingsScope('live-qa-settings');
+            retentionHoursInput.focus();
+            return;
+        }
+
+        if (updateFrequencyInput && !['fast', 'balanced', 'efficient'].includes(answerUpdateFrequency)) {
+            showToast('error', 'Please select a valid answer update frequency.');
+            showSettingsScope('live-qa-settings');
+            updateFrequencyInput.focus();
+            return;
+        }
 
         if (!['en', 'fr'].includes(languageValue)) {
             showToast('error', window.AppI18n?.t('Please select a valid application language.') || 'Please select a valid application language.');
@@ -306,6 +331,13 @@ document.addEventListener('DOMContentLoaded', function () {
             meetingExtractActionItems: document.getElementById('meetingExtractActionItems').checked,
             meetingGenerateScorecard: document.getElementById('meetingGenerateScorecard').checked
         };
+        if (retentionHoursInput) {
+            settingsData.retentionHours = retentionHoursValue;
+            settingsData.liveQaAnswerUpdateFrequency = answerUpdateFrequency;
+            settingsData.aiClipboard = Boolean(document.getElementById('aiClipboard')?.checked);
+            settingsData.aiSpeaker = Boolean(document.getElementById('aiSpeaker')?.checked);
+            settingsData.aiMicrophone = Boolean(document.getElementById('aiMicrophone')?.checked);
+        }
 
         isSaving = true;
         saveSettingsBtn.textContent = translate('Saving...');

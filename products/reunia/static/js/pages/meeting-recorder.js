@@ -3,10 +3,6 @@
 
     const recorderPage = document.getElementById('browserRecorderPage');
     const captureMeetingAudioInput = document.getElementById('captureMeetingAudio');
-    const enableLiveQAInput = document.getElementById('enableLiveQA');
-    const liveQASourceOptions = document.getElementById('liveQASourceOptions');
-    const liveQASpeakerInput = document.getElementById('liveQASpeaker');
-    const liveQAMicrophoneInput = document.getElementById('liveQAMicrophone');
     const preparedMeetingSelect = document.getElementById('preparedMeetingSelect');
     const preparedMeetingHelp = document.getElementById('preparedMeetingHelp');
     const startButton = document.getElementById('startRecordingButton');
@@ -100,6 +96,7 @@
     const liveRetryCount = Math.max(0, Number(recorderPage?.dataset.liveRetryCount) || 2);
     const liveRetryBaseMs = Math.max(100, Number(recorderPage?.dataset.liveRetryBaseMs) || 600);
     const liveMinChunkBytes = Math.max(1, Number(recorderPage?.dataset.liveMinChunkBytes) || 800);
+    const liveInterviewAssistanceEnabled = recorderPage?.dataset.liveInterviewAssistance === 'true';
     const liveMaxMinutes = Math.max(0, Number(recorderPage?.dataset.liveMaxMinutes) || 60);
     const liveSpeechLevelThreshold = Math.max(0, Number(recorderPage?.dataset.liveSpeechLevelThreshold) || 8);
     const liveMinSpeechRatio = Math.min(1, Math.max(0, Number(recorderPage?.dataset.liveMinSpeechRatio) || 0.08));
@@ -117,9 +114,7 @@
 
     captureMeetingAudioInput.addEventListener('change', function () {
         updateSharedAudioPresentation();
-        updateLiveQASourceOptions();
     });
-    enableLiveQAInput?.addEventListener('change', updateLiveQASourceOptions);
     startButton.addEventListener('click', startRecording);
     stopButton.addEventListener('click', stopRecording);
     discardButton.addEventListener('click', requestDiscardRecording);
@@ -160,9 +155,6 @@
         setPhase('connecting');
         startButton.disabled = true;
         captureMeetingAudioInput.disabled = true;
-        if (enableLiveQAInput) enableLiveQAInput.disabled = true;
-        if (liveQASpeakerInput) liveQASpeakerInput.disabled = true;
-        if (liveQAMicrophoneInput) liveQAMicrophoneInput.disabled = true;
         if (preparedMeetingSelect) preparedMeetingSelect.disabled = true;
         hideOutcomePanels();
         microphoneChunks = [];
@@ -269,8 +261,6 @@
             cleanupStreams();
             microphoneState.textContent = 'Not connected';
             captureMeetingAudioInput.disabled = !sharedAudioSupported;
-            if (enableLiveQAInput) enableLiveQAInput.disabled = false;
-            updateLiveQASourceOptions();
             if (preparedMeetingSelect) preparedMeetingSelect.disabled = false;
             updateSharedAudioPresentation();
             startButton.hidden = false;
@@ -1271,17 +1261,333 @@
         }) || null;
     }
 
-    // Real-time interview assistance is intentionally retired. These no-op
-    // compatibility hooks keep the imported recorder lifecycle stable while
-    // the candidate-facing product supports practice recording only.
-    function startLiveQAStreaming() {}
+    function startLiveQAStreaming() {
+        if (!liveInterviewAssistanceEnabled) return;
+        const preparedMeeting = getSelectedPreparedMeeting();
+        const session = {
+            id: `browser-live-${createReferenceId()}`,
+            preparedMeetingId: String(preparedMeeting?.id || ''),
+            cancelled: false,
+            captureStopped: false,
+            controllers: new Set(),
+            sources: [],
+            failureLogged: false
+        };
+        liveQASession = session;
 
-    async function stopLiveQAStreaming() {
-        liveQASession = null;
+        registerLiveQASource(session, 'microphone', microphoneStream);
+        if (speakerAudioStream) {
+            registerLiveQASource(session, 'speaker', speakerAudioStream);
+        }
     }
 
-    async function cancelLiveQASession() {
-        liveQASession = null;
+    function registerLiveQASource(session, source, stream) {
+        if (!stream?.getAudioTracks?.().some(function (track) {
+            return track.readyState === 'live';
+        })) return;
+
+        const state = {
+            source: source,
+            stream: stream,
+            sequence: 0,
+            queue: [],
+            processing: false,
+            lastTranscript: '',
+            questionContext: '',
+            activeWindows: new Set(),
+            intervalId: null
+        };
+        session.sources.push(state);
+        beginLiveCaptureWindow(session, state);
+        state.intervalId = window.setInterval(function () {
+            beginLiveCaptureWindow(session, state);
+        }, liveChunkIntervalMs);
+    }
+
+    function beginLiveCaptureWindow(session, state) {
+        if (session.cancelled || session.captureStopped || phase !== 'recording') return;
+        if (!state.stream?.getAudioTracks?.().some(function (track) {
+            return track.readyState === 'live';
+        })) return;
+
+        const chunks = [];
+        let recorder;
+        try {
+            recorder = buildRecorder(state.stream, chunks);
+        } catch (error) {
+            logLiveQAFailure(session, error);
+            return;
+        }
+
+        const sequence = state.sequence++;
+        const chunkId = `${session.id}-${state.source}-${sequence}`;
+        let resolveStopped;
+        const stopped = new Promise(function (resolve) {
+            resolveStopped = resolve;
+        });
+        const captureWindow = {
+            recorder: recorder,
+            chunks: chunks,
+            sequence: sequence,
+            chunkId: chunkId,
+            startedAt: new Date(),
+            timerId: null,
+            suppressUpload: false,
+            finished: false,
+            stopped: stopped,
+            resolveStopped: resolveStopped
+        };
+        state.activeWindows.add(captureWindow);
+
+        recorder.addEventListener('stop', function () {
+            finalizeLiveCaptureWindow(session, state, captureWindow);
+        }, {once: true});
+        recorder.addEventListener('error', function (event) {
+            captureWindow.suppressUpload = true;
+            logLiveQAFailure(session, event.error || new Error('A live audio window could not be recorded.'));
+        }, {once: true});
+
+        try {
+            recorder.start();
+            captureWindow.timerId = window.setTimeout(function () {
+                stopLiveCaptureWindow(captureWindow, false);
+            }, liveChunkWindowMs);
+        } catch (error) {
+            captureWindow.suppressUpload = true;
+            finalizeLiveCaptureWindow(session, state, captureWindow);
+            logLiveQAFailure(session, error);
+        }
+    }
+
+    function stopLiveCaptureWindow(captureWindow, suppressUpload) {
+        if (!captureWindow || captureWindow.finished) return captureWindow?.stopped || Promise.resolve();
+        captureWindow.suppressUpload = captureWindow.suppressUpload || Boolean(suppressUpload);
+        if (captureWindow.timerId !== null) {
+            window.clearTimeout(captureWindow.timerId);
+            captureWindow.timerId = null;
+        }
+        if (captureWindow.recorder?.state && captureWindow.recorder.state !== 'inactive') {
+            try {
+                captureWindow.recorder.stop();
+            } catch (error) {
+                captureWindow.suppressUpload = true;
+                captureWindow.finished = true;
+                captureWindow.resolveStopped();
+            }
+        } else {
+            captureWindow.finished = true;
+            captureWindow.resolveStopped();
+        }
+        return captureWindow.stopped;
+    }
+
+    function finalizeLiveCaptureWindow(session, state, captureWindow) {
+        if (captureWindow.finished) return;
+        captureWindow.finished = true;
+        if (captureWindow.timerId !== null) {
+            window.clearTimeout(captureWindow.timerId);
+            captureWindow.timerId = null;
+        }
+        state.activeWindows.delete(captureWindow);
+
+        const durationMs = Date.now() - captureWindow.startedAt.getTime();
+        const blob = new Blob(captureWindow.chunks, {
+            type: captureWindow.recorder?.mimeType || supportedMimeType || 'audio/webm'
+        });
+        if (
+            !session.cancelled
+            && !captureWindow.suppressUpload
+            && durationMs >= 1000
+            && blob.size >= liveMinChunkBytes
+        ) {
+            enqueueLiveChunk(session, state, {
+                blob: blob,
+                chunkId: captureWindow.chunkId,
+                sequence: captureWindow.sequence,
+                startedAt: captureWindow.startedAt
+            });
+        }
+        captureWindow.resolveStopped();
+        maybeReleaseLiveQASession(session);
+    }
+
+    function enqueueLiveChunk(session, state, item) {
+        if (session.cancelled) return;
+        while (state.queue.length >= liveQueueLimit) {
+            state.queue.shift();
+        }
+        state.queue.push(item);
+        void processLiveQueue(session, state);
+    }
+
+    async function processLiveQueue(session, state) {
+        if (state.processing || session.cancelled) return;
+        state.processing = true;
+        try {
+            while (state.queue.length && !session.cancelled) {
+                const item = state.queue.shift();
+                try {
+                    const payload = await uploadLiveChunk(session, state, item);
+                    if (payload?.status === 'cancelled') {
+                        session.cancelled = true;
+                        break;
+                    }
+                    if (payload?.transcript) {
+                        state.lastTranscript = String(payload.transcript).slice(-4000);
+                    }
+                    if (payload && Object.prototype.hasOwnProperty.call(payload, 'question_context')) {
+                        state.questionContext = String(payload.question_context || '').slice(-1600);
+                    }
+                } catch (error) {
+                    if (!session.cancelled && error?.name !== 'AbortError') {
+                        logLiveQAFailure(session, error);
+                    }
+                }
+            }
+        } finally {
+            state.processing = false;
+            maybeReleaseLiveQASession(session);
+        }
+    }
+
+    async function uploadLiveChunk(session, state, item) {
+        let lastError = null;
+        for (let attempt = 0; attempt <= liveRetryCount; attempt += 1) {
+            if (session.cancelled) return {status: 'cancelled'};
+
+            const formData = new FormData();
+            formData.append('recording_id', session.id);
+            formData.append('chunk_id', item.chunkId);
+            formData.append('source', state.source);
+            formData.append('sequence', String(item.sequence));
+            formData.append('started_at', item.startedAt.toISOString());
+            formData.append('prepared_meeting_id', session.preparedMeetingId);
+            formData.append('previous_transcript', state.lastTranscript);
+            formData.append('question_context', state.questionContext);
+            formData.append('language', window.AppI18n?.language || document.documentElement.lang || 'en');
+            formData.append('elapsed_seconds', String(Math.max(0, (Date.now() - (startedAt?.getTime() || Date.now())) / 1000)));
+            formData.append(
+                'audio_chunk',
+                item.blob,
+                `${state.source}-${item.sequence}${mimeExtension(item.blob.type)}`
+            );
+
+            const controller = new AbortController();
+            session.controllers.add(controller);
+            try {
+                const response = await fetch(AppUI.appUrl('/api/meeting-recorder/live-chunk'), {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                    signal: controller.signal,
+                    headers: {
+                        'X-Recorder-Reference': item.chunkId,
+                        'Accept': 'application/json'
+                    }
+                });
+                const parsed = await readResponse(response);
+                if (!response.ok) {
+                    const error = new Error(
+                        parsed.payload?.error
+                        || `Live Interview Assistance returned HTTP ${response.status}.`
+                    );
+                    error.httpStatus = response.status;
+                    throw error;
+                }
+                return parsed.payload || {};
+            } catch (error) {
+                lastError = error;
+                if (controller.signal.aborted || session.cancelled) throw error;
+                const status = Number(error?.httpStatus) || 0;
+                const retryable = !status || status === 429 || status >= 500;
+                if (!retryable || attempt >= liveRetryCount) throw error;
+                await delay(liveRetryBaseMs * Math.pow(2, attempt));
+            } finally {
+                session.controllers.delete(controller);
+            }
+        }
+        throw lastError || new Error('The live audio segment could not be sent.');
+    }
+
+    async function stopLiveQAStreaming(options) {
+        const session = liveQASession;
+        if (!session) return;
+        const discard = Boolean(options?.discard);
+        const flushPartial = Boolean(options?.flushPartial);
+        if (discard) {
+            await cancelLiveQASession(session, {notifyServer: true, keepalive: false});
+            return;
+        }
+
+        session.captureStopped = true;
+        const stopPromises = [];
+        session.sources.forEach(function (state) {
+            if (state.intervalId !== null) {
+                window.clearInterval(state.intervalId);
+                state.intervalId = null;
+            }
+            Array.from(state.activeWindows).forEach(function (captureWindow) {
+                stopPromises.push(stopLiveCaptureWindow(captureWindow, !flushPartial));
+            });
+        });
+        await Promise.allSettled(stopPromises);
+        maybeReleaseLiveQASession(session);
+    }
+
+    async function cancelLiveQASession(session, options) {
+        if (!session) return;
+        session.cancelled = true;
+        session.captureStopped = true;
+
+        // Notify the server first so an in-flight transcription can observe the
+        // cancellation before it creates a Live Q&A entry.
+        let cancellationRequest = null;
+        if (options?.notifyServer) {
+            cancellationRequest = fetch(
+                AppUI.appUrl(`/api/meeting-recorder/live-session/${encodeURIComponent(session.id)}`),
+                {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    keepalive: Boolean(options.keepalive),
+                    headers: {'Accept': 'application/json'}
+                }
+            ).catch(function () {
+                // Client-side aborting still prevents queued chunks from being sent.
+            });
+        }
+
+        const stopPromises = [];
+        session.sources.forEach(function (state) {
+            if (state.intervalId !== null) {
+                window.clearInterval(state.intervalId);
+                state.intervalId = null;
+            }
+            state.queue = [];
+            Array.from(state.activeWindows).forEach(function (captureWindow) {
+                stopPromises.push(stopLiveCaptureWindow(captureWindow, true));
+            });
+        });
+        session.controllers.forEach(function (controller) {
+            controller.abort();
+        });
+        session.controllers.clear();
+        await Promise.allSettled(stopPromises);
+        if (cancellationRequest && !options?.keepalive) await cancellationRequest;
+        if (liveQASession === session) liveQASession = null;
+    }
+
+    function maybeReleaseLiveQASession(session) {
+        if (!session.captureStopped || session.cancelled) return;
+        const busy = session.sources.some(function (state) {
+            return state.processing || state.queue.length || state.activeWindows.size;
+        });
+        if (!busy && liveQASession === session) liveQASession = null;
+    }
+
+    function logLiveQAFailure(session, error) {
+        if (session.failureLogged) return;
+        session.failureLogged = true;
+        console.warn('Browser Recorder Live Interview Assistance update failed. The recording continues.', error);
     }
 
     function finalizePreparedMeeting(preparedMeeting, payload) {
@@ -1437,22 +1743,6 @@
         updateMuteControls();
     }
 
-    function updateLiveQASourceOptions() {
-        if (!enableLiveQAInput || !liveQASourceOptions) return;
-        const enabled = enableLiveQAInput.checked;
-        liveQASourceOptions.hidden = !enabled;
-        if (liveQASpeakerInput) {
-            liveQASpeakerInput.disabled = enableLiveQAInput.disabled || !captureMeetingAudioInput.checked;
-            if (!captureMeetingAudioInput.checked) liveQASpeakerInput.checked = false;
-        }
-        if (liveQAMicrophoneInput) {
-            liveQAMicrophoneInput.disabled = enableLiveQAInput.disabled;
-            if (enabled && !captureMeetingAudioInput.checked && !liveQAMicrophoneInput.checked) {
-                liveQAMicrophoneInput.checked = true;
-            }
-        }
-    }
-
     function resetRecorder() {
         pollGeneration += 1;
         cleanupStreams();
@@ -1466,9 +1756,7 @@
         lastErrorDiagnostics = '';
         startedAt = null;
         captureMeetingAudioInput.disabled = !sharedAudioSupported;
-        if (enableLiveQAInput) enableLiveQAInput.disabled = false;
         updateSharedAudioPresentation();
-        updateLiveQASourceOptions();
         startButton.hidden = false;
         startButton.disabled = false;
         stopButton.hidden = true;
@@ -1553,7 +1841,6 @@
         }
 
         updateSharedAudioPresentation();
-        updateLiveQASourceOptions();
     }
 
     function getRecorderSupportProblem() {

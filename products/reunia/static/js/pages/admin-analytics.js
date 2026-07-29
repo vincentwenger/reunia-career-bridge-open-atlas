@@ -614,6 +614,14 @@
                     <td>${formatNumber.format(user.saved_meeting_count || 0)}</td>
                     <td>${formatNumber.format(user.document_count || 0)}</td>
                     <td>${formatNumber.format(user.action_count || 0)}</td>
+                    <td>
+                        <select class="admin-feature-access-select" data-live-assistance-user="${escapeHtml(user.user_id || email)}" data-previous-value="${user.live_interview_assistance_override == null ? 'inherit' : (user.live_interview_assistance_override ? 'enabled' : 'disabled')}" aria-label="Live assistance access for ${escapeHtml(displayName)}">
+                            <option value="inherit" ${user.live_interview_assistance_override == null ? 'selected' : ''}>Inherit (${user.live_interview_assistance_enabled ? 'enabled' : 'disabled'})</option>
+                            <option value="enabled" ${user.live_interview_assistance_override === true ? 'selected' : ''}>Enabled</option>
+                            <option value="disabled" ${user.live_interview_assistance_override === false ? 'selected' : ''}>Disabled</option>
+                        </select>
+                        <small class="admin-feature-access-reason">${escapeHtml(String(user.live_interview_assistance_reason || '').replaceAll('_', ' '))}</small>
+                    </td>
                     <td><button class="admin-user-details-button" type="button" data-user-usage-id="${escapeHtml(user.user_id || email)}">View details</button></td>
                 </tr>`;
         }).join('');
@@ -1252,6 +1260,35 @@
         const button = event.target.closest('[data-user-usage-id]');
         if (!button) return;
         openUserUsage(button.dataset.userUsageId, button);
+    });
+    tableBody.addEventListener('change', async (event) => {
+        const select = event.target.closest('[data-live-assistance-user]');
+        if (!select) return;
+        const userId = select.dataset.liveAssistanceUser;
+        const previous = select.dataset.previousValue || 'inherit';
+        select.disabled = true;
+        try {
+            const response = await fetch(`${root}/api/admin/features/live-interview-assistance/users/${encodeURIComponent(userId)}`, {
+                method: 'PATCH',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mode: select.value})
+            });
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+            const user = users.find((item) => String(item.user_id || item.email || '') === String(userId));
+            if (user) {
+                user.live_interview_assistance_enabled = Boolean(result.access?.enabled);
+                user.live_interview_assistance_reason = result.access?.reason || '';
+                user.live_interview_assistance_override = result.access?.override;
+            }
+            renderUsers();
+        } catch (error) {
+            select.value = previous;
+            window.AppUI?.showToast?.(`Could not update Live Assistance access: ${error.message}`, {type: 'error'});
+        } finally {
+            select.disabled = false;
+        }
     });
     document.querySelectorAll('[data-admin-usage-close]').forEach((button) => {
         button.addEventListener('click', closeUsageModal);

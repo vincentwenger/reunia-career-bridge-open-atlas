@@ -12,6 +12,7 @@ from .models import (
     CandidateAnswer,
     CandidateProfile,
     JobAnalysis,
+    NewcomerCareerProfile,
     TailoringProposal,
 )
 from .resume_report import ResumeReport
@@ -42,6 +43,7 @@ def initial_report_fingerprint(state: "WorkflowState") -> str:
         "source_profile": state.source_profile.model_dump(mode="json"),
         "job_description": normalize_job_description(state.job_description),
         "target_title": normalize_target_title(state.target_title),
+        "career_background": state.career_background.model_dump(mode="json"),
     }
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
@@ -55,6 +57,9 @@ class WorkflowStepSnapshot:
     captured_at: str
     job_description: str = ""
     target_title: str = ""
+    career_background: NewcomerCareerProfile = field(
+        default_factory=NewcomerCareerProfile
+    )
     proposal: TailoringProposal | None = None
     profile: CandidateProfile | None = None
     candidate_answers: list[CandidateAnswer] = field(default_factory=list)
@@ -68,6 +73,9 @@ class WorkflowStepSnapshot:
 @dataclass
 class WorkflowState:
     source_profile: CandidateProfile
+    career_background: NewcomerCareerProfile = field(
+        default_factory=NewcomerCareerProfile
+    )
     job_description: str = ""
     target_title: str = ""
     profile_upload_name: str = ""

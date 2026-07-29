@@ -52,6 +52,7 @@ from resume_tailor.confirmation import (
     is_candidate_confirmed_bullet_id,
     validate_candidate_answers,
 )
+from resume_tailor.career_translation import ensure_career_translation_assessment
 from resume_tailor.confirmation_followup import (
     MAX_TARGETED_FOLLOW_UP_ROUNDS,
     build_targeted_follow_up_questions,
@@ -97,6 +98,7 @@ from resume_tailor.models import (
     CandidateProfile,
     CandidateQuestion,
     EducationItem,
+    NewcomerCareerProfile,
     ProposalAudit,
     SkillSet,
     TailoringProposal,
@@ -269,15 +271,43 @@ def current_final_resume_filename(state: WorkflowState, extension: str) -> str:
 
 
 def parse_comma_list(value: str) -> list[str]:
+    """Parse a compact list entered with commas, semicolons, or new lines."""
     seen: set[str] = set()
     items: list[str] = []
-    for raw_item in value.split(","):
-        item = raw_item.strip()
+    for raw_item in re.split(r"[,;\n]+", value):
+        item = " ".join(raw_item.split())
         key = item.casefold()
         if item and key not in seen:
             items.append(item)
             seen.add(key)
     return items
+
+
+def career_background_from_form(
+    form: Any,
+    *,
+    target_role: str,
+) -> NewcomerCareerProfile:
+    """Build optional newcomer context without collecting immigration data."""
+    return NewcomerCareerProfile(
+        countries_worked=parse_comma_list(form.get("countries_worked", "")),
+        industries=parse_comma_list(form.get("career_industries", "")),
+        roles=parse_comma_list(form.get("career_roles", "")),
+        languages=parse_comma_list(form.get("career_languages", "")),
+        target_country=form.get("target_country", ""),
+        target_role=target_role,
+        international_credentials=parse_comma_list(
+            form.get("international_credentials", "")
+        ),
+        professional_certifications=parse_comma_list(
+            form.get("professional_certifications", "")
+        ),
+        unfamiliar_job_titles=parse_comma_list(
+            form.get("unfamiliar_job_titles", "")
+        ),
+        career_transitions=parse_comma_list(form.get("career_transitions", "")),
+        us_employment_experience=form.get("us_employment_experience", ""),
+    )
 
 
 def reasoning_effort_label(effort: str | None) -> str:
@@ -290,7 +320,13 @@ def _hash_json(payload: dict[str, Any]) -> str:
 
 
 def _proposal_json(proposal: TailoringProposal) -> str:
-    return json.dumps(proposal.model_dump(), ensure_ascii=False, sort_keys=True)
+    # The Career Translation Assessment is advisory workflow metadata. It does
+    # not change the resume document, report scores, or revision identity.
+    return json.dumps(
+        proposal.model_dump(exclude={"career_translation_assessment"}),
+        ensure_ascii=False,
+        sort_keys=True,
+    )
 
 
 def _proposal_fingerprint(proposal: TailoringProposal | None) -> str:
@@ -329,7 +365,77 @@ INITIAL_RESUME_LABEL = "Initial Resume"
 JOB_ALIGNED_RESUME_LABEL = "Job-Aligned Resume"
 FINAL_RESUME_LABEL = "Final Resume"
 
+CAREER_TRANSLATION_CATEGORY_LABELS = {
+    "job_title_translation": "Job titles that may be misunderstood",
+    "credential_explanation": "Credentials requiring explanation",
+    "regional_terminology": "Region-specific professional terminology",
+    "hidden_accomplishment": "Accomplishments hidden by unfamiliar language",
+    "transferable_skill": "Transferable skills",
+    "unsupported_requirement": "Unsupported target-job requirements",
+    "missing_evidence": "Important evidence missing from the resume",
+}
+CAREER_TRANSLATION_CATEGORY_ORDER = tuple(CAREER_TRANSLATION_CATEGORY_LABELS)
+CAREER_EVIDENCE_DISPOSITION_LABELS = {
+    "confirmed_experience": "Confirmed experience",
+    "reasonable_rephrasing": "Reasonable rephrasing",
+    "user_clarification_required": "User clarification required",
+    "unsupported_claim": "Unsupported claim",
+    "recommended_learning_or_future_action": "Recommended learning or future action",
+}
+CAREER_EVIDENCE_DISPOSITION_DESCRIPTIONS = {
+    "confirmed_experience": "Directly supported by traceable resume or confirmed-profile evidence.",
+    "reasonable_rephrasing": "Facts stay unchanged while wording is translated for the target market.",
+    "user_clarification_required": "Potentially useful, but the system needs a factual answer before using it.",
+    "unsupported_claim": "Not supported by current evidence and excluded from the resume.",
+    "recommended_learning_or_future_action": "A genuine gap to address later, never presented as current experience.",
+}
 
+
+def career_translation_assessment_view(
+    proposal: TailoringProposal | None,
+) -> dict[str, Any] | None:
+    if proposal is None:
+        return None
+    assessment = proposal.career_translation_assessment
+    if not assessment.summary and not assessment.findings:
+        return None
+
+    groups: list[dict[str, Any]] = []
+    counts = {key: 0 for key in CAREER_EVIDENCE_DISPOSITION_LABELS}
+    for category in CAREER_TRANSLATION_CATEGORY_ORDER:
+        findings = []
+        for finding in assessment.findings:
+            if finding.category != category:
+                continue
+            counts[finding.disposition] = counts.get(finding.disposition, 0) + 1
+            findings.append(
+                {
+                    "finding": finding,
+                    "disposition_label": CAREER_EVIDENCE_DISPOSITION_LABELS[
+                        finding.disposition
+                    ],
+                    "disposition_description": CAREER_EVIDENCE_DISPOSITION_DESCRIPTIONS[
+                        finding.disposition
+                    ],
+                }
+            )
+        if findings:
+            groups.append(
+                {
+                    "key": category,
+                    "label": CAREER_TRANSLATION_CATEGORY_LABELS[category],
+                    "findings": findings,
+                }
+            )
+    return {
+        "summary": assessment.summary,
+        "target_country": assessment.target_country,
+        "target_role": assessment.target_role,
+        "groups": groups,
+        "counts": counts,
+        "disposition_labels": CAREER_EVIDENCE_DISPOSITION_LABELS,
+        "disposition_descriptions": CAREER_EVIDENCE_DISPOSITION_DESCRIPTIONS,
+    }
 
 
 def capture_workflow_step_snapshot(
@@ -351,6 +457,7 @@ def capture_workflow_step_snapshot(
             if stage == "final"
             else state.target_title
         ),
+        career_background=state.career_background.model_copy(deep=True),
         proposal=proposal.model_copy(deep=True) if proposal is not None else None,
         profile=(profile or state.confirmed_profile or state.source_profile).model_copy(
             deep=True
@@ -426,6 +533,9 @@ def _default_state() -> WorkflowState:
     job_description = DEFAULT_JOB_PATH.read_text(encoding="utf-8") if DEFAULT_JOB_PATH.exists() else ""
     return WorkflowState(
         source_profile=profile,
+        career_background=NewcomerCareerProfile(
+            languages=list(profile.skills.languages)
+        ),
         job_description=job_description,
         processing_mode=get_default_processing_mode(),
         custom_analysis_tailoring_model=get_default_analysis_tailoring_model(),
@@ -472,6 +582,7 @@ def input_fingerprint(state: WorkflowState, models: ActiveModels) -> str:
         {
             "job_description": normalize_job_description(state.job_description),
             "target_title": normalize_target_title(state.target_title),
+            "career_background": state.career_background.model_dump(mode="json"),
             "analysis_tailoring_model": models.analysis_tailoring_model,
             "analysis_tailoring_reasoning_effort": models.analysis_tailoring_reasoning_effort,
         }
@@ -1362,11 +1473,14 @@ def _run_reconciled_evidence_audit(
     profile: CandidateProfile,
     analysis,
     proposal: TailoringProposal,
+    career_background: NewcomerCareerProfile | None = None,
 ) -> ProposalAudit:
     """Run independent evidence review and reconcile objective rules deterministically."""
     return _normalize_audit_result(
         reconcile_audit_with_deterministic_rules(
-            audit_ai.audit_proposal(profile, analysis, proposal),
+            audit_ai.audit_proposal(
+                profile, analysis, proposal, career_background
+            ),
             proposal,
             profile,
             analysis,
@@ -1688,6 +1802,7 @@ def _conservatively_resolve_candidate_findings(
     analysis,
     proposal: TailoringProposal,
     issues: list[AuditIssue],
+    career_background: NewcomerCareerProfile | None = None,
 ) -> tuple[TailoringProposal, ProposalAudit]:
     """Resolve candidate-dependent findings with local source-backed edits.
 
@@ -1708,7 +1823,9 @@ def _conservatively_resolve_candidate_findings(
     reviewed = repair_missing_bullet_proposals(profile, reviewed)
     reviewed = ensure_confirmed_answers_visible(profile, reviewed)
     reviewed, _ = apply_all_until_valid(profile, analysis, reviewed)
-    audit = _run_reconciled_evidence_audit(audit_ai, profile, analysis, reviewed)
+    audit = _run_reconciled_evidence_audit(
+        audit_ai, profile, analysis, reviewed, career_background
+    )
     return reviewed, audit
 
 
@@ -1717,6 +1834,7 @@ def _run_post_confirmation_evidence_review(
     profile: CandidateProfile,
     analysis,
     proposal: TailoringProposal,
+    career_background: NewcomerCareerProfile | None = None,
     *,
     allow_candidate_questions: bool = True,
 ) -> tuple[TailoringProposal, ProposalAudit, list[AuditIssue]]:
@@ -1735,7 +1853,9 @@ def _run_post_confirmation_evidence_review(
         reasoning_effort=models.evidence_review_reasoning_effort,
     )
     reviewed = proposal.model_copy(deep=True)
-    audit = _run_reconciled_evidence_audit(audit_ai, profile, analysis, reviewed)
+    audit = _run_reconciled_evidence_audit(
+        audit_ai, profile, analysis, reviewed, career_background
+    )
     candidate_needed, auto_fixable = split_post_confirmation_issues(audit.issues)
 
     if allow_candidate_questions:
@@ -1850,6 +1970,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         session["active_workflow_key"] = workflow_key
         session.setdefault("csrf_token", secrets.token_urlsafe(24))
+        # Réunia's shared shell uses a separate CSRF session key. Keep it
+        # available here so the common account menu can safely post to /logout.
+        session.setdefault("_csrf_token", secrets.token_urlsafe(32))
         if request.method == "POST":
             submitted = request.form.get("csrf_token", "")
             if not hmac.compare_digest(submitted, session["csrf_token"]):
@@ -1861,6 +1984,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if application is not None:
             if not g.workflow_state.target_title:
                 g.workflow_state.target_title = application.role
+            if not g.workflow_state.career_background.target_role:
+                g.workflow_state.career_background.target_role = (
+                    g.workflow_state.target_title or application.role
+                )
             if not g.workflow_state.job_description and application.job_description:
                 g.workflow_state.job_description = application.job_description
         return None
@@ -1874,6 +2001,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "reasoning_efforts": ("automatic",) + REASONING_EFFORTS,
             "reasoning_effort_label": reasoning_effort_label,
             "career_bridge_home_url": str(app.config.get("CAREER_BRIDGE_HOME_URL") or "/app"),
+            "career_bridge_csrf_token": session.get("_csrf_token", ""),
+            "is_admin_session": bool(session.get("is_admin")),
             "active_application": getattr(g, "active_application", None),
         }
 
@@ -1893,6 +2022,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             )
         current.target_title = normalize_target_title(
             request.form.get("target_title", current.target_title)
+        )
+        current.career_background = career_background_from_form(
+            request.form,
+            target_role=current.target_title,
         )
 
     @app.get("/")
@@ -2307,6 +2440,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if input_is_current
             else None
         )
+        career_translation_assessment = career_translation_assessment_view(
+            current.provisional_proposal or proposal
+        )
         return render_template(
             "index.html",
             state=current,
@@ -2314,6 +2450,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             guided_workflow=guided_workflow,
             preliminary_application_fit=preliminary_fit,
             application_fit=application_fit,
+            career_translation_assessment=career_translation_assessment,
+            career_background=current.career_background,
             selected_workflow_stage=selected_workflow_stage,
             selected_workflow_panel=selected_workflow_panel,
             edit_setup_snapshot=edit_setup_snapshot,
@@ -2553,12 +2691,22 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                             model=models.analysis_tailoring_model,
                             reasoning_effort=models.analysis_tailoring_reasoning_effort,
                         )
-                    ).create_proposal(current.source_profile, analysis)
+                    ).create_proposal(
+                        current.source_profile,
+                        analysis,
+                        current.career_background,
+                    )
                 )
                 evidence_source = repair_missing_bullet_proposals(
                     current.source_profile, evidence_source
                 )
                 evidence_source = prioritize_candidate_questions(evidence_source, analysis)
+                evidence_source = ensure_career_translation_assessment(
+                    current.source_profile,
+                    analysis,
+                    evidence_source,
+                    current.career_background,
+                )
                 current.initial_evidence_proposal = evidence_source.model_copy(
                     deep=True
                 )
@@ -2596,12 +2744,20 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 proposal = (
                     existing_evidence.model_copy(deep=True)
                     if existing_evidence is not None
-                    else ai.create_proposal(current.source_profile, analysis)
+                    else ai.create_proposal(
+                        current.source_profile, analysis, current.career_background
+                    )
                 )
                 proposal = repair_missing_bullet_proposals(
                     current.source_profile, proposal
                 )
                 proposal = prioritize_candidate_questions(proposal, analysis)
+                proposal = ensure_career_translation_assessment(
+                    current.source_profile,
+                    analysis,
+                    proposal,
+                    current.career_background,
+                )
                 current.analysis = analysis
                 current.analysis_input_fingerprint = current_input
                 ensure_recommended_resume_style(current)
@@ -2630,7 +2786,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 current.initial_report_error = ""
                 tailoring_started = True
                 flash(
-                    "Job analysis completed. Confirm the high-value experience questions next; the Initial Resume Report is generating automatically without blocking the workflow.",
+                    "Job analysis and Career Translation Assessment completed. Confirm the high-value experience questions next; the Initial Resume Report is generating automatically without blocking the workflow.",
                     "success",
                 )
             else:
@@ -2689,12 +2845,22 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                         model=models.analysis_tailoring_model,
                         reasoning_effort=models.analysis_tailoring_reasoning_effort,
                     )
-                ).create_proposal(current.source_profile, analysis)
+                ).create_proposal(
+                    current.source_profile,
+                    analysis,
+                    current.career_background,
+                )
             )
             evidence_source = repair_missing_bullet_proposals(
                 current.source_profile, evidence_source
             )
             evidence_source = prioritize_candidate_questions(evidence_source, analysis)
+            evidence_source = ensure_career_translation_assessment(
+                current.source_profile,
+                analysis,
+                evidence_source,
+                current.career_background,
+            )
             current.initial_evidence_proposal = evidence_source.model_copy(
                 deep=True
             )
@@ -2924,6 +3090,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                         current.analysis,
                         proposal_for_refinement,
                         answers,
+                        current.career_background,
                     )
                 except ResumeAIError as exc:
                     # Do not send the candidate back through the same completed
@@ -2955,6 +3122,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                     confirmed_profile,
                     current.analysis,
                     refined,
+                    current.career_background,
                     allow_candidate_questions=(
                         current.confirmation_follow_up_round
                         < MAX_TARGETED_FOLLOW_UP_ROUNDS
@@ -3023,6 +3191,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                     round_number=next_round,
                 )
                 refined.candidate_questions = follow_up_questions
+                refined = ensure_career_translation_assessment(
+                    confirmed_profile,
+                    current.analysis,
+                    refined,
+                    current.career_background,
+                )
                 current.provisional_proposal = refined.model_copy(deep=True)
                 current.confirmation_complete = False
                 current.confirmation_follow_up_round = next_round
@@ -3039,6 +3213,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 )
             else:
                 refined.candidate_questions = []
+                refined = ensure_career_translation_assessment(
+                    confirmed_profile,
+                    current.analysis,
+                    refined,
+                    current.career_background,
+                )
                 current.provisional_proposal = refined.model_copy(deep=True)
                 current.draft_proposal = refined.model_copy(deep=True)
                 current.draft_revision = 1
@@ -3454,11 +3634,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                         current.analysis,
                         optimized,
                         report_issues,
+                        current.career_background,
                     )
                 except ResumeAIError as exc:
                     optimization_warnings.append(str(exc))
                 else:
                     candidate = repair_missing_bullet_proposals(profile, candidate)
+                    candidate = ensure_career_translation_assessment(
+                        profile,
+                        current.analysis,
+                        candidate,
+                        current.career_background,
+                    )
                     candidate, _ = apply_all_until_valid(
                         profile, current.analysis, candidate
                     )

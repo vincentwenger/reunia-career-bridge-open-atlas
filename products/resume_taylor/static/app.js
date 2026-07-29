@@ -8,6 +8,26 @@
   modeSelect?.addEventListener('change', syncCustomModels);
   syncCustomModels();
 
+  const targetCountryField = document.querySelector('[data-target-country]');
+  const usExperienceField = document.querySelector('[data-us-experience-field]');
+  const syncUsExperienceVisibility = () => {
+    if (!targetCountryField || !usExperienceField) return;
+    const country = (targetCountryField.value || '')
+      .trim()
+      .toLowerCase()
+      .replaceAll('.', '');
+    const targetsUnitedStates = [
+      'united states',
+      'united states of america',
+      'usa',
+      'us',
+    ].includes(country);
+    usExperienceField.hidden = !targetsUnitedStates;
+  };
+  targetCountryField?.addEventListener('input', syncUsExperienceVisibility);
+  targetCountryField?.addEventListener('change', syncUsExperienceVisibility);
+  syncUsExperienceVisibility();
+
   document.querySelectorAll('[data-enable-when-filled]').forEach((button) => {
     const fieldIds = (button.dataset.enableWhenFilled || '')
       .split(',')

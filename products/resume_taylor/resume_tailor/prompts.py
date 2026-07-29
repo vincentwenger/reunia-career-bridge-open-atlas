@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import json
 
-from .models import AuditIssue, CandidateAnswer, CandidateProfile, JobAnalysis, TailoringProposal
+from .models import (
+    AuditIssue,
+    CandidateAnswer,
+    CandidateProfile,
+    JobAnalysis,
+    NewcomerCareerProfile,
+    TailoringProposal,
+)
 from .skill_rules import (
     SKILL_CATEGORY_RULES,
     SKILL_TOTAL_MAXIMUM,
@@ -29,14 +36,21 @@ but it may not add a new number, technology, responsibility, leadership scope, r
 When evidence is partial or missing, mark the requirement partial or unsupported and add a candidate question instead
 of inserting it into the resume. Prefer natural recruiter-readable language over keyword density. Every visible experience
 bullet must be one plain-text, action-led statement of 35 words or fewer. Never put headings, labels, markdown, nested
-lists, multiple paragraphs, or a leading bullet symbol inside proposed_text."""
+lists, multiple paragraphs, or a leading bullet symbol inside proposed_text.
+
+Before drafting resume wording, complete the Career Translation Assessment. Its purpose is to make international
+experience understandable without overstating it. Treat newcomer onboarding as context for identifying translations
+and questions, not as resume evidence by itself. Only the Candidate Profile and later candidate-confirmed evidence may
+support resume claims."""
 
 
 AUDIT_SYSTEM = """You are an independent factual auditor for a resume-tailoring application.
 Compare every claim in the proposal against the candidate profile. Treat any unsupported technology, responsibility,
 number, scope, outcome, leadership claim, certification, domain claim, employer detail, or job-title change as blocking.
-Also flag awkward wording, keyword stuffing, repetition, excessive length, or weak relevance as warnings. A proposal
-passes only when it contains no blocking issues. Be conservative and specific. For every issue, provide a concrete,
+Also flag awkward wording, keyword stuffing, repetition, excessive length, or weak relevance as warnings. Treat the
+newcomer career background as context only: flag any resume claim that relies on onboarding data without Candidate
+Profile or CONF- evidence. A proposal passes only when it contains no blocking issues. Be conservative and specific.
+For every issue, provide a concrete,
 actionable suggested_fix that can be applied to the TailoringProposal. Do not repeat a finding whose exact correction
 is already present in the proposal. Verify evidence statuses, rationales, evidence IDs, unsupported requirements,
 evidence notes, summary wording, skills, and bullets together so the fix is internally consistent. For a Rephrase or
@@ -58,8 +72,10 @@ as 'not documented in the profile' unless a cited CONF- supplemental-evidence ID
 When a status is downgraded or upgraded, synchronize its rationale, evidence IDs, and unsupported_requirements entry.
 When a grouped finding references several requirement IDs or source IDs, correct every referenced item. Keep
 candidate_questions empty after the confirmation stage. Preserve every source_bullet_id and requirement_id. Do not
-remove an audit finding by hiding the requirement or deleting required proposal content. Before returning, verify that
-each supplied finding is no longer true and that the complete proposal remains internally consistent. Use the smallest
+remove an audit finding by hiding the requirement or deleting required proposal content. Preserve the Career
+Translation Assessment unless an applied fix changes its evidence status; never upgrade a finding from onboarding
+context alone. Before returning, verify that each supplied finding is no longer true and that the complete proposal
+remains internally consistent. Use the smallest
 conservative change that fully addresses each supplied finding. Every visible experience bullet must remain one
 plain-text, action-led statement of 35 words or fewer. Never return headings such as "Overview" or "Specific Tools",
 markdown emphasis, nested lists, multiple paragraphs, or a leading bullet symbol inside proposed_text. When a finding
@@ -85,9 +101,18 @@ JOB DESCRIPTION
 """
 
 
-def build_proposal_prompt(profile: CandidateProfile, analysis: JobAnalysis) -> str:
+def build_proposal_prompt(
+    profile: CandidateProfile,
+    analysis: JobAnalysis,
+    career_background: NewcomerCareerProfile | None = None,
+) -> str:
     profile_json = json.dumps(profile.model_dump(exclude={"contact"}), ensure_ascii=False, indent=2)
     analysis_json = json.dumps(analysis.model_dump(), ensure_ascii=False, indent=2)
+    background_json = json.dumps(
+        (career_background or NewcomerCareerProfile()).model_dump(),
+        ensure_ascii=False,
+        indent=2,
+    )
     return f"""Create a conservative tailoring proposal for the candidate and analyzed job.
 
 Hard constraints:
@@ -114,6 +139,22 @@ Hard constraints:
     the profile. Prefer one concise yes_no_with_details question over several overlapping prompts. A yes/no question
     must not be used for a new detailed claim unless answer_type is yes_no_with_details and details_prompt explains
     what evidence is needed.
+11. Complete career_translation_assessment before drafting the resume. Include only meaningful findings from these
+    categories: job_title_translation, credential_explanation, regional_terminology, hidden_accomplishment,
+    transferable_skill, unsupported_requirement, and missing_evidence. Classify every finding as exactly one of:
+    confirmed_experience, reasonable_rephrasing, user_clarification_required, unsupported_claim, or
+    recommended_learning_or_future_action.
+    - confirmed_experience requires exact Candidate Profile evidence IDs.
+    - reasonable_rephrasing may explain an existing title, credential, term, or accomplishment without changing facts.
+    - user_clarification_required means the context may be useful but cannot be safely claimed yet. Create a candidate
+      question when the clarification could materially strengthen this application.
+    - unsupported_claim must remain outside the resume and align with unsupported_requirements.
+    - recommended_learning_or_future_action is advice for a genuine gap and must never appear as current experience.
+    Do not treat countries, languages, credentials, certifications, unfamiliar titles, transitions, or U.S. experience
+    entered in newcomer onboarding as claim evidence unless the Candidate Profile independently supports them.
+
+NEWCOMER CAREER BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+{background_json}
 
 CANDIDATE PROFILE
 {profile_json}
@@ -127,8 +168,14 @@ def build_audit_prompt(
     profile: CandidateProfile,
     analysis: JobAnalysis,
     proposal: TailoringProposal,
+    career_background: NewcomerCareerProfile | None = None,
 ) -> str:
     deterministic_facts = deterministic_audit_facts(profile, analysis, proposal)
+    background_json = json.dumps(
+        (career_background or NewcomerCareerProfile()).model_dump(),
+        ensure_ascii=False,
+        indent=2,
+    )
     return f"""Audit the proposed resume content against the source evidence.
 
 Your responsibility is semantic evidence quality and writing quality:
@@ -164,6 +211,9 @@ finding. Report only the semantic finding.
 DETERMINISTIC RESULTS — SOURCE OF TRUTH
 {json.dumps(deterministic_facts, ensure_ascii=False, indent=2)}
 
+NEWCOMER CAREER BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+{background_json}
+
 CANDIDATE PROFILE
 {json.dumps(profile.model_dump(exclude={"contact"}), ensure_ascii=False, indent=2)}
 
@@ -180,7 +230,13 @@ def build_refinement_prompt(
     analysis: JobAnalysis,
     provisional: TailoringProposal,
     answers: list[CandidateAnswer],
+    career_background: NewcomerCareerProfile | None = None,
 ) -> str:
+    background_json = json.dumps(
+        (career_background or NewcomerCareerProfile()).model_dump(),
+        ensure_ascii=False,
+        indent=2,
+    )
     return f"""Revise the provisional proposal using the candidate-confirmed evidence and answers below.
 
 Rules:
@@ -208,6 +264,12 @@ Rules:
 - Return candidate_questions empty. The application performs the post-transformation evidence review and creates any
   additional targeted follow-up round itself.
 - Do not add a confirmed skill to the resume unless the confirmed evidence is specific enough to support it.
+- Recalculate career_translation_assessment after applying the answers. An affirmative answer may upgrade a related
+  finding to confirmed_experience only when the updated profile contains a traceable CONF- evidence ID. A negative
+  answer must remain an unsupported_claim or recommended_learning_or_future_action, never a resume claim.
+
+NEWCOMER CAREER BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+{background_json}
 
 CANDIDATE PROFILE WITH CONFIRMED EVIDENCE
 {json.dumps(profile.model_dump(exclude={"contact"}), ensure_ascii=False, indent=2)}
@@ -228,8 +290,14 @@ def build_audit_fix_prompt(
     analysis: JobAnalysis,
     proposal: TailoringProposal,
     issues: list[AuditIssue],
+    career_background: NewcomerCareerProfile | None = None,
 ) -> str:
     actionable = [issue for issue in issues if issue.suggested_fix.strip()]
+    background_json = json.dumps(
+        (career_background or NewcomerCareerProfile()).model_dump(),
+        ensure_ascii=False,
+        indent=2,
+    )
     return f"""Apply the listed audit findings and suggested fixes to the proposal.
 
 Rules:
@@ -250,6 +318,11 @@ Rules:
 - Before returning, check every supplied finding against the corrected proposal and ensure the finding is no longer true.
 - Apply grouped fixes to every referenced requirement ID and source ID, not only the first one.
 - Keep evidence status, evidence IDs, rationale, unsupported_requirements, bullet evidence notes, and visible wording synchronized.
+- Preserve career_translation_assessment unless a supplied fix directly affects a finding. When it does, synchronize the
+  disposition and evidence IDs, but never treat newcomer onboarding as evidence.
+
+NEWCOMER CAREER BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+{background_json}
 
 CANDIDATE PROFILE
 {json.dumps(profile.model_dump(exclude={"contact"}), ensure_ascii=False, indent=2)}

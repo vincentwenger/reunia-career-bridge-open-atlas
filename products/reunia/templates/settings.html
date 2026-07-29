@@ -27,6 +27,7 @@
                 <span class="settings-mobile-label">Settings category <span class="settings-mobile-dirty" hidden>· Unsaved changes</span></span>
                 <select id="settings-category-select" class="form-control">
                     <option value="global-settings">General &amp; AI</option>
+                    {% if live_interview_assistance_enabled %}<option value="live-qa-settings">Live interview assistance</option>{% endif %}
                     <option value="meeting-review-settings">Interview review &amp; action plan</option>
                     <option value="privacy-sharing-settings">Privacy &amp; sharing</option>
                 </select>
@@ -48,6 +49,24 @@
                     <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
                     <span class="scope-arrow" aria-hidden="true">›</span>
                 </button>
+
+                {% if live_interview_assistance_enabled %}
+                <button
+                    type="button"
+                    class="scope-card live-qa"
+                    data-settings-target="live-qa-settings"
+                    aria-controls="live-qa-settings"
+                    aria-pressed="false"
+                >
+                    <span class="scope-card-icon" aria-hidden="true">💬</span>
+                    <span class="scope-card-copy">
+                        <span class="scope-card-title">Live interview assistance</span>
+                        <span class="scope-card-description">Sources, answer updates, and retention</span>
+                    </span>
+                    <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
+                    <span class="scope-arrow" aria-hidden="true">›</span>
+                </button>
+                {% endif %}
 
                 <button
                     type="button"
@@ -176,6 +195,57 @@
                             </div>
                         </div>
                     </section>
+
+                    {% if live_interview_assistance_enabled %}
+                    <section class="category-section" id="live-qa-settings" hidden>
+                        <div class="category-header live-qa">
+                            <div class="category-heading">
+                                <div class="category-icon">💬</div>
+                                <div>
+                                    <div class="category-eyebrow">Restricted feature</div>
+                                    <h2>Live Interview Assistance</h2>
+                                    <p>Available only to administrators and approved Career Bridge groups. These settings control which sources may generate answers.</p>
+                                </div>
+                            </div>
+                            <span class="scope-badge">Restricted access</span>
+                        </div>
+                        <div class="category-body">
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">1</div>
+                                    <div><h3>Updates and retention</h3><p>Control how often the live feed refreshes and how long its temporary history remains visible.</p></div>
+                                </div>
+                                <div class="settings-box highlight-box">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="retentionHours">Message expiration</label>
+                                            <input type="number" id="retentionHours" name="retentionHours" class="form-control" min="1" max="24" step="1" value="{{ settings.retentionHours if settings and settings.retentionHours else '1' }}">
+                                            <span class="form-help">Hours that streamed Live Interview Assistance history remains visible.</span>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label" for="liveQaAnswerUpdateFrequency">Answer update frequency</label>
+                                            <select id="liveQaAnswerUpdateFrequency" name="liveQaAnswerUpdateFrequency" class="form-control">
+                                                <option value="fast" {% if settings and settings.liveQaAnswerUpdateFrequency == 'fast' %}selected{% endif %}>Faster updates — about every 1 second</option>
+                                                <option value="balanced" {% if settings and settings.liveQaAnswerUpdateFrequency == 'balanced' %}selected{% endif %}>Balanced — about every 2 seconds</option>
+                                                <option value="efficient" {% if not settings or settings.liveQaAnswerUpdateFrequency == 'efficient' %}selected{% endif %}>Lower resource usage — about every 5 seconds</option>
+                                            </select>
+                                            <span class="form-help">This affects feed refresh frequency, not model generation speed.</span>
+                                        </div>
+                                    </div>
+                                    <div class="automation-settings">
+                                        <h3 class="section-title automation-settings-title">Automatic AI sources</h3>
+                                        <p class="section-description">Only checked sources are processed. The server verifies these settings before paying for transcription.</p>
+                                        <div class="source-toggle-list">
+                                            <label class="source-toggle" for="aiClipboard"><div class="source-text"><div class="source-icon">📋</div><div><span class="source-title">Clipboard</span><span class="source-description">Generate an answer when clipboard text is captured by the desktop client.</span></div></div><input type="checkbox" id="aiClipboard" name="aiClipboard" {% if settings and (settings.aiClipboard or settings.autoAskClipboard) %}checked{% endif %}><span class="switch"></span></label>
+                                            <label class="source-toggle" for="aiSpeaker"><div class="source-text"><div class="source-icon">🔊</div><div><span class="source-title">Speaker Output</span><span class="source-description">Generate answers from interviewer or shared-tab audio.</span></div></div><input type="checkbox" id="aiSpeaker" name="aiSpeaker" {% if settings and (settings.aiSpeaker or settings.autoAskSpeaker) %}checked{% endif %}><span class="switch"></span></label>
+                                            <label class="source-toggle" for="aiMicrophone"><div class="source-text"><div class="source-icon">🎙</div><div><span class="source-title">Microphone Input</span><span class="source-description">Generate answers from microphone speech.</span></div></div><input type="checkbox" id="aiMicrophone" name="aiMicrophone" {% if settings and (settings.aiMicrophone or settings.autoAskMicrophone) %}checked{% endif %}><span class="switch"></span></label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    {% endif %}
 
                     <section class="category-section" id="meeting-review-settings" hidden>
                         <div class="category-header meeting-review">

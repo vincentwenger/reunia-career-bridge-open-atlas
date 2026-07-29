@@ -140,6 +140,104 @@ class CandidateProfile(StrictModel):
         return skills
 
 
+CareerTranslationCategory = Literal[
+    "job_title_translation",
+    "credential_explanation",
+    "regional_terminology",
+    "hidden_accomplishment",
+    "transferable_skill",
+    "unsupported_requirement",
+    "missing_evidence",
+]
+
+CareerEvidenceDisposition = Literal[
+    "confirmed_experience",
+    "reasonable_rephrasing",
+    "user_clarification_required",
+    "unsupported_claim",
+    "recommended_learning_or_future_action",
+]
+
+
+class NewcomerCareerProfile(StrictModel):
+    """Optional international-career context used for translation, never immigration screening."""
+
+    countries_worked: list[str] = Field(default_factory=list)
+    industries: list[str] = Field(default_factory=list)
+    roles: list[str] = Field(default_factory=list)
+    languages: list[str] = Field(default_factory=list)
+    target_country: str = ""
+    target_role: str = ""
+    international_credentials: list[str] = Field(default_factory=list)
+    professional_certifications: list[str] = Field(default_factory=list)
+    unfamiliar_job_titles: list[str] = Field(default_factory=list)
+    career_transitions: list[str] = Field(default_factory=list)
+    us_employment_experience: str = ""
+
+    @field_validator(
+        "countries_worked",
+        "industries",
+        "roles",
+        "languages",
+        "international_credentials",
+        "professional_certifications",
+        "unfamiliar_job_titles",
+        "career_transitions",
+    )
+    @classmethod
+    def normalize_list_values(cls, value: list[str]) -> list[str]:
+        seen: set[str] = set()
+        normalized: list[str] = []
+        for raw in value:
+            item = " ".join(str(raw).split())
+            key = item.casefold()
+            if item and key not in seen:
+                normalized.append(item)
+                seen.add(key)
+        return normalized
+
+    @field_validator(
+        "target_country", "target_role", "us_employment_experience"
+    )
+    @classmethod
+    def normalize_text_values(cls, value: str) -> str:
+        return " ".join(value.split())
+
+    def has_context(self) -> bool:
+        return any(
+            (
+                self.countries_worked,
+                self.industries,
+                self.roles,
+                self.languages,
+                self.target_country,
+                self.target_role,
+                self.international_credentials,
+                self.professional_certifications,
+                self.unfamiliar_job_titles,
+                self.career_transitions,
+                self.us_employment_experience,
+            )
+        )
+
+
+class CareerTranslationFinding(StrictModel):
+    category: CareerTranslationCategory
+    source_text: str
+    translated_meaning: str = ""
+    disposition: CareerEvidenceDisposition
+    evidence_ids: list[str] = Field(default_factory=list)
+    rationale: str
+    recommended_action: str = ""
+
+
+class CareerTranslationAssessment(StrictModel):
+    summary: str = ""
+    target_country: str = ""
+    target_role: str = ""
+    findings: list[CareerTranslationFinding] = Field(default_factory=list)
+
+
 RequirementCategory = Literal[
     "technical_skill",
     "domain_knowledge",
@@ -249,6 +347,9 @@ class TailoringProposal(StrictModel):
     evidence_matches: list[EvidenceMatch]
     unsupported_requirements: list[str] = Field(default_factory=list)
     candidate_questions: list[CandidateQuestion] = Field(default_factory=list)
+    career_translation_assessment: CareerTranslationAssessment = Field(
+        default_factory=CareerTranslationAssessment
+    )
 
 
 IssueSeverity = Literal["blocking", "warning"]

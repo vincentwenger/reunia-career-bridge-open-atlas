@@ -14,8 +14,6 @@ from meeting_assistant.utils.authentication import api_auth_required, login_requ
 
 
 @knowledge_bp.get("/career-profile")
-@knowledge_bp.get("/application-builder")
-@knowledge_bp.get("/application-workspace")
 @knowledge_bp.get("/application-materials")
 @knowledge_bp.get("/interview-preparation")
 @knowledge_bp.get("/career-evidence-library")
@@ -26,8 +24,6 @@ def view_knowledge():
     library = KnowledgeService().list_library(str(session["user_id"]))
     route_view = {
         "/career-profile": "context",
-        "/application-builder": "materials",
-        "/application-workspace": "materials",
         "/application-materials": "materials",
         "/interview-preparation": "search",
         "/career-evidence-library": "search",

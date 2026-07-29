@@ -1,4 +1,27 @@
-# Shared Career Bridge workspace only. Imported product snapshots remain preserved in Git history.
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+
+# Databases and generated user data
+*.sqlite
+*.sqlite3
+*.db
+instance/
+uploads/
+generated/
+generated_resumes/
+logs/
+
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -6,9 +29,12 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
-.env
-*.log
+
+# Node
+node_modules/
+
+# IDE and operating system
+.vscode/
+.idea/
 .DS_Store
-build/
-dist/
-*.egg-info/
+Thumbs.db

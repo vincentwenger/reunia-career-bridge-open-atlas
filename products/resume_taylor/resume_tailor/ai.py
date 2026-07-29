@@ -10,7 +10,15 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from .model_config import validated_reasoning_effort
-from .models import AuditIssue, CandidateAnswer, CandidateProfile, JobAnalysis, ProposalAudit, TailoringProposal
+from .models import (
+    AuditIssue,
+    CandidateAnswer,
+    CandidateProfile,
+    JobAnalysis,
+    NewcomerCareerProfile,
+    ProposalAudit,
+    TailoringProposal,
+)
 from .prompts import (
     AUDIT_FIX_SYSTEM,
     AUDIT_SYSTEM,
@@ -134,10 +142,11 @@ class ResumeAI:
         self,
         profile: CandidateProfile,
         analysis: JobAnalysis,
+        career_background: NewcomerCareerProfile | None = None,
     ) -> TailoringProposal:
         return self._parse(
             PROPOSAL_SYSTEM,
-            build_proposal_prompt(profile, analysis),
+            build_proposal_prompt(profile, analysis, career_background),
             TailoringProposal,
             operation="create_proposal",
         )
@@ -148,10 +157,13 @@ class ResumeAI:
         analysis: JobAnalysis,
         provisional: TailoringProposal,
         answers: list[CandidateAnswer],
+        career_background: NewcomerCareerProfile | None = None,
     ) -> TailoringProposal:
         return self._parse(
             PROPOSAL_SYSTEM,
-            build_refinement_prompt(profile, analysis, provisional, answers),
+            build_refinement_prompt(
+                profile, analysis, provisional, answers, career_background
+            ),
             TailoringProposal,
             operation="refine_proposal",
         )
@@ -161,10 +173,11 @@ class ResumeAI:
         profile: CandidateProfile,
         analysis: JobAnalysis,
         proposal: TailoringProposal,
+        career_background: NewcomerCareerProfile | None = None,
     ) -> ProposalAudit:
         return self._parse(
             AUDIT_SYSTEM,
-            build_audit_prompt(profile, analysis, proposal),
+            build_audit_prompt(profile, analysis, proposal, career_background),
             ProposalAudit,
             operation="audit_proposal",
         )
@@ -176,13 +189,16 @@ class ResumeAI:
         analysis: JobAnalysis,
         proposal: TailoringProposal,
         issues: list[AuditIssue],
+        career_background: NewcomerCareerProfile | None = None,
     ) -> TailoringProposal:
         actionable = [issue for issue in issues if issue.suggested_fix.strip()]
         if not actionable:
             raise ResumeAIError("The selected recommendation does not contain a suggested fix.")
         return self._parse(
             AUDIT_FIX_SYSTEM,
-            build_audit_fix_prompt(profile, analysis, proposal, actionable),
+            build_audit_fix_prompt(
+                profile, analysis, proposal, actionable, career_background
+            ),
             TailoringProposal,
             operation="apply_suggested_fixes",
         )

@@ -30,6 +30,7 @@ from .models import (
     ApprovedResume,
     BulletProposal,
     CandidateAnswer,
+    CareerTranslationAssessment,
     CandidateProfile,
     JobAnalysis,
     SkillSet,
@@ -272,6 +273,11 @@ def build_initial_resume_proposal(
             [item.model_copy(deep=True) for item in evidence_source.candidate_questions]
             if evidence_source
             else []
+        ),
+        career_translation_assessment=(
+            evidence_source.career_translation_assessment.model_copy(deep=True)
+            if evidence_source
+            else CareerTranslationAssessment()
         ),
     )
 

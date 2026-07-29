@@ -1145,13 +1145,13 @@
     </aside>
   {% endif %}
 
-  <div class="alert alert-info">The professional profile and job description are sent to the selected OpenAI model when you generate or audit a proposal. Contact details are excluded from model prompts.</div>
+  <div class="alert alert-info">The professional profile, job description, and any optional international career context are sent to the selected OpenAI model when you generate or audit a proposal. Contact details are excluded, and the app does not request immigration or visa information.</div>
 
   <div class="workflow-stage-panel" data-workflow-stage-panel="initial" {% if selected_workflow_panel != 'initial' %}hidden{% endif %}>
   <section class="card workflow-stage-intro" id="job-input">
     <div class="step-heading">
       <div><span class="step-number step-label">1</span><h2>Career and Job Setup</h2></div>
-      <p>Review the original resume and add the target job description. Analyze the job and resume to identify any relevant experience that needs confirmation. Analysis uses <code>{{ models.analysis_tailoring_model }}</code>.</p>
+      <p>Add optional international career context, review the original resume, and provide the target job description. Career Bridge creates a Career Translation Assessment before identifying the experience that needs confirmation. Analysis uses <code>{{ models.analysis_tailoring_model }}</code>.</p>
     </div>
   </section>
   {% if state.workflow_stage != 'initial' and not edit_setup_snapshot and setup_snapshot %}
@@ -1166,6 +1166,23 @@
       </div>
       <div class="snapshot-field-grid">
         <div><span>Target job title</span><strong>{{ setup_snapshot.target_title or 'Inferred from the job description' }}</strong></div>
+        <div><span>Target country</span><strong>{{ setup_snapshot.career_background.target_country or 'Not specified' }}</strong></div>
+        {% if setup_snapshot.career_background.has_context() %}
+          <div class="snapshot-career-context">
+            <span>International career context</span>
+            <ul class="compact-list">
+              {% if setup_snapshot.career_background.countries_worked %}<li><strong>Countries worked:</strong> {{ setup_snapshot.career_background.countries_worked|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.industries %}<li><strong>Industries:</strong> {{ setup_snapshot.career_background.industries|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.roles %}<li><strong>Roles:</strong> {{ setup_snapshot.career_background.roles|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.languages %}<li><strong>Languages:</strong> {{ setup_snapshot.career_background.languages|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.international_credentials %}<li><strong>International credentials:</strong> {{ setup_snapshot.career_background.international_credentials|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.professional_certifications %}<li><strong>Certifications:</strong> {{ setup_snapshot.career_background.professional_certifications|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.unfamiliar_job_titles %}<li><strong>Titles needing translation:</strong> {{ setup_snapshot.career_background.unfamiliar_job_titles|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.career_transitions %}<li><strong>Career transitions:</strong> {{ setup_snapshot.career_background.career_transitions|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.us_employment_experience %}<li><strong>U.S. employment experience:</strong> {{ setup_snapshot.career_background.us_employment_experience }}</li>{% endif %}
+            </ul>
+          </div>
+        {% endif %}
         <div class="snapshot-job-description"><span>Job description</span><pre>{{ setup_snapshot.job_description }}</pre></div>
       </div>
     </section>
@@ -1188,14 +1205,71 @@
         class="loading-form"
         data-loading-title="Analyzing job &amp; resume…"
         data-loading-message="The app is reviewing the target role and finding the most relevant experience to confirm."
-        data-loading-steps="Reading the target job requirements|Comparing the role with your original resume|Identifying high-value experience to confirm|Preparing Confirm Relevant Experience"
-        data-loading-step-details="Finding the role's main responsibilities, skills, and priorities.|Matching the job needs with experience already supported by your resume.|Creating focused questions only where an additional fact could strengthen the tailored resume.|Saving the analysis and opening Step 2."
-        data-loading-step-timings="2500,8500,17500"
+        data-loading-steps="Reading the target job requirements|Reviewing international career context|Comparing the role with your original resume|Building the Career Translation Assessment|Preparing Confirm Relevant Experience"
+        data-loading-step-details="Finding the role's main responsibilities, skills, and priorities.|Reviewing countries, industries, languages, credentials, titles, and transitions without collecting immigration data.|Matching the job needs with experience already supported by your resume.|Separating confirmed experience, safe rephrasing, clarification needs, unsupported claims, and future actions.|Saving the analysis and opening Step 2."
+        data-loading-step-timings="2500,7000,12000,19000"
         data-loading-reassurance="Some analyses take longer when the job description or resume contains many detailed requirements."
         data-loading-reassurance-delayed="Still working. The app is comparing the role with your experience and narrowing the list to the most useful confirmation questions."
         data-loading-reassurance-extended="Still working. A detailed role can require additional review before the experience questions are ready."
       >
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <section class="newcomer-onboarding" aria-labelledby="newcomer-onboarding-title">
+          <div class="newcomer-onboarding-heading">
+            <div>
+              <span class="eyebrow">Optional newcomer profile</span>
+              <h3 id="newcomer-onboarding-title">International career background</h3>
+              <p>Help Career Bridge translate experience across countries, industries, and hiring conventions before it rewrites the resume.</p>
+            </div>
+            <span class="privacy-badge">No visa or immigration questions</span>
+          </div>
+          <div class="alert alert-info compact-alert newcomer-privacy-note">Only provide career information useful to job matching and resume translation. Immigration status, visa details, nationality, and other unnecessary sensitive data are not requested.</div>
+          <div class="field-grid two newcomer-field-grid">
+            <div>
+              <label for="countries-worked">Countries where you worked</label>
+              <textarea id="countries-worked" name="countries_worked" rows="3" placeholder="France, Singapore, Canada">{{ career_background.countries_worked|join(', ') }}</textarea>
+            </div>
+            <div>
+              <label for="target-country">Target country</label>
+              <input id="target-country" name="target_country" value="{{ career_background.target_country }}" placeholder="United States" data-target-country>
+              <p class="caption">The target role is collected in the Target job title field below.</p>
+            </div>
+            <div>
+              <label for="career-industries">Industries</label>
+              <textarea id="career-industries" name="career_industries" rows="3" placeholder="Banking, insurance, public sector">{{ career_background.industries|join(', ') }}</textarea>
+            </div>
+            <div>
+              <label for="career-roles">Roles and job families</label>
+              <textarea id="career-roles" name="career_roles" rows="3" placeholder="Axiom developer, regulatory reporting lead, IT auditor">{{ career_background.roles|join(', ') }}</textarea>
+            </div>
+            <div>
+              <label for="career-languages">Professional languages</label>
+              <input id="career-languages" name="career_languages" value="{{ career_background.languages|join(', ') }}" placeholder="English, French">
+            </div>
+            <div>
+              <label for="international-credentials">International credentials</label>
+              <textarea id="international-credentials" name="international_credentials" rows="3" placeholder="Degrees, diplomas, licenses, or designations earned outside the target country">{{ career_background.international_credentials|join(', ') }}</textarea>
+            </div>
+            <div>
+              <label for="professional-certifications">Professional certifications</label>
+              <textarea id="professional-certifications" name="professional_certifications" rows="3" placeholder="Certification name and issuing organization">{{ career_background.professional_certifications|join(', ') }}</textarea>
+            </div>
+            <div>
+              <label for="unfamiliar-job-titles">Job titles that may be unfamiliar</label>
+              <textarea id="unfamiliar-job-titles" name="unfamiliar_job_titles" rows="3" placeholder="Local or company-specific titles that may need explanation">{{ career_background.unfamiliar_job_titles|join(', ') }}</textarea>
+            </div>
+            <div>
+              <label for="career-transitions">Career transitions</label>
+              <textarea id="career-transitions" name="career_transitions" rows="3" placeholder="For example: IT audit to AI engineering">{{ career_background.career_transitions|join(', ') }}</textarea>
+            </div>
+            <div data-us-experience-field {% if career_background.target_country|trim|lower not in ['united states', 'united states of america', 'usa', 'us', 'u.s.', 'u.s.a.'] %}hidden{% endif %}>
+              <label for="us-employment-experience">U.S. employment experience</label>
+              <textarea id="us-employment-experience" name="us_employment_experience" rows="3" placeholder="Only include relevant professional experience; leave blank when not applicable.">{{ career_background.us_employment_experience }}</textarea>
+            </div>
+          </div>
+          <p class="caption">Use commas, semicolons, or separate lines for list fields. These answers guide translation and clarification; they do not automatically become resume claims.</p>
+        </section>
+
         <div class="field-grid two">
           <div>
             <label for="target-title">Target job title (optional)</label>
@@ -1262,7 +1336,7 @@
         {% if state.confirmation_follow_up_count %}
           <p>Answer this one final set of targeted facts identified after the transformed resume was reviewed. No additional question round will follow.</p>
         {% else %}
-          <p>Review the job requirements and confirm only the additional experience needed to keep the tailored resume accurate and evidence-based.</p>
+          <p>Review the Career Translation Assessment and confirm only the additional experience needed to keep the tailored resume accurate, understandable in the target market, and evidence-based.</p>
         {% endif %}
       </div>
     </section>
@@ -1285,6 +1359,60 @@
         {% if analysis.ignored_boilerplate %}<details><summary>Ignored job-posting boilerplate</summary><ul>{% for item in analysis.ignored_boilerplate %}<li>{{ item }}</li>{% endfor %}</ul></details>{% endif %}
       </div>
     </details>
+
+    {% if career_translation_assessment %}
+      <section class="card career-translation-assessment" id="career-translation-assessment" aria-labelledby="career-translation-title">
+        <div class="career-translation-heading">
+          <div>
+            <span class="eyebrow">Before resume rewriting</span>
+            <h2 id="career-translation-title">Career Translation Assessment</h2>
+            <p>{{ career_translation_assessment.summary }}</p>
+          </div>
+          <div class="career-translation-target">
+            <span>Target market</span>
+            <strong>{{ career_translation_assessment.target_role or analysis.target_title }}{% if career_translation_assessment.target_country or career_background.target_country %} · {{ career_translation_assessment.target_country or career_background.target_country }}{% endif %}</strong>
+          </div>
+        </div>
+
+        <div class="evidence-protection-legend" aria-label="Evidence protection states">
+          {% for key, label in career_translation_assessment.disposition_labels.items() %}
+            <div class="evidence-legend-item evidence-{{ key|replace('_', '-') }}">
+              <span class="evidence-state-badge">{{ label }}</span>
+              <strong>{{ career_translation_assessment.counts[key] }}</strong>
+              <small>{{ career_translation_assessment.disposition_descriptions[key] }}</small>
+            </div>
+          {% endfor %}
+        </div>
+
+        {% if career_translation_assessment.groups %}
+          <div class="career-translation-groups">
+            {% for group in career_translation_assessment.groups %}
+              <section class="career-translation-group">
+                <h3>{{ group.label }}</h3>
+                <div class="career-translation-findings">
+                  {% for row in group.findings %}
+                    <article class="career-translation-finding evidence-{{ row.finding.disposition|replace('_', '-') }}">
+                      <div class="career-translation-finding-header">
+                        <strong>{{ row.finding.source_text }}</strong>
+                        <span class="evidence-state-badge" title="{{ row.disposition_description }}">{{ row.disposition_label }}</span>
+                      </div>
+                      {% if row.finding.translated_meaning %}<p class="career-translation-meaning"><strong>Target-market meaning:</strong> {{ row.finding.translated_meaning }}</p>{% endif %}
+                      <p>{{ row.finding.rationale }}</p>
+                      {% if row.finding.evidence_ids %}<p class="caption"><strong>Evidence:</strong> {{ row.finding.evidence_ids|join(', ') }}</p>{% endif %}
+                      {% if row.finding.recommended_action %}<p class="career-translation-action"><strong>Next action:</strong> {{ row.finding.recommended_action }}</p>{% endif %}
+                    </article>
+                  {% endfor %}
+                </div>
+              </section>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="alert alert-success">No material career-translation risks were identified for this application.</div>
+        {% endif %}
+
+        <div class="alert alert-info compact-alert evidence-first-note"><strong>Evidence protection:</strong> Only confirmed experience and reasonable rephrasing may shape resume wording. Clarifications remain questions, unsupported claims stay out, and learning recommendations are shown only as future actions.</div>
+      </section>
+    {% endif %}
 
     <section class="card" id="confirmation">
       <h2>{% if state.confirmation_follow_up_count %}Targeted evidence follow-up{% else %}Additional experience confirmation{% endif %}</h2>

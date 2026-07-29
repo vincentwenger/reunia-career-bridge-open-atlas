@@ -19,6 +19,7 @@ from meeting_assistant.utils.admin import is_admin_identity
 from meeting_assistant.utils.api_tokens import generate_api_token
 from meeting_assistant.utils.error_handlers import render_error_page
 from meeting_assistant.utils.exceptions import AuthenticationError, ValidationError
+from meeting_assistant.utils.feature_access import live_interview_assistance_access
 
 
 def _rate_limit(scope: str, identity: str, *, count_key: str, window_key: str):
@@ -189,6 +190,9 @@ def handle_login():
     session["email"] = user.get("email", user["user_id"])
     session["full_name"] = user.get("full_name", "")
     session["is_admin"] = is_admin_identity(user["user_id"], user)
+    session["live_interview_assistance_enabled"] = bool(
+        live_interview_assistance_access(user["user_id"], user)["enabled"]
+    )
     session["language"] = normalize_language(
         (user.get("settings") or {}).get("language"),
         default="en",
@@ -243,6 +247,9 @@ def handle_signup():
     session["email"] = user.get("email", user["user_id"])
     session["full_name"] = user.get("full_name", "")
     session["is_admin"] = is_admin_identity(user["user_id"], user)
+    session["live_interview_assistance_enabled"] = bool(
+        live_interview_assistance_access(user["user_id"], user)["enabled"]
+    )
     session["language"] = signup_language
     try:
         UsageMetricsService().record_product_event(
@@ -285,6 +292,12 @@ def api_get_user():
         return jsonify({"success": False, "message": "Invalid user_id or password."}), 401
 
     user_settings = UserService().get_settings(user["user_id"])
+    live_assistance_enabled = bool(
+        live_interview_assistance_access(user["user_id"], user)["enabled"]
+    )
+    if not live_assistance_enabled:
+        user_settings.update({"aiClipboard": False, "aiSpeaker": False, "aiMicrophone": False})
+    user_settings["liveInterviewAssistanceEnabled"] = live_assistance_enabled
     # Backward-compatible aliases let connected desktop clients use the same
     # preference as the browser recorder without requiring a separate setting.
     user_settings["whisperLanguage"] = user_settings.get("language", "en")

@@ -168,7 +168,7 @@ class LiveQAService:
                     "Could not load meeting-specific Live Q&A context"
                 )
 
-        if not bool(data.get("_source_enabled_override")) and not self._source_enabled(origin, settings):
+        if not self._source_enabled(origin, settings):
             return "AI trigger for this source is disabled."
         if not content.strip():
             raise ValidationError("file_content is required.")

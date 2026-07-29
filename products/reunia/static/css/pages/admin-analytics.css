@@ -1722,3 +1722,20 @@
     .admin-incident-search { grid-column: auto; }
     .admin-incident-item > summary { align-items: flex-start; flex-direction: column; }
 }
+
+.admin-feature-access-select {
+    min-width: 142px;
+    padding: 0.42rem 0.55rem;
+    border: 1px solid var(--border-color, #d7dee8);
+    border-radius: 8px;
+    background: #fff;
+    color: inherit;
+    font: inherit;
+}
+
+.admin-feature-access-reason {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-muted, #667085);
+    text-transform: capitalize;
+}

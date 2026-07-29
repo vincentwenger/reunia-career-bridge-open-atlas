@@ -19,8 +19,10 @@ from meeting_assistant.services.admin_analytics_service import (
     UsageMetricsService,
 )
 from meeting_assistant.services.admin_support_service import AdminSupportService
+from meeting_assistant.repositories.user_repository import UserRepository
 from meeting_assistant.utils.admin import admin_api_required, admin_required
 from meeting_assistant.utils.exceptions import ExternalServiceError, ValidationError
+from meeting_assistant.utils.feature_access import live_interview_assistance_access
 
 
 _ANALYTICS_VISITOR_COOKIE = "reunia_visitor"
@@ -163,6 +165,53 @@ def admin_analytics_data():
 @admin_api_required
 def admin_user_usage(user_id: str):
     return jsonify({"usage": AdminAnalyticsService().user_usage(user_id)})
+
+
+
+
+@admin_analytics_bp.patch("/api/admin/features/live-interview-assistance/users/<path:user_id>")
+@admin_api_required
+def update_live_interview_assistance_access(user_id: str):
+    payload = request.get_json(silent=True) or {}
+    mode = str(payload.get("mode") or "inherit").strip().lower()
+    if mode not in {"enabled", "disabled", "inherit"}:
+        raise ValidationError("Access mode must be enabled, disabled, or inherit.")
+
+    repository = UserRepository()
+    user = repository.get_by_id(user_id)
+    if not user:
+        return jsonify({"error": "User not found."}), 404
+
+    features = dict(user.get("features") or {}) if isinstance(user.get("features"), dict) else {}
+    if mode == "inherit":
+        features.pop("live_interview_assistance", None)
+    else:
+        features["live_interview_assistance"] = mode == "enabled"
+
+    fields = {"features": features}
+    if "groups" in payload:
+        raw_groups = payload.get("groups")
+        if not isinstance(raw_groups, list):
+            raise ValidationError("Groups must be provided as a list.")
+        groups = sorted({
+            str(group).strip().lower()
+            for group in raw_groups
+            if str(group).strip()
+        })
+        if len(groups) > 20 or any(len(group) > 80 for group in groups):
+            raise ValidationError("Too many groups or a group name is too long.")
+        fields["groups"] = groups
+
+    repository.update_fields(user_id, fields)
+    updated_user = repository.get_by_id(user_id) or {**user, **fields}
+    access = live_interview_assistance_access(user_id, updated_user)
+    cache = current_app.extensions.get("admin_analytics_cache")
+    if cache is not None:
+        try:
+            cache.clear()
+        except Exception:
+            current_app.logger.exception("Could not clear Admin Analytics cache after access update")
+    return jsonify({"user_id": user_id, "access": access})
 
 
 @admin_analytics_bp.get("/api/admin/analytics/incidents")

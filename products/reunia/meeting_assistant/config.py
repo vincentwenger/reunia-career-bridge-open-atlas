@@ -265,6 +265,23 @@ class BaseConfig:
         for value in os.getenv("ADMIN_USER_IDS", "").split(",")
         if value.strip()
     )
+
+    # Live Interview Assistance is restored behind server-side access control.
+    # Administrators always have access. Approved groups and users can be
+    # configured here, while per-user overrides are stored in the user record.
+    LIVE_INTERVIEW_ASSISTANCE_GROUPS = tuple(
+        value.strip().lower()
+        for value in os.getenv(
+            "LIVE_INTERVIEW_ASSISTANCE_GROUPS",
+            "career_bridge_beta,career_coaches",
+        ).split(",")
+        if value.strip()
+    )
+    LIVE_INTERVIEW_ASSISTANCE_USER_IDS = tuple(
+        value.strip().lower()
+        for value in os.getenv("LIVE_INTERVIEW_ASSISTANCE_USER_IDS", "").split(",")
+        if value.strip()
+    )
     ANALYTICS_TABLE_NAME = os.getenv("ANALYTICS_TABLE_NAME", "").strip()
     ANALYTICS_STORAGE_BACKEND = os.getenv(
         "ANALYTICS_STORAGE_BACKEND",

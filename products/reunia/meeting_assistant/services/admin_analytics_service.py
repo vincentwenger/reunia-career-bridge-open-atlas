@@ -19,6 +19,7 @@ from meeting_assistant.repositories.transcript_repository import TranscriptRepos
 from meeting_assistant.repositories.user_repository import UserRepository
 from meeting_assistant.utils.admin import current_session_is_admin
 from meeting_assistant.utils.exceptions import ValidationError
+from meeting_assistant.utils.feature_access import live_interview_assistance_access
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_-]{16,80}$")
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -1465,6 +1466,10 @@ class AdminAnalyticsService:
                 "email": str(user.get("email") or user_id),
                 "full_name": str(user.get("full_name") or ""),
                 "created_at": user.get("created_at"),
+                "groups": live_assistance.get("groups", []),
+                "live_interview_assistance_enabled": bool(live_assistance.get("enabled")),
+                "live_interview_assistance_reason": str(live_assistance.get("reason") or ""),
+                "live_interview_assistance_override": live_assistance.get("override"),
                 "last_active": last_active or None,
                 "days_since_last_active": days_since,
                 "period_has_activity": period_has_activity,

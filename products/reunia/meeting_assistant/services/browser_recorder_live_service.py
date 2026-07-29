@@ -162,7 +162,6 @@ class BrowserRecorderLiveService:
         previous_transcript: str = "",
         question_context: str = "",
         language: str | None = None,
-        live_qa_opt_in: str | bool = False,
         elapsed_seconds: str | float = 0,
     ) -> dict[str, Any]:
         recording_id = _validated_id(recording_id, "recording_id")
@@ -188,11 +187,12 @@ class BrowserRecorderLiveService:
                 sequence_number,
             )
 
-        # Browser-recorder Live Q&A is deliberately opt-in per meeting. This is
-        # independent from the desktop-client source preferences in Settings.
-        if not _as_bool(live_qa_opt_in):
+        # Source selection is controlled by the user's saved Live Interview
+        # Assistance settings. Check before transcription to avoid unnecessary
+        # OpenAI usage when a source is disabled.
+        if not self.live_qa_service.source_enabled(user_id, normalized_source):
             return _status_payload(
-                "live_qa_disabled",
+                "source_disabled",
                 recording_id,
                 chunk_id,
                 normalized_source,
@@ -322,7 +322,6 @@ class BrowserRecorderLiveService:
                         "chunk_id": chunk_id,
                         "sequence": sequence_number,
                         "question_index": question_index,
-                        "_source_enabled_override": True,
                     },
                 )
             except Exception:
@@ -392,11 +391,6 @@ class BrowserRecorderLiveService:
     def is_cancelled(self, *, user_id: str, recording_id: str) -> bool:
         return self.state_store.is_cancelled(str(user_id), str(recording_id))
 
-
-def _as_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _status_payload(

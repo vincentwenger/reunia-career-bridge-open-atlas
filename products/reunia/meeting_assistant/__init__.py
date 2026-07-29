@@ -82,6 +82,10 @@ def create_app(config_name: str | None = None) -> Flask:
         return {
             "app_language": normalize_language(session.get("language"), default="en"),
             "is_admin_session": current_session_is_admin(),
+            "live_interview_assistance_enabled": bool(
+                session.get("live_interview_assistance_enabled")
+                or current_session_is_admin()
+            ),
             "analytics_heartbeat_seconds": int(
                 app.config.get("ANALYTICS_HEARTBEAT_SECONDS", 30)
             ),

@@ -2444,3 +2444,155 @@ tbody tr:nth-child(even) { background: #fbfdff; }
   .application-dashboard-fields { grid-template-columns: 1fr; }
   .application-dashboard-fields .application-dashboard-wide { grid-column: auto; }
 }
+
+/* Newcomer career onboarding and evidence-first translation assessment */
+.newcomer-onboarding {
+  margin: 0 0 1.25rem;
+  padding: 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #f8fbff, #ffffff);
+}
+.newcomer-onboarding-heading,
+.career-translation-heading,
+.career-translation-finding-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.newcomer-onboarding-heading h3,
+.career-translation-heading h2,
+.career-translation-group h3 {
+  margin: 0.15rem 0 0.35rem;
+}
+.newcomer-onboarding-heading p,
+.career-translation-heading p {
+  margin: 0;
+}
+.privacy-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #b9d8c1;
+  border-radius: 999px;
+  background: #f1fbf3;
+  color: #23643a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.newcomer-privacy-note { margin: 0.9rem 0 1rem; }
+.newcomer-field-grid > div { min-width: 0; }
+.snapshot-career-context { grid-column: 1 / -1; }
+.snapshot-career-context .compact-list { margin-bottom: 0; }
+
+.career-translation-assessment {
+  overflow: hidden;
+  border-color: #cbddeb;
+  background: linear-gradient(145deg, #ffffff, #f8fbff);
+}
+.career-translation-target {
+  min-width: 220px;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #d7e5f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+.career-translation-target span,
+.career-translation-target strong {
+  display: block;
+}
+.career-translation-target span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.career-translation-target strong { margin-top: 0.25rem; }
+.evidence-protection-legend {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 1rem 0 1.15rem;
+}
+.evidence-legend-item {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #ffffff;
+}
+.evidence-legend-item strong {
+  display: block;
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1.35rem;
+}
+.evidence-legend-item small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.evidence-state-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.28rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.evidence-confirmed-experience .evidence-state-badge,
+.evidence-reasonable-rephrasing .evidence-state-badge { color: #21683d; background: #effaf2; }
+.evidence-user-clarification-required .evidence-state-badge { color: #8a5a13; background: #fff8e8; }
+.evidence-unsupported-claim .evidence-state-badge { color: #9b2c2c; background: #fff1f1; }
+.evidence-recommended-learning-or-future-action .evidence-state-badge { color: #345d91; background: #eef5ff; }
+.career-translation-groups { display: grid; gap: 1rem; }
+.career-translation-group {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.career-translation-findings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.career-translation-finding {
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 12px;
+  background: #ffffff;
+}
+.career-translation-finding.evidence-confirmed-experience,
+.career-translation-finding.evidence-reasonable-rephrasing { border-left-color: #4b9a65; }
+.career-translation-finding.evidence-user-clarification-required { border-left-color: #d69834; }
+.career-translation-finding.evidence-unsupported-claim { border-left-color: #c85c5c; }
+.career-translation-finding.evidence-recommended-learning-or-future-action { border-left-color: #588bc6; }
+.career-translation-finding-header strong { overflow-wrap: anywhere; }
+.career-translation-finding p { margin: 0.55rem 0 0; }
+.career-translation-meaning,
+.career-translation-action {
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: var(--surface-alt);
+}
+.evidence-first-note { margin: 1rem 0 0; }
+
+@media (max-width: 1120px) {
+  .evidence-protection-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .newcomer-onboarding-heading,
+  .career-translation-heading,
+  .career-translation-finding-header { flex-direction: column; }
+  .privacy-badge { white-space: normal; }
+  .career-translation-target { min-width: 0; width: 100%; }
+  .evidence-protection-legend,
+  .career-translation-findings { grid-template-columns: 1fr; }
+}

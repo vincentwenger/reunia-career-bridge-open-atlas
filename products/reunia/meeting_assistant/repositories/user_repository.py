@@ -25,8 +25,9 @@ class UserRepository(DynamoRepository):
         while True:
             response = self._table().scan(
                 ProjectionExpression=(
-                    "user_id, email, full_name, created_at, is_admin"
+                    "user_id, email, full_name, created_at, is_admin, #groups, features"
                 ),
+                ExpressionAttributeNames={"#groups": "groups"},
                 **scan_kwargs,
             )
             items.extend(response.get("Items", []))

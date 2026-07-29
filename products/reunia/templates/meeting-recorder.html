@@ -16,6 +16,14 @@
     id="browserRecorderPage"
     data-storage-scope="{{ session.get('user_id') or 'default' }}"
     data-guided-flow="{{ 'true' if guided_flow else 'false' }}"
+    data-live-interview-assistance="{{ 'true' if live_interview_assistance_enabled else 'false' }}"
+    data-live-chunk-window-ms="{{ (config.RECORDER_LIVE_CHUNK_WINDOW_SECONDS * 1000) | int }}"
+    data-live-chunk-interval-ms="{{ (config.RECORDER_LIVE_CHUNK_INTERVAL_SECONDS * 1000) | int }}"
+    data-live-queue-limit="{{ config.RECORDER_LIVE_QUEUE_LIMIT }}"
+    data-live-retry-count="{{ config.RECORDER_LIVE_RETRY_COUNT }}"
+    data-live-retry-base-ms="{{ config.RECORDER_LIVE_RETRY_BASE_MILLISECONDS }}"
+    data-live-min-chunk-bytes="{{ config.RECORDER_LIVE_MIN_CHUNK_BYTES }}"
+    data-live-max-minutes="{{ config.AI_LIVE_QA_MAX_MINUTES_PER_MEETING }}"
     data-final-segment-duration-ms="{{ (config.RECORDER_FINAL_SEGMENT_SECONDS * 1000) | int }}"
     data-final-segment-retry-count="{{ config.RECORDER_FINAL_SEGMENT_RETRY_COUNT }}"
     data-final-segment-retry-base-ms="{{ config.RECORDER_FINAL_SEGMENT_RETRY_BASE_MILLISECONDS }}"
@@ -68,7 +76,7 @@
                             <option value="">Do not link an application workspace</option>
                         </select>
                     </label>
-                    <a class="recorder-package-link" href="{{ request.script_root }}/application-builder/">Open Application Builder</a>
+                    <a class="recorder-package-link" href="{{ request.script_root }}/applications/">Open Application Builder</a>
                     <small id="preparedMeetingHelp" class="recorder-package-help">Link this practice session to the target role, materials, and career evidence in an application workspace.</small>
                 </div>
 
@@ -153,6 +161,11 @@
                     <button class="recorder-button recorder-button-secondary" id="resetRecordingButton" type="button" hidden>
                         Practice another interview
                     </button>
+                    {% if live_interview_assistance_enabled %}
+                    <a class="recorder-button recorder-button-secondary" id="openLiveQALink" href="{{ request.script_root }}/live-qa.html" target="_blank" rel="noopener" hidden>
+                        Open Live Interview Assistance
+                    </a>
+                    {% endif %}
                 </div>
 
                 <div class="recorder-progress" id="recorderProgress" hidden>
@@ -238,8 +251,13 @@
             <section class="recorder-privacy-card">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.7 7 10 4.1-1.3 7-5.4 7-10V6l-7-3Z"></path><path d="m9 12 2 2 4-4"></path></svg>
                 <div>
+                    {% if live_interview_assistance_enabled %}
+                    <strong>Restricted live assistance enabled</strong>
+                    <p>This administrator or approved-group account can open Live Interview Assistance while recording. Source capture follows the Microphone, Speaker, and Clipboard choices saved in Settings.</p>
+                    {% else %}
                     <strong>Practice mode only</strong>
-                    <p>Use this recorder for mock interviews and personal practice. Réunia does not provide hidden answers during a real employer interview.</p>
+                    <p>Use this recorder for mock interviews and personal practice. Live Interview Assistance is available only to administrators and approved groups.</p>
+                    {% endif %}
                 </div>
             </section>
         </aside>

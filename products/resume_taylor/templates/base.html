@@ -3,50 +3,82 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Réunia Career Bridge Application Builder — manage applications and create evidence-backed tailored resumes.">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{% block title %}Application Builder · Réunia Career Bridge{% endblock %}</title>
+
+  <link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/static/icons/favicon-64.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/static/icons/favicon.png">
+
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/navbar.css">
+  <link rel="stylesheet" href="/static/css/components.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="stylesheet" href="/static/css/app-layout.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='career_bridge.css') }}">
+
+  <script defer src="/static/js/navbar.js"></script>
   <script defer src="{{ url_for('static', filename='app.js') }}"></script>
 </head>
-<body>
-  <div class="app-shell">
-    <header class="topbar career-builder-topbar">
-      <a class="brand" href="{{ url_for('index', tab='applications') }}">
-        <strong>Réunia Career Bridge</strong>
-        <span>Application Builder</span>
-      </a>
-      <nav class="primary-nav" aria-label="Application Builder navigation">
-        <a class="{{ 'active' if active_tab == 'applications' else '' }}" href="{{ url_for('index', tab='applications') }}">Job Applications</a>
-        <a class="{{ 'active' if active_tab == 'tailoring' else '' }}" href="{{ url_for('index', tab='tailoring', application_id=active_application.id) if active_application else url_for('index', tab='applications') }}">Resume Workflow</a>
-        <a class="{{ 'active' if active_tab == 'reports' else '' }}" href="{{ url_for('index', tab='reports', application_id=active_application.id) if active_application else url_for('index', tab='reports') }}">Resume Reports</a>
-        <a class="{{ 'active' if active_tab == 'configuration' else '' }}" href="{{ url_for('index', tab='configuration') }}">Configuration</a>
-        <a href="{{ career_bridge_home_url }}">Career Bridge</a>
-      </nav>
-    </header>
-    <main class="main-content">
-      <header class="page-header application-builder-page-header">
-        <div>
-          {% if active_tab == 'reports' %}
-            <span class="eyebrow">Application Builder</span>
-            <h1>Resume Reports</h1>
-            <p>Review the Initial, Tailored, and Final Resume evidence and quality reports for the selected job application.</p>
-          {% elif active_tab == 'applications' %}
-            <span class="eyebrow">Application Builder</span>
-            <h1>Job Applications</h1>
-            <p>Manage every target role from one dashboard, then open the six-step resume workflow for a specific application.</p>
-          {% elif active_tab == 'configuration' %}
-            <span class="eyebrow">Application Builder</span>
-            <h1>Configuration</h1>
-            <p>Manage AI models, API readiness, and the verified Candidate Profile used by the resume engine.</p>
-          {% else %}
-            <span class="eyebrow">Application Builder</span>
-            <h1>{% if active_application %}{{ active_application.role }} · {{ active_application.company }}{% else %}Resume Workflow{% endif %}</h1>
-            <p>Move from Career and Job Setup through Evidence Review and Export in six clear stages.</p>
-          {% endif %}
+<body class="application-builder-body" data-authenticated="{{ 'true' if session.get('user_id') else 'false' }}">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  {% include 'career_bridge_navbar.html' %}
+
+  <div id="main-content" tabindex="-1">
+    <main class="app-page application-builder-page">
+      <header class="page-hero application-builder-hero">
+        <div class="page-hero-layout">
+          <div class="page-hero-copy">
+            <p class="application-builder-hero-eyebrow">Application Builder</p>
+            {% if active_tab == 'reports' %}
+              <h1>Resume Reports</h1>
+              <p>Review the Initial, Job-Aligned, and Final Resume evidence and quality reports for the selected application.</p>
+            {% elif active_tab == 'applications' %}
+              <h1>Job Applications</h1>
+              <p>Manage every target role from one dashboard, then open the six-step resume workflow for a specific application.</p>
+            {% elif active_tab == 'configuration' %}
+              <h1>Configuration</h1>
+              <p>Manage AI models, API readiness, and the verified Candidate Profile used by the resume engine.</p>
+            {% else %}
+              <h1>{% if active_application %}{{ active_application.role }} · {{ active_application.company }}{% else %}Resume Workflow{% endif %}</h1>
+              <p>Move from Career and Job Setup through Evidence Review and Export in six clear stages.</p>
+            {% endif %}
+          </div>
+
+          <div class="page-hero-actions application-builder-hero-actions">
+            {% if active_tab == 'applications' %}
+              <a class="application-builder-hero-button application-builder-hero-button-primary" href="#new-application">
+                <span aria-hidden="true">＋</span> Create job application
+              </a>
+            {% else %}
+              <a class="application-builder-hero-button application-builder-hero-button-secondary" href="{{ url_for('index', tab='applications') }}">
+                <span aria-hidden="true">←</span> All job applications
+              </a>
+            {% endif %}
+          </div>
         </div>
-        {% if active_tab != 'applications' %}
-          <a class="button secondary" href="{{ url_for('index', tab='applications') }}">← All job applications</a>
-        {% endif %}
       </header>
+
+      <nav class="application-builder-subnav" aria-label="Application Builder sections">
+        <a class="application-builder-subnav-link {{ 'active' if active_tab == 'applications' else '' }}" href="{{ url_for('index', tab='applications') }}" {% if active_tab == 'applications' %}aria-current="page"{% endif %}>
+          <span class="application-builder-subnav-icon" aria-hidden="true">▦</span>
+          <span><strong>Job Applications</strong><small>Pipeline and target roles</small></span>
+        </a>
+        <a class="application-builder-subnav-link {{ 'active' if active_tab == 'tailoring' else '' }}" href="{{ url_for('index', tab='tailoring', application_id=active_application.id) if active_application else url_for('index', tab='applications') }}" {% if active_tab == 'tailoring' %}aria-current="page"{% endif %}>
+          <span class="application-builder-subnav-icon" aria-hidden="true">✦</span>
+          <span><strong>Resume Workflow</strong><small>Six guided tailoring steps</small></span>
+        </a>
+        <a class="application-builder-subnav-link {{ 'active' if active_tab == 'reports' else '' }}" href="{{ url_for('index', tab='reports', application_id=active_application.id) if active_application else url_for('index', tab='reports') }}" {% if active_tab == 'reports' %}aria-current="page"{% endif %}>
+          <span class="application-builder-subnav-icon" aria-hidden="true">◫</span>
+          <span><strong>Resume Reports</strong><small>Evidence and quality scores</small></span>
+        </a>
+        <a class="application-builder-subnav-link {{ 'active' if active_tab == 'configuration' else '' }}" href="{{ url_for('index', tab='configuration') }}" {% if active_tab == 'configuration' %}aria-current="page"{% endif %}>
+          <span class="application-builder-subnav-icon" aria-hidden="true">⚙</span>
+          <span><strong>Configuration</strong><small>Models and candidate data</small></span>
+        </a>
+      </nav>
 
       {% if active_application and active_tab != 'applications' %}
         <section class="active-application-banner" aria-label="Selected job application">
@@ -66,9 +98,12 @@
         {% endif %}
       {% endwith %}
 
-      {% block content %}{% endblock %}
+      <div class="application-builder-content">
+        {% block content %}{% endblock %}
+      </div>
     </main>
   </div>
+
   <div class="loading-overlay" id="loading-overlay" hidden>
     <div class="loading-card" role="dialog" aria-modal="true" aria-labelledby="loading-title">
       <div class="spinner" id="loading-spinner"></div>
