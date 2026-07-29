@@ -34,13 +34,18 @@ class TranscriptService:
         progress_callback: Callable[[str], None] | None = None,
         analysis_cache: dict[str, Any] | None = None,
         analysis_cache_callback: Callable[[str, dict[str, Any]], None] | None = None,
+        scorecard_source_override: str | None = None,
     ) -> dict[str, Any]:
         meeting_id = str(data.get("meeting_id") or "").strip()
         transcript = str(data.get("transcript") or "").strip()
         if not meeting_id or not transcript:
             raise ValidationError("meeting_id and transcript are required.")
 
-        settings = self.user_service.get_settings(user_id)
+        settings = dict(self.user_service.get_settings(user_id))
+        normalized_scorecard_source = str(scorecard_source_override or "").strip().lower()
+        if normalized_scorecard_source in {"microphone", "speaker", "all"}:
+            settings["scorecardSource"] = normalized_scorecard_source
+            settings["scorecard_source"] = normalized_scorecard_source
         model = settings.get("aiModel") or current_app.config["DEFAULT_AI_MODEL"]
         if current_app.config["ALLOW_CLIENT_AI_MODEL_OVERRIDE"] and data.get("aiModel"):
             model = data["aiModel"]

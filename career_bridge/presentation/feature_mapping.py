@@ -24,13 +24,13 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
         "Meeting Preparation",
         "Interview Preparation",
         "Rewrite around the company, role, interviewer, and likely questions.",
-        "/interview-preparation",
+        "/applications/interview-preparation",
     ),
     RepurposedFeature(
         "Meeting Materials",
         "Application Materials",
         "Store the resume, job posting, company notes, and recruiter messages.",
-        "/applications",
+        "/application-materials",
     ),
     RepurposedFeature(
         "AI Context",
@@ -39,21 +39,27 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
         "/career-profile",
     ),
     RepurposedFeature(
+        "Newcomer Career Onboarding",
+        "Career Translation",
+        "Translate international titles, credentials, terminology, and transferable skills without treating onboarding context as verified evidence.",
+        "/applications/career-translation",
+    ),
+    RepurposedFeature(
         "Knowledge Search",
         "Career Evidence Library",
         "Search verified projects, achievements, and experience.",
-        "/interview-preparation",
+        "/career-evidence-library",
     ),
     RepurposedFeature(
         "Meeting Package",
         "Application Workspace",
         "Use one workspace for each target position.",
-        "/applications",
+        "/applications/?tab=applications",
     ),
     RepurposedFeature(
         "Browser Meeting Recorder",
-        "Mock Interview Recorder",
-        "Keep audio recording and transcription for practice sessions.",
+        "Adaptive Mock Interview",
+        "Run answer-by-answer practice with transcription, evidence-aware evaluation, adaptive follow-ups, challenges, and a final review.",
         "/mock-interview",
     ),
     RepurposedFeature(

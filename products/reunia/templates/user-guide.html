@@ -38,7 +38,7 @@
             </div>
             <label class="guide-search" for="guideSearch">
                 <span aria-hidden="true">⌕</span>
-                <input id="guideSearch" type="search" placeholder="Try “application”, “scorecard”, or “recording”" autocomplete="off">
+                <input id="guideSearch" type="search" placeholder="Try “application”, “scorecard”, or “mock interview”" autocomplete="off">
                 <button id="clearGuideSearch" type="button" hidden>Clear</button>
             </label>
             <p class="guide-search-status" id="guideSearchStatus" role="status" aria-live="polite"></p>
@@ -150,7 +150,7 @@
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">●</div>
-                            <div><h3>Mock Interview Recorder</h3><p>Record your microphone and optional interviewer prompt audio in the browser, then process the session for transcription and coaching.</p><a href="{{ request.script_root }}/mock-interview">Open Mock Interview →</a></div>
+                            <div><h3>Adaptive Mock Interview</h3><p>Choose an interview format and question count. The AI interviewer records and transcribes each answer, evaluates its evidence, challenges vague claims, and asks an adaptive follow-up.</p><a href="{{ request.script_root }}/mock-interview">Open Mock Interview →</a></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">🔒</div>
@@ -158,7 +158,7 @@
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">🌐</div>
-                            <div><h3>Browser-only MVP</h3><p>The Windows Desktop Recorder is excluded from the Career Bridge MVP. The supported recording path is the browser Mock Interview Recorder.</p></div>
+                            <div><h3>Browser-only MVP</h3><p>The Windows Desktop Recorder is excluded from the Career Bridge MVP. The supported practice path is the browser Adaptive Mock Interview.</p></div>
                         </article>
                     </div>
                 </section>
@@ -212,10 +212,10 @@
                         <p>Open a question for the most likely solution.</p>
                     </header>
                     <div class="guide-faq">
-                        <details data-guide-search-item><summary>The mock-interview recording will not start</summary><p>Use a current desktop version of Chrome or Edge and allow microphone access when prompted. Shared interviewer audio also requires selecting a browser tab, window, or screen with audio sharing enabled.</p></details>
-                        <details data-guide-search-item><summary>My practice session is missing from Interview Review</summary><p>Select <strong>Stop &amp; Process</strong>, keep the recorder page open, and wait for the saved confirmation. A discarded recording is not added to Interview Review.</p></details>
+                        <details data-guide-search-item><summary>My mock-interview answer will not record</summary><p>Use a current desktop version of Chrome or Edge, allow microphone access when prompted, and confirm that another application is not already using the microphone.</p></details>
+                        <details data-guide-search-item><summary>My practice session is missing from Interview Review</summary><p>Complete the selected number of questions, choose <strong>Generate interview review</strong>, and keep the page open until the review-ready confirmation appears. A discarded session is not added to Interview Review.</p></details>
                         <details data-guide-search-item><summary>Career Evidence Library did not find an example</summary><p>Confirm that the evidence was uploaded, the correct application workspace is selected, and the search scope includes the intended source. Try a shorter, more specific question.</p></details>
-                        <details data-guide-search-item><summary>The Interview Scorecard evaluated the wrong audio</summary><p>Open Settings and adjust the scorecard source for future mock interviews.</p></details>
+                        <details data-guide-search-item><summary>The Interview Scorecard evaluated the wrong content</summary><p>Adaptive Mock Interview reviews automatically grade the candidate answers rather than the AI interviewer prompts. Contact support if a review appears to analyze the wrong speaker.</p></details>
                         <details data-guide-search-item><summary>An improvement action is not visible</summary><p>Clear Career Action Plan filters and check the Closed view. Owner, application, due date, priority, status, and search filters can change what is displayed.</p></details>
                     </div>
                 </section>

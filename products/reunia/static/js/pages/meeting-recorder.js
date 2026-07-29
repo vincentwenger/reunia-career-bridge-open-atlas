@@ -1,2101 +1,744 @@
 (function () {
     'use strict';
 
-    const recorderPage = document.getElementById('browserRecorderPage');
-    const captureMeetingAudioInput = document.getElementById('captureMeetingAudio');
-    const preparedMeetingSelect = document.getElementById('preparedMeetingSelect');
-    const preparedMeetingHelp = document.getElementById('preparedMeetingHelp');
-    const startButton = document.getElementById('startRecordingButton');
-    const stopButton = document.getElementById('stopRecordingButton');
-    const discardButton = document.getElementById('discardRecordingButton');
-    const openLiveQALink = document.getElementById('openLiveQALink');
-    const resetButton = document.getElementById('resetRecordingButton');
-    const retryButton = document.getElementById('retryProcessingButton');
-    const sendErrorButton = document.getElementById('sendErrorToSupportButton');
-    const discardFailedButton = document.getElementById('discardFailedRecordingButton');
-    const timerElement = document.getElementById('recorderTimer');
-    const statusBadge = document.getElementById('recorderStatusBadge');
-    const statusText = document.getElementById('recorderStatusText');
-    const stageTitle = document.getElementById('recorderStageTitle');
-    const stageDescription = document.getElementById('recorderStageDescription');
+    const page = document.getElementById('mockInterviewPage');
+    if (!page) return;
+
+    const setupPanel = document.getElementById('mockSetupPanel');
+    const sessionLayout = document.getElementById('mockSessionLayout');
+    const completePanel = document.getElementById('mockCompletePanel');
+    const workspaceSelect = document.getElementById('applicationWorkspaceSelect');
+    const workspaceHelp = document.getElementById('applicationWorkspaceHelp');
+    const questionCountSelect = document.getElementById('questionCountSelect');
+    const readQuestionsAloud = document.getElementById('readQuestionsAloud');
+    const customFocusField = document.getElementById('customFocusField');
+    const customFocusInput = document.getElementById('customFocusInput');
+    const startInterviewButton = document.getElementById('startMockInterviewButton');
+    const endInterviewButton = document.getElementById('endInterviewButton');
+    const repeatQuestionButton = document.getElementById('repeatQuestionButton');
+    const startAnswerButton = document.getElementById('startAnswerButton');
+    const finishAnswerButton = document.getElementById('finishAnswerButton');
+    const retryAnswerButton = document.getElementById('retryAnswerButton');
+    const nextQuestionButton = document.getElementById('nextQuestionButton');
+    const practiceAgainButton = document.getElementById('practiceAgainButton');
+    const openReviewLink = document.getElementById('openInterviewReviewLink');
+
+    const statusBadge = document.getElementById('mockStatusBadge');
+    const statusText = document.getElementById('mockStatusText');
+    const sessionFormat = document.getElementById('mockSessionFormat');
+    const questionProgress = document.getElementById('mockQuestionProgress');
+    const progressFill = document.getElementById('mockProgressFill');
+    const questionHeading = document.getElementById('mock-question-heading');
+    const questionContext = document.getElementById('mockQuestionContext');
+    const answerStateTitle = document.getElementById('answerStateTitle');
+    const answerTimer = document.getElementById('answerTimer');
+    const microphoneCard = document.getElementById('microphoneCard');
     const microphoneState = document.getElementById('microphoneState');
-    const speakerState = document.getElementById('speakerState');
-    const microphoneMuteButton = document.getElementById('microphoneMuteButton');
-    const speakerMuteButton = document.getElementById('speakerMuteButton');
     const microphoneMeter = document.getElementById('microphoneMeter');
-    const speakerMeter = document.getElementById('speakerMeter');
-    const microphoneSourceCard = document.getElementById('microphoneSourceCard');
-    const speakerSourceCard = document.getElementById('speakerSourceCard');
-    const progressPanel = document.getElementById('recorderProgress');
-    const progressTitle = document.getElementById('recorderProgressTitle');
-    const progressMessage = document.getElementById('recorderProgressMessage');
-    const errorPanel = document.getElementById('recorderErrorPanel');
-    const errorMessage = document.getElementById('recorderErrorMessage');
-    const errorReference = document.getElementById('recorderErrorReference');
-    const errorStatus = document.getElementById('recorderErrorStatus');
-    const errorStage = document.getElementById('recorderErrorStage');
-    const errorRecording = document.getElementById('recorderErrorRecording');
-    const errorDetails = document.getElementById('recorderErrorDetails');
-    const errorRetention = document.getElementById('recorderErrorRetention');
-    const supportStatus = document.getElementById('recorderSupportStatus');
-    const resultPanel = document.getElementById('recorderResult');
-    const resultTitle = document.getElementById('recorderResultTitle');
-    const resultMessage = document.getElementById('recorderResultMessage');
-    const qualityWarning = document.getElementById('recorderQualityWarning');
-    const reviewLink = document.getElementById('reviewMeetingLink');
+    const processingPanel = document.getElementById('mockProcessingPanel');
+    const processingTitle = document.getElementById('mockProcessingTitle');
+    const processingMessage = document.getElementById('mockProcessingMessage');
+    const evaluationPanel = document.getElementById('mockEvaluationPanel');
+    const evaluationScore = document.getElementById('evaluationScore');
+    const evaluationEvidenceBadge = document.getElementById('evaluationEvidenceBadge');
+    const evaluationSummary = document.getElementById('evaluationSummary');
+    const evaluationStrengths = document.getElementById('evaluationStrengths');
+    const evaluationImprovements = document.getElementById('evaluationImprovements');
+    const errorPanel = document.getElementById('mockErrorPanel');
+    const errorMessage = document.getElementById('mockErrorMessage');
+    const historyCount = document.getElementById('mockHistoryCount');
+    const historyList = document.getElementById('mockHistoryList');
+    const completeMessage = document.getElementById('mockCompleteMessage');
 
-    if (!startButton) return;
+    const storageScope = encodeURIComponent(page.dataset.storageScope || 'default');
+    const ACTIVE_SESSION_KEY = `careerBridge.activeMockInterview.v2.${storageScope}`;
+    const reviewUrl = page.dataset.reviewUrl || '/interview-review';
 
+    let currentSession = null;
+    let pendingNextSession = null;
     let microphoneStream = null;
-    let displayStream = null;
-    let speakerAudioStream = null;
-    let microphoneRecorder = null;
-    let speakerRecorder = null;
-    let microphoneChunks = [];
-    let speakerChunks = [];
-    let startedAt = null;
-    let timerInterval = null;
-    let audioContexts = [];
-    let meterAnimations = [];
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let answerStartedAt = 0;
+    let timerId = null;
+    let audioContext = null;
+    let meterAnimation = null;
+    let lastAnswerBlob = null;
+    let lastAnswerFilename = 'mock-interview-answer.webm';
     let phase = 'ready';
-    let recordingHeartbeatInterval = null;
-    let pendingRecording = null;
-    let lastErrorDiagnostics = '';
-    let lastProcessingError = null;
-    let lastSupportRequestId = '';
-    let pollGeneration = 0;
-    let preparedMeetingsCache = [];
-    let microphoneMuted = false;
-    let speakerMuted = false;
-    let liveQASession = null;
-    let recordingUploadSession = null;
-    let finalSegmentSources = {};
-    let finalSegmentRotationTimer = null;
-    let finalSegmentRotationPromise = Promise.resolve();
-    let finalSegmentUploadTail = Promise.resolve();
-    const audioActivity = {
-        microphone: {frames: 0, speechFrames: 0, maxLevel: 0},
-        speaker: {frames: 0, speechFrames: 0, maxLevel: 0}
-    };
-    const trackMetric = (metric, metadata = {}, eventId = '') => {
-        window.ReuniaAnalytics?.track?.(metric, metadata, eventId);
-    };
 
-    const ACTIVE_RECORDING_KEY = 'meetingAssistant.activeBrowserRecording';
-    const storageScope = encodeURIComponent(recorderPage?.dataset.storageScope || 'default');
-    const UPCOMING_MEETINGS_KEY = `meetingAssistant.upcomingMeetings.v1.${storageScope}`;
-    const MEETING_MATERIALS_KEY = `meetingAssistant.meetingMaterials.v1.${storageScope}`;
-    const MEETING_CONTEXTS_KEY = `meetingAssistant.meetingContexts.v1.${storageScope}`;
-    const recorderInstanceId = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-    const supportedMimeType = chooseMimeType();
-    const sharedAudioSupported = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
-    const liveChunkWindowMs = Math.max(4000, Number(recorderPage?.dataset.liveChunkWindowMs) || 10000);
-    const configuredLiveIntervalMs = Math.max(2000, Number(recorderPage?.dataset.liveChunkIntervalMs) || 8000);
-    const liveChunkIntervalMs = Math.min(configuredLiveIntervalMs, liveChunkWindowMs - 500);
-    const liveQueueLimit = Math.max(1, Number(recorderPage?.dataset.liveQueueLimit) || 3);
-    const liveRetryCount = Math.max(0, Number(recorderPage?.dataset.liveRetryCount) || 2);
-    const liveRetryBaseMs = Math.max(100, Number(recorderPage?.dataset.liveRetryBaseMs) || 600);
-    const liveMinChunkBytes = Math.max(1, Number(recorderPage?.dataset.liveMinChunkBytes) || 800);
-    const liveInterviewAssistanceEnabled = recorderPage?.dataset.liveInterviewAssistance === 'true';
-    const liveMaxMinutes = Math.max(0, Number(recorderPage?.dataset.liveMaxMinutes) || 60);
-    const liveSpeechLevelThreshold = Math.max(0, Number(recorderPage?.dataset.liveSpeechLevelThreshold) || 8);
-    const liveMinSpeechRatio = Math.min(1, Math.max(0, Number(recorderPage?.dataset.liveMinSpeechRatio) || 0.08));
-    const finalSegmentDurationMs = Math.max(60000, Number(recorderPage?.dataset.finalSegmentDurationMs) || 600000);
-    const finalSegmentRetryCount = Math.max(0, Number(recorderPage?.dataset.finalSegmentRetryCount) || 3);
-    const finalSegmentRetryBaseMs = Math.max(100, Number(recorderPage?.dataset.finalSegmentRetryBaseMs) || 1000);
-    const finalMinSegmentBytes = Math.max(1, Number(recorderPage?.dataset.finalMinSegmentBytes) || 800);
-    const finalMaxSegmentBytes = Math.max(1024, Number(recorderPage?.dataset.finalMaxSegmentBytes) || 24000000);
-
-    progressPanel.hidden = true;
-    errorPanel.hidden = true;
-    resultPanel.hidden = true;
-    initializePreparedMeetings();
-    initializeBrowserSupport();
-
-    captureMeetingAudioInput.addEventListener('change', function () {
-        updateSharedAudioPresentation();
+    document.querySelectorAll('input[name="interviewType"]').forEach(function (input) {
+        input.addEventListener('change', updateCustomFocusVisibility);
     });
-    startButton.addEventListener('click', startRecording);
-    stopButton.addEventListener('click', stopRecording);
-    discardButton.addEventListener('click', requestDiscardRecording);
-    resetButton.addEventListener('click', resetRecorder);
-    retryButton.addEventListener('click', retryProcessing);
-    sendErrorButton?.addEventListener('click', sendDiagnosticToSupport);
-    discardFailedButton.addEventListener('click', discardFailedRecording);
-    microphoneMuteButton?.addEventListener('click', function () {
-        toggleAudioSourceMute('microphone');
+    startInterviewButton.addEventListener('click', startInterview);
+    startAnswerButton.addEventListener('click', startAnswerRecording);
+    finishAnswerButton.addEventListener('click', finishAnswerRecording);
+    retryAnswerButton.addEventListener('click', retryLastAnswer);
+    nextQuestionButton.addEventListener('click', continueToNextQuestion);
+    repeatQuestionButton.addEventListener('click', function () {
+        speakQuestion(currentSession?.current_question || pendingNextSession?.current_question || '');
     });
-    speakerMuteButton?.addEventListener('click', function () {
-        toggleAudioSourceMute('speaker');
-    });
+    endInterviewButton.addEventListener('click', discardCurrentInterview);
+    practiceAgainButton.addEventListener('click', resetForNewInterview);
 
     window.addEventListener('beforeunload', function (event) {
-        if (phase !== 'recording' && phase !== 'processing' && !pendingRecording) return;
+        if (!['recording', 'submitting', 'completing'].includes(phase)) return;
         event.preventDefault();
         event.returnValue = '';
     });
+    window.addEventListener('pagehide', cleanupMicrophone);
 
-    window.addEventListener('pagehide', function () {
-        clearRecordingActivity();
-        if (liveQASession) {
-            void cancelLiveQASession(liveQASession, {notifyServer: true, keepalive: true});
+    updateCustomFocusVisibility();
+    initialize();
+
+    async function initialize() {
+        await loadApplicationWorkspaces();
+        await resumeActiveSession();
+        ensureBrowserSupport();
+    }
+
+    async function loadApplicationWorkspaces() {
+        if (!workspaceSelect) return;
+        try {
+            const response = await fetch(AppUI.appUrl('/api/career/mock-interviews/applications'), {
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'},
+                cache: 'no-store'
+            });
+            if (!response.ok) throw new Error('Application workspaces could not be loaded.');
+            const payload = await response.json();
+            const workspaces = Array.isArray(payload.applications)
+                ? payload.applications
+                : [];
+            const activeId = String(payload.active_application_context_id || '');
+            workspaceSelect.replaceChildren(new Option('Practice without linking a job application', ''));
+            workspaces.forEach(function (workspace) {
+                const title = String(workspace.title || 'Untitled application');
+                const purpose = String(workspace.purpose || '').trim();
+                const label = purpose ? `${title} · ${truncate(purpose, 58)}` : title;
+                workspaceSelect.add(new Option(label, String(workspace.id || '')));
+            });
+            if (activeId && workspaces.some((item) => String(item.id || '') === activeId)) {
+                workspaceSelect.value = activeId;
+            }
+            workspaceHelp.textContent = workspaces.length
+                ? 'Questions can use the selected role, application context, and verified career evidence.'
+                : 'No job application is available yet. You can still practice, or create one in Application Builder.';
+        } catch (error) {
+            workspaceHelp.textContent = 'Job applications are temporarily unavailable. You can still practice without linking one.';
         }
-    });
+    }
 
-    async function startRecording() {
-        const supportProblem = getRecorderSupportProblem();
-        if (supportProblem) {
-            showCompatibilityProblem(supportProblem);
+    async function resumeActiveSession() {
+        const sessionId = readActiveSessionId();
+        if (!sessionId) return;
+        try {
+            const response = await fetch(AppUI.appUrl(`/api/career/mock-interviews/adaptive/sessions/${encodeURIComponent(sessionId)}`), {
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'},
+                cache: 'no-store'
+            });
+            if (!response.ok) {
+                clearActiveSessionId();
+                return;
+            }
+            const session = await response.json();
+            if (session.status === 'complete') {
+                showCompletion(session);
+                return;
+            }
+            if (['ready_for_review', 'processing_review'].includes(session.status)) {
+                currentSession = session;
+                showSession(session);
+                await completeInterview();
+                return;
+            }
+            if (session.status === 'active') {
+                currentSession = session;
+                showSession(session);
+                AppUI.showToast('Your active mock interview was restored.', {type: 'info'});
+                return;
+            }
+            clearActiveSessionId();
+        } catch (error) {
+            // A temporary status failure should not block starting a new session.
+        }
+    }
+
+    function updateCustomFocusVisibility() {
+        const selected = selectedInterviewType();
+        customFocusField.hidden = selected !== 'custom';
+        customFocusInput.required = selected === 'custom';
+    }
+
+    function selectedInterviewType() {
+        return document.querySelector('input[name="interviewType"]:checked')?.value || 'recruiter_screening';
+    }
+
+    async function startInterview() {
+        if (phase !== 'ready') return;
+        if (selectedInterviewType() === 'custom' && !customFocusInput.value.trim()) {
+            customFocusInput.focus();
+            AppUI.showToast('Describe what the custom practice session should focus on.', {type: 'error'});
             return;
         }
+        if (readActiveSessionId()) {
+            const confirmed = await AppUI.confirm({
+                title: 'Replace the saved practice session?',
+                message: 'Starting a new mock interview will replace the browser link to the previous unfinished session.',
+                confirmLabel: 'Start New Interview',
+                cancelLabel: 'Keep Existing Session',
+                danger: true
+            });
+            if (!confirmed) return;
+        }
 
-        pollGeneration += 1;
-        pendingRecording = null;
-        lastErrorDiagnostics = '';
-        setPhase('connecting');
-        startButton.disabled = true;
-        captureMeetingAudioInput.disabled = true;
-        if (preparedMeetingSelect) preparedMeetingSelect.disabled = true;
-        hideOutcomePanels();
-        microphoneChunks = [];
-        speakerChunks = [];
-        Object.values(audioActivity).forEach(function (activity) {
-            activity.frames = 0;
-            activity.speechFrames = 0;
-            activity.maxLevel = 0;
-        });
-        updateMuteControls();
+        phase = 'starting';
+        setStatus('processing', 'Preparing interviewer');
+        startInterviewButton.disabled = true;
+        hideError();
+        try {
+            const response = await fetch(AppUI.appUrl('/api/career/mock-interviews/adaptive/sessions'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    application_workspace_id: workspaceSelect.value,
+                    interview_type: selectedInterviewType(),
+                    question_count: Number(questionCountSelect.value),
+                    custom_focus: customFocusInput.value.trim(),
+                    language: window.AppI18n?.language || document.documentElement.lang || 'en'
+                })
+            });
+            const payload = await readJson(response);
+            if (!response.ok) throw apiError(payload, 'The mock interview could not be started.');
+            currentSession = payload;
+            pendingNextSession = null;
+            writeActiveSessionId(payload.session_id);
+            showSession(payload);
+            speakQuestion(payload.current_question);
+        } catch (error) {
+            phase = 'ready';
+            setStatus('error', 'Unable to start');
+            startInterviewButton.disabled = false;
+            AppUI.showToast(error.message, {type: 'error', duration: 8000});
+        }
+    }
 
+    function showSession(session) {
+        currentSession = session;
+        setupPanel.hidden = true;
+        completePanel.hidden = true;
+        sessionLayout.hidden = false;
+        phase = 'question';
+        setStatus('active', 'Interview active');
+        renderSession(session);
+        resetAnswerControls();
+        hideError();
+        evaluationPanel.hidden = true;
+        processingPanel.hidden = true;
+    }
+
+    function renderSession(session) {
+        const total = Number(session.question_count || 0);
+        const answered = Number(session.answered_count ?? (session.answers || []).length);
+        const number = Math.min(total, Math.max(1, Number(session.current_question_number || answered + 1)));
+        sessionFormat.textContent = session.interview_type_label || 'Mock Interview';
+        questionProgress.textContent = `Question ${number} of ${total}`;
+        progressFill.style.width = `${Math.max(0, Math.min(100, ((number - 1) / Math.max(1, total)) * 100))}%`;
+        questionHeading.textContent = session.current_question || 'Preparing the next question…';
+        questionContext.textContent = questionTypeDescription(session.current_question_type, session.current_question_rationale);
+        renderHistory(session.answers || []);
+    }
+
+    function questionTypeDescription(type, rationale) {
+        const labels = {
+            opening: 'Opening question selected for this interview format.',
+            challenge: 'This question challenges a vague or unsupported part of your previous answer.',
+            follow_up: 'This follow-up deepens the evidence or reasoning in your previous answer.',
+            new_topic: 'The interviewer is moving to another important competency.'
+        };
+        return String(rationale || labels[type] || 'The next question adapts to your previous answer.');
+    }
+
+    async function startAnswerRecording() {
+        if (phase !== 'question') return;
+        const problem = recorderSupportProblem();
+        if (problem) {
+            showSessionError(problem, false);
+            return;
+        }
+        cancelSpeech();
+        hideError();
+        evaluationPanel.hidden = true;
+        pendingNextSession = null;
+        lastAnswerBlob = null;
+        startAnswerButton.disabled = true;
+        answerStateTitle.textContent = 'Connecting to your microphone…';
         try {
             microphoneStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true,
-                    channelCount: 1
-                },
+                audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1},
                 video: false
             });
-            applyMutePreference('microphone');
-            microphoneState.textContent = microphoneMuted ? 'Muted' : 'Connected';
-            microphoneState.classList.toggle('is-live', !microphoneMuted);
-            microphoneState.classList.toggle('is-muted', microphoneMuted);
-            startMeter(microphoneStream, microphoneMeter, 'microphone');
-            updateMuteControls();
-
-            if (captureMeetingAudioInput.checked) {
-                if (!navigator.mediaDevices.getDisplayMedia) {
-                    throw new Error('Screen audio sharing is not supported by this browser.');
-                }
-
-                displayStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true,
-                    audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false,
-                        channelCount: 2
-                    },
-                    systemAudio: 'include',
-                    surfaceSwitching: 'include',
-                    selfBrowserSurface: 'exclude'
-                });
-
-                const speakerTracks = displayStream.getAudioTracks();
-                if (!speakerTracks.length) {
-                    throw new Error('No interviewer prompt audio was received. Select the prompt tab or screen and enable “Share tab audio” or “Share system audio”.');
-                }
-                speakerAudioStream = new MediaStream(speakerTracks);
-                applyMutePreference('speaker');
-                speakerState.textContent = speakerMuted ? 'Muted' : 'Connected';
-                speakerState.classList.toggle('is-live', !speakerMuted);
-                speakerState.classList.toggle('is-muted', speakerMuted);
-                startMeter(speakerAudioStream, speakerMeter, 'speaker');
-                updateMuteControls();
-
-                displayStream.getVideoTracks().forEach(function (track) {
-                    track.addEventListener('ended', function () {
-                        if (phase === 'recording') stopRecording();
-                    }, {once: true});
-                });
-            } else {
-                speakerState.textContent = 'Disabled';
-            }
-
-            startedAt = new Date();
-            const preparedMeeting = getSelectedPreparedMeeting();
-            recordingUploadSession = await createFinalUploadSession(startedAt, preparedMeeting);
-            pendingRecording = {
-                mode: 'segmented',
-                session: recordingUploadSession,
-                startedAt: new Date(startedAt),
-                durationSeconds: 0,
-                capturedAt: null,
-                preparedMeeting: preparedMeeting,
-                jobFailed: false
-            };
-            initializeFinalSegmentSources();
-            startFinalSegmentSource('MICROPHONE');
-            if (speakerAudioStream) startFinalSegmentSource('SPEAKER');
-            scheduleFinalSegmentRotation();
-            startTimer();
-            setPhase('recording');
-            updateMuteControls();
-            startButton.hidden = true;
-            stopButton.hidden = false;
-            stopButton.disabled = false;
-            discardButton.hidden = false;
-            discardButton.disabled = false;
-            startLiveQAStreaming();
-            trackMetric('recording_started', {
-                shared_audio: Boolean(captureMeetingAudioInput.checked),
-                source: 'browser_recorder'
-            }, `recording-start-${recorderInstanceId}-${startedAt.getTime()}`);
+            const mimeType = chooseMimeType();
+            recordedChunks = [];
+            mediaRecorder = mimeType
+                ? new MediaRecorder(microphoneStream, {mimeType: mimeType})
+                : new MediaRecorder(microphoneStream);
+            mediaRecorder.addEventListener('dataavailable', function (event) {
+                if (event.data && event.data.size > 0) recordedChunks.push(event.data);
+            });
+            mediaRecorder.addEventListener('error', function () {
+                showSessionError('The browser could not record this answer. Check the microphone and try again.', false);
+            });
+            mediaRecorder.start(500);
+            answerStartedAt = Date.now();
+            startAnswerTimer();
+            startMicrophoneMeter(microphoneStream);
+            phase = 'recording';
+            microphoneCard.dataset.state = 'recording';
+            microphoneState.textContent = 'Recording';
+            answerStateTitle.textContent = 'Answer naturally—the interviewer is listening';
+            startAnswerButton.hidden = true;
+            finishAnswerButton.hidden = false;
+            finishAnswerButton.disabled = false;
+            setStatus('active', 'Recording answer');
         } catch (error) {
-            if (recordingUploadSession) {
-                void discardServerRecording(recordingUploadSession, {keepalive: true});
-            }
-            recordingUploadSession = null;
-            pendingRecording = null;
-            resetFinalSegmentState();
-            cleanupStreams();
-            microphoneState.textContent = 'Not connected';
-            captureMeetingAudioInput.disabled = !sharedAudioSupported;
-            if (preparedMeetingSelect) preparedMeetingSelect.disabled = false;
-            updateSharedAudioPresentation();
-            startButton.hidden = false;
-            startButton.disabled = false;
-            stopButton.hidden = true;
-            discardButton.hidden = true;
-            setPhase('ready');
-            AppUI.showToast(readableMediaError(error), {type: 'error', duration: 8000});
+            cleanupMicrophone();
+            phase = 'question';
+            startAnswerButton.disabled = false;
+            answerStateTitle.textContent = 'Take a moment, then begin when ready';
+            showSessionError(readableMediaError(error), false);
         }
     }
 
-    async function stopRecording() {
-        if (phase !== 'recording') return;
-        setPhase('stopping');
-        updateMuteControls();
-        stopButton.disabled = true;
-        discardButton.disabled = true;
-        stopButton.hidden = true;
-        discardButton.hidden = true;
-        stopTimer();
-        clearFinalSegmentRotation();
-
-        try {
-            await finalSegmentRotationPromise;
-            await stopLiveQAStreaming({discard: false, flushPartial: true});
-            await stopAndQueueAllFinalSegments();
-
-            const durationSeconds = Math.max(
-                0,
-                Math.floor((Date.now() - (startedAt?.getTime() || Date.now())) / 1000)
-            );
-            pendingRecording = pendingRecording || {
-                mode: 'segmented',
-                session: recordingUploadSession,
-                startedAt: startedAt ? new Date(startedAt) : new Date(),
-                preparedMeeting: getSelectedPreparedMeeting(),
-                jobFailed: false
-            };
-            pendingRecording.durationSeconds = durationSeconds;
-            pendingRecording.capturedAt = new Date();
-
-            trackMetric('recording_completed', {
-                duration_seconds: durationSeconds,
-                shared_audio: Boolean(finalSegmentSources.SPEAKER),
-                source: 'browser_recorder'
-            }, `recording-complete-${recorderInstanceId}-${pendingRecording.startedAt.getTime()}`);
-            cleanupStreams();
-            microphoneState.textContent = 'Captured';
-            speakerState.textContent = finalSegmentSources.SPEAKER ? 'Captured' : 'Disabled';
-            await uploadRecording(pendingRecording);
-        } catch (error) {
-            cleanupStreams();
-            showFailure(normalizeProcessingError(error, {stage: 'finalizing_audio'}));
-        }
-    }
-
-    async function requestDiscardRecording() {
-        if (phase !== 'recording') return;
-
-        const confirmed = await AppUI.confirm({
-            title: 'Discard this recording?',
-            message: 'The current recording will be permanently deleted and will not be processed or saved.',
-            confirmLabel: 'Discard Recording',
-            cancelLabel: 'Keep Recording',
-            danger: true
-        });
-
-        if (!confirmed || phase !== 'recording') return;
-
-        setPhase('discarding');
-        updateMuteControls();
-        stopButton.disabled = true;
-        discardButton.disabled = true;
-        stopButton.hidden = true;
-        discardButton.hidden = true;
-        stopTimer();
-        clearFinalSegmentRotation();
-
-        await finalSegmentRotationPromise;
-        await stopLiveQAStreaming({discard: true, flushPartial: false});
-        await stopAllFinalSegmentRecorders(false);
-        if (recordingUploadSession) {
-            try {
-                await discardServerRecording(recordingUploadSession);
-            } catch (error) {
-                AppUI.showToast('The local recording was discarded, but the server cleanup could not be confirmed.', {
-                    type: 'warning',
-                    duration: 7000
-                });
-            }
-        }
-
-        microphoneChunks = [];
-        speakerChunks = [];
-        microphoneMuted = false;
-        speakerMuted = false;
-        pendingRecording = null;
-        recordingUploadSession = null;
-        resetFinalSegmentState();
-        cleanupStreams();
-        resetRecorder();
-        AppUI.showToast('Recording discarded. No mock interview was saved.', {type: 'info'});
-    }
-
-    async function retryProcessing() {
-        if (!pendingRecording || phase === 'processing') return;
-        await uploadRecording(pendingRecording);
-    }
-
-    async function discardFailedRecording() {
-        if (!pendingRecording) {
-            resetRecorder();
+    async function finishAnswerRecording() {
+        if (phase !== 'recording' || !mediaRecorder) return;
+        const durationMs = Date.now() - answerStartedAt;
+        if (durationMs < 1200) {
+            AppUI.showToast('Keep recording long enough to provide a complete answer.', {type: 'warning'});
             return;
         }
-        const confirmed = await AppUI.confirm({
-            title: 'Discard the captured audio?',
-            message: 'The saved recording segments will be deleted and it will no longer be possible to retry processing them.',
-            confirmLabel: 'Discard Audio',
-            cancelLabel: 'Keep Audio',
-            danger: true
-        });
-        if (!confirmed) return;
+        phase = 'stopping';
+        finishAnswerButton.disabled = true;
+        stopAnswerTimer();
         try {
-            if (pendingRecording.session) {
-                await discardServerRecording(pendingRecording.session);
-            }
+            await stopRecorder(mediaRecorder);
+            const mimeType = mediaRecorder.mimeType || chooseMimeType() || 'audio/webm';
+            lastAnswerBlob = new Blob(recordedChunks, {type: mimeType});
+            lastAnswerFilename = `mock-interview-answer.${mimeExtension(mimeType)}`;
+            cleanupMicrophone();
+            if (lastAnswerBlob.size < 700) throw new Error('The recorded answer was empty or too short to transcribe.');
+            await submitAnswerBlob(lastAnswerBlob, lastAnswerFilename);
         } catch (error) {
-            AppUI.showToast('The recording could not be removed from the server. It will expire automatically.', {
-                type: 'warning',
-                duration: 7000
-            });
+            cleanupMicrophone();
+            phase = 'answer_error';
+            showSessionError(error.message || 'The answer could not be processed.', Boolean(lastAnswerBlob));
         }
-        pendingRecording = null;
-        recordingUploadSession = null;
-        microphoneChunks = [];
-        speakerChunks = [];
-        resetFinalSegmentState();
-        resetRecorder();
-        AppUI.showToast('Captured audio discarded.', {type: 'info'});
     }
 
-    async function createFinalUploadSession(recordingStartedAt, preparedMeeting) {
-        const referenceId = createReferenceId();
+    async function retryLastAnswer() {
+        hideError();
+        if (lastAnswerBlob) {
+            await submitAnswerBlob(lastAnswerBlob, lastAnswerFilename);
+            return;
+        }
+        phase = 'question';
+        resetAnswerControls();
+    }
+
+    async function submitAnswerBlob(blob, filename) {
+        if (!currentSession?.session_id) throw new Error('The mock interview session is unavailable.');
+        phase = 'submitting';
+        setStatus('processing', 'Evaluating answer');
+        processingPanel.hidden = false;
+        evaluationPanel.hidden = true;
+        errorPanel.hidden = true;
+        processingTitle.textContent = 'Transcribing your answer';
+        processingMessage.textContent = 'Réunia is evaluating the content and preparing an adaptive follow-up.';
+        startAnswerButton.hidden = true;
+        finishAnswerButton.hidden = true;
+
         const formData = new FormData();
-        formData.append('client_reference_id', referenceId);
-        formData.append('started_at', recordingStartedAt.toISOString());
+        formData.append('answer_audio', blob, filename);
         formData.append('language', window.AppI18n?.language || document.documentElement.lang || 'en');
-        appendPreparedMeetingFields(formData, preparedMeeting);
-
-        let response;
-        let parsed;
         try {
-            response = await fetch(AppUI.appUrl('/api/career/mock-interviews/sessions'), {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin',
-                headers: {'X-Recorder-Reference': referenceId, 'Accept': 'application/json'}
-            });
-            parsed = await readResponse(response);
-        } catch (error) {
-            throw createProcessingError(
-                'The recorder could not create a secure upload session. Check your connection and try again.',
-                {
-                    referenceId: referenceId,
-                    stage: 'creating_upload_session',
-                    cause: error?.message || String(error)
-                }
-            );
-        }
-        if (!response.ok) {
-            throw errorFromHttpResponse(response, parsed, {
-                referenceId: parsed.payload?.reference_id || referenceId,
-                stage: parsed.payload?.stage || 'creating_upload_session'
-            });
-        }
-
-        const payload = parsed.payload || {};
-        const sessionId = payload.job_id || payload.reference_id || referenceId;
-        return {
-            id: sessionId,
-            referenceId: sessionId,
-            segmentUrl: payload.segment_url || AppUI.appUrl(`/api/career/mock-interviews/sessions/${encodeURIComponent(sessionId)}/segments`),
-            finalizeUrl: payload.finalize_url || AppUI.appUrl(`/api/career/mock-interviews/sessions/${encodeURIComponent(sessionId)}/finalize`),
-            discardUrl: payload.discard_url || AppUI.appUrl(`/api/career/mock-interviews/sessions/${encodeURIComponent(sessionId)}`),
-            statusUrl: payload.status_url || AppUI.appUrl(`/api/career/mock-interviews/jobs/${encodeURIComponent(sessionId)}`),
-            retryUrl: AppUI.appUrl(`/api/career/mock-interviews/jobs/${encodeURIComponent(sessionId)}/retry`),
-            preparedMeeting: preparedMeeting || null,
-            failedSegments: new Map(),
-            capturedBytes: {MICROPHONE: 0, SPEAKER: 0},
-            uploadedSegments: 0,
-            lastUploadError: null
-        };
-    }
-
-    function appendPreparedMeetingFields(formData, preparedMeeting) {
-        if (!preparedMeeting) return;
-        formData.append('prepared_meeting_id', preparedMeeting.id || '');
-        formData.append('prepared_meeting_title', preparedMeeting.title || '');
-        formData.append('prepared_meeting_scheduled_at', preparedMeeting.scheduled_at || '');
-        formData.append('prepared_meeting_participants', JSON.stringify(preparedMeeting.participants || []));
-        formData.append('prepared_meeting_purpose', preparedMeeting.purpose || '');
-    }
-
-    function initializeFinalSegmentSources() {
-        resetFinalSegmentState();
-        finalSegmentSources = {
-            MICROPHONE: createFinalSegmentSource('MICROPHONE', microphoneStream)
-        };
-        if (speakerAudioStream) {
-            finalSegmentSources.SPEAKER = createFinalSegmentSource('SPEAKER', speakerAudioStream);
-        }
-    }
-
-    function createFinalSegmentSource(source, stream) {
-        return {
-            source: source,
-            stream: stream,
-            recorder: null,
-            chunks: [],
-            sequence: 0,
-            startedAt: null
-        };
-    }
-
-    function startFinalSegmentSource(source) {
-        const state = finalSegmentSources[source];
-        if (!state?.stream || phase === 'stopping' || phase === 'discarding') return;
-        state.chunks = [];
-        state.recorder = buildRecorder(state.stream, state.chunks);
-        state.startedAt = new Date();
-        state.recorder.start(1000);
-        if (source === 'MICROPHONE') {
-            microphoneRecorder = state.recorder;
-            microphoneChunks = state.chunks;
-        } else {
-            speakerRecorder = state.recorder;
-            speakerChunks = state.chunks;
-        }
-    }
-
-    function scheduleFinalSegmentRotation() {
-        clearFinalSegmentRotation();
-        finalSegmentRotationTimer = window.setTimeout(function rotateWhenDue() {
-            finalSegmentRotationTimer = null;
-            finalSegmentRotationPromise = finalSegmentRotationPromise
-                .then(async function () {
-                    if (phase !== 'recording') return;
-                    await rotateFinalSegments();
-                })
-                .catch(function (error) {
-                    if (phase === 'recording') {
-                        showFailure(normalizeProcessingError(error, {stage: 'saving_segments'}));
-                    }
-                })
-                .finally(function () {
-                    if (phase === 'recording') scheduleFinalSegmentRotation();
-                });
-        }, finalSegmentDurationMs);
-    }
-
-    function clearFinalSegmentRotation() {
-        if (finalSegmentRotationTimer !== null) {
-            window.clearTimeout(finalSegmentRotationTimer);
-            finalSegmentRotationTimer = null;
-        }
-    }
-
-    async function rotateFinalSegments() {
-        const segments = await stopAllFinalSegmentRecorders(true);
-        if (phase !== 'recording') return segments;
-        Object.keys(finalSegmentSources).forEach(startFinalSegmentSource);
-        return segments;
-    }
-
-    async function stopAndQueueAllFinalSegments() {
-        await stopAllFinalSegmentRecorders(true);
-        await waitForFinalSegmentUploads();
-    }
-
-    async function stopAllFinalSegmentRecorders(queueSegments) {
-        const states = Object.values(finalSegmentSources);
-        const segments = await Promise.all(states.map(stopFinalSegmentSource));
-        const captured = segments.filter(Boolean);
-        if (queueSegments) captured.forEach(queueFinalSegmentUpload);
-        return captured;
-    }
-
-    async function stopFinalSegmentSource(state) {
-        if (!state?.recorder) return null;
-        const recorder = state.recorder;
-        const segmentStartedAt = state.startedAt || new Date();
-        await stopMediaRecorder(recorder);
-        const endedAt = new Date();
-        const blob = new Blob(state.chunks, {
-            type: recorder.mimeType || supportedMimeType || 'audio/webm'
-        });
-        const segment = {
-            source: state.source,
-            sequence: state.sequence,
-            offsetSeconds: Math.max(0, (segmentStartedAt.getTime() - (startedAt?.getTime() || segmentStartedAt.getTime())) / 1000),
-            durationSeconds: Math.max(0, (endedAt.getTime() - segmentStartedAt.getTime()) / 1000),
-            blob: blob
-        };
-        state.sequence += 1;
-        state.recorder = null;
-        state.chunks = [];
-        state.startedAt = null;
-        if (state.source === 'MICROPHONE') {
-            microphoneRecorder = null;
-            microphoneChunks = [];
-        } else {
-            speakerRecorder = null;
-            speakerChunks = [];
-        }
-        if (!blob.size || (blob.size < finalMinSegmentBytes && segment.durationSeconds < 0.25)) return null;
-        if (recordingUploadSession) {
-            recordingUploadSession.capturedBytes[state.source] =
-                (recordingUploadSession.capturedBytes[state.source] || 0) + blob.size;
-        }
-        return segment;
-    }
-
-    function queueFinalSegmentUpload(segment) {
-        const session = recordingUploadSession;
-        if (!session || !segment?.blob?.size) return;
-        const key = `${segment.source}:${segment.sequence}`;
-        session.failedSegments.delete(key);
-        const task = finalSegmentUploadTail
-            .then(function () {
-                return uploadFinalSegmentWithRetry(session, segment);
-            })
-            .then(function () {
-                session.uploadedSegments += 1;
-                segment.blob = null;
-                session.lastUploadError = null;
-            })
-            .catch(function (error) {
-                session.failedSegments.set(key, segment);
-                session.lastUploadError = error;
-            });
-        finalSegmentUploadTail = task.then(function () {}, function () {});
-    }
-
-    async function uploadFinalSegmentWithRetry(session, segment) {
-        if (segment.blob.size > finalMaxSegmentBytes) {
-            throw createProcessingError(
-                'One audio segment is larger than the safe transcription limit. Keep this tab open, retry, or record a shorter mock-interview segment.',
-                {
-                    referenceId: session.id,
-                    httpStatus: 413,
-                    stage: 'uploading_segment'
-                }
-            );
-        }
-
-        let lastError = null;
-        for (let attempt = 0; attempt <= finalSegmentRetryCount; attempt += 1) {
-            const formData = new FormData();
-            formData.append('source', segment.source);
-            formData.append('sequence', String(segment.sequence));
-            formData.append('offset_seconds', String(segment.offsetSeconds));
-            formData.append('duration_seconds', String(segment.durationSeconds));
-            formData.append(
-                'audio_segment',
-                segment.blob,
-                `${segment.source.toLowerCase()}-${String(segment.sequence).padStart(4, '0')}${mimeExtension(segment.blob.type)}`
-            );
-            try {
-                const response = await fetch(session.segmentUrl, {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'same-origin',
-                    headers: {
-                        'X-Recorder-Reference': session.id,
-                        'Accept': 'application/json'
-                    }
-                });
-                const parsed = await readResponse(response);
-                if (!response.ok) {
-                    throw errorFromHttpResponse(response, parsed, {
-                        referenceId: session.id,
-                        stage: parsed.payload?.stage || 'uploading_segment'
-                    });
-                }
-                return parsed.payload || {};
-            } catch (error) {
-                lastError = error;
-                const status = Number(error?.httpStatus) || 0;
-                const retryable = !status || status >= 500;
-                if (!retryable || attempt >= finalSegmentRetryCount) break;
-                await delay(finalSegmentRetryBaseMs * Math.pow(2, attempt));
-            }
-        }
-        throw lastError || createProcessingError('An audio segment could not be uploaded.', {
-            referenceId: session.id,
-            stage: 'uploading_segment'
-        });
-    }
-
-    async function retryFailedFinalSegments(session) {
-        const failed = Array.from(session.failedSegments.values());
-        session.failedSegments.clear();
-        failed.forEach(queueFinalSegmentUpload);
-        await waitForFinalSegmentUploads();
-    }
-
-    async function waitForFinalSegmentUploads() {
-        await finalSegmentUploadTail;
-        const session = recordingUploadSession;
-        if (session?.failedSegments?.size) {
-            throw session.lastUploadError || createProcessingError(
-                'One or more audio segments could not be uploaded. Check your connection and retry.',
-                {referenceId: session.id, stage: 'uploading_segment'}
-            );
-        }
-    }
-
-    async function discardServerRecording(session, options = {}) {
-        if (!session?.discardUrl) return;
-        const response = await fetch(session.discardUrl, {
-            method: 'DELETE',
-            credentials: 'same-origin',
-            keepalive: Boolean(options.keepalive),
-            headers: {'Accept': 'application/json', 'X-Recorder-Reference': session.id}
-        });
-        if (!response.ok) {
-            const parsed = await readResponse(response);
-            throw errorFromHttpResponse(response, parsed, {
-                referenceId: session.id,
-                stage: 'discarding'
-            });
-        }
-    }
-
-    function resetFinalSegmentState() {
-        clearFinalSegmentRotation();
-        finalSegmentSources = {};
-        finalSegmentRotationPromise = Promise.resolve();
-        finalSegmentUploadTail = Promise.resolve();
-    }
-
-    async function uploadRecording(recording) {
-        const session = recording?.session || recordingUploadSession;
-        if (!session) {
-            showFailure(createProcessingError('The secure recording session is unavailable.', {
-                stage: 'finalizing_upload'
-            }));
-            return;
-        }
-
-        const generation = ++pollGeneration;
-        setPhase('processing');
-        configureProcessingPanel(
-            recording.jobFailed ? 'Retrying mock interview processing' : 'Finishing audio uploads',
-            recording.jobFailed
-                ? 'The saved audio segments are being queued again.'
-                : 'Keep this page open while the remaining audio segments are uploaded securely.'
-        );
-        errorPanel.hidden = true;
-        resultPanel.hidden = true;
-        retryButton.disabled = true;
-        discardFailedButton.disabled = true;
-
-        if (recording.jobFailed) {
-            await retryBackgroundJob(recording, generation);
-            return;
-        }
-
-        try {
-            await retryFailedFinalSegments(session);
-        } catch (error) {
-            showFailure(normalizeProcessingError(error, {
-                referenceId: session.id,
-                stage: 'uploading_segment'
-            }));
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('duration_seconds', String(recording.durationSeconds || 0));
-        let response;
-        let parsed;
-        try {
-            response = await fetch(session.finalizeUrl, {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin',
-                headers: {'X-Recorder-Reference': session.id, 'Accept': 'application/json'}
-            });
-            parsed = await readResponse(response);
-        } catch (error) {
-            showFailure(createProcessingError(
-                'The final upload could not reach the server. Check your connection and retry.',
-                {
-                    referenceId: session.id,
-                    stage: 'finalizing_upload',
-                    cause: error?.message || String(error)
-                }
-            ));
-            return;
-        }
-
-        if (!response.ok) {
-            showFailure(errorFromHttpResponse(response, parsed, {
-                referenceId: parsed.payload?.reference_id || session.id,
-                stage: parsed.payload?.stage || 'finalizing_upload'
-            }));
-            return;
-        }
-
-        const payload = parsed.payload || {};
-        trackMetric('recording_uploaded', {
-            duration_seconds: recording.durationSeconds,
-            segment_count: session.uploadedSegments,
-            source: 'browser_recorder'
-        }, `recording-upload-${session.id}`);
-        trackMetric('meeting_processing_started', {source: 'browser_recorder'}, `processing-${session.id}`);
-        configureProcessingPanel(
-            'Audio segments saved',
-            payload.stage_message || 'Processing has started. The page will update automatically.'
-        );
-        if (payload.status === 'complete') {
-            showSuccess(payload);
-            return;
-        }
-        await pollRecordingJob(payload.status_url || session.statusUrl, session.id, generation);
-    }
-
-    async function retryBackgroundJob(recording, generation) {
-        const session = recording.session;
-        let response;
-        let parsed;
-        try {
-            response = await fetch(session.retryUrl, {
+            const response = await fetch(AppUI.appUrl(currentSession.answer_url || `/api/career/mock-interviews/adaptive/sessions/${encodeURIComponent(currentSession.session_id)}/answers`), {
                 method: 'POST',
                 credentials: 'same-origin',
-                headers: {'X-Recorder-Reference': session.id, 'Accept': 'application/json'}
+                headers: {'Accept': 'application/json'},
+                body: formData
             });
-            parsed = await readResponse(response);
-        } catch (error) {
-            showFailure(createProcessingError('The retry request could not reach the server.', {
-                referenceId: session.id,
-                stage: 'retrying',
-                cause: error?.message || String(error)
-            }));
-            return;
-        }
-        if (!response.ok) {
-            showFailure(errorFromHttpResponse(response, parsed, {
-                referenceId: session.id,
-                stage: parsed.payload?.stage || 'retrying'
-            }));
-            return;
-        }
-        recording.jobFailed = false;
-        const payload = parsed.payload || {};
-        if (payload.status === 'complete') {
-            showSuccess(payload);
-            return;
-        }
-        await pollRecordingJob(payload.status_url || session.statusUrl, session.id, generation);
-    }
-
-    async function pollRecordingJob(statusUrl, referenceId, generation) {
-        let consecutiveFailures = 0;
-
-        while (generation === pollGeneration && phase === 'processing') {
-            await delay(1800);
-            if (generation !== pollGeneration || phase !== 'processing') return;
-
-            let response;
-            let parsed;
-            try {
-                response = await fetch(statusUrl, {
-                    credentials: 'same-origin',
-                    headers: {'Accept': 'application/json', 'X-Recorder-Reference': referenceId},
-                    cache: 'no-store'
-                });
-                parsed = await readResponse(response);
-            } catch (error) {
-                consecutiveFailures += 1;
-                configureProcessingPanel(
-                    'Reconnecting to processing status',
-                    `The status connection was interrupted. Retrying automatically (${consecutiveFailures}/5).`
-                );
-                if (consecutiveFailures >= 5) {
-                    showFailure(createProcessingError(
-                        'The browser lost contact with the processing job. The captured audio is still available and can be retried.',
-                        {
-                            referenceId: referenceId,
-                            stage: 'checking_status',
-                            cause: error?.message || String(error)
-                        }
-                    ));
-                    return;
-                }
-                continue;
-            }
-
-            if (!response.ok) {
-                showFailure(errorFromHttpResponse(response, parsed, {
-                    referenceId: parsed.payload?.reference_id || referenceId,
-                    stage: parsed.payload?.stage || 'checking_status'
-                }));
-                return;
-            }
-
-            consecutiveFailures = 0;
-            const job = parsed.payload || {};
-            const jobReference = job.reference_id || job.job_id || referenceId;
-            updateProcessingFromJob(job, jobReference);
-
-            if (job.status === 'complete') {
-                showSuccess(job);
-                return;
-            }
-            if (job.status === 'failed') {
-                if (pendingRecording) pendingRecording.jobFailed = true;
-                showFailure(createProcessingError(
-                    job.error || 'The mock interview could not be processed.',
-                    {
-                        referenceId: jobReference,
-                        httpStatus: job.failure_status_code || 'Background job',
-                        stage: job.stage || 'processing',
-                        events: job.events || [],
-                        serverPayload: job
-                    }
-                ));
-                return;
-            }
-        }
-    }
-
-    function updateProcessingFromJob(job, referenceId) {
-        const stageTitles = {
-            recording: 'Saving recording segments',
-            uploading_segments: 'Saving recording segments',
-            queued: 'Waiting to process your mock interview',
-            transcribing_microphone: 'Transcribing microphone audio',
-            transcribing_speaker: 'Transcribing interviewer prompt audio',
-            cleaning_transcript: 'Improving transcript quality',
-            analyzing: 'Generating interview coaching',
-            saving: 'Saving Interview Review'
-        };
-        configureProcessingPanel(
-            stageTitles[job.stage] || 'Processing your mock interview',
-            job.stage_message || 'Your mock interview is being processed.'
-        );
-    }
-
-    function showSuccess(payload) {
-        pollGeneration += 1;
-        progressPanel.hidden = true;
-        errorPanel.hidden = true;
-        resultPanel.hidden = false;
-        resultTitle.textContent = 'Mock interview saved';
-        const linkedMeeting = pendingRecording?.preparedMeeting || null;
-        finalizePreparedMeeting(linkedMeeting, payload);
-        resultMessage.textContent = linkedMeeting
-            ? `${payload.message || 'Your transcript and analysis are ready.'} The application workspace “${linkedMeeting.title}” was linked to this mock interview.`
-            : (payload.message || 'Your transcript and analysis are ready.');
-        qualityWarning.textContent = payload.quality_warning || '';
-        qualityWarning.hidden = !payload.quality_warning;
-        reviewLink.href = payload.review_url || AppUI.appUrl('/interview-review');
-        pendingRecording = null;
-        recordingUploadSession = null;
-        microphoneChunks = [];
-        speakerChunks = [];
-        resetFinalSegmentState();
-        lastErrorDiagnostics = '';
-        startButton.hidden = true;
-        stopButton.hidden = true;
-        discardButton.hidden = true;
-        resetButton.hidden = false;
-        setPhase('complete');
-        trackMetric('meeting_processing_succeeded', {
-            source: 'browser_recorder',
-            duration_seconds: payload.duration_seconds || 0
-        }, `meeting-success-${payload.job_id || payload.reference_id || payload.meeting_id || Date.now()}`);
-        AppUI.showToast('Mock interview saved successfully.', {type: 'success'});
-    }
-
-    function showFailure(error) {
-        pollGeneration += 1;
-        const normalized = normalizeProcessingError(error);
-        trackMetric('meeting_processing_failed', {
-            source: 'browser_recorder',
-            stage: normalized.stage || 'processing',
-            http_status: normalized.httpStatus || '',
-            status_text: normalized.statusText || '',
-            reference_id: normalized.referenceId || '',
-            error_summary: truncate(normalized.message || 'The recording could not be processed.', 240)
-        });
-        progressPanel.hidden = true;
-        resultPanel.hidden = true;
-        errorPanel.hidden = false;
-        startButton.hidden = true;
-        stopButton.hidden = true;
-        discardButton.hidden = true;
-        resetButton.hidden = true;
-        retryButton.disabled = !pendingRecording;
-        discardFailedButton.disabled = !pendingRecording;
-        captureMeetingAudioInput.disabled = true;
-
-        const recordingText = pendingRecording ? describeRecording(pendingRecording) : 'Audio is not available for retry.';
-        errorMessage.textContent = normalized.message;
-        errorReference.textContent = normalized.referenceId || 'Unavailable';
-        errorStatus.textContent = formatHttpStatus(normalized.httpStatus, normalized.statusText);
-        errorStage.textContent = humanizeStage(normalized.stage || 'unknown');
-        errorRecording.textContent = recordingText;
-        errorRetention.textContent = pendingRecording
-            ? 'The recording segments are saved securely and can be retried from this browser tab. Do not refresh or close the page.'
-            : 'The browser no longer has a copy of this audio. Start a new recording after reviewing the diagnostic details.';
-
-        lastProcessingError = normalized;
-        lastErrorDiagnostics = buildDiagnosticDetails(normalized, pendingRecording);
-        errorDetails.textContent = lastErrorDiagnostics;
-        resetSupportSubmission();
-        setPhase('error');
-        AppUI.showToast(normalized.message, {type: 'error', duration: 10000});
-    }
-
-    function configureProcessingPanel(title, message) {
-        progressPanel.hidden = false;
-        progressTitle.textContent = title;
-        progressMessage.textContent = message;
-    }
-
-    function hideOutcomePanels() {
-        progressPanel.hidden = true;
-        errorPanel.hidden = true;
-        resultPanel.hidden = true;
-        qualityWarning.textContent = '';
-        qualityWarning.hidden = true;
-        resetButton.hidden = true;
-        resetSupportSubmission();
-    }
-
-    function resetSupportSubmission() {
-        lastSupportRequestId = '';
-        if (sendErrorButton) {
-            sendErrorButton.disabled = false;
-            sendErrorButton.dataset.sent = 'false';
-            sendErrorButton.textContent = 'Send Error to Support';
-        }
-        if (supportStatus) {
-            supportStatus.hidden = true;
-            supportStatus.textContent = '';
-            supportStatus.className = 'recorder-support-status';
-        }
-    }
-
-    async function sendDiagnosticToSupport() {
-        if (!sendErrorButton || !lastErrorDiagnostics || !lastProcessingError) return;
-        if (sendErrorButton.dataset.sent === 'true') return;
-
-        sendErrorButton.disabled = true;
-        sendErrorButton.textContent = 'Sending to Support…';
-        if (supportStatus) {
-            supportStatus.hidden = false;
-            supportStatus.className = 'recorder-support-status is-sending';
-            supportStatus.textContent = 'Sending error details securely…';
-        }
-
-        const error = normalizeProcessingError(lastProcessingError);
-        const payload = {
-            reference_id: error.referenceId || '',
-            error_message: error.message || '',
-            http_status: error.httpStatus || '',
-            status_text: error.statusText || '',
-            stage: error.stage || 'unknown',
-            recording: pendingRecording ? describeRecording(pendingRecording) : 'Audio is not available for retry.',
-            occurred_at: new Date().toISOString(),
-            page_url: window.location.href,
-            diagnostic_details: lastErrorDiagnostics
-        };
-
-        try {
-            const response = await fetch(AppUI.appUrl('/api/support/recorder-error'), {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-            const parsed = await readResponse(response);
-            if (!response.ok) {
-                throw new Error(
-                    parsed.payload?.error
-                    || parsed.payload?.message
-                    || `The error details could not be sent (${response.status}).`
-                );
-            }
-
-            lastSupportRequestId = parsed.payload?.request_id || '';
-            sendErrorButton.dataset.sent = 'true';
-            sendErrorButton.textContent = 'Error Sent to Support';
-            if (supportStatus) {
-                supportStatus.hidden = false;
-                supportStatus.className = 'recorder-support-status is-success';
-                supportStatus.textContent = lastSupportRequestId
-                    ? `Error details sent to support. Reference: ${lastSupportRequestId}.`
-                    : 'Error details sent to support.';
-            }
-            AppUI.showToast('Error report sent to support.', {type: 'success'});
-            trackMetric('recorder_error_support_sent', {
-                source: 'browser_recorder',
-                stage: error.stage || 'unknown',
-                http_status: error.httpStatus || ''
-            });
-        } catch (error) {
-            sendErrorButton.disabled = false;
-            sendErrorButton.textContent = 'Send Error to Support';
-            if (supportStatus) {
-                supportStatus.hidden = false;
-                supportStatus.className = 'recorder-support-status is-error';
-                supportStatus.textContent = error?.message || 'The error details could not be sent. Please try again.';
-            }
-            AppUI.showToast('The error details could not be sent.', {type: 'error'});
-        }
-    }
-
-
-    function buildDiagnosticDetails(error, recording) {
-        const lines = [
-            'Mock Interview Recorder Processing Error',
-            `Reference ID: ${error.referenceId || 'Unavailable'}`,
-            `Time: ${new Date().toISOString()}`,
-            `Message: ${error.message}`,
-            `HTTP status: ${formatHttpStatus(error.httpStatus, error.statusText)}`,
-            `Failed stage: ${humanizeStage(error.stage || 'unknown')}`,
-            `Page: ${window.location.href}`,
-            `Browser: ${navigator.userAgent}`
-        ];
-
-        if (recording) {
-            lines.push(`Recording duration: ${formatDuration(recording.durationSeconds)}`);
-            if (recording.session?.capturedBytes) {
-                lines.push(`Microphone: ${formatBytes(recording.session.capturedBytes.MICROPHONE || 0)} across secure segments`);
-                lines.push(recording.session.capturedBytes.SPEAKER
-                    ? `Shared audio: ${formatBytes(recording.session.capturedBytes.SPEAKER)} across secure segments`
-                    : 'Shared audio: not captured');
-                lines.push(`Uploaded segments: ${recording.session.uploadedSegments || 0}`);
-                lines.push(`Segments awaiting retry: ${recording.session.failedSegments?.size || 0}`);
+            const payload = await readJson(response);
+            if (!response.ok) throw apiError(payload, 'The answer could not be transcribed and evaluated.');
+            processingPanel.hidden = true;
+            currentSession = payload;
+            lastAnswerBlob = null;
+            renderHistory(payload.answers || []);
+            showEvaluation(payload.latest_answer?.evaluation || {});
+            progressFill.style.width = `${Math.min(100, (Number(payload.answered_count || 0) / Math.max(1, Number(payload.question_count || 1))) * 100)}%`;
+            if (payload.complete) {
+                nextQuestionButton.textContent = 'Generate interview review';
+                nextQuestionButton.dataset.action = 'complete';
+                pendingNextSession = payload;
+                phase = 'evaluation';
+                setStatus('active', 'Answers complete');
             } else {
-                lines.push(`Microphone: ${formatBytes(recording.microphoneBlob?.size || 0)} (${recording.microphoneBlob?.type || 'unknown type'})`);
-                lines.push(recording.speakerBlob?.size
-                    ? `Shared audio: ${formatBytes(recording.speakerBlob.size)} (${recording.speakerBlob.type || 'unknown type'})`
-                    : 'Shared audio: not captured');
+                nextQuestionButton.textContent = 'Continue to next question';
+                nextQuestionButton.dataset.action = 'next';
+                pendingNextSession = payload;
+                phase = 'evaluation';
+                setStatus('active', 'Answer evaluated');
             }
-        }
-
-        if (error.responseText) lines.push(`Server response: ${truncate(error.responseText, 4000)}`);
-        if (error.cause) lines.push(`Browser/network detail: ${error.cause}`);
-        if (Array.isArray(error.events) && error.events.length) {
-            lines.push('', 'Processing timeline:');
-            error.events.forEach(function (event) {
-                lines.push(`- ${event.timestamp || 'unknown time'} | ${humanizeStage(event.stage || '')} | ${event.message || ''}`);
-            });
-        }
-        return lines.join('\n');
-    }
-
-    async function readResponse(response) {
-        const responseText = await response.text();
-        let payload = null;
-        if (responseText) {
-            try {
-                payload = JSON.parse(responseText);
-            } catch (error) {
-                payload = null;
-            }
-        }
-        return {payload: payload, responseText: responseText};
-    }
-
-    function errorFromHttpResponse(response, parsed, defaults) {
-        const payload = parsed.payload || {};
-        const responseText = parsed.responseText || '';
-        const message = payload.error || payload.message || readableHttpFailure(response.status, response.statusText, responseText);
-        return createProcessingError(message, {
-            referenceId: payload.reference_id || defaults.referenceId,
-            httpStatus: response.status,
-            statusText: response.statusText,
-            stage: payload.stage || defaults.stage,
-            responseText: responseText,
-            serverPayload: payload
-        });
-    }
-
-    function readableHttpFailure(status, statusText, responseText) {
-        if (status === 401) return 'Your session expired before the recording could be processed. Sign in again in another tab, then retry here without refreshing this page.';
-        if (status === 413) return 'One audio segment exceeded the safe upload limit. Keep this tab open, retry, or record a shorter mock-interview segment.';
-        if (status === 429) return 'The service is temporarily rate limited. Wait briefly, then retry processing.';
-        if (status === 502) return 'A server or transcription service failed while processing the mock interview.';
-        if (status === 503) return 'The mock interview service is temporarily unavailable.';
-        if (status === 504) return 'The server took too long to respond while processing the mock interview.';
-        const plainText = stripHtml(responseText).trim();
-        if (plainText) return truncate(plainText, 700);
-        return `The mock interview could not be processed (${status || 'network error'}${statusText ? ` ${statusText}` : ''}).`;
-    }
-
-    function createProcessingError(message, details) {
-        const error = new Error(message || 'The recording could not be saved.');
-        Object.assign(error, details || {});
-        return error;
-    }
-
-    function normalizeProcessingError(error, defaults) {
-        const normalized = error instanceof Error ? error : new Error(String(error || 'The recording could not be saved.'));
-        return Object.assign(normalized, defaults || {}, {
-            message: normalized.message || 'The recording could not be saved.'
-        });
-    }
-
-    function readStorage(key, fallback) {
-        try {
-            const value = window.localStorage.getItem(key);
-            return value ? JSON.parse(value) : fallback;
         } catch (error) {
-            return fallback;
+            processingPanel.hidden = true;
+            phase = 'answer_error';
+            setStatus('error', 'Answer failed');
+            showSessionError(error.message, true);
         }
     }
 
-    function writeStorage(key, value) {
-        try {
-            window.localStorage.setItem(key, JSON.stringify(value));
-        } catch (error) {
-            // Linking remains optional when browser storage is unavailable.
+    function showEvaluation(evaluation) {
+        evaluationPanel.hidden = false;
+        evaluationScore.textContent = Number.isFinite(Number(evaluation.score)) ? String(Math.round(Number(evaluation.score))) : '—';
+        const evidence = ['supported', 'partial', 'unsupported'].includes(evaluation.evidence_status)
+            ? evaluation.evidence_status
+            : 'partial';
+        evaluationEvidenceBadge.dataset.evidence = evidence;
+        evaluationEvidenceBadge.textContent = evidence === 'supported'
+            ? 'Supported evidence'
+            : evidence === 'unsupported'
+                ? 'Evidence missing'
+                : 'Partial evidence';
+        evaluationSummary.textContent = evaluation.summary || 'Réunia evaluated the answer and prepared the next question.';
+        renderList(evaluationStrengths, evaluation.strengths, 'No specific strength was detected yet.');
+        renderList(evaluationImprovements, evaluation.improvements, 'Keep the answer specific and evidence-based.');
+        evaluationPanel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+
+    async function continueToNextQuestion() {
+        if (phase !== 'evaluation' || !pendingNextSession) return;
+        if (nextQuestionButton.dataset.action === 'complete' || pendingNextSession.complete) {
+            await completeInterview();
+            return;
         }
+        currentSession = pendingNextSession;
+        pendingNextSession = null;
+        evaluationPanel.hidden = true;
+        renderSession(currentSession);
+        resetAnswerControls();
+        phase = 'question';
+        setStatus('active', 'Interview active');
+        questionHeading.scrollIntoView({behavior: 'smooth', block: 'center'});
+        speakQuestion(currentSession.current_question);
     }
 
-    function activePreparedMeetings() {
-        const meetings = preparedMeetingsCache.length
-            ? preparedMeetingsCache
-            : readStorage(UPCOMING_MEETINGS_KEY, []);
-        return Array.isArray(meetings)
-            ? meetings.filter(function (meeting) {
-                return meeting && (meeting.id || meeting.meeting_id) && !['completed', 'cancelled'].includes(String(meeting.status || ''));
-            }).map(function (meeting) {
-                return Object.assign({}, meeting, {id: String(meeting.id || meeting.meeting_id)});
-            })
-            : [];
-    }
-
-    function preparedMeetingLabel(meeting) {
-        const scheduled = meeting.scheduled_at ? new Date(meeting.scheduled_at) : null;
-        const date = scheduled && !Number.isNaN(scheduled.getTime())
-            ? scheduled.toLocaleString(window.AppI18n?.locale || undefined, {dateStyle: 'medium', timeStyle: 'short'})
-            : 'Draft';
-        return `${meeting.title || 'Untitled application'} · ${date}`;
-    }
-
-    async function initializePreparedMeetings() {
-        if (!preparedMeetingSelect) return;
-        const selectedValue = preparedMeetingSelect.value;
-        let activeMeetingId = '';
+    async function completeInterview() {
+        if (!currentSession?.session_id) return;
+        phase = 'completing';
+        evaluationPanel.hidden = true;
+        errorPanel.hidden = true;
+        processingPanel.hidden = false;
+        processingTitle.textContent = 'Generating your interview review';
+        processingMessage.textContent = 'Réunia is analyzing the full conversation across relevance, evidence, structure, clarity, and delivery.';
+        setStatus('processing', 'Generating review');
         try {
-            const response = await fetch(AppUI.appUrl('/api/career/application-workspaces'), {
+            const response = await fetch(AppUI.appUrl(currentSession.complete_url || `/api/career/mock-interviews/adaptive/sessions/${encodeURIComponent(currentSession.session_id)}/complete`), {
+                method: 'POST',
                 credentials: 'same-origin',
                 headers: {'Accept': 'application/json'}
             });
-            if (response.ok) {
-                const result = await response.json();
-                preparedMeetingsCache = Array.isArray(result.application_workspaces)
-                    ? result.application_workspaces
-                    : (Array.isArray(result.meetings) ? result.meetings : []);
-                activeMeetingId = String(result.active_application_workspace_id || result.active_meeting_id || '');
-                writeStorage(UPCOMING_MEETINGS_KEY, preparedMeetingsCache);
-            }
+            const payload = await readJson(response);
+            if (!response.ok) throw apiError(payload, 'The interview review could not be generated.');
+            currentSession = payload;
+            processingPanel.hidden = true;
+            clearActiveSessionId();
+            showCompletion(payload);
         } catch (error) {
-            // Keep the previous browser cache available when the server is temporarily unreachable.
-        }
-        const meetings = activePreparedMeetings();
-        preparedMeetingSelect.replaceChildren(new Option('Do not link an application workspace', ''));
-        meetings.forEach(function (meeting) {
-            preparedMeetingSelect.add(new Option(preparedMeetingLabel(meeting), String(meeting.id)));
-        });
-        const preferredValue = selectedValue || activeMeetingId;
-        if (preferredValue && meetings.some(function (meeting) { return String(meeting.id) === preferredValue; })) {
-            preparedMeetingSelect.value = preferredValue;
-        }
-        preparedMeetingSelect.disabled = phase !== 'ready';
-        if (preparedMeetingHelp) {
-            preparedMeetingHelp.textContent = meetings.length
-                ? 'Link this recording to materials and context prepared for an upcoming interview.'
-                : 'No upcoming application workspaces are available. Create one in Application Materials, or record without linking.';
+            processingPanel.hidden = true;
+            phase = 'evaluation';
+            nextQuestionButton.textContent = 'Retry interview review';
+            nextQuestionButton.dataset.action = 'complete';
+            evaluationPanel.hidden = false;
+            setStatus('error', 'Review failed');
+            showSessionError(error.message, true);
         }
     }
 
-    function getSelectedPreparedMeeting() {
-        const selectedId = preparedMeetingSelect?.value || '';
-        if (!selectedId) return null;
-        return activePreparedMeetings().find(function (meeting) {
-            return String(meeting.id) === selectedId;
-        }) || null;
+    function showCompletion(session) {
+        cancelSpeech();
+        cleanupMicrophone();
+        currentSession = session;
+        setupPanel.hidden = true;
+        sessionLayout.hidden = true;
+        completePanel.hidden = false;
+        phase = 'complete';
+        setStatus('complete', 'Review ready');
+        const count = Number(session.answered_count || (session.answers || []).length || 0);
+        completeMessage.textContent = `Réunia saved ${count} interview answers and generated coaching across relevance, evidence, structure, clarity, and delivery.`;
+        openReviewLink.href = AppUI.appUrl(session.review_url || reviewUrl);
+        clearActiveSessionId();
     }
 
-    function startLiveQAStreaming() {
-        if (!liveInterviewAssistanceEnabled) return;
-        const preparedMeeting = getSelectedPreparedMeeting();
-        const session = {
-            id: `browser-live-${createReferenceId()}`,
-            preparedMeetingId: String(preparedMeeting?.id || ''),
-            cancelled: false,
-            captureStopped: false,
-            controllers: new Set(),
-            sources: [],
-            failureLogged: false
-        };
-        liveQASession = session;
-
-        registerLiveQASource(session, 'microphone', microphoneStream);
-        if (speakerAudioStream) {
-            registerLiveQASource(session, 'speaker', speakerAudioStream);
-        }
-    }
-
-    function registerLiveQASource(session, source, stream) {
-        if (!stream?.getAudioTracks?.().some(function (track) {
-            return track.readyState === 'live';
-        })) return;
-
-        const state = {
-            source: source,
-            stream: stream,
-            sequence: 0,
-            queue: [],
-            processing: false,
-            lastTranscript: '',
-            questionContext: '',
-            activeWindows: new Set(),
-            intervalId: null
-        };
-        session.sources.push(state);
-        beginLiveCaptureWindow(session, state);
-        state.intervalId = window.setInterval(function () {
-            beginLiveCaptureWindow(session, state);
-        }, liveChunkIntervalMs);
-    }
-
-    function beginLiveCaptureWindow(session, state) {
-        if (session.cancelled || session.captureStopped || phase !== 'recording') return;
-        if (!state.stream?.getAudioTracks?.().some(function (track) {
-            return track.readyState === 'live';
-        })) return;
-
-        const chunks = [];
-        let recorder;
-        try {
-            recorder = buildRecorder(state.stream, chunks);
-        } catch (error) {
-            logLiveQAFailure(session, error);
+    async function discardCurrentInterview() {
+        if (!currentSession?.session_id) {
+            resetForNewInterview();
             return;
         }
-
-        const sequence = state.sequence++;
-        const chunkId = `${session.id}-${state.source}-${sequence}`;
-        let resolveStopped;
-        const stopped = new Promise(function (resolve) {
-            resolveStopped = resolve;
+        const confirmed = await AppUI.confirm({
+            title: 'Discard this mock interview?',
+            message: 'The current questions and recorded answers will be deleted. No interview review will be generated.',
+            confirmLabel: 'Discard Interview',
+            cancelLabel: 'Continue Interview',
+            danger: true
         });
-        const captureWindow = {
-            recorder: recorder,
-            chunks: chunks,
-            sequence: sequence,
-            chunkId: chunkId,
-            startedAt: new Date(),
-            timerId: null,
-            suppressUpload: false,
-            finished: false,
-            stopped: stopped,
-            resolveStopped: resolveStopped
-        };
-        state.activeWindows.add(captureWindow);
-
-        recorder.addEventListener('stop', function () {
-            finalizeLiveCaptureWindow(session, state, captureWindow);
-        }, {once: true});
-        recorder.addEventListener('error', function (event) {
-            captureWindow.suppressUpload = true;
-            logLiveQAFailure(session, event.error || new Error('A live audio window could not be recorded.'));
-        }, {once: true});
-
+        if (!confirmed) return;
+        cancelSpeech();
+        cleanupMicrophone();
         try {
-            recorder.start();
-            captureWindow.timerId = window.setTimeout(function () {
-                stopLiveCaptureWindow(captureWindow, false);
-            }, liveChunkWindowMs);
-        } catch (error) {
-            captureWindow.suppressUpload = true;
-            finalizeLiveCaptureWindow(session, state, captureWindow);
-            logLiveQAFailure(session, error);
-        }
-    }
-
-    function stopLiveCaptureWindow(captureWindow, suppressUpload) {
-        if (!captureWindow || captureWindow.finished) return captureWindow?.stopped || Promise.resolve();
-        captureWindow.suppressUpload = captureWindow.suppressUpload || Boolean(suppressUpload);
-        if (captureWindow.timerId !== null) {
-            window.clearTimeout(captureWindow.timerId);
-            captureWindow.timerId = null;
-        }
-        if (captureWindow.recorder?.state && captureWindow.recorder.state !== 'inactive') {
-            try {
-                captureWindow.recorder.stop();
-            } catch (error) {
-                captureWindow.suppressUpload = true;
-                captureWindow.finished = true;
-                captureWindow.resolveStopped();
-            }
-        } else {
-            captureWindow.finished = true;
-            captureWindow.resolveStopped();
-        }
-        return captureWindow.stopped;
-    }
-
-    function finalizeLiveCaptureWindow(session, state, captureWindow) {
-        if (captureWindow.finished) return;
-        captureWindow.finished = true;
-        if (captureWindow.timerId !== null) {
-            window.clearTimeout(captureWindow.timerId);
-            captureWindow.timerId = null;
-        }
-        state.activeWindows.delete(captureWindow);
-
-        const durationMs = Date.now() - captureWindow.startedAt.getTime();
-        const blob = new Blob(captureWindow.chunks, {
-            type: captureWindow.recorder?.mimeType || supportedMimeType || 'audio/webm'
-        });
-        if (
-            !session.cancelled
-            && !captureWindow.suppressUpload
-            && durationMs >= 1000
-            && blob.size >= liveMinChunkBytes
-        ) {
-            enqueueLiveChunk(session, state, {
-                blob: blob,
-                chunkId: captureWindow.chunkId,
-                sequence: captureWindow.sequence,
-                startedAt: captureWindow.startedAt
-            });
-        }
-        captureWindow.resolveStopped();
-        maybeReleaseLiveQASession(session);
-    }
-
-    function enqueueLiveChunk(session, state, item) {
-        if (session.cancelled) return;
-        while (state.queue.length >= liveQueueLimit) {
-            state.queue.shift();
-        }
-        state.queue.push(item);
-        void processLiveQueue(session, state);
-    }
-
-    async function processLiveQueue(session, state) {
-        if (state.processing || session.cancelled) return;
-        state.processing = true;
-        try {
-            while (state.queue.length && !session.cancelled) {
-                const item = state.queue.shift();
-                try {
-                    const payload = await uploadLiveChunk(session, state, item);
-                    if (payload?.status === 'cancelled') {
-                        session.cancelled = true;
-                        break;
-                    }
-                    if (payload?.transcript) {
-                        state.lastTranscript = String(payload.transcript).slice(-4000);
-                    }
-                    if (payload && Object.prototype.hasOwnProperty.call(payload, 'question_context')) {
-                        state.questionContext = String(payload.question_context || '').slice(-1600);
-                    }
-                } catch (error) {
-                    if (!session.cancelled && error?.name !== 'AbortError') {
-                        logLiveQAFailure(session, error);
-                    }
-                }
-            }
-        } finally {
-            state.processing = false;
-            maybeReleaseLiveQASession(session);
-        }
-    }
-
-    async function uploadLiveChunk(session, state, item) {
-        let lastError = null;
-        for (let attempt = 0; attempt <= liveRetryCount; attempt += 1) {
-            if (session.cancelled) return {status: 'cancelled'};
-
-            const formData = new FormData();
-            formData.append('recording_id', session.id);
-            formData.append('chunk_id', item.chunkId);
-            formData.append('source', state.source);
-            formData.append('sequence', String(item.sequence));
-            formData.append('started_at', item.startedAt.toISOString());
-            formData.append('prepared_meeting_id', session.preparedMeetingId);
-            formData.append('previous_transcript', state.lastTranscript);
-            formData.append('question_context', state.questionContext);
-            formData.append('language', window.AppI18n?.language || document.documentElement.lang || 'en');
-            formData.append('elapsed_seconds', String(Math.max(0, (Date.now() - (startedAt?.getTime() || Date.now())) / 1000)));
-            formData.append(
-                'audio_chunk',
-                item.blob,
-                `${state.source}-${item.sequence}${mimeExtension(item.blob.type)}`
-            );
-
-            const controller = new AbortController();
-            session.controllers.add(controller);
-            try {
-                const response = await fetch(AppUI.appUrl('/api/meeting-recorder/live-chunk'), {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'same-origin',
-                    signal: controller.signal,
-                    headers: {
-                        'X-Recorder-Reference': item.chunkId,
-                        'Accept': 'application/json'
-                    }
-                });
-                const parsed = await readResponse(response);
-                if (!response.ok) {
-                    const error = new Error(
-                        parsed.payload?.error
-                        || `Live Interview Assistance returned HTTP ${response.status}.`
-                    );
-                    error.httpStatus = response.status;
-                    throw error;
-                }
-                return parsed.payload || {};
-            } catch (error) {
-                lastError = error;
-                if (controller.signal.aborted || session.cancelled) throw error;
-                const status = Number(error?.httpStatus) || 0;
-                const retryable = !status || status === 429 || status >= 500;
-                if (!retryable || attempt >= liveRetryCount) throw error;
-                await delay(liveRetryBaseMs * Math.pow(2, attempt));
-            } finally {
-                session.controllers.delete(controller);
-            }
-        }
-        throw lastError || new Error('The live audio segment could not be sent.');
-    }
-
-    async function stopLiveQAStreaming(options) {
-        const session = liveQASession;
-        if (!session) return;
-        const discard = Boolean(options?.discard);
-        const flushPartial = Boolean(options?.flushPartial);
-        if (discard) {
-            await cancelLiveQASession(session, {notifyServer: true, keepalive: false});
-            return;
-        }
-
-        session.captureStopped = true;
-        const stopPromises = [];
-        session.sources.forEach(function (state) {
-            if (state.intervalId !== null) {
-                window.clearInterval(state.intervalId);
-                state.intervalId = null;
-            }
-            Array.from(state.activeWindows).forEach(function (captureWindow) {
-                stopPromises.push(stopLiveCaptureWindow(captureWindow, !flushPartial));
-            });
-        });
-        await Promise.allSettled(stopPromises);
-        maybeReleaseLiveQASession(session);
-    }
-
-    async function cancelLiveQASession(session, options) {
-        if (!session) return;
-        session.cancelled = true;
-        session.captureStopped = true;
-
-        // Notify the server first so an in-flight transcription can observe the
-        // cancellation before it creates a Live Q&A entry.
-        let cancellationRequest = null;
-        if (options?.notifyServer) {
-            cancellationRequest = fetch(
-                AppUI.appUrl(`/api/meeting-recorder/live-session/${encodeURIComponent(session.id)}`),
-                {
-                    method: 'DELETE',
-                    credentials: 'same-origin',
-                    keepalive: Boolean(options.keepalive),
-                    headers: {'Accept': 'application/json'}
-                }
-            ).catch(function () {
-                // Client-side aborting still prevents queued chunks from being sent.
-            });
-        }
-
-        const stopPromises = [];
-        session.sources.forEach(function (state) {
-            if (state.intervalId !== null) {
-                window.clearInterval(state.intervalId);
-                state.intervalId = null;
-            }
-            state.queue = [];
-            Array.from(state.activeWindows).forEach(function (captureWindow) {
-                stopPromises.push(stopLiveCaptureWindow(captureWindow, true));
-            });
-        });
-        session.controllers.forEach(function (controller) {
-            controller.abort();
-        });
-        session.controllers.clear();
-        await Promise.allSettled(stopPromises);
-        if (cancellationRequest && !options?.keepalive) await cancellationRequest;
-        if (liveQASession === session) liveQASession = null;
-    }
-
-    function maybeReleaseLiveQASession(session) {
-        if (!session.captureStopped || session.cancelled) return;
-        const busy = session.sources.some(function (state) {
-            return state.processing || state.queue.length || state.activeWindows.size;
-        });
-        if (!busy && liveQASession === session) liveQASession = null;
-    }
-
-    function logLiveQAFailure(session, error) {
-        if (session.failureLogged) return;
-        session.failureLogged = true;
-        console.warn('Browser Recorder Live Interview Assistance update failed. The recording continues.', error);
-    }
-
-    function finalizePreparedMeeting(preparedMeeting, payload) {
-        if (!preparedMeeting?.id || !payload?.meeting_id) return;
-        const completedMeetingId = String(payload.meeting_id);
-        const upcomingMeetings = readStorage(UPCOMING_MEETINGS_KEY, []);
-        if (Array.isArray(upcomingMeetings)) {
-            const completedAt = new Date().toISOString();
-            const updated = upcomingMeetings.map(function (meeting) {
-                if (String(meeting?.id || '') !== String(preparedMeeting.id)) return meeting;
-                return Object.assign({}, meeting, {
-                    status: 'completed',
-                    completed_at: completedAt,
-                    completed_meeting_id: completedMeetingId,
-                    updated_at: completedAt
-                });
-            });
-            writeStorage(UPCOMING_MEETINGS_KEY, updated);
-        }
-
-        preparedMeetingsCache = activePreparedMeetings().filter(function (meeting) {
-            return String(meeting.id) !== String(preparedMeeting.id);
-        });
-        fetch(AppUI.appUrl(`/api/career/application-workspaces/${encodeURIComponent(preparedMeeting.id)}`), {
-            method: 'PUT',
-            credentials: 'same-origin',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                status: 'completed',
-                completed_at: new Date().toISOString(),
-                completed_meeting_id: completedMeetingId
-            })
-        }).catch(function () {});
-
-        [MEETING_MATERIALS_KEY, MEETING_CONTEXTS_KEY].forEach(function (key) {
-            const records = readStorage(key, {});
-            if (!records || typeof records !== 'object' || !records[preparedMeeting.id]) return;
-            records[completedMeetingId] = records[preparedMeeting.id];
-            delete records[preparedMeeting.id];
-            writeStorage(key, records);
-        });
-    }
-
-    preparedMeetingSelect?.addEventListener('change', async function () {
-        const selected = getSelectedPreparedMeeting();
-        try {
-            await fetch(AppUI.appUrl('/api/career/active-application'), {
-                method: 'PUT',
+            await fetch(AppUI.appUrl(currentSession.discard_url || `/api/career/mock-interviews/adaptive/sessions/${encodeURIComponent(currentSession.session_id)}`), {
+                method: 'DELETE',
                 credentials: 'same-origin',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({meeting_id: selected?.id || ''})
+                headers: {'Accept': 'application/json'}
             });
         } catch (error) {
-            // Selection is still included directly with browser-recorder uploads.
+            // Local reset remains available even when server cleanup cannot be confirmed.
         }
-        if (!preparedMeetingHelp) return;
-        preparedMeetingHelp.textContent = selected
-            ? `This recording will be linked to “${selected.title}” and its saved materials.`
-            : 'Link this recording to materials and context prepared for an upcoming interview.';
-    });
-
-    function getAudioTracks(source) {
-        const stream = source === 'microphone' ? microphoneStream : speakerAudioStream;
-        return stream?.getAudioTracks?.() || [];
+        clearActiveSessionId();
+        resetForNewInterview();
+        AppUI.showToast('Mock interview discarded.', {type: 'info'});
     }
 
-    function applyMutePreference(source) {
-        const muted = source === 'microphone' ? microphoneMuted : speakerMuted;
-        getAudioTracks(source).forEach(function (track) {
-            if (track.readyState === 'live') track.enabled = !muted;
-        });
+    function resetForNewInterview() {
+        cancelSpeech();
+        cleanupMicrophone();
+        currentSession = null;
+        pendingNextSession = null;
+        lastAnswerBlob = null;
+        phase = 'ready';
+        sessionLayout.hidden = true;
+        completePanel.hidden = true;
+        setupPanel.hidden = false;
+        startInterviewButton.disabled = false;
+        setStatus('ready', 'Ready');
+        hideError();
+        evaluationPanel.hidden = true;
+        processingPanel.hidden = true;
+        resetAnswerControls();
+        window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
-    function toggleAudioSourceMute(source) {
-        if (!['ready', 'connecting', 'recording'].includes(phase)) return;
-
-        const nextMuted = source === 'microphone' ? !microphoneMuted : !speakerMuted;
-        if (source === 'microphone') {
-            microphoneMuted = nextMuted;
-        } else {
-            speakerMuted = nextMuted;
-        }
-
-        applyMutePreference(source);
-        updateMuteControls();
-    }
-
-    function updateMuteControl(source, button, stateElement, card, muted, connected) {
-        if (!button || !stateElement) return;
-
-        const isPreRecording = phase === 'ready' || phase === 'connecting';
-        const sourceSupported = source === 'microphone'
-            ? !getRecorderSupportProblem()
-            : sharedAudioSupported;
-        const canToggle = sourceSupported && (isPreRecording || phase === 'recording');
-        const displayMuted = muted && (connected || isPreRecording);
-        button.disabled = !canToggle;
-        button.setAttribute('aria-pressed', muted ? 'true' : 'false');
-        button.setAttribute('aria-label', `${muted ? 'Unmute' : 'Mute'} ${source}`);
-        const buttonLabel = button.querySelector('span');
-        if (buttonLabel) buttonLabel.textContent = muted ? 'Unmute' : 'Mute';
-        button.classList.toggle('is-muted', displayMuted);
-        card?.classList.toggle('is-muted', displayMuted);
-
-        stateElement.classList.toggle('is-muted', displayMuted);
-        stateElement.classList.toggle('is-live', connected && !muted);
-        if (connected) {
-            stateElement.textContent = muted ? 'Muted' : 'Connected';
-        } else if (isPreRecording && muted) {
-            stateElement.textContent = 'Starts muted';
-        } else if (isPreRecording && source === 'microphone') {
-            stateElement.textContent = 'Not connected';
-        } else if (isPreRecording) {
-            stateElement.textContent = sharedAudioSupported
-                ? (captureMeetingAudioInput.checked ? 'Not connected' : 'Disabled')
-                : 'Unavailable';
-        }
-    }
-
-    function updateMuteControls() {
-        const microphoneConnected = getAudioTracks('microphone').some(function (track) {
-            return track.readyState === 'live';
-        });
-        const speakerConnected = getAudioTracks('interviewer prompt audio').some(function (track) {
-            return track.readyState === 'live';
-        });
-
-        updateMuteControl(
-            'microphone',
-            microphoneMuteButton,
-            microphoneState,
-            microphoneSourceCard,
-            microphoneMuted,
-            microphoneConnected
-        );
-        updateMuteControl(
-            'interviewer prompt audio',
-            speakerMuteButton,
-            speakerState,
-            speakerSourceCard,
-            speakerMuted,
-            speakerConnected
-        );
-    }
-
-    function updateSharedAudioPresentation() {
-        const enabled = sharedAudioSupported && captureMeetingAudioInput.checked;
-        speakerSourceCard.classList.toggle('is-disabled', !enabled);
-        speakerState.textContent = sharedAudioSupported
-            ? (enabled ? 'Not connected' : 'Disabled')
-            : 'Unavailable';
-        speakerMeter.style.width = '0%';
-        updateMuteControls();
-    }
-
-    function resetRecorder() {
-        pollGeneration += 1;
-        cleanupStreams();
-        microphoneChunks = [];
-        speakerChunks = [];
-        microphoneMuted = false;
-        speakerMuted = false;
-        pendingRecording = null;
-        recordingUploadSession = null;
-        resetFinalSegmentState();
-        lastErrorDiagnostics = '';
-        startedAt = null;
-        captureMeetingAudioInput.disabled = !sharedAudioSupported;
-        updateSharedAudioPresentation();
-        startButton.hidden = false;
-        startButton.disabled = false;
-        stopButton.hidden = true;
-        stopButton.disabled = true;
-        discardButton.hidden = true;
-        discardButton.disabled = true;
-        resetButton.hidden = true;
-        retryButton.disabled = false;
-        discardFailedButton.disabled = false;
-        hideOutcomePanels();
-        timerElement.textContent = '00:00:00';
+    function resetAnswerControls() {
+        answerTimer.textContent = '00:00';
+        answerStateTitle.textContent = 'Take a moment, then begin when ready';
+        microphoneCard.dataset.state = 'idle';
         microphoneState.textContent = 'Not connected';
-        microphoneState.classList.remove('is-live', 'is-muted');
-        speakerState.classList.remove('is-live', 'is-muted');
-        microphoneSourceCard?.classList.remove('is-muted');
-        speakerSourceCard.classList.remove('is-muted');
         microphoneMeter.style.width = '0%';
-        speakerMeter.style.width = '0%';
-        setPhase('ready');
-        updateMuteControls();
-        initializePreparedMeetings();
+        startAnswerButton.hidden = false;
+        startAnswerButton.disabled = false;
+        finishAnswerButton.hidden = true;
+        finishAnswerButton.disabled = false;
     }
 
-    function buildRecorder(stream, chunks) {
-        const preferredOptions = {audioBitsPerSecond: 20000};
-        if (supportedMimeType) preferredOptions.mimeType = supportedMimeType;
-
-        let recorder;
-        try {
-            recorder = new MediaRecorder(stream, preferredOptions);
-        } catch (firstError) {
-            try {
-                recorder = new MediaRecorder(stream);
-            } catch (fallbackError) {
-                throw new Error(
-                    `Edge could access the audio stream but could not create a recorder: ${fallbackError.message || firstError.message || 'unknown error'}`
-                );
-            }
+    function renderHistory(answers) {
+        const records = Array.isArray(answers) ? answers : [];
+        historyCount.textContent = `${records.length} ${records.length === 1 ? 'answer' : 'answers'} completed`;
+        historyList.replaceChildren();
+        if (!records.length) {
+            const empty = document.createElement('li');
+            empty.className = 'mock-history-empty';
+            empty.textContent = 'Your completed questions and coaching signals will appear here.';
+            historyList.appendChild(empty);
+            return;
         }
-
-        recorder.addEventListener('dataavailable', function (event) {
-            if (event.data?.size) chunks.push(event.data);
+        records.forEach(function (record) {
+            const item = document.createElement('li');
+            const title = document.createElement('strong');
+            title.textContent = `${record.question_number}. ${record.question || 'Interview question'}`;
+            const answer = document.createElement('p');
+            answer.textContent = record.answer || '';
+            const score = document.createElement('span');
+            const value = Number(record.evaluation?.score);
+            score.textContent = Number.isFinite(value) ? `${Math.round(value)}/100` : 'Evaluated';
+            item.append(title, answer, score);
+            historyList.appendChild(item);
         });
-        return recorder;
     }
 
-    function stopMediaRecorder(recorder) {
-        if (!recorder || recorder.state === 'inactive') return Promise.resolve();
+    function renderList(container, items, fallback) {
+        container.replaceChildren();
+        const values = Array.isArray(items) && items.length ? items : [fallback];
+        values.slice(0, 4).forEach(function (item) {
+            const li = document.createElement('li');
+            li.textContent = String(item || '');
+            container.appendChild(li);
+        });
+    }
+
+    function startAnswerTimer() {
+        stopAnswerTimer();
+        updateAnswerTimer();
+        timerId = window.setInterval(updateAnswerTimer, 250);
+    }
+
+    function updateAnswerTimer() {
+        const seconds = Math.max(0, Math.floor((Date.now() - answerStartedAt) / 1000));
+        const minutes = Math.floor(seconds / 60);
+        const remainder = seconds % 60;
+        answerTimer.textContent = `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+    }
+
+    function stopAnswerTimer() {
+        if (timerId !== null) window.clearInterval(timerId);
+        timerId = null;
+    }
+
+    function startMicrophoneMeter(stream) {
+        stopMicrophoneMeter();
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        audioContext = new AudioContextClass();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        const values = new Uint8Array(analyser.frequencyBinCount);
+        function draw() {
+            analyser.getByteFrequencyData(values);
+            const average = values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+            microphoneMeter.style.width = `${Math.min(100, Math.max(2, average * 1.55))}%`;
+            meterAnimation = window.requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    function stopMicrophoneMeter() {
+        if (meterAnimation !== null) window.cancelAnimationFrame(meterAnimation);
+        meterAnimation = null;
+        if (audioContext) void audioContext.close().catch(function () {});
+        audioContext = null;
+        microphoneMeter.style.width = '0%';
+    }
+
+    function cleanupMicrophone() {
+        stopAnswerTimer();
+        stopMicrophoneMeter();
+        if (mediaRecorder?.state && mediaRecorder.state !== 'inactive') {
+            try { mediaRecorder.stop(); } catch (error) {}
+        }
+        mediaRecorder = null;
+        if (microphoneStream) microphoneStream.getTracks().forEach((track) => track.stop());
+        microphoneStream = null;
+        microphoneCard.dataset.state = 'idle';
+    }
+
+    function stopRecorder(recorder) {
         return new Promise(function (resolve, reject) {
+            if (!recorder || recorder.state === 'inactive') {
+                resolve();
+                return;
+            }
             recorder.addEventListener('stop', resolve, {once: true});
             recorder.addEventListener('error', function (event) {
-                reject(event.error || new Error('Audio recording failed.'));
+                reject(event.error || new Error('The answer recording could not be finalized.'));
             }, {once: true});
             recorder.stop();
         });
     }
 
+    function speakQuestion(question) {
+        const text = String(question || '').trim();
+        if (!text || !readQuestionsAloud.checked || !('speechSynthesis' in window)) return;
+        cancelSpeech();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = (window.AppI18n?.language || document.documentElement.lang || 'en').startsWith('fr') ? 'fr-FR' : 'en-US';
+        utterance.rate = 0.96;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function cancelSpeech() {
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    }
+
+    function setStatus(state, text) {
+        statusBadge.dataset.state = state;
+        statusText.textContent = text;
+    }
+
+    function showSessionError(message, canRetry) {
+        errorPanel.hidden = false;
+        errorMessage.textContent = message || 'An unexpected error occurred.';
+        retryAnswerButton.hidden = !canRetry;
+        if (!canRetry) {
+            startAnswerButton.hidden = false;
+            startAnswerButton.disabled = false;
+            finishAnswerButton.hidden = true;
+        }
+        errorPanel.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+
+    function hideError() {
+        errorPanel.hidden = true;
+        errorMessage.textContent = '';
+    }
+
+    function ensureBrowserSupport() {
+        const problem = recorderSupportProblem();
+        if (!problem) return;
+        startAnswerButton.disabled = true;
+        answerStateTitle.textContent = problem;
+    }
+
+    function recorderSupportProblem() {
+        if (!navigator.mediaDevices?.getUserMedia) return 'This browser cannot access the microphone. Use a current version of Chrome or Edge.';
+        if (typeof window.MediaRecorder !== 'function') return 'This browser cannot record audio. Use a current version of Chrome or Edge.';
+        return '';
+    }
+
     function chooseMimeType() {
-        const candidates = [
-            'audio/webm;codecs=opus',
-            'audio/webm',
-            'audio/ogg;codecs=opus',
-            'audio/mp4'
-        ];
-        return candidates.find(function (candidate) {
-            return window.MediaRecorder?.isTypeSupported?.(candidate);
-        }) || '';
-    }
-
-    function initializeBrowserSupport() {
-        const problem = getRecorderSupportProblem();
-        if (problem) {
-            startButton.disabled = true;
-            showCompatibilityProblem(problem, false);
-            return;
-        }
-
-        if (!sharedAudioSupported) {
-            captureMeetingAudioInput.checked = false;
-            captureMeetingAudioInput.disabled = true;
-            stageDescription.textContent = 'Microphone recording is available, but this browser cannot capture shared tab or system audio.';
-        }
-
-        updateSharedAudioPresentation();
-    }
-
-    function getRecorderSupportProblem() {
-        if (!window.isSecureContext) {
-            return {
-                title: 'HTTPS is required',
-                message: 'Edge blocked microphone access because this page was opened over HTTP. Open the application with an https:// address. Local development may use http://localhost.'
-            };
-        }
-        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
-            return {
-                title: 'Microphone API unavailable',
-                message: 'Edge cannot access the microphone API for this page. Check Edge Settings → Cookies and site permissions → Microphone, make sure this site is allowed, and confirm the page is not running in Internet Explorer mode or inside a restricted iframe.'
-            };
-        }
-        if (typeof window.MediaRecorder !== 'function') {
-            return {
-                title: 'Audio recorder unavailable',
-                message: 'This Edge installation does not expose MediaRecorder. Update Microsoft Edge and check whether an organization policy or browser extension is disabling media recording.'
-            };
-        }
-        return null;
-    }
-
-    function showCompatibilityProblem(problem, showToast = true) {
-        setPhase('error');
-        stageTitle.textContent = problem.title;
-        stageDescription.textContent = problem.message;
-        if (showToast) {
-            AppUI.showToast(problem.message, {type: 'error', duration: 10000});
-        }
+        const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+        return candidates.find((type) => MediaRecorder.isTypeSupported?.(type)) || '';
     }
 
     function mimeExtension(type) {
         const normalized = String(type || '').toLowerCase();
-        if (normalized.includes('ogg')) return '.ogg';
-        if (normalized.includes('mp4')) return '.m4a';
-        return '.webm';
-    }
-
-    function startTimer() {
-        stopTimer();
-        updateTimer();
-        timerInterval = window.setInterval(updateTimer, 1000);
-    }
-
-    function stopTimer() {
-        if (timerInterval) window.clearInterval(timerInterval);
-        timerInterval = null;
-    }
-
-    function updateTimer() {
-        const elapsed = Math.max(0, Date.now() - (startedAt?.getTime() || Date.now()));
-        timerElement.textContent = formatDuration(Math.floor(elapsed / 1000));
-    }
-
-    function startMeter(stream, meterElement, sourceName) {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContextClass) return;
-        const context = new AudioContextClass();
-        const analyser = context.createAnalyser();
-        analyser.fftSize = 256;
-        const source = context.createMediaStreamSource(stream);
-        source.connect(analyser);
-        const values = new Uint8Array(analyser.frequencyBinCount);
-        audioContexts.push(context);
-
-        const animation = {frameId: null};
-        meterAnimations.push(animation);
-        function draw() {
-            const hasEnabledTrack = stream.getAudioTracks().some(function (track) {
-                return track.readyState === 'live' && track.enabled;
-            });
-            if (!hasEnabledTrack) {
-                meterElement.style.width = '0%';
-                animation.frameId = window.requestAnimationFrame(draw);
-                return;
-            }
-            analyser.getByteFrequencyData(values);
-            const average = values.reduce(function (sum, value) { return sum + value; }, 0) / values.length;
-            const activity = audioActivity[sourceName];
-            if (activity) {
-                activity.frames += 1;
-                activity.maxLevel = Math.max(activity.maxLevel, average);
-                if (average >= liveSpeechLevelThreshold) activity.speechFrames += 1;
-            }
-            meterElement.style.width = `${Math.min(100, Math.max(3, average * 1.7))}%`;
-            animation.frameId = window.requestAnimationFrame(draw);
-        }
-        draw();
-    }
-
-    function cleanupStreams() {
-        [microphoneStream, displayStream, speakerAudioStream].forEach(function (stream) {
-            stream?.getTracks().forEach(function (track) { track.stop(); });
-        });
-        microphoneStream = null;
-        displayStream = null;
-        speakerAudioStream = null;
-        microphoneRecorder = null;
-        speakerRecorder = null;
-        meterAnimations.forEach(function (animation) {
-            if (animation.frameId !== null) window.cancelAnimationFrame(animation.frameId);
-        });
-        meterAnimations = [];
-        audioContexts.forEach(function (context) { context.close().catch(function () {}); });
-        audioContexts = [];
-        microphoneMeter.style.width = '0%';
-        speakerMeter.style.width = '0%';
-        microphoneState.classList.remove('is-live', 'is-muted');
-        speakerState.classList.remove('is-live', 'is-muted');
-        microphoneSourceCard?.classList.remove('is-muted');
-        speakerSourceCard.classList.remove('is-muted');
-        updateMuteControls();
-    }
-
-    function syncRecordingActivity() {
-        const activePhases = ['recording', 'stopping', 'processing'];
-        if (!activePhases.includes(phase)) {
-            clearRecordingActivity();
-            return;
-        }
-
-        writeRecordingActivity();
-        if (!recordingHeartbeatInterval) {
-            recordingHeartbeatInterval = window.setInterval(writeRecordingActivity, 10000);
-        }
-    }
-
-    function writeRecordingActivity() {
-        try {
-            window.localStorage.setItem(ACTIVE_RECORDING_KEY, JSON.stringify({
-                instanceId: recorderInstanceId,
-                phase: phase,
-                startedAt: startedAt?.toISOString() || null,
-                heartbeatAt: Date.now()
-            }));
-        } catch (error) {
-            // Recording remains usable when browser storage is unavailable.
-        }
-    }
-
-    function clearRecordingActivity() {
-        if (recordingHeartbeatInterval) {
-            window.clearInterval(recordingHeartbeatInterval);
-            recordingHeartbeatInterval = null;
-        }
-        try {
-            const storedStatus = JSON.parse(window.localStorage.getItem(ACTIVE_RECORDING_KEY) || 'null');
-            if (!storedStatus || !storedStatus.instanceId || storedStatus.instanceId === recorderInstanceId) {
-                window.localStorage.removeItem(ACTIVE_RECORDING_KEY);
-            }
-        } catch (error) {
-            // No action is required when browser storage is unavailable.
-        }
-    }
-
-    function setPhase(nextPhase) {
-        phase = nextPhase;
-        statusBadge.dataset.state = nextPhase;
-        if (openLiveQALink) openLiveQALink.hidden = nextPhase !== 'recording';
-        const copy = {
-            ready: ['Ready', 'Ready to record', 'Your browser will ask for microphone access and, optionally, which interviewer-prompt tab or screen to share.'],
-            connecting: ['Connecting', 'Connecting audio sources', 'Approve the browser permission prompts to continue.'],
-            recording: ['Recording', 'Recording in progress', 'Audio is being saved in short secure segments while you record. Choose Stop & Process when the practice session ends.'],
-            stopping: ['Stopping', 'Finalizing audio', 'Saving the last audio segments before processing begins.'],
-            discarding: ['Discarding', 'Discarding recording', 'Stopping capture and deleting the current audio without saving or processing it.'],
-            processing: ['Processing', 'Creating your interview review', 'The saved audio segments are being transcribed and analyzed.'],
-            complete: ['Saved', 'Mock interview ready', 'Your mock interview is available in Interview Review.'],
-            error: ['Action needed', 'Recording not saved', 'The detailed error is shown below. Retry processing or send the diagnostic information directly to support.']
-        }[nextPhase] || ['Ready', 'Ready to record', ''];
-        statusText.textContent = copy[0];
-        stageTitle.textContent = copy[1];
-        stageDescription.textContent = copy[2];
-        syncRecordingActivity();
+        if (normalized.includes('ogg')) return 'ogg';
+        if (normalized.includes('mp4')) return 'm4a';
+        return 'webm';
     }
 
     function readableMediaError(error) {
-        if (error?.name === 'NotAllowedError') {
-            return 'Recording permission was declined. Allow microphone and screen/audio sharing, then try again.';
-        }
-        if (error?.name === 'NotFoundError') {
-            return 'No usable microphone or shared audio device was found.';
-        }
-        if (error?.name === 'NotReadableError') {
-            return 'The selected audio device is already in use or could not be opened.';
-        }
-        return error?.message || 'The browser could not start recording.';
+        const name = String(error?.name || '');
+        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') return 'Microphone access was blocked. Allow microphone access in the browser and try again.';
+        if (name === 'NotFoundError' || name === 'DevicesNotFoundError') return 'No microphone was found. Connect a microphone and try again.';
+        if (name === 'NotReadableError' || name === 'TrackStartError') return 'The microphone is being used by another application or is unavailable.';
+        return error?.message || 'The microphone could not be opened.';
     }
 
-    function createReferenceId() {
-        return window.crypto?.randomUUID?.() || `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    async function readJson(response) {
+        const text = await response.text();
+        if (!text) return {};
+        try { return JSON.parse(text); } catch (error) { return {error: text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}; }
     }
 
-    function describeRecording(recording) {
-        const session = recording?.session;
-        if (session?.capturedBytes) {
-            const parts = [
-                formatDuration(recording.durationSeconds),
-                `mic ${formatBytes(session.capturedBytes.MICROPHONE || 0)}`
-            ];
-            if (session.capturedBytes.SPEAKER) {
-                parts.push(`shared ${formatBytes(session.capturedBytes.SPEAKER)}`);
-            }
-            const segmentCount = session.uploadedSegments + (session.failedSegments?.size || 0);
-            if (segmentCount) parts.push(`${segmentCount} segment${segmentCount === 1 ? '' : 's'}`);
-            return parts.join(' · ');
-        }
-        const microphoneSize = recording?.microphoneBlob?.size || 0;
-        const parts = [formatDuration(recording?.durationSeconds || 0), `mic ${formatBytes(microphoneSize)}`];
-        if (recording?.speakerBlob?.size) parts.push(`shared ${formatBytes(recording.speakerBlob.size)}`);
-        return parts.join(' · ');
+    function apiError(payload, fallback) {
+        return new Error(String(payload?.error || payload?.message || fallback));
     }
 
-    function formatDuration(totalSeconds) {
-        const safeSeconds = Math.max(0, Number(totalSeconds) || 0);
-        const hours = Math.floor(safeSeconds / 3600);
-        const minutes = Math.floor((safeSeconds % 3600) / 60);
-        const seconds = Math.floor(safeSeconds % 60);
-        return [hours, minutes, seconds]
-            .map(function (value) { return String(value).padStart(2, '0'); })
-            .join(':');
+    function writeActiveSessionId(sessionId) {
+        try { window.localStorage.setItem(ACTIVE_SESSION_KEY, String(sessionId || '')); } catch (error) {}
     }
 
-    function formatBytes(bytes) {
-        const value = Number(bytes) || 0;
-        if (value < 1024) return `${value} B`;
-        if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
-        return `${(value / (1024 * 1024)).toFixed(2)} MB`;
+    function readActiveSessionId() {
+        try { return String(window.localStorage.getItem(ACTIVE_SESSION_KEY) || ''); } catch (error) { return ''; }
     }
 
-    function formatHttpStatus(status, statusText) {
-        if (!status) return 'Unavailable';
-        if (typeof status === 'string' && !/^\d+$/.test(status)) return status;
-        return `${status}${statusText ? ` ${statusText}` : ''}`;
+    function clearActiveSessionId() {
+        try { window.localStorage.removeItem(ACTIVE_SESSION_KEY); } catch (error) {}
     }
 
-    function humanizeStage(stage) {
-        return String(stage || 'unknown')
-            .replace(/_/g, ' ')
-            .replace(/\b\w/g, function (letter) { return letter.toUpperCase(); });
-    }
-
-    function stripHtml(value) {
-        const container = document.createElement('div');
-        container.innerHTML = String(value || '');
-        return container.textContent || container.innerText || '';
-    }
-
-    function truncate(value, maxLength) {
+    function truncate(value, maximum) {
         const text = String(value || '');
-        return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
-    }
-
-    function delay(milliseconds) {
-        return new Promise(function (resolve) { window.setTimeout(resolve, milliseconds); });
+        return text.length > maximum ? `${text.slice(0, maximum - 1)}…` : text;
     }
 })();

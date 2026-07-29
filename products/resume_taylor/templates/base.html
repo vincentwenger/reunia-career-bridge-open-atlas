@@ -23,6 +23,7 @@
   <script defer src="{{ url_for('static', filename='app.js') }}"></script>
 </head>
 <body class="application-builder-body" data-authenticated="{{ 'true' if session.get('user_id') else 'false' }}">
+  {% set career_translation_focus = active_tab == 'tailoring' and request.args.get('focus') == 'career-translation' %}
   <a class="skip-link" href="#main-content">Skip to main content</a>
   {% include 'career_bridge_navbar.html' %}
 
@@ -31,10 +32,13 @@
       <header class="page-hero application-builder-hero">
         <div class="page-hero-layout">
           <div class="page-hero-copy">
-            <p class="application-builder-hero-eyebrow">{% if active_tab == 'interview_preparation' %}Interview Preparation{% else %}Application Builder{% endif %}</p>
+            <p class="application-builder-hero-eyebrow">{% if active_tab == 'interview_preparation' %}Interview Preparation{% elif career_translation_focus %}Career Translation{% else %}Application Builder{% endif %}</p>
             {% if active_tab == 'interview_preparation' %}
               <h1>Interview Preparation</h1>
               <p>Prepare for one specific application using its target job description and evidence verified in the resume workflow.</p>
+            {% elif career_translation_focus %}
+              <h1>Career Translation</h1>
+              <p>Describe international experience and review how titles, credentials, terminology, and transferable skills should be presented in the target market.</p>
             {% elif active_tab == 'reports' %}
               <h1>Resume Reports</h1>
               <p>Review the Initial, Job-Aligned, and Final Resume evidence and quality reports for the selected application.</p>

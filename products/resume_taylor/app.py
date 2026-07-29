@@ -658,7 +658,7 @@ def guided_stage_for_state(state: WorkflowState) -> str:
     if not state.confirmation_complete:
         return "confirmation"
     if state.workflow_stage == "draft":
-        return "quality" if state.quality_review_started else "review"
+        return "quality" if getattr(state, "quality_review_started", False) else "review"
     if state.final_resume_bytes is not None:
         return "evidence_export"
     if state.final_proposal is not None:
@@ -2389,7 +2389,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             confirmation_complete=current.confirmation_complete,
             blocking_local=blocking_local,
             resume_ready=bool(current.final_resume_bytes),
-            quality_review_started=current.quality_review_started,
+            quality_review_started=getattr(
+                current, "quality_review_started", False
+            ),
             final_proposal_ready=current.final_proposal is not None,
             application_id=(g.active_application.id if g.active_application else ""),
         )
@@ -3174,6 +3176,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 or request.form.get("save_confirmed_profile") == "on"
             )
             current.workflow_stage = "draft"
+            current.quality_review_started = False
             current.provisional_proposal = refined.model_copy(deep=True)
             current.draft_proposal = None
             current.previous_draft_proposal = None
@@ -3294,6 +3297,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
             reopened = current.provisional_proposal.model_copy(deep=True)
             current.workflow_stage = "draft"
+            current.quality_review_started = False
             current.provisional_proposal = reopened
             current.draft_proposal = None
             current.previous_draft_proposal = None
@@ -3335,6 +3339,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         restored = snapshot.proposal.model_copy(deep=True)
         current.workflow_stage = "draft"
+        current.quality_review_started = False
         current.draft_proposal = restored
         current.final_proposal = None
         current.confirmed_profile = (
@@ -3687,6 +3692,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                                 rejected_issue_count = len(report_issues)
 
             optimization_baseline = working.model_copy(deep=True)
+            current.quality_review_started = True
             current.workflow_stage = "final"
             current.final_proposal = optimized.model_copy(deep=True)
             current.clear_final_report()
@@ -4051,6 +4057,20 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             session["active_application_id"] = selected.id
             g.active_application = selected
         return applications, selected
+
+    @app.get("/career-translation")
+    def career_translation_workspace():
+        """Open the newcomer career context inside the editable setup step."""
+        return redirect(
+            url_for(
+                "index",
+                tab="tailoring",
+                stage="setup",
+                edit="setup",
+                focus="career-translation",
+            )
+            + "#newcomer-onboarding"
+        )
 
     @app.get("/interview-preparation")
     def interview_preparation_workspace():

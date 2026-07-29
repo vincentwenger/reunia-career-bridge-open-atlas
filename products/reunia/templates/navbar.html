@@ -1,23 +1,39 @@
-{% set home_url = url_for('main.view_index') %}
-{% set career_profile_url = request.script_root ~ '/career-profile' %}
-{% set application_builder_url = request.script_root ~ '/applications/' %}
-{% set interview_preparation_url = request.script_root ~ '/applications/interview-preparation' %}
-{% set mock_interview_url = request.script_root ~ '/mock-interview' %}
-{% set live_interview_assistance_url = request.script_root ~ '/live-qa.html' %}
-{% set interview_review_url = request.script_root ~ '/interview-review' %}
-{% set career_action_plan_url = request.script_root ~ '/career-action-plan' %}
-{% set progress_url = request.script_root ~ '/progress' %}
-{% set support_url = request.script_root ~ '/help-support.html' %}
-{% set admin_analytics_url = request.script_root ~ '/admin/analytics' %}
-{% set settings_url = request.script_root ~ '/settings.html' %}
-{% set guide_url = request.script_root ~ '/user-guide.html' %}
-{% set login_url = request.script_root ~ '/login.html' %}
-{% set logout_url = request.script_root ~ '/logout' %}
-{% set current_path = request.path.rstrip('/') %}
+{% set logout_csrf_token = csrf_token() %}
+{% set overview_url = '/app' %}
+{% set career_profile_url = '/career-profile' %}
+{% set career_translation_url = '/applications/career-translation' %}
+{% set career_evidence_library_url = '/career-evidence-library' %}
+{% set job_applications_url = '/applications/?tab=applications' %}
+{% set resume_workflow_url = '/applications/?tab=tailoring' %}
+{% set resume_reports_url = '/applications/?tab=reports' %}
+{% set application_materials_url = '/application-materials' %}
+{% set builder_configuration_url = '/applications/?tab=configuration' %}
+{% set interview_preparation_url = '/applications/interview-preparation' %}
+{% set mock_interview_url = '/mock-interview' %}
+{% set live_interview_assistance_url = '/live-qa.html' %}
+{% set interview_review_url = '/interview-review' %}
+{% set career_action_plan_url = '/career-action-plan' %}
+{% set progress_url = '/progress' %}
+{% set support_url = '/help-support.html' %}
+{% set admin_analytics_url = '/admin/analytics' %}
+{% set account_profile_url = '/profile.html' %}
+{% set settings_url = '/settings.html' %}
+{% set guide_url = '/user-guide.html' %}
+{% set login_url = '/login.html' %}
+{% set logout_url = '/logout' %}
+{% set current_path = (request.script_root ~ request.path).rstrip('/') %}
+{% set builder_tab = request.args.get('tab', 'applications') %}
 
+{% set overview_active = current_path.endswith('/app') or current_path.endswith('/index.html') %}
 {% set career_profile_active = current_path.endswith('/career-profile') or (current_path.endswith('/knowledge.html') and request.args.get('view') == 'context') %}
-{% set application_builder_active = current_path.endswith('/applications') or current_path.endswith('/application-workspace') or (current_path.endswith('/knowledge.html') and request.args.get('view') == 'materials') %}
-{% set interview_preparation_active = current_path.endswith('/interview-preparation') or current_path.endswith('/career-evidence-library') or (current_path.endswith('/knowledge.html') and request.args.get('view') in ['library', 'search']) %}
+{% set career_translation_active = current_path.endswith('/applications/career-translation') or (current_path.endswith('/applications') and request.args.get('focus') == 'career-translation') %}
+{% set career_evidence_library_active = current_path.endswith('/career-evidence-library') or (current_path.endswith('/knowledge.html') and request.args.get('view') in ['library', 'search']) %}
+{% set job_applications_active = current_path.endswith('/applications') and builder_tab == 'applications' and not career_translation_active %}
+{% set resume_workflow_active = (current_path.endswith('/applications') and builder_tab == 'tailoring' and not career_translation_active) or current_path.endswith('/application-workspace') %}
+{% set resume_reports_active = current_path.endswith('/applications') and builder_tab == 'reports' %}
+{% set application_materials_active = current_path.endswith('/application-materials') or (current_path.endswith('/knowledge.html') and request.args.get('view') == 'materials') %}
+{% set builder_configuration_active = current_path.endswith('/applications') and builder_tab == 'configuration' %}
+{% set interview_preparation_active = current_path.endswith('/applications/interview-preparation') or current_path.endswith('/interview-preparation') %}
 {% set mock_interview_active = current_path.endswith('/mock-interview') or current_path.endswith('/meeting-recorder') or current_path.endswith('/meeting-recorder.html') %}
 {% set live_interview_assistance_active = current_path.endswith('/live-qa.html') %}
 {% set interview_review_active = current_path.endswith('/interview-review') or current_path.endswith('/meeting-review.html') %}
@@ -26,280 +42,181 @@
 {% set support_active = current_path.endswith('/help-support.html') %}
 {% set administration_active = current_path.endswith('/admin/analytics') %}
 
+{% set career_group_active = career_profile_active or career_translation_active or career_evidence_library_active %}
+{% set applications_group_active = job_applications_active or resume_workflow_active or resume_reports_active or application_materials_active or builder_configuration_active %}
+{% set interviews_group_active = interview_preparation_active or mock_interview_active or live_interview_assistance_active or interview_review_active %}
+{% set growth_group_active = career_action_plan_active or progress_active %}
+
 <nav class="navbar" id="mainNavbar" aria-label="Primary navigation">
-    <div class="nav-container">
-        <a href="{{ application_builder_url }}" class="nav-brand" aria-label="Réunia Career Bridge home">
-            <span class="brand-icon" aria-hidden="true">
-                <img src="{{ static_asset('icons/favicon-64.png') }}" alt="">
-            </span>
-            <span class="brand-text">
-                <span class="brand-title">Réunia</span>
-                <span class="brand-subtitle">AI CAREER BRIDGE</span>
-            </span>
-        </a>
+  <div class="nav-container">
+    <a href="{{ overview_url }}" class="nav-brand" aria-label="Réunia Career Bridge home">
+      <span class="brand-icon" aria-hidden="true"><img src="/static/icons/favicon-64.png" alt=""></span>
+      <span class="brand-text">
+        <span class="brand-title">Réunia</span>
+        <span class="brand-subtitle">AI CAREER BRIDGE</span>
+      </span>
+    </a>
 
-        <button
-            type="button"
-            class="mobile-menu-btn"
-            id="mobileMenuBtn"
-            aria-label="Open navigation menu"
-            aria-expanded="false"
-            aria-controls="primaryNavContent"
-        >
-            <span class="mobile-menu-line" aria-hidden="true"></span>
-            <span class="mobile-menu-line" aria-hidden="true"></span>
-            <span class="mobile-menu-line" aria-hidden="true"></span>
-        </button>
+    <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="primaryNavContent">
+      <span class="mobile-menu-line" aria-hidden="true"></span>
+      <span class="mobile-menu-line" aria-hidden="true"></span>
+      <span class="mobile-menu-line" aria-hidden="true"></span>
+    </button>
 
-        <div class="nav-content" id="primaryNavContent">
-            <ul class="nav-menu">
-                {% if session.get('user_id') %}
-                    <li class="nav-item">
-                        <a
-                            href="{{ career_profile_url }}"
-                            class="nav-link {% if career_profile_active %}active{% endif %}"
-                            data-career-section="career_profile"
-                            {% if career_profile_active %}aria-current="page"{% endif %}
-                        >
-                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M20 21a8 8 0 0 0-16 0"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
-                            </svg>
-                            <span>Career Profile</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a
-                            href="{{ application_builder_url }}"
-                            class="nav-link {% if application_builder_active %}active{% endif %}"
-                            data-career-section="application_builder"
-                            {% if application_builder_active %}aria-current="page"{% endif %}
-                        >
-                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"></path>
-                                <path d="M8 8h8M8 12h8M8 16h5"></path>
-                            </svg>
-                            <span>Application Builder</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a
-                            href="{{ interview_preparation_url }}"
-                            class="nav-link {% if interview_preparation_active %}active{% endif %}"
-                            data-career-section="interview_preparation"
-                            {% if interview_preparation_active %}aria-current="page"{% endif %}
-                        >
-                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"></path>
-                                <path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20"></path>
-                                <path d="M9 7h7M9 11h5"></path>
-                            </svg>
-                            <span>Interview Preparation</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a
-                            href="{{ mock_interview_url }}"
-                            class="nav-link {% if mock_interview_active %}active{% endif %}"
-                            data-career-section="mock_interview"
-                            {% if mock_interview_active %}aria-current="page"{% endif %}
-                        >
-                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <rect x="8" y="3" width="8" height="12" rx="4"></rect>
-                                <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path>
-                            </svg>
-                            <span>Mock Interview</span>
-                        </a>
-                    </li>
-                    {% if live_interview_assistance_enabled %}
-                    <li class="nav-item">
-                        <a href="{{ live_interview_assistance_url }}" class="nav-link {% if live_interview_assistance_active %}active{% endif %}" {% if live_interview_assistance_active %}aria-current="page"{% endif %}>
-                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4V5Z"></path><path d="M8 9h8M8 12h5"></path></svg>
-                            <span>Live Assistance</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                    <li class="nav-item">
-                        <a
-                            href="{{ interview_review_url }}"
-                            class="nav-link {% if interview_review_active %}active{% endif %}"
-                            data-career-section="interview_review"
-                            {% if interview_review_active %}aria-current="page"{% endif %}
-                        >
-                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z"></path>
-                                <path d="M8 8h8M8 12h5M8 16h7"></path>
-                            </svg>
-                            <span>Interview Review</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a
-                            href="{{ career_action_plan_url }}"
-                            class="nav-link {% if career_action_plan_active %}active{% endif %}"
-                            data-career-section="career_action_plan"
-                            {% if career_action_plan_active %}aria-current="page"{% endif %}
-                        >
-                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <rect x="3" y="4" width="18" height="16" rx="3"></rect>
-                                <path d="m7.5 12 2.5 2.5 6-6"></path>
-                                <path d="M15 15h2"></path>
-                            </svg>
-                            <span>Career Action Plan</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a
-                            href="{{ progress_url }}"
-                            class="nav-link {% if progress_active %}active{% endif %}"
-                            data-career-section="progress"
-                            {% if progress_active %}aria-current="page"{% endif %}
-                        >
-                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M4 20V10"></path>
-                                <path d="M10 20V4"></path>
-                                <path d="M16 20v-7"></path>
-                                <path d="M22 20H2"></path>
-                            </svg>
-                            <span>Progress</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a
-                            href="{{ support_url }}"
-                            class="nav-link {% if support_active %}active{% endif %}"
-                            data-career-section="help_support"
-                            {% if support_active %}aria-current="page"{% endif %}
-                        >
-                            <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <circle cx="12" cy="12" r="9"></circle>
-                                <path d="M9.7 9a2.5 2.5 0 1 1 4.3 1.7c-.9.8-2 1.2-2 2.8"></path>
-                                <path d="M12 17h.01"></path>
-                            </svg>
-                            <span>Help &amp; Support</span>
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
-
-            <div class="nav-auth">
-                {% if session.get('user_id') %}
-                    {% if is_admin_session %}
-                        <a
-                            href="{{ admin_analytics_url }}"
-                            class="admin-nav-link {% if administration_active %}active{% endif %}"
-                            {% if administration_active %}aria-current="page"{% endif %}
-                        >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 3 4.5 6v5.5c0 4.5 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5 7.5-9.5V6L12 3Z"></path>
-                                <path d="M9 12h6M12 9v6"></path>
-                            </svg>
-                            <span>Administration</span>
-                        </a>
-                    {% endif %}
-
-                    <div class="nav-item user-dropdown" id="accountDropdown">
-                        <button
-                            type="button"
-                            class="profile-btn"
-                            id="accountDropdownBtn"
-                            aria-expanded="false"
-                            aria-haspopup="menu"
-                            aria-controls="accountDropdownMenu"
-                        >
-                            <span class="profile-avatar" id="navbarProfileAvatar" aria-hidden="true">
-                                {{ (session.get('full_name') or session.get('email') or 'A')[:1] | upper }}
-                            </span>
-                            <span class="profile-copy">
-                                <span class="profile-name" id="navbarProfileName">{{ session.get('full_name') or session.get('email') or 'Account' }}</span>
-                                <span class="profile-label">Account</span>
-                            </span>
-                            <svg class="dropdown-arrow" viewBox="0 0 20 20" aria-hidden="true">
-                                <path d="m6 8 4 4 4-4"></path>
-                            </svg>
-                        </button>
-
-                        <div class="dropdown-content" id="accountDropdownMenu" role="menu" hidden>
-                            <div class="dropdown-header">
-                                <span class="dropdown-avatar" id="navbarDropdownAvatar" aria-hidden="true">
-                                    {{ (session.get('full_name') or session.get('email') or 'A')[:1] | upper }}
-                                </span>
-                                <span class="dropdown-user-copy">
-                                    <strong id="navbarDropdownName">{{ session.get('full_name') or 'Signed in' }}</strong>
-                                    <small>{{ session.get('email') or session.get('user_id') }}</small>
-                                </span>
-                            </div>
-
-                            <div class="dropdown-menu-group">
-                                <a href="{{ settings_url }}" role="menuitem">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path>
-                                    </svg>
-                                    <span><strong>Settings</strong><small>Configure your account and AI preferences</small></span>
-                                </a>
-                                <a href="{{ guide_url }}" role="menuitem">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"></path>
-                                        <path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20"></path>
-                                        <path d="M9 7h7M9 11h5"></path>
-                                    </svg>
-                                    <span><strong>User Guide</strong><small>Learn the Career Bridge workflow</small></span>
-                                </a>
-                            </div>
-
-                            <div class="dropdown-footer">
-                                <form method="post" action="{{ logout_url }}" class="logout-form">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="logout-link" role="menuitem">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                            <path d="m16 17 5-5-5-5M21 12H9"></path>
-                                        </svg>
-                                        <span>Log out</span>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                {% else %}
-                    {% include 'components/guest_language_switcher.html' %}
-                    <a
-                        href="{{ guide_url }}"
-                        class="support-nav-link {% if current_path.endswith('/user-guide.html') %}active{% endif %}"
-                        {% if current_path.endswith('/user-guide.html') %}aria-current="page"{% endif %}
-                    >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"></path>
-                            <path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20"></path>
-                            <path d="M9 7h7M9 11h5"></path>
-                        </svg>
-                        <span>User Guide</span>
-                    </a>
-                    <a
-                        href="{{ support_url }}"
-                        class="support-nav-link {% if support_active %}active{% endif %}"
-                        {% if support_active %}aria-current="page"{% endif %}
-                    >
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <circle cx="12" cy="12" r="9"></circle>
-                            <path d="M9.7 9a2.5 2.5 0 1 1 4.3 1.7c-.9.8-2 1.2-2 2.8"></path>
-                            <path d="M12 17h.01"></path>
-                        </svg>
-                        <span>Help &amp; Support</span>
-                    </a>
-                    <a
-                        href="{{ login_url }}"
-                        class="login-btn {% if current_path.endswith('/login.html') %}active{% endif %}"
-                        {% if current_path.endswith('/login.html') %}aria-current="page"{% endif %}
-                    >
-                        <span>Sign in</span>
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M5 12h14M14 7l5 5-5 5"></path>
-                        </svg>
-                    </a>
-                {% endif %}
+    <div class="nav-content" id="primaryNavContent">
+      <ul class="nav-menu">
+        {% if session.get('user_id') %}
+          <li class="nav-item">
+            <a href="{{ overview_url }}" class="nav-link {% if overview_active %}active{% endif %}" {% if overview_active %}aria-current="page"{% endif %}>
+              <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"></path><path d="M5.5 10.5V20h13v-9.5M9.5 20v-6h5v6"></path></svg>
+              <span>Overview</span>
+            </a>
+          </li>
+          <li class="nav-item nav-group" data-nav-group>
+            <button type="button" class="nav-group-trigger {% if career_group_active %}active{% endif %}" aria-expanded="false" aria-haspopup="menu">
+              <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Career</span>
+              <svg class="nav-group-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"></path></svg>
+            </button>
+            <div class="nav-group-menu" role="menu" hidden>
+              <div class="nav-group-heading">Career foundation</div>
+              <a href="{{ career_profile_url }}" class="nav-group-link {% if career_profile_active %}active{% endif %}" role="menuitem" {% if career_profile_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span><strong>Career Profile</strong><small>Background, goals and preferences</small></span>
+              </a>
+              <a href="{{ career_translation_url }}" class="nav-group-link {% if career_translation_active %}active{% endif %}" role="menuitem" {% if career_translation_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h10M9 3v2c0 4-2 7-5 9"></path><path d="M6 10c2 0 4 1 6 3"></path><path d="m14 20 4-9 4 9M15.5 17h5"></path></svg>
+                <span><strong>Career Translation <em class="nav-new-badge">New</em></strong><small>Translate international experience safely</small></span>
+              </a>
+              <a href="{{ career_evidence_library_url }}" class="nav-group-link {% if career_evidence_library_active %}active{% endif %}" role="menuitem" {% if career_evidence_library_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"></path><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20"></path><path d="M9 7h7M9 11h5"></path></svg>
+                <span><strong>Career Evidence Library</strong><small>Verified achievements and documents</small></span>
+              </a>
             </div>
-        </div>
+          </li>
+
+          <li class="nav-item nav-group" data-nav-group>
+            <button type="button" class="nav-group-trigger {% if applications_group_active %}active{% endif %}" aria-expanded="false" aria-haspopup="menu">
+              <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"></path><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
+              <span>Applications</span>
+              <svg class="nav-group-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"></path></svg>
+            </button>
+            <div class="nav-group-menu nav-group-menu-wide" role="menu" hidden>
+              <div class="nav-group-heading">Application workflow</div>
+              <a href="{{ job_applications_url }}" class="nav-group-link {% if job_applications_active %}active{% endif %}" role="menuitem" {% if job_applications_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="2"></rect><path d="M8 5V3h8v2M3 10h18M9 14h6"></path></svg>
+                <span><strong>Job Applications</strong><small>Dashboard, status, deadlines and next actions</small></span>
+              </a>
+              <a href="{{ resume_workflow_url }}" class="nav-group-link {% if resume_workflow_active %}active{% endif %}" role="menuitem" {% if resume_workflow_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"></path><path d="M14 3v4h4M9 11h6M9 15h6"></path></svg>
+                <span><strong>Resume Workflow</strong><small>Build an evidence-backed tailored resume</small></span>
+              </a>
+              <a href="{{ resume_reports_url }}" class="nav-group-link {% if resume_reports_active %}active{% endif %}" role="menuitem" {% if resume_reports_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+                <span><strong>Resume Reports</strong><small>Compare fit, quality and evidence scores</small></span>
+              </a>
+              <a href="{{ application_materials_url }}" class="nav-group-link {% if application_materials_active %}active{% endif %}" role="menuitem" {% if application_materials_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6l2 2h8v12H4z"></path><path d="M8 11h8M8 15h5"></path></svg>
+                <span><strong>Application Materials</strong><small>Job posting, notes and recruiter messages</small></span>
+              </a>
+              <a href="{{ builder_configuration_url }}" class="nav-group-link {% if builder_configuration_active %}active{% endif %}" role="menuitem" {% if builder_configuration_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path></svg>
+                <span><strong>AI Configuration</strong><small>Models, reasoning and processing mode</small></span>
+              </a>
+            </div>
+          </li>
+
+          <li class="nav-item nav-group" data-nav-group>
+            <button type="button" class="nav-group-trigger {% if interviews_group_active %}active{% endif %}" aria-expanded="false" aria-haspopup="menu">
+              <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="8" height="12" rx="4"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg>
+              <span>Interviews</span>
+              <svg class="nav-group-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"></path></svg>
+            </button>
+            <div class="nav-group-menu" role="menu" hidden>
+              <div class="nav-group-heading">Interview workflow</div>
+              <a href="{{ interview_preparation_url }}" class="nav-group-link {% if interview_preparation_active %}active{% endif %}" role="menuitem" {% if interview_preparation_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"></path><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20"></path><path d="M9 7h7M9 11h5"></path></svg>
+                <span><strong>Interview Preparation</strong><small>Role-specific questions and answer guidance</small></span>
+              </a>
+              <a href="{{ mock_interview_url }}" class="nav-group-link {% if mock_interview_active %}active{% endif %}" role="menuitem" {% if mock_interview_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="8" height="12" rx="4"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"></path></svg>
+                <span><strong>Mock Interview</strong><small>Adaptive questions based on each answer</small></span>
+              </a>
+              {% if live_interview_assistance_enabled|default(false) %}
+                <a href="{{ live_interview_assistance_url }}" class="nav-group-link {% if live_interview_assistance_active %}active{% endif %}" role="menuitem" {% if live_interview_assistance_active %}aria-current="page"{% endif %}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4V5Z"></path><path d="M8 9h8M8 12h5"></path></svg>
+                  <span><strong>Live Assistance</strong><small>Restricted feature for authorized users</small></span>
+                </a>
+              {% endif %}
+              <a href="{{ interview_review_url }}" class="nav-group-link {% if interview_review_active %}active{% endif %}" role="menuitem" {% if interview_review_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z"></path><path d="M8 8h8M8 12h5M8 16h7"></path></svg>
+                <span><strong>Interview Review</strong><small>Score relevance, evidence and delivery</small></span>
+              </a>
+            </div>
+          </li>
+
+          <li class="nav-item nav-group" data-nav-group>
+            <button type="button" class="nav-group-trigger {% if growth_group_active %}active{% endif %}" aria-expanded="false" aria-haspopup="menu">
+              <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+              <span>Growth</span>
+              <svg class="nav-group-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"></path></svg>
+            </button>
+            <div class="nav-group-menu nav-group-menu-right" role="menu" hidden>
+              <div class="nav-group-heading">Follow-through</div>
+              <a href="{{ career_action_plan_url }}" class="nav-group-link {% if career_action_plan_active %}active{% endif %}" role="menuitem" {% if career_action_plan_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="m7.5 12 2.5 2.5 6-6"></path><path d="M15 15h2"></path></svg>
+                <span><strong>Career Action Plan</strong><small>Tasks, follow-ups and learning actions</small></span>
+              </a>
+              <a href="{{ progress_url }}" class="nav-group-link {% if progress_active %}active{% endif %}" role="menuitem" {% if progress_active %}aria-current="page"{% endif %}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+                <span><strong>Progress</strong><small>Application and interview improvement trends</small></span>
+              </a>
+            </div>
+          </li>
+        {% endif %}
+      </ul>
+
+      <div class="nav-auth">
+        {% if session.get('user_id') %}
+          {% if is_admin_session %}
+            <a href="{{ admin_analytics_url }}" class="admin-nav-link {% if administration_active %}active{% endif %}" {% if administration_active %}aria-current="page"{% endif %}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.5 3.1 8.2 7.5 9.5 4.4-1.3 7.5-5 7.5-9.5V6L12 3Z"></path><path d="M9 12h6M12 9v6"></path></svg>
+              <span>Administration</span>
+            </a>
+          {% endif %}
+
+          <div class="nav-item user-dropdown" id="accountDropdown">
+            <button type="button" class="profile-btn" id="accountDropdownBtn" aria-expanded="false" aria-haspopup="menu" aria-controls="accountDropdownMenu">
+              <span class="profile-avatar" aria-hidden="true">{{ (session.get('full_name') or session.get('email') or 'A')[:1] | upper }}</span>
+              <span class="profile-copy"><span class="profile-name">{{ session.get('full_name') or session.get('email') or 'Account' }}</span><span class="profile-label">Account</span></span>
+              <svg class="dropdown-arrow" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"></path></svg>
+            </button>
+            <div class="dropdown-content" id="accountDropdownMenu" role="menu" hidden>
+              <div class="dropdown-header">
+                <span class="dropdown-avatar" aria-hidden="true">{{ (session.get('full_name') or session.get('email') or 'A')[:1] | upper }}</span>
+                <span class="dropdown-user-copy"><strong>{{ session.get('full_name') or 'Signed in' }}</strong><small>{{ session.get('email') or session.get('user_id') }}</small></span>
+              </div>
+              <div class="dropdown-menu-group">
+                <a href="{{ account_profile_url }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></svg><span><strong>Account Profile</strong><small>Name and account contact details</small></span></a>
+                <a href="{{ settings_url }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"></path></svg><span><strong>Settings</strong><small>Account and AI preferences</small></span></a>
+                <a href="{{ guide_url }}" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"></path><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20"></path><path d="M9 7h7M9 11h5"></path></svg><span><strong>User Guide</strong><small>Learn the Career Bridge workflow</small></span></a>
+                <a href="{{ support_url }}" role="menuitem" {% if support_active %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.7 9a2.5 2.5 0 1 1 4.3 1.7c-.9.8-2 1.2-2 2.8"></path><path d="M12 17h.01"></path></svg><span><strong>Help &amp; Support</strong><small>Get help or report a problem</small></span></a>
+              </div>
+              <div class="dropdown-footer">
+                <form method="post" action="{{ logout_url }}" class="logout-form">
+                  <input type="hidden" name="csrf_token" value="{{ logout_csrf_token }}">
+                  <button type="submit" class="logout-link" role="menuitem"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5M21 12H9"></path></svg><span>Log out</span></button>
+                </form>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          {% include 'components/guest_language_switcher.html' ignore missing %}
+          <a href="{{ guide_url }}" class="support-nav-link {% if current_path.endswith('/user-guide.html') %}active{% endif %}"><span>User Guide</span></a>
+          <a href="{{ support_url }}" class="support-nav-link {% if support_active %}active{% endif %}"><span>Help &amp; Support</span></a>
+          <a href="{{ login_url }}" class="login-btn {% if current_path.endswith('/login.html') %}active{% endif %}"><span>Sign in</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"></path></svg></a>
+        {% endif %}
+      </div>
     </div>
+  </div>
 </nav>

@@ -5,6 +5,8 @@
     if (!page || page.dataset.authenticated !== 'true') return;
 
     const ACTIVE_RECORDING_KEY = 'meetingAssistant.activeBrowserRecording';
+    const storageScope = encodeURIComponent(page.dataset.storageScope || 'default');
+    const ACTIVE_MOCK_SESSION_KEY = `careerBridge.activeMockInterview.v2.${storageScope}`;
     const ACTIVE_RECORDING_MAX_AGE_MS = 30000;
     const RECENT_MEETING_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
     const guidedUrl = page.dataset.guidedUrl || '/knowledge.html?view=materials&guided=1';
@@ -23,7 +25,7 @@
 
     initializeHomepage();
     window.addEventListener('storage', function (event) {
-        if (event.key === ACTIVE_RECORDING_KEY) initializeHomepage();
+        if ([ACTIVE_RECORDING_KEY, ACTIVE_MOCK_SESSION_KEY].includes(event.key)) initializeHomepage();
     });
 
     async function initializeHomepage() {
@@ -38,14 +40,14 @@
         if (activeRecording) {
             const meetingName = String(activeRecording.meetingName || '').trim();
             primaryAction.href = recorderUrl;
-            primaryActionLabel.textContent = 'Return to recording';
+            primaryActionLabel.textContent = 'Return to mock interview';
             primaryDescription.textContent = activeRecording.phase === 'processing'
-                ? 'Your mock interview is being processed. Return to the recorder to follow its progress.'
-                : 'A Mock Interview Recorder session is currently active.';
+                ? 'Your mock interview review is being generated. Return to follow its progress.'
+                : 'An adaptive Mock Interview session is currently active.';
             showSmartStatus(
                 activeRecording.phase === 'processing'
                     ? `${meetingName || 'Your mock interview'} is being processed.`
-                    : `${meetingName || 'A mock interview'} is currently recording.`
+                    : `${meetingName || 'A mock interview'} is ready to continue.`
             );
             return;
         }
@@ -94,6 +96,10 @@
 
     function getActiveRecording() {
         try {
+            const adaptiveSessionId = window.localStorage.getItem(ACTIVE_MOCK_SESSION_KEY);
+            if (adaptiveSessionId) {
+                return {phase: 'active', meetingName: 'Adaptive mock interview', sessionId: adaptiveSessionId};
+            }
             const raw = window.localStorage.getItem(ACTIVE_RECORDING_KEY);
             if (!raw) return null;
             const status = JSON.parse(raw);

@@ -61,6 +61,7 @@ def create_application(config_name: str | None = None) -> Flask:
     """Create the merged Career Bridge WSGI application."""
 
     reunia_app = create_reunia_app(config_name)
+    application_database_path = _application_database_path()
 
     # Use the exact same session-signing configuration as the Réunia shell.
     builder_app = create_builder_app(
@@ -81,7 +82,7 @@ def create_application(config_name: str | None = None) -> Flask:
             "CAREER_BRIDGE_REQUIRE_AUTH": True,
             "CAREER_BRIDGE_LOGIN_URL": "/login.html",
             "CAREER_BRIDGE_HOME_URL": "/app",
-            "APPLICATIONS_DB_PATH": _application_database_path(),
+            "APPLICATIONS_DB_PATH": application_database_path,
         }
     )
 
@@ -103,8 +104,17 @@ def create_application(config_name: str | None = None) -> Flask:
         {"/applications": builder_app},
     )
 
-    # Keep references available for tests and operational inspection.
+    # Share Application Builder context with the Réunia shell so adaptive mock
+    # interviews can use the real target job, saved preparation, and verified
+    # evidence instead of relying on a separate legacy meeting workspace.
+    reunia_app.config["APPLICATIONS_DB_PATH"] = application_database_path
     reunia_app.extensions["career_bridge_builder_app"] = builder_app
+    reunia_app.extensions["career_bridge_application_store"] = builder_app.extensions.get(
+        "application_store"
+    )
+    reunia_app.extensions["career_bridge_workflow_store"] = builder_app.extensions.get(
+        "workflow_store"
+    )
     return reunia_app
 
 

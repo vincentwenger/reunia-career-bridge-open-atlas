@@ -2,7 +2,7 @@
 {% from 'macros/ui.html' import page_hero %}
 {% set guided_flow = request.args.get('guided') == '1' %}
 
-{% block title %}Réunia - Mock Interview Recorder{% endblock %}
+{% block title %}Réunia - Adaptive Mock Interview{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/meeting-recorder.css') }}">
@@ -12,256 +12,223 @@
 
 {% block content %}
 <div
-    class="app-page recorder-page"
-    id="browserRecorderPage"
+    class="app-page mock-interview-page"
+    id="mockInterviewPage"
     data-storage-scope="{{ session.get('user_id') or 'default' }}"
     data-guided-flow="{{ 'true' if guided_flow else 'false' }}"
-    data-live-interview-assistance="{{ 'true' if live_interview_assistance_enabled else 'false' }}"
-    data-live-chunk-window-ms="{{ (config.RECORDER_LIVE_CHUNK_WINDOW_SECONDS * 1000) | int }}"
-    data-live-chunk-interval-ms="{{ (config.RECORDER_LIVE_CHUNK_INTERVAL_SECONDS * 1000) | int }}"
-    data-live-queue-limit="{{ config.RECORDER_LIVE_QUEUE_LIMIT }}"
-    data-live-retry-count="{{ config.RECORDER_LIVE_RETRY_COUNT }}"
-    data-live-retry-base-ms="{{ config.RECORDER_LIVE_RETRY_BASE_MILLISECONDS }}"
-    data-live-min-chunk-bytes="{{ config.RECORDER_LIVE_MIN_CHUNK_BYTES }}"
-    data-live-max-minutes="{{ config.AI_LIVE_QA_MAX_MINUTES_PER_MEETING }}"
-    data-final-segment-duration-ms="{{ (config.RECORDER_FINAL_SEGMENT_SECONDS * 1000) | int }}"
-    data-final-segment-retry-count="{{ config.RECORDER_FINAL_SEGMENT_RETRY_COUNT }}"
-    data-final-segment-retry-base-ms="{{ config.RECORDER_FINAL_SEGMENT_RETRY_BASE_MILLISECONDS }}"
-    data-final-min-segment-bytes="{{ config.RECORDER_FINAL_MIN_SEGMENT_BYTES }}"
-    data-final-max-segment-bytes="{{ config.RECORDER_MAX_FILE_BYTES }}"
+    data-review-url="{{ request.script_root }}/interview-review"
 >
     {{ page_hero(
-        'Mock Interview Recorder',
-        'Practice interview answers using your microphone and, optionally, interviewer prompt audio. Réunia transcribes and analyzes the session when you stop.'
+        'Adaptive Mock Interview',
+        'Practice with an AI interviewer that listens to each answer, evaluates the evidence, and asks a relevant follow-up before generating a complete interview review.'
     ) }}
 
     {% if guided_flow %}
-    <section class="recorder-guided-flow" aria-label="Guided application flow progress">
-        <div class="recorder-guided-heading">
-            <div>
-                <span>Guided application flow</span>
-                <strong>Final step: practice your interview</strong>
-            </div>
-            <span class="recorder-required-badge">Required</span>
+    <section class="mock-guided-flow" aria-label="Guided application flow progress">
+        <div>
+            <span>Guided application flow</span>
+            <strong>Final step: complete a realistic practice interview</strong>
         </div>
         <ol>
-            <li class="complete"><span>✓</span><div><strong>Application Materials</strong><small>Complete or skipped</small></div></li>
-            <li class="complete"><span>✓</span><div><strong>Career Profile</strong><small>Complete or skipped</small></div></li>
-            <li class="complete"><span>✓</span><div><strong>Evidence Check</strong><small>Complete or skipped</small></div></li>
-            <li class="active"><span>4</span><div><strong>Record</strong><small>Required</small></div></li>
+            <li class="complete"><span>✓</span><strong>Application Materials</strong></li>
+            <li class="complete"><span>✓</span><strong>Career Profile</strong></li>
+            <li class="complete"><span>✓</span><strong>Interview Preparation</strong></li>
+            <li class="active"><span>4</span><strong>Mock Interview</strong></li>
         </ol>
-        <p>There is no Skip option on this step. Start the recording when you are ready.</p>
     </section>
     {% endif %}
 
-    <div class="recorder-layout">
-        <main class="recorder-card" aria-labelledby="recorder-heading">
-            <div class="recorder-card-header">
-                <div>
-                    <span class="recorder-eyebrow">New recording</span>
-                    <h2 id="recorder-heading">Prepare your mock interview</h2>
-                    <p>For the best result, use desktop Chrome or Edge and answer naturally as though you were speaking with an interviewer.</p>
-                </div>
-                <div class="recorder-status-badge" id="recorderStatusBadge" data-state="ready">
-                    <span class="recorder-status-dot" aria-hidden="true"></span>
-                    <span id="recorderStatusText">Ready</span>
-                </div>
+    <section class="mock-setup-card" id="mockSetupPanel" aria-labelledby="mock-setup-title">
+        <div class="mock-card-heading">
+            <div>
+                <span class="mock-eyebrow">New practice session</span>
+                <h2 id="mock-setup-title">Configure your interview</h2>
+                <p>The interviewer will use the selected format, target job application, and your verified career context when available.</p>
             </div>
+            <span class="mock-status-badge" id="mockStatusBadge" data-state="ready"><i aria-hidden="true"></i><span id="mockStatusText">Ready</span></span>
+        </div>
 
-            <div class="recorder-form-grid">
-                <div class="recorder-package-row">
-                    <label class="recorder-field recorder-package-field" for="preparedMeetingSelect">
-                        <span>Application workspace <small>(optional)</small></span>
-                        <select id="preparedMeetingSelect">
-                            <option value="">Do not link an application workspace</option>
-                        </select>
+        <div class="mock-setup-grid">
+            <label class="mock-field mock-field-wide" for="applicationWorkspaceSelect">
+                <span>Target job application <small>(recommended)</small></span>
+                <select id="applicationWorkspaceSelect">
+                    <option value="">Practice without linking a job application</option>
+                </select>
+                <small id="applicationWorkspaceHelp">Link a target role so questions can use its job description, saved preparation, and verified evidence.</small>
+            </label>
+
+            <fieldset class="mock-type-fieldset mock-field-wide">
+                <legend>Interview format</legend>
+                <div class="mock-type-grid" id="interviewTypeGrid">
+                    <label class="mock-type-option">
+                        <input type="radio" name="interviewType" value="recruiter_screening" checked>
+                        <span><strong>Recruiter screening</strong><small>Motivation, fit, availability, and career story</small></span>
                     </label>
-                    <a class="recorder-package-link" href="{{ request.script_root }}/applications/">Open Application Builder</a>
-                    <small id="preparedMeetingHelp" class="recorder-package-help">Link this practice session to the target role, materials, and career evidence in an application workspace.</small>
+                    <label class="mock-type-option">
+                        <input type="radio" name="interviewType" value="hiring_manager">
+                        <span><strong>Hiring-manager interview</strong><small>Role readiness, judgment, ownership, and impact</small></span>
+                    </label>
+                    <label class="mock-type-option">
+                        <input type="radio" name="interviewType" value="behavioral">
+                        <span><strong>Behavioral interview</strong><small>STAR examples, collaboration, conflict, and growth</small></span>
+                    </label>
+                    <label class="mock-type-option">
+                        <input type="radio" name="interviewType" value="technical">
+                        <span><strong>Technical interview</strong><small>Technical depth, tradeoffs, debugging, and design</small></span>
+                    </label>
+                    <label class="mock-type-option">
+                        <input type="radio" name="interviewType" value="final">
+                        <span><strong>Final interview</strong><small>Executive fit, risk areas, priorities, and close</small></span>
+                    </label>
+                    <label class="mock-type-option">
+                        <input type="radio" name="interviewType" value="custom">
+                        <span><strong>Custom practice session</strong><small>Choose a specific topic, concern, or interview style</small></span>
+                    </label>
                 </div>
+            </fieldset>
 
-                <label class="recorder-switch-row" for="captureMeetingAudio">
-                    <span class="recorder-switch-copy">
-                        <strong>Capture interviewer prompt audio</strong>
-                        <small>Optional. Turn this on only when interview questions or prompts are playing from another tab or window.</small>
-                    </span>
-                    <span class="recorder-switch">
-                        <input id="captureMeetingAudio" type="checkbox" checked>
-                        <span aria-hidden="true"></span>
-                    </span>
-                </label>
+            <label class="mock-field" for="questionCountSelect">
+                <span>Number of questions</span>
+                <select id="questionCountSelect">
+                    <option value="3">3 · Quick practice</option>
+                    <option value="5" selected>5 · Standard session</option>
+                    <option value="7">7 · In-depth session</option>
+                    <option value="10">10 · Full interview</option>
+                    <option value="12">12 · Extended interview</option>
+                </select>
+            </label>
 
+            <label class="mock-switch-field" for="readQuestionsAloud">
+                <span><strong>Read questions aloud</strong><small>Use your browser voice so the session feels more like a conversation.</small></span>
+                <span class="mock-switch"><input id="readQuestionsAloud" type="checkbox" checked><i aria-hidden="true"></i></span>
+            </label>
+
+            <label class="mock-field mock-field-wide" id="customFocusField" for="customFocusInput" hidden>
+                <span>Custom interview focus</span>
+                <textarea id="customFocusInput" rows="3" maxlength="1000" placeholder="Example: Challenge my answers about changing industries, leadership without direct authority, and limited cloud architecture experience."></textarea>
+            </label>
+        </div>
+
+        <div class="mock-setup-actions">
+            <a class="mock-link-button" href="{{ request.script_root }}/applications/">Open Application Builder</a>
+            <button class="mock-button mock-button-primary" id="startMockInterviewButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7Z"></path></svg>
+                Start mock interview
+            </button>
+        </div>
+    </section>
+
+    <div class="mock-session-layout" id="mockSessionLayout" hidden>
+        <main class="mock-session-card" aria-labelledby="mock-question-heading">
+            <div class="mock-session-topbar">
+                <div>
+                    <span class="mock-session-format" id="mockSessionFormat">Recruiter screening</span>
+                    <strong id="mockQuestionProgress">Question 1 of 5</strong>
+                </div>
+                <div class="mock-progress-track" aria-hidden="true"><span id="mockProgressFill"></span></div>
+                <button class="mock-icon-button" id="endInterviewButton" type="button" title="End and discard this mock interview" aria-label="End and discard this mock interview">×</button>
             </div>
 
-            <section class="recorder-stage" id="recorderStage" aria-live="polite">
-                <div class="recorder-timer" id="recorderTimer">00:00:00</div>
-                <p class="recorder-stage-title" id="recorderStageTitle">Ready to record</p>
-                <p class="recorder-stage-description" id="recorderStageDescription">
-                    Your browser will ask for microphone access and, optionally, which prompt tab or screen to share.
-                </p>
+            <section class="mock-interviewer-panel" aria-live="polite">
+                <div class="mock-avatar" aria-hidden="true">AI</div>
+                <div class="mock-question-copy">
+                    <span>AI interviewer</span>
+                    <h2 id="mock-question-heading">Preparing your first question…</h2>
+                    <p id="mockQuestionContext">The next question will adapt to your previous answer.</p>
+                    <button class="mock-read-button" id="repeatQuestionButton" type="button">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h4l5 4V5L9 9H5Z"></path><path d="M18 8a6 6 0 0 1 0 8"></path></svg>
+                        Read question again
+                    </button>
+                </div>
+            </section>
 
-                <div class="audio-source-grid">
-                    <article class="audio-source-card" id="microphoneSourceCard">
-                        <div class="audio-source-heading">
-                            <span class="audio-source-icon" aria-hidden="true">🎙</span>
-                            <div><strong>Microphone</strong><small>Your answers and voice</small></div>
-                            <div class="audio-source-controls">
-                                <span class="source-state" id="microphoneState">Not connected</span>
-                                <button class="audio-source-mute" id="microphoneMuteButton" type="button" aria-pressed="false" aria-label="Mute microphone">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path>
-                                        <path d="M5 10v2a7 7 0 0 0 14 0v-2"></path>
-                                        <path d="M12 19v3M8 22h8"></path>
-                                    </svg>
-                                    <span>Mute</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="audio-meter" aria-hidden="true"><span id="microphoneMeter"></span></div>
-                    </article>
-
-                    <article class="audio-source-card is-disabled" id="speakerSourceCard">
-                        <div class="audio-source-heading">
-                            <span class="audio-source-icon" aria-hidden="true">🔊</span>
-                            <div><strong>Interviewer prompts</strong><small>Questions played from shared audio</small></div>
-                            <div class="audio-source-controls">
-                                <span class="source-state" id="speakerState">Disabled</span>
-                                <button class="audio-source-mute" id="speakerMuteButton" type="button" aria-pressed="false" aria-label="Mute interviewer prompt audio">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                                        <path d="M11 5 6 9H3v6h3l5 4V5Z"></path>
-                                        <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
-                                        <path d="M18 6a8.5 8.5 0 0 1 0 12"></path>
-                                    </svg>
-                                    <span>Mute</span>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="audio-meter" aria-hidden="true"><span id="speakerMeter"></span></div>
-                    </article>
+            <section class="mock-answer-panel" id="mockAnswerPanel">
+                <div class="mock-answer-heading">
+                    <div>
+                        <span>Your answer</span>
+                        <strong id="answerStateTitle">Take a moment, then begin when ready</strong>
+                    </div>
+                    <time id="answerTimer">00:00</time>
                 </div>
 
-                <div class="recorder-actions">
-                    <button class="recorder-button recorder-button-primary" id="startRecordingButton" type="button">
+                <div class="mock-microphone-card" id="microphoneCard" data-state="idle">
+                    <span class="mock-microphone-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path><path d="M5 10v2a7 7 0 0 0 14 0v-2"></path><path d="M12 19v3M8 22h8"></path></svg>
+                    </span>
+                    <div><strong>Microphone</strong><small id="microphoneState">Not connected</small></div>
+                    <div class="mock-audio-meter" aria-hidden="true"><span id="microphoneMeter"></span></div>
+                </div>
+
+                <div class="mock-answer-actions">
+                    <button class="mock-button mock-button-primary" id="startAnswerButton" type="button">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"></circle></svg>
-                        <span>Start recording</span>
+                        Start answer
                     </button>
-                    <button class="recorder-button recorder-button-primary" id="stopRecordingButton" type="button" hidden>
+                    <button class="mock-button mock-button-stop" id="finishAnswerButton" type="button" hidden>
                         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1"></rect></svg>
-                        <span>Stop &amp; Process</span>
+                        Finish answer
                     </button>
-                    <button class="recorder-button recorder-button-danger-outline" id="discardRecordingButton" type="button" hidden>
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 7h16"></path>
-                            <path d="M9 7V4h6v3"></path>
-                            <path d="m6.5 7 1 13h9l1-13"></path>
-                            <path d="M10 11v5M14 11v5"></path>
-                        </svg>
-                        <span>Discard Recording</span>
-                    </button>
-                    <button class="recorder-button recorder-button-secondary" id="resetRecordingButton" type="button" hidden>
-                        Practice another interview
-                    </button>
-                    {% if live_interview_assistance_enabled %}
-                    <a class="recorder-button recorder-button-secondary" id="openLiveQALink" href="{{ request.script_root }}/live-qa.html" target="_blank" rel="noopener" hidden>
-                        Open Live Interview Assistance
-                    </a>
-                    {% endif %}
                 </div>
+                <p class="mock-answer-tip">Aim for a clear example with the situation, your actions, and the result. The interviewer will challenge unsupported claims.</p>
+            </section>
 
-                <div class="recorder-progress" id="recorderProgress" hidden>
-                    <span aria-hidden="true"></span>
-                    <div>
-                        <strong id="recorderProgressTitle">Uploading your recording</strong>
-                        <small id="recorderProgressMessage">Keep this page open while the audio is uploaded securely.</small>
+            <section class="mock-processing-panel" id="mockProcessingPanel" hidden aria-live="polite">
+                <span class="mock-spinner" aria-hidden="true"></span>
+                <div><strong id="mockProcessingTitle">Transcribing your answer</strong><p id="mockProcessingMessage">Réunia is evaluating the content and preparing an adaptive follow-up.</p></div>
+            </section>
+
+            <section class="mock-evaluation-panel" id="mockEvaluationPanel" hidden aria-live="polite">
+                <div class="mock-evaluation-score"><span id="evaluationScore">—</span><small>/100</small></div>
+                <div class="mock-evaluation-copy">
+                    <div class="mock-evaluation-heading">
+                        <strong>Answer evaluation</strong>
+                        <span id="evaluationEvidenceBadge">Evidence pending</span>
+                    </div>
+                    <p id="evaluationSummary"></p>
+                    <div class="mock-evaluation-columns">
+                        <div><span>What worked</span><ul id="evaluationStrengths"></ul></div>
+                        <div><span>Improve next</span><ul id="evaluationImprovements"></ul></div>
+                    </div>
+                    <div class="mock-evaluation-actions">
+                        <button class="mock-button mock-button-primary" id="nextQuestionButton" type="button">Continue to next question</button>
                     </div>
                 </div>
+            </section>
 
-                <section class="recorder-error-panel" id="recorderErrorPanel" role="alert" hidden>
-                    <div class="recorder-error-heading">
-                        <span class="recorder-error-icon" aria-hidden="true">!</span>
-                        <div>
-                            <strong>Processing failed</strong>
-                            <p id="recorderErrorMessage">The recording could not be processed.</p>
-                        </div>
-                    </div>
-
-                    <dl class="recorder-error-summary">
-                        <div><dt>Reference ID</dt><dd id="recorderErrorReference">—</dd></div>
-                        <div><dt>HTTP status</dt><dd id="recorderErrorStatus">—</dd></div>
-                        <div><dt>Failed stage</dt><dd id="recorderErrorStage">—</dd></div>
-                        <div><dt>Recording</dt><dd id="recorderErrorRecording">—</dd></div>
-                    </dl>
-
-                    <details class="recorder-error-details">
-                        <summary>View diagnostic details</summary>
-                        <pre id="recorderErrorDetails"></pre>
-                    </details>
-
-                    <div class="recorder-error-actions">
-                        <button class="recorder-button recorder-button-primary" id="retryProcessingButton" type="button">
-                            Retry Processing
-                        </button>
-                        <button class="recorder-button recorder-button-secondary" id="sendErrorToSupportButton" type="button">
-                            Send Error to Support
-                        </button>
-                        <button class="recorder-button recorder-button-danger-outline" id="discardFailedRecordingButton" type="button">
-                            Discard Audio &amp; Start Over
-                        </button>
-                    </div>
-                    <p class="recorder-support-status" id="recorderSupportStatus" role="status" aria-live="polite" hidden></p>
-                    <p class="recorder-error-retention" id="recorderErrorRetention">
-                        The captured audio is still available in this browser tab and can be retried. Do not refresh or close the page.
-                    </p>
-                </section>
-
-                <div class="recorder-result" id="recorderResult" hidden>
-                    <span class="recorder-result-icon" aria-hidden="true">✓</span>
-                    <div>
-                        <strong id="recorderResultTitle">Mock interview saved</strong>
-                        <p id="recorderResultMessage"></p>
-                        <p class="recorder-quality-warning" id="recorderQualityWarning" hidden></p>
-                    </div>
-                    <a id="reviewMeetingLink" href="{{ request.script_root }}/interview-review">Open Interview Review</a>
-                </div>
+            <section class="mock-error-panel" id="mockErrorPanel" hidden role="alert">
+                <strong>Unable to continue the mock interview</strong>
+                <p id="mockErrorMessage">An unexpected error occurred.</p>
+                <button class="mock-button mock-button-secondary" id="retryAnswerButton" type="button">Try again</button>
             </section>
         </main>
 
-        <aside class="recorder-guide" aria-label="Recording guidance">
-            <section class="recorder-guide-card recorder-guide-card-accent">
-                <span class="recorder-guide-number">1</span>
-                <div>
-                    <h3>Choose your practice format</h3>
-                    <p>Practice solo, read prepared questions, or play interviewer prompts from another tab before starting the recorder.</p>
-                </div>
-            </section>
-            <section class="recorder-guide-card">
-                <span class="recorder-guide-number">2</span>
-                <div>
-                    <h3>Prompt audio is optional</h3>
-                    <p>Turn on <strong>Capture interviewer prompt audio</strong> only when you also want to record the interviewer prompts. Then select the prompt tab and enable shared audio in the browser picker.</p>
-                </div>
-            </section>
-            <section class="recorder-guide-card">
-                <span class="recorder-guide-number">3</span>
-                <div>
-                    <h3>Keep this page open</h3>
-                    <p>You can switch between your preparation and recorder tabs. Keep the recorder tab open while it securely saves audio segments and finishes processing.</p>
-                </div>
-            </section>
-            <section class="recorder-privacy-card">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.7 7 10 4.1-1.3 7-5.4 7-10V6l-7-3Z"></path><path d="m9 12 2 2 4-4"></path></svg>
-                <div>
-                    {% if live_interview_assistance_enabled %}
-                    <strong>Restricted live assistance enabled</strong>
-                    <p>This administrator or approved-group account can open Live Interview Assistance while recording. Source capture follows the Microphone, Speaker, and Clipboard choices saved in Settings.</p>
-                    {% else %}
-                    <strong>Practice mode only</strong>
-                    <p>Use this recorder for mock interviews and personal practice. Live Interview Assistance is available only to administrators and approved groups.</p>
-                    {% endif %}
-                </div>
-            </section>
+        <aside class="mock-history-card" aria-label="Interview progress">
+            <div class="mock-history-heading">
+                <span>Session progress</span>
+                <strong id="mockHistoryCount">0 answers completed</strong>
+            </div>
+            <ol id="mockHistoryList" class="mock-history-list">
+                <li class="mock-history-empty">Your completed questions and coaching signals will appear here.</li>
+            </ol>
+            <div class="mock-history-note">
+                <strong>Adaptive by design</strong>
+                <p>Each follow-up is based on what you actually said—not a fixed question list.</p>
+            </div>
         </aside>
     </div>
+
+    <section class="mock-complete-card" id="mockCompletePanel" hidden>
+        <span class="mock-complete-icon" aria-hidden="true">✓</span>
+        <div>
+            <span class="mock-eyebrow">Practice complete</span>
+            <h2>Your interview review is ready</h2>
+            <p id="mockCompleteMessage">Réunia saved the transcript and generated coaching across relevance, evidence, structure, clarity, and delivery.</p>
+            <div class="mock-complete-actions">
+                <a class="mock-button mock-button-primary" id="openInterviewReviewLink" href="{{ request.script_root }}/interview-review">Open Interview Review</a>
+                <button class="mock-button mock-button-secondary" id="practiceAgainButton" type="button">Practice another interview</button>
+            </div>
+        </div>
+    </section>
 </div>
 {% endblock %}
 

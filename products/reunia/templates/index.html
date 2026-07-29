@@ -17,6 +17,7 @@
     data-guided-url="{{ request.script_root }}/applications/"
     data-recorder-url="{{ request.script_root }}/mock-interview"
     data-review-url="{{ request.script_root }}/interview-review"
+    data-storage-scope="{{ session.get('user_id') or 'default' }}"
 >
     <section class="home-start-card" aria-labelledby="home-title">
         <div class="home-start-copy">
@@ -36,8 +37,9 @@
             </a>
 
             <p class="home-flow-note">
-                Application Materials <span aria-hidden="true">→</span>
                 Career Profile <span aria-hidden="true">→</span>
+                Career Translation <span aria-hidden="true">→</span>
+                Application Builder <span aria-hidden="true">→</span>
                 Interview Preparation <span aria-hidden="true">→</span>
                 <strong>Mock Interview</strong>
             </p>
@@ -70,9 +72,19 @@
                 <span><strong>Career Profile</strong><small>Background, accomplishments, preferences, and constraints</small></span>
                 <span aria-hidden="true">→</span>
             </a>
-            <a href="{{ request.script_root }}/applications/interview-preparation">
+            <a href="{{ request.script_root }}/applications/career-translation">
+                <span class="home-quick-icon" aria-hidden="true">文</span>
+                <span><strong>Career Translation</strong><small>Translate international titles, credentials, and experience safely</small></span>
+                <span aria-hidden="true">→</span>
+            </a>
+            <a href="{{ request.script_root }}/career-evidence-library">
                 <span class="home-quick-icon" aria-hidden="true">▦</span>
                 <span><strong>Career Evidence Library</strong><small>Find verified projects, achievements, and experience</small></span>
+                <span aria-hidden="true">→</span>
+            </a>
+            <a href="{{ request.script_root }}/applications/interview-preparation">
+                <span class="home-quick-icon" aria-hidden="true">?</span>
+                <span><strong>Interview Preparation</strong><small>Prepare role-specific questions from verified evidence</small></span>
                 <span aria-hidden="true">→</span>
             </a>
             <a href="{{ request.script_root }}/interview-review">

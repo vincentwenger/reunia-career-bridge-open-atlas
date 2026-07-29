@@ -101,6 +101,12 @@ class WorkflowState:
     # The provisional proposal feeds confirmation, the draft is the job-aligned resume,
     # and the final proposal is the optimized export version.
     workflow_stage: str = "initial"
+    # True after the candidate approves the Step 3 Job-Aligned Resume and
+    # starts the quality/finalization pass.  The presentation layer already
+    # uses this flag to distinguish the editable review from its completed
+    # snapshot, so it must be part of every workflow state (including fresh
+    # sessions opened directly from the global navbar).
+    quality_review_started: bool = False
     draft_proposal: TailoringProposal | None = None
     previous_draft_proposal: TailoringProposal | None = None
     draft_revision: int = 0
@@ -163,6 +169,7 @@ class WorkflowState:
 
     def clear_tailoring_results(self) -> None:
         self.workflow_stage = "initial"
+        self.quality_review_started = False
         self.draft_proposal = None
         self.previous_draft_proposal = None
         self.draft_revision = 0
