@@ -15,14 +15,14 @@
 >
     {{ page_hero(
         'Career Action Plan',
-        'Track resume changes, practice needs, applications, recruiter follow-ups, owners, due dates, and completion.'
+        'Turn resume gaps, evidence findings, interview feedback, upcoming interviews, and follow-up dates into an application-specific plan.'
     ) }}
 
     <section class="action-command-bar" aria-label="Career Action Plan controls">
         <div class="action-command-copy">
-            <span class="action-command-kicker">Execution workspace</span>
-            <strong>Focus on the work that needs attention now.</strong>
-            <span id="action-storage-status">Loading action items…</span>
+            <span class="action-command-kicker">Application-linked execution</span>
+            <strong>Know what to do next for every job application.</strong>
+            <span id="action-storage-status">Building your plan from Career Bridge data…</span>
         </div>
         <button class="action-primary-button" id="add-action-button" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
@@ -33,7 +33,7 @@
     <section class="action-kpi-grid" aria-label="Action overview">
         <button class="action-kpi-card action-kpi-open" type="button" data-kpi-filter="open">
             <span class="action-kpi-icon" aria-hidden="true">▤</span>
-            <span><small>Open actions</small><strong id="action-open-count">—</strong><em>Not completed</em></span>
+            <span><small>Open actions</small><strong id="action-open-count">—</strong><em>Across applications</em></span>
         </button>
         <button class="action-kpi-card action-kpi-overdue" type="button" data-kpi-filter="overdue">
             <span class="action-kpi-icon" aria-hidden="true">!</span>
@@ -49,16 +49,29 @@
         </button>
     </section>
 
+    <section class="action-application-overview" aria-labelledby="action-application-overview-title">
+        <header>
+            <div>
+                <span class="action-section-kicker">Application priorities</span>
+                <h2 id="action-application-overview-title">Your job applications</h2>
+            </div>
+            <a class="action-secondary-link" href="/applications/?tab=applications">Manage applications</a>
+        </header>
+        <div class="action-application-strip" id="action-application-strip" aria-live="polite">
+            <div class="action-application-placeholder">Loading applications…</div>
+        </div>
+    </section>
+
     <section class="action-workspace">
         <header class="action-workspace-header">
             <div>
-                <span class="action-section-kicker">All career actions</span>
-                <h2>Action register</h2>
+                <span class="action-section-kicker">Career actions</span>
+                <h2>Application action plan</h2>
                 <p id="action-results-summary" aria-live="polite">Loading actions…</p>
             </div>
             <div class="action-view-toggle" role="group" aria-label="Quick views">
                 <button class="is-active" type="button" data-quick-view="open">Open</button>
-                <button type="button" data-quick-view="mine">My actions</button>
+                <button type="button" data-quick-view="generated">Generated</button>
                 <button type="button" data-quick-view="all">All</button>
                 <button type="button" data-quick-view="closed">Closed</button>
             </div>
@@ -69,18 +82,18 @@
                 <span>Search</span>
                 <div>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.7-3.7"></path></svg>
-                    <input id="action-search" type="search" placeholder="Search actions, applications, or owners…" autocomplete="off">
+                    <input id="action-search" type="search" placeholder="Search actions, applications, or findings…" autocomplete="off">
                 </div>
             </label>
 
-            <label class="action-filter-field" for="action-meeting-filter">
+            <label class="action-filter-field" for="action-application-filter">
                 <span>Application</span>
-                <select id="action-meeting-filter"><option value="all">All applications</option></select>
+                <select id="action-application-filter"><option value="all">All applications</option></select>
             </label>
 
-            <label class="action-filter-field" for="action-owner-filter">
-                <span>Owner</span>
-                <select id="action-owner-filter"><option value="all">All owners</option></select>
+            <label class="action-filter-field" for="action-source-filter">
+                <span>Generated from</span>
+                <select id="action-source-filter"><option value="all">All sources</option></select>
             </label>
 
             <label class="action-filter-field" for="action-due-filter">
@@ -126,11 +139,12 @@
                     <option value="due_asc">Due date: earliest</option>
                     <option value="due_desc">Due date: latest</option>
                     <option value="priority">Priority</option>
-                    <option value="meeting">Application</option>
+                    <option value="application">Application</option>
+                    <option value="source">Source</option>
                     <option value="newest">Newest first</option>
                 </select>
                 <small class="action-sort-description" id="action-sort-description">
-                    Overdue and blocked actions first, then priority and deadline.
+                    Overdue and blocked actions first, then deadline and priority.
                 </small>
             </label>
 
@@ -144,7 +158,7 @@
                         <th scope="col" class="action-complete-column"><span class="sr-only">Complete</span></th>
                         <th scope="col">Action</th>
                         <th scope="col">Application</th>
-                        <th scope="col">Owner</th>
+                        <th scope="col">Generated from</th>
                         <th scope="col">Due date</th>
                         <th scope="col">Priority</th>
                         <th scope="col">Status</th>
@@ -156,14 +170,14 @@
 
             <div class="action-loading-state" id="action-loading-state">
                 <span class="action-spinner" aria-hidden="true"></span>
-                <strong>Building your career action plan</strong>
-                <p>Combining resume work, practice needs, applications, and recruiter follow-ups into one view.</p>
+                <strong>Building your Career Action Plan</strong>
+                <p>Reviewing application dates, resume gaps, evidence findings, and interview scorecards.</p>
             </div>
 
             <div class="action-empty-state" id="action-empty-state" hidden>
                 <span aria-hidden="true">✓</span>
                 <strong id="action-empty-title">No actions found</strong>
-                <p id="action-empty-message">Try changing the filters or add a new action.</p>
+                <p id="action-empty-message">Try changing the filters or add a new application-specific action.</p>
                 <button type="button" id="empty-add-action-button">Add an action</button>
             </div>
         </div>
@@ -185,39 +199,14 @@
 
             <label class="action-form-field action-form-field-wide" for="action-form-description">
                 <span>Action <strong aria-hidden="true">*</strong></span>
-                <textarea id="action-form-description" maxlength="1000" rows="4" required placeholder="What needs to be done?"></textarea>
+                <textarea id="action-form-description" maxlength="1000" rows="4" required placeholder="What needs to be done for this application?"></textarea>
             </label>
 
             <div class="action-form-grid">
-                <label class="action-form-field" for="action-form-meeting">
-                    <span>Application</span>
-                    <select id="action-form-meeting"><option value="">No linked application</option></select>
+                <label class="action-form-field action-form-field-wide" for="action-form-application">
+                    <span>Job application <strong aria-hidden="true">*</strong></span>
+                    <select id="action-form-application" required><option value="">Choose an application</option></select>
                 </label>
-
-                <div class="action-form-field action-owner-field">
-                    <div class="action-form-label-row">
-                        <label for="action-form-owner">Owner</label>
-                        <button
-                            class="action-assign-me-button"
-                            id="action-assign-me"
-                            type="button"
-                            aria-pressed="false"
-                        >
-                            <span aria-hidden="true">✓</span>
-                            <span id="action-assign-me-label">Assign to me</span>
-                        </button>
-                    </div>
-                    <input
-                        id="action-form-owner"
-                        type="text"
-                        maxlength="200"
-                        placeholder="Unassigned"
-                        aria-describedby="action-owner-help"
-                    >
-                    <small class="action-owner-help" id="action-owner-help">
-                        Assigning the action to yourself makes it appear under My actions.
-                    </small>
-                </div>
 
                 <label class="action-form-field" for="action-form-due-date">
                     <span>Due date</span>
@@ -246,9 +235,14 @@
                 </label>
             </div>
 
+            <div class="action-generated-note" id="action-generated-note" hidden>
+                <span aria-hidden="true">↻</span>
+                <p><strong id="action-generated-source">Automatically generated</strong><br><span id="action-generated-detail"></span></p>
+            </div>
+
             <div class="action-form-note">
                 <span aria-hidden="true">i</span>
-                <p>Interview Review keeps the original practice evidence. Career Action Plan manages resume changes, practice needs, applications, follow-ups, ownership, deadlines, priority, and completion.</p>
+                <p>Every action belongs to one job application. Automatically generated actions can be completed, reprioritized, rescheduled, edited, or dismissed without changing the original resume or interview evidence.</p>
             </div>
 
             <footer class="action-modal-actions">
@@ -261,6 +255,5 @@
 {% endblock %}
 
 {% block page_scripts %}
-<script src="{{ static_asset('js/meeting-utils.js') }}" defer></script>
 <script src="{{ static_asset('js/pages/action-center.js') }}" defer></script>
 {% endblock %}

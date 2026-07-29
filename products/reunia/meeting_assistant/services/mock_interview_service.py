@@ -401,6 +401,14 @@ class MockInterviewService:
                 prepared_context["prepared_meeting_id"] = str(
                     workspace.get("workspace_id") or ""
                 )
+            if workspace.get("source") == "application_builder":
+                prepared_context.update(
+                    {
+                        "career_application_id": str(workspace.get("application_id") or ""),
+                        "career_application_company": str(workspace.get("company") or ""),
+                        "career_application_role": str(workspace.get("role") or ""),
+                    }
+                )
             payload.update(prepared_context)
 
         try:

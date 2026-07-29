@@ -412,7 +412,7 @@
         'Desktop Client': 'Accounts that successfully signed in through the desktop application.',
         'Live Q&A': 'Accounts that started a Live Q&A session or requested an AI answer.',
         'Meeting Review': 'Accounts that opened a saved meeting for review and follow-up.',
-        'Action Center': 'Accounts that opened or used the centralized action-management area.',
+        'Career Action Plan': 'Accounts that opened or used the application-linked career planning area.',
         'Analytics': 'Accounts that opened the user-facing Analytics area.',
     };
 

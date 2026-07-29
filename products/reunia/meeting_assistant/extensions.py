@@ -229,13 +229,13 @@ def init_extensions(app: Flask) -> None:
     app.extensions["action_repository"] = action_repository
     if actions_backend == "dynamodb":
         app.logger.info(
-            "Action Center persistence: DynamoDB table %s in %s",
+            "Career Action Plan persistence: DynamoDB table %s in %s",
             app.config["ACTIONS_TABLE_NAME"],
             app.config["AWS_REGION"],
         )
     else:
         app.logger.warning(
-            "Action Center persistence is in memory; changes will be lost on restart."
+            "Career Action Plan persistence is in memory; changes will be lost on restart."
         )
 
     support_backend = str(

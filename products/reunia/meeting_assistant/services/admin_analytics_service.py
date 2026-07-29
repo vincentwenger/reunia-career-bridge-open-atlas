@@ -75,7 +75,7 @@ _FEATURE_LABELS = {
     "desktop_client": "Desktop Client",
     "live_qa": "Live Q&A",
     "meeting_review": "Meeting Review",
-    "action_center": "Action Center",
+    "action_center": "Career Action Plan",
     "analytics": "Analytics",
 }
 
@@ -1328,7 +1328,7 @@ class AdminAnalyticsService:
                 list_all = getattr(self.action_repository, "list_all", None)
                 actions = list(list_all()) if callable(list_all) else []
             except Exception:
-                current_app.logger.exception("Could not load Action Center outcomes for Admin Analytics")
+                current_app.logger.exception("Could not load Career Action Plan outcomes for Admin Analytics")
                 sources["actions"] = False
         else:
             sources["actions"] = False

@@ -41,7 +41,7 @@ _ALLOWED_AREAS = {
     "live-qa": "Live Q&A",
     "meeting-review": "Meeting Review",
     "sharing": "Meeting sharing",
-    "action-center": "Action Center",
+    "action-center": "Career Action Plan",
     "analytics": "Analytics",
     "settings": "Settings",
     "account": "Profile or account",

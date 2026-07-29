@@ -60,7 +60,7 @@ let meetingsData = [];
 
         const urlParameters = new URLSearchParams(window.location.search);
         const requestedTab = urlParameters.get('tab');
-        const requestedMeeting = urlParameters.get('meeting');
+        const requestedMeeting = urlParameters.get('meeting') || urlParameters.get('meeting_id');
         switchTab(['summary', 'scorecard', 'transcript', 'ask-ai'].includes(requestedTab) ? requestedTab : 'summary', false);
 
         try {
@@ -1014,9 +1014,14 @@ let meetingsData = [];
             return;
         }
 
-        const meetingId = getMeetingKnowledgeId(meeting, index);
-        link.href = `${baseUrl}?meeting=${encodeURIComponent(meetingId)}`;
-        link.setAttribute('aria-label', `Manage actions from ${getMeetingName(meeting, index)} in Career Action Plan`);
+        const applicationId = String(getValue(meeting?.career_application_id, '') || '').trim();
+        if (applicationId) {
+            link.href = `${baseUrl}?application_id=${encodeURIComponent(applicationId)}`;
+            link.setAttribute('aria-label', `Manage application actions from ${getMeetingName(meeting, index)} in Career Action Plan`);
+        } else {
+            link.href = baseUrl;
+            link.setAttribute('aria-label', 'Open Career Action Plan');
+        }
     }
 
     function clearMeetingReview() {

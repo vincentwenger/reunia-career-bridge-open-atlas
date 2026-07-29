@@ -137,6 +137,17 @@ class TranscriptService:
             if normalized_participants:
                 item["prepared_meeting_participants"] = normalized_participants
 
+        # Preserve the Application Builder relationship for interview reviews so
+        # the Career Action Plan can attach scorecard findings to the exact job.
+        career_application_fields = {
+            "career_application_id": str(data.get("career_application_id") or "").strip(),
+            "career_application_company": str(data.get("career_application_company") or "").strip(),
+            "career_application_role": str(data.get("career_application_role") or "").strip(),
+        }
+        for field, value in career_application_fields.items():
+            if value:
+                item[field] = value
+
         try:
             self.repository.create(item)
         except ClientError as exc:

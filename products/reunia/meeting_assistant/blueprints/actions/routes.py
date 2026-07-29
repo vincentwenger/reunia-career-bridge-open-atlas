@@ -16,6 +16,26 @@ def action_center_page():
     return render_template("action-center.html")
 
 
+@actions_bp.get("/api/career/action-plan/context")
+@api_auth_required
+def action_plan_context():
+    service = ActionService()
+    return jsonify(
+        {
+            "applications": service.list_applications(g.current_user_id),
+            "sources": [
+                {"value": "resume_gap", "label": "Resume gaps"},
+                {"value": "evidence_review", "label": "Evidence-review findings"},
+                {"value": "interview_scorecard", "label": "Interview scorecard findings"},
+                {"value": "upcoming_interview", "label": "Upcoming interviews"},
+                {"value": "application_follow_up", "label": "Application follow-ups"},
+                {"value": "application_next_action", "label": "Application next steps"},
+                {"value": "manual", "label": "Manual actions"},
+            ],
+        }
+    )
+
+
 @actions_bp.route(
     "/api/career/actions", methods=["GET", "POST", "PATCH", "PUT", "DELETE"]
 )
