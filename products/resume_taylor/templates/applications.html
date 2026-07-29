@@ -111,6 +111,7 @@
 
           <footer class="application-card-actions application-dashboard-actions">
             <a class="button primary" href="{{ url_for('open_application_builder', application_id=application.id) }}">{% if application.workflow_step == 'setup' %}Start resume workflow{% else %}Continue resume workflow{% endif %}</a>
+            <a class="button secondary" href="{{ url_for('interview_preparation_workspace', application_id=application.id) }}">Prepare for interview</a>
             {% if application.has_resume_snapshot %}<a class="button secondary" href="{{ url_for('download_application_resume', application_id=application.id) }}">Download submitted resume</a>{% endif %}
           </footer>
 

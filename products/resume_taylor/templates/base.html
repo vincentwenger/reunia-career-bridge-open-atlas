@@ -31,8 +31,11 @@
       <header class="page-hero application-builder-hero">
         <div class="page-hero-layout">
           <div class="page-hero-copy">
-            <p class="application-builder-hero-eyebrow">Application Builder</p>
-            {% if active_tab == 'reports' %}
+            <p class="application-builder-hero-eyebrow">{% if active_tab == 'interview_preparation' %}Interview Preparation{% else %}Application Builder{% endif %}</p>
+            {% if active_tab == 'interview_preparation' %}
+              <h1>Interview Preparation</h1>
+              <p>Prepare for one specific application using its target job description and evidence verified in the resume workflow.</p>
+            {% elif active_tab == 'reports' %}
               <h1>Resume Reports</h1>
               <p>Review the Initial, Job-Aligned, and Final Resume evidence and quality reports for the selected application.</p>
             {% elif active_tab == 'applications' %}
@@ -52,6 +55,10 @@
               <a class="application-builder-hero-button application-builder-hero-button-primary" href="#new-application">
                 <span aria-hidden="true">＋</span> Create job application
               </a>
+            {% elif active_tab == 'interview_preparation' %}
+              <a class="application-builder-hero-button application-builder-hero-button-secondary" href="{{ url_for('index', tab='applications') }}">
+                <span aria-hidden="true">←</span> All job applications
+              </a>
             {% else %}
               <a class="application-builder-hero-button application-builder-hero-button-secondary" href="{{ url_for('index', tab='applications') }}">
                 <span aria-hidden="true">←</span> All job applications
@@ -61,6 +68,7 @@
         </div>
       </header>
 
+      {% if active_tab != 'interview_preparation' %}
       <nav class="application-builder-subnav" aria-label="Application Builder sections">
         <a class="application-builder-subnav-link {{ 'active' if active_tab == 'applications' else '' }}" href="{{ url_for('index', tab='applications') }}" {% if active_tab == 'applications' %}aria-current="page"{% endif %}>
           <span class="application-builder-subnav-icon" aria-hidden="true">▦</span>
@@ -79,6 +87,7 @@
           <span><strong>Configuration</strong><small>Models and candidate data</small></span>
         </a>
       </nav>
+      {% endif %}
 
       {% if active_application and active_tab != 'applications' %}
         <section class="active-application-banner" aria-label="Selected job application">

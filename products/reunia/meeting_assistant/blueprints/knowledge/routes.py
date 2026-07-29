@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
-from flask import current_app, g, jsonify, render_template, request, send_file, session
+from flask import current_app, g, jsonify, redirect, render_template, request, send_file, session
 
 from meeting_assistant.blueprints.knowledge import knowledge_bp
 from meeting_assistant.services.knowledge_search_service import KnowledgeSearchService
@@ -13,9 +13,14 @@ from meeting_assistant.services.user_service import UserService
 from meeting_assistant.utils.authentication import api_auth_required, login_required
 
 
+@knowledge_bp.get("/interview-preparation")
+@login_required
+def open_interview_preparation():
+    return redirect("/applications/interview-preparation", code=302)
+
+
 @knowledge_bp.get("/career-profile")
 @knowledge_bp.get("/application-materials")
-@knowledge_bp.get("/interview-preparation")
 @knowledge_bp.get("/career-evidence-library")
 @knowledge_bp.get("/knowledge.html")
 @login_required

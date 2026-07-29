@@ -42,6 +42,12 @@ from resume_tailor.application_fit import (
     ApplicationFitAssessment,
     build_application_fit_assessment,
 )
+from resume_tailor.interview_preparation import (
+    InterviewPreparationWorkspace,
+    build_verified_evidence_bundle,
+    job_description_fingerprint,
+    restrict_workspace_to_evidence,
+)
 from resume_tailor.evidence_fixes import apply_concrete_individual_audit_rephrase
 from resume_tailor.export_naming import final_resume_filename, safe_filename
 from resume_tailor.audit_identity import audit_issue_family
@@ -4021,6 +4027,180 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return max(0.0, min(100.0, float(raw_value)))
         except ValueError:
             return None
+
+    def _workflow_state_for_application(application_id: str) -> WorkflowState:
+        return store.get(
+            f"{_application_owner_id()}:application:{application_id}"
+        )
+
+    def _selected_interview_application():
+        applications = application_store.list_for_owner(_application_owner_id())
+        requested_id = (
+            str(request.args.get("application_id") or "").strip()
+            or str(request.form.get("application_id") or "").strip()
+            or str(session.get("active_application_id") or "").strip()
+        )
+        selected = (
+            application_store.get(_application_owner_id(), requested_id)
+            if requested_id
+            else None
+        )
+        if selected is None and applications:
+            selected = applications[0]
+        if selected is not None:
+            session["active_application_id"] = selected.id
+            g.active_application = selected
+        return applications, selected
+
+    @app.get("/interview-preparation")
+    def interview_preparation_workspace():
+        applications, application = _selected_interview_application()
+        preparation = None
+        preparation_record = None
+        evidence = None
+        evidence_lookup: dict[str, str] = {}
+        preparation_is_stale = False
+        preparation_load_error = ""
+
+        if application is not None:
+            workflow_state = _workflow_state_for_application(application.id)
+            evidence = build_verified_evidence_bundle(
+                workflow_state, submitted_resume_bytes=application.resume_bytes
+            )
+            evidence_lookup = {item.id: item.text for item in evidence.items}
+            preparation_record = application_store.get_interview_preparation(
+                _application_owner_id(), application.id
+            )
+            if preparation_record is not None:
+                try:
+                    saved_evidence = json.loads(
+                        preparation_record.evidence_snapshot_json or "{}"
+                    )
+                    if isinstance(saved_evidence, dict):
+                        for evidence_id, evidence_text in saved_evidence.items():
+                            evidence_lookup.setdefault(
+                                str(evidence_id), str(evidence_text)
+                            )
+                except (TypeError, json.JSONDecodeError):
+                    pass
+                try:
+                    preparation = InterviewPreparationWorkspace.model_validate_json(
+                        preparation_record.content_json
+                    )
+                except Exception:
+                    preparation_load_error = (
+                        "The saved interview preparation could not be read. Regenerate it "
+                        "from the current job description and verified evidence."
+                    )
+                preparation_is_stale = bool(
+                    preparation_record.job_description_fingerprint
+                    != job_description_fingerprint(
+                        application.job_description,
+                        company=application.company,
+                        role=application.role,
+                    )
+                    or preparation_record.evidence_fingerprint != evidence.fingerprint
+                )
+
+        return render_template(
+            "interview_preparation.html",
+            active_tab="interview_preparation",
+            career_section="interview_preparation",
+            applications=applications,
+            selected_application=application,
+            preparation=preparation,
+            preparation_record=preparation_record,
+            preparation_is_stale=preparation_is_stale,
+            preparation_load_error=preparation_load_error,
+            evidence=evidence,
+            evidence_lookup=evidence_lookup,
+        )
+
+    @app.post("/interview-preparation/generate")
+    def generate_interview_preparation():
+        _, application = _selected_interview_application()
+        if application is None:
+            flash("Create a job application before generating interview preparation.", "error")
+            return redirect(url_for("interview_preparation_workspace"))
+        if not application.job_description.strip():
+            flash(
+                "Add the target job description to this application before generating interview preparation.",
+                "error",
+            )
+            return redirect(
+                url_for(
+                    "interview_preparation_workspace",
+                    application_id=application.id,
+                )
+            )
+
+        workflow_state = _workflow_state_for_application(application.id)
+        evidence = build_verified_evidence_bundle(
+            workflow_state, submitted_resume_bytes=application.resume_bytes
+        )
+        if not evidence.items:
+            flash(
+                "Verified candidate evidence is required. Complete Confirm Relevant Experience "
+                "or attach the evidence-reviewed Final Resume to this application first.",
+                "error",
+            )
+            return redirect(
+                url_for(
+                    "interview_preparation_workspace",
+                    application_id=application.id,
+                )
+            )
+
+        try:
+            models = resolve_models(workflow_state)
+            ai = ResumeAI(
+                models.analysis_tailoring_model,
+                reasoning_effort=models.analysis_tailoring_reasoning_effort,
+            )
+            preparation = ai.create_interview_preparation(
+                company=application.company,
+                role=application.role,
+                job_description=application.job_description,
+                evidence=evidence,
+            )
+            preparation = restrict_workspace_to_evidence(
+                preparation,
+                evidence.ids,
+                submitted_resume_ids=evidence.submitted_resume_ids,
+            )
+            application_store.save_interview_preparation(
+                _application_owner_id(),
+                application.id,
+                content_json=preparation.model_dump_json(),
+                job_description_fingerprint=job_description_fingerprint(
+                    application.job_description,
+                    company=application.company,
+                    role=application.role,
+                ),
+                evidence_fingerprint=evidence.fingerprint,
+                evidence_source_label=evidence.source_label,
+                evidence_snapshot_json=json.dumps(
+                    {item.id: item.text for item in evidence.items},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+                model_name=models.analysis_tailoring_model,
+            )
+        except (ResumeAIError, ValueError) as exc:
+            flash(str(exc), "error")
+        else:
+            flash(
+                "Interview preparation generated from this job description and verified candidate evidence.",
+                "success",
+            )
+
+        return redirect(
+            url_for(
+                "interview_preparation_workspace",
+                application_id=application.id,
+            )
+            + "#interview-workspace"
+        )
 
     @app.get("/applications/<application_id>/builder")
     def open_application_builder(application_id: str):

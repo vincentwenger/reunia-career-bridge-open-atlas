@@ -10,6 +10,12 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from .model_config import validated_reasoning_effort
+from .interview_preparation import (
+    INTERVIEW_PREPARATION_SYSTEM,
+    InterviewPreparationWorkspace,
+    VerifiedEvidenceBundle,
+    build_interview_preparation_prompt,
+)
 from .models import (
     AuditIssue,
     CandidateAnswer,
@@ -128,6 +134,27 @@ class ResumeAI:
         )
         raise ResumeAIError(
             f"OpenAI request using {self.model} failed after {self.max_attempts} attempt(s): {detail}"
+        )
+
+
+    def create_interview_preparation(
+        self,
+        *,
+        company: str,
+        role: str,
+        job_description: str,
+        evidence: VerifiedEvidenceBundle,
+    ) -> InterviewPreparationWorkspace:
+        return self._parse(
+            INTERVIEW_PREPARATION_SYSTEM,
+            build_interview_preparation_prompt(
+                company=company,
+                role=role,
+                job_description=job_description,
+                evidence=evidence,
+            ),
+            InterviewPreparationWorkspace,
+            operation="create_interview_preparation",
         )
 
     def analyze_job(self, job_description: str, stated_title: str = "") -> JobAnalysis:

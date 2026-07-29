@@ -4,6 +4,7 @@ This deployment package contains the merged product:
 
 - Réunia Career Bridge shell at `/` and `/app`
 - Resume-tailoring Application Builder at `/applications/`
+- Per-application Interview Preparation at `/applications/interview-preparation`
 - Lightsail health check at `/health`
 
 The Application Builder uses the direct `/applications/` route and no Nginx sidecar.
@@ -29,6 +30,13 @@ Application Builder additionally reads `OPENAI_API_KEY` and optionally
 The current Application Builder database is SQLite and its active workflow
 state is process-local. Keep one container node unless those stores are moved
 to external persistent services.
+
+Interview Preparation records are stored in the same SQLite database and include
+a snapshot of the exact verified evidence used for generation. A workspace is
+marked for regeneration when the company, target role, job description, or
+verified evidence changes. Generation requires either completed candidate
+evidence confirmation in the active workflow or an attached evidence-reviewed
+Final Resume.
 
 ## Restricted Live Interview Assistance
 

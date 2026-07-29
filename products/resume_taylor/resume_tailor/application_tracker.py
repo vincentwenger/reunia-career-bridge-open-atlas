@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 import uuid
@@ -148,6 +149,27 @@ class ApplicationRecord:
             else None
         ) or "Upcoming milestone"
         return f"{event_label} · {self.upcoming_event_date}"
+
+
+@dataclass(frozen=True)
+class InterviewPreparationRecord:
+    application_id: str
+    owner_id: str
+    content_json: str
+    job_description_fingerprint: str
+    evidence_fingerprint: str
+    evidence_source_label: str
+    evidence_snapshot_json: str
+    model_name: str
+    created_at: str
+    updated_at: str
+
+    def payload(self) -> dict[str, object]:
+        try:
+            value = json.loads(self.content_json)
+        except (TypeError, json.JSONDecodeError):
+            return {}
+        return value if isinstance(value, dict) else {}
 
 
 @dataclass(frozen=True)
@@ -323,6 +345,21 @@ class SQLiteApplicationStore:
                     ON applications(owner_id, updated_at DESC);
                 CREATE INDEX IF NOT EXISTS applications_owner_fingerprint_idx
                     ON applications(owner_id, resume_fingerprint);
+                CREATE TABLE IF NOT EXISTS interview_preparations (
+                    application_id TEXT PRIMARY KEY,
+                    owner_id TEXT NOT NULL,
+                    content_json TEXT NOT NULL,
+                    job_description_fingerprint TEXT NOT NULL,
+                    evidence_fingerprint TEXT NOT NULL,
+                    evidence_source_label TEXT NOT NULL DEFAULT '',
+                    evidence_snapshot_json TEXT NOT NULL DEFAULT '{}',
+                    model_name TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(application_id) REFERENCES applications(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS interview_preparations_owner_updated_idx
+                    ON interview_preparations(owner_id, updated_at DESC);
                 """
             )
             existing = {
@@ -342,6 +379,18 @@ class SQLiteApplicationStore:
                     self._connection.execute(
                         f"ALTER TABLE applications ADD COLUMN {column} {definition}"
                     )
+            preparation_columns = {
+                row["name"]
+                for row in self._connection.execute(
+                    "PRAGMA table_info(interview_preparations)"
+                )
+            }
+            if "evidence_snapshot_json" not in preparation_columns:
+                self._connection.execute(
+                    "ALTER TABLE interview_preparations "
+                    "ADD COLUMN evidence_snapshot_json TEXT NOT NULL DEFAULT '{}'"
+                )
+
             for legacy, canonical in _APPLICATION_STATUS_ALIASES.items():
                 self._connection.execute(
                     "UPDATE applications SET status = ? WHERE lower(status) = ?",
@@ -412,6 +461,87 @@ class SQLiteApplicationStore:
                 (owner_id, application_id),
             ).fetchone()
         return self._row_to_record(row) if row else None
+
+    def get_interview_preparation(
+        self, owner_id: str, application_id: str
+    ) -> InterviewPreparationRecord | None:
+        with self._lock:
+            row = self._connection.execute(
+                """
+                SELECT * FROM interview_preparations
+                WHERE owner_id = ? AND application_id = ?
+                """,
+                (owner_id, application_id),
+            ).fetchone()
+        if row is None:
+            return None
+        return InterviewPreparationRecord(
+            application_id=row["application_id"],
+            owner_id=row["owner_id"],
+            content_json=row["content_json"],
+            job_description_fingerprint=row["job_description_fingerprint"],
+            evidence_fingerprint=row["evidence_fingerprint"],
+            evidence_source_label=row["evidence_source_label"],
+            evidence_snapshot_json=row["evidence_snapshot_json"],
+            model_name=row["model_name"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    def save_interview_preparation(
+        self,
+        owner_id: str,
+        application_id: str,
+        *,
+        content_json: str,
+        job_description_fingerprint: str,
+        evidence_fingerprint: str,
+        evidence_source_label: str,
+        evidence_snapshot_json: str,
+        model_name: str,
+    ) -> InterviewPreparationRecord:
+        application = self.get(owner_id, application_id)
+        if application is None:
+            raise ValueError("The selected application does not exist.")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        existing = self.get_interview_preparation(owner_id, application_id)
+        created_at = existing.created_at if existing is not None else now
+        with self._lock, self._connection:
+            self._connection.execute(
+                """
+                INSERT INTO interview_preparations (
+                    application_id, owner_id, content_json,
+                    job_description_fingerprint, evidence_fingerprint,
+                    evidence_source_label, evidence_snapshot_json, model_name,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(application_id) DO UPDATE SET
+                    owner_id = excluded.owner_id,
+                    content_json = excluded.content_json,
+                    job_description_fingerprint = excluded.job_description_fingerprint,
+                    evidence_fingerprint = excluded.evidence_fingerprint,
+                    evidence_source_label = excluded.evidence_source_label,
+                    evidence_snapshot_json = excluded.evidence_snapshot_json,
+                    model_name = excluded.model_name,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    application_id,
+                    owner_id,
+                    content_json,
+                    job_description_fingerprint,
+                    evidence_fingerprint,
+                    evidence_source_label.strip(),
+                    evidence_snapshot_json,
+                    model_name.strip(),
+                    created_at,
+                    now,
+                ),
+            )
+        saved = self.get_interview_preparation(owner_id, application_id)
+        if saved is None:  # pragma: no cover
+            raise RuntimeError("Interview preparation was not saved.")
+        return saved
 
     def find_snapshot(
         self,

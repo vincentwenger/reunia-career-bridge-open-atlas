@@ -34,7 +34,7 @@
           </a>
         </li>
         <li class="nav-item">
-          <a href="/applications/" class="nav-link active" data-career-section="application_builder" aria-current="page">
+          <a href="/applications/" class="nav-link {% if career_section != 'interview_preparation' %}active{% endif %}" data-career-section="application_builder" {% if career_section != 'interview_preparation' %}aria-current="page"{% endif %}>
             <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"></path>
               <path d="M8 8h8M8 12h8M8 16h5"></path>
@@ -43,7 +43,7 @@
           </a>
         </li>
         <li class="nav-item">
-          <a href="/interview-preparation" class="nav-link" data-career-section="interview_preparation">
+          <a href="/applications/interview-preparation" class="nav-link {% if career_section == 'interview_preparation' %}active{% endif %}" data-career-section="interview_preparation" {% if career_section == 'interview_preparation' %}aria-current="page"{% endif %}>
             <svg class="nav-link-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"></path>
               <path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20"></path><path d="M9 7h7M9 11h5"></path>
