@@ -89,6 +89,7 @@ def submit_adaptive_mock_interview_answer(session_id: str):
         session_id,
         request.files.get("answer_audio"),
         language=request.form.get("language", ""),
+        duration_seconds=request.form.get("duration_seconds"),
     )
     result.update(
         {

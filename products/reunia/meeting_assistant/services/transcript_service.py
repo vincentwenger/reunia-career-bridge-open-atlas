@@ -35,6 +35,7 @@ class TranscriptService:
         analysis_cache: dict[str, Any] | None = None,
         analysis_cache_callback: Callable[[str, dict[str, Any]], None] | None = None,
         scorecard_source_override: str | None = None,
+        analysis_override: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         meeting_id = str(data.get("meeting_id") or "").strip()
         transcript = str(data.get("transcript") or "").strip()
@@ -72,19 +73,22 @@ class TranscriptService:
                 default=str,
             ).encode("utf-8")
         ).hexdigest()
-        cached_analysis = (analysis_cache or {}).get(analysis_key)
-        if isinstance(cached_analysis, dict):
-            analysis = dict(cached_analysis)
-            current_app.logger.info("Reused cached meeting analysis %s", analysis_key[:12])
+        if isinstance(analysis_override, dict):
+            analysis = dict(analysis_override)
         else:
-            analysis = self.analysis_service.analyze(
-                transcript=transcript,
-                model=model,
-                settings=settings,
-                user_id=user_id,
-            )
-            if analysis_cache_callback:
-                analysis_cache_callback(analysis_key, to_json_compatible(analysis))
+            cached_analysis = (analysis_cache or {}).get(analysis_key)
+            if isinstance(cached_analysis, dict):
+                analysis = dict(cached_analysis)
+                current_app.logger.info("Reused cached meeting analysis %s", analysis_key[:12])
+            else:
+                analysis = self.analysis_service.analyze(
+                    transcript=transcript,
+                    model=model,
+                    settings=settings,
+                    user_id=user_id,
+                )
+                if analysis_cache_callback:
+                    analysis_cache_callback(analysis_key, to_json_compatible(analysis))
         if progress_callback:
             progress_callback("saving")
 

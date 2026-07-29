@@ -1026,75 +1026,20 @@ let meetingsData = [];
             'Select a mock interview from the library to view its executive summary, key wins, improvement areas, action items, and open questions.';
 
         document.getElementById('final-weighted-grade').textContent = '-';
-        document.getElementById('overall-score-title').textContent = 'Overall Performance Score';
+        document.getElementById('overall-score-title').textContent = 'Overall Interview Score';
         document.getElementById('overall-evidence-badge').textContent = 'Insufficient evidence';
         document.getElementById('overall-evidence-badge').className = 'score-evidence-badge evidence-insufficient';
         document.getElementById('score-circle-label').textContent = 'out of 100';
         document.getElementById('score-description').textContent =
-            'Select a mock interview to view the weighted aggregate of answer relevance, evidence, structure, clarity, and delivery.';
-        document.getElementById('content-average-score').textContent = '-';
-        document.getElementById('form-average-score').textContent = '-';
-        document.getElementById('content-evidence-status').textContent = 'Insufficient evidence';
-        document.getElementById('form-evidence-status').textContent = 'Insufficient evidence';
-        document.getElementById('content-evidence-note').hidden = true;
-        document.getElementById('form-evidence-note').hidden = true;
+            'Select a mock interview to view the eight interview-specific criteria and answer-by-answer coaching.';
 
         const scoreCard = document.getElementById('overall-score-card');
         scoreCard.classList.remove('score-green', 'score-orange', 'score-neutral');
-        scoreCard.classList.add('score-red');
+        scoreCard.classList.add('score-neutral');
         updateScoreCircle(null);
 
-        document.getElementById('content-grading-container').innerHTML = `
-            <div class="no-records-state">
-                <strong>No mock interview selected</strong>
-                Select a mock interview from the library to view content grading.
-            </div>
-        `;
+        clearInterviewScorecard();
 
-        [
-            ['key-wins-list', 'No mock interview selected.'],
-            ['improvement-areas-list', 'No mock interview selected.'],
-            ['action-items-list', 'No mock interview selected.'],
-            ['open-questions-list', 'No mock interview selected.']
-        ].forEach(([elementId, message]) => {
-            document.getElementById(elementId).innerHTML =
-                `<li class="empty-message">${escapeHtml(message)}</li>`;
-        });
-
-        [
-            'form-pace-value',
-            'form-filler-value',
-            'form-power-value',
-            'form-negative-words-value',
-            'form-negative-tone-value',
-            'form-pauses-value'
-        ].forEach(elementId => {
-            document.getElementById(elementId).textContent = '-';
-        });
-
-        [
-            'form-pace-grade',
-            'form-filler-grade',
-            'form-power-grade',
-            'form-negative-words-grade',
-            'form-negative-tone-grade',
-            'form-pauses-grade'
-        ].forEach(elementId => {
-            document.getElementById(elementId).textContent = 'N/A';
-        });
-
-        [
-            'form-filler-rate',
-            'form-power-rate',
-            'form-negative-words-rate',
-            'form-negative-tone-rate',
-            'form-pauses-rate'
-        ].forEach(elementId => {
-            document.getElementById(elementId).textContent = 'Rate unavailable';
-        });
-
-        document.getElementById('form-overall-assessment').textContent = 'N/A';
-        resetFormMetricDetails();
         document.getElementById('transcript-search').value = '';
         document.getElementById('transcript-content').textContent =
             'Select a mock interview from the library to view the full transcript.';
@@ -1115,28 +1060,18 @@ let meetingsData = [];
         scoreCard.classList.add(getScoreCardClass(finalScore));
 
         document.getElementById('final-weighted-grade').textContent = getScoreText(finalScore);
-        renderScorecardEvidence(meeting);
+        renderInterviewScorecard(meeting);
         document.getElementById('score-description').textContent = getScoreDescription(finalScore, meeting);
         updateScoreCircle(finalScore);
 
         document.getElementById('summary-content').textContent = getMeetingSummary(meeting) || 'No interview summary provided.';
         renderSelectedMeetingTopics(meeting);
 
-        const contentAverageScore = parseFloat(getValue(meeting.content_average_score, ''));
-        document.getElementById('content-average-score').textContent =
-            !isNaN(contentAverageScore) ? contentAverageScore.toFixed(2) : 'N/A';
-
-        const formAverageScore = parseFloat(getValue(meeting.form_average_score, ''));
-        document.getElementById('form-average-score').textContent =
-            !isNaN(formAverageScore) ? formAverageScore.toFixed(2) : 'N/A';
-
         currentTranscript = getMeetingTranscript(meeting) || 'No transcript available.';
         document.getElementById('transcript-search').value = '';
         renderTranscriptContent();
 
         renderMeetingList();
-        renderContentGrades(meeting);
-        renderFormMetrics(meeting);
         renderKeyWins(meeting);
         renderImprovementAreas(meeting);
         renderActionItems(meeting, index);

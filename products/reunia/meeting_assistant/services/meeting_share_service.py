@@ -235,14 +235,58 @@ class MeetingShareService:
 
         scorecard = snapshot.get("scorecard")
         if isinstance(scorecard, dict):
-            lines.extend([
-                "",
-                labels["scorecard"],
-                f"{labels['overall_score']}: {_display_value(scorecard.get('overall_score'), language)}",
-                f"{labels['content_score']}: {_display_value(scorecard.get('content_average_score'), language)}",
-                f"{labels['form_score']}: {_display_value(scorecard.get('form_average_score'), language)}",
-                str((scorecard.get("form_metrics") or {}).get("overall_assessment") or ""),
-            ])
+            interview_scorecard = scorecard.get("interview_scorecard")
+            if isinstance(interview_scorecard, dict) and interview_scorecard.get("criteria"):
+                lines.extend([
+                    "",
+                    labels["scorecard"],
+                    f"{labels['overall_score']}: {_display_value(interview_scorecard.get('overall_score'), language)}",
+                ])
+                criteria = interview_scorecard.get("criteria") or {}
+                for criterion in criteria.values():
+                    if not isinstance(criterion, dict):
+                        continue
+                    label = str(criterion.get("label") or "Interview criterion").strip()
+                    score = criterion.get("score")
+                    display_score = (
+                        _display_value(score, language)
+                        if score is not None
+                        else ("Non observé" if language == "fr" else "Not observed")
+                    )
+                    lines.append(f"{label}: {display_score}")
+                safety_note = str(interview_scorecard.get("safety_note") or "").strip()
+                if safety_note:
+                    lines.extend(["", safety_note])
+
+                for review in scorecard.get("interview_answer_reviews") or []:
+                    if not isinstance(review, dict):
+                        continue
+                    number = review.get("question_number") or ""
+                    lines.extend([
+                        "",
+                        f"Answer {number}",
+                        f"Question: {str(review.get('question') or '').strip()}",
+                        f"Answer: {str(review.get('answer') or '').strip()}",
+                    ])
+                    _append_list(lines, "What worked", review.get("what_worked"))
+                    _append_list(lines, "What was unclear", review.get("what_was_unclear"))
+                    _append_list(lines, "Evidence that could strengthen it", review.get("evidence_to_strengthen"))
+                    _append_list(lines, "Better answer structure", review.get("better_answer_structure"))
+                    sample = str(review.get("sample_improved_answer") or "").strip()
+                    if sample:
+                        lines.extend(["", "Sample improved answer", sample])
+                    action = str(review.get("recommended_practice_action") or "").strip()
+                    if action:
+                        lines.extend(["", "Recommended practice action", action])
+            else:
+                lines.extend([
+                    "",
+                    labels["scorecard"],
+                    f"{labels['overall_score']}: {_display_value(scorecard.get('overall_score'), language)}",
+                    f"{labels['content_score']}: {_display_value(scorecard.get('content_average_score'), language)}",
+                    f"{labels['form_score']}: {_display_value(scorecard.get('form_average_score'), language)}",
+                    str((scorecard.get("form_metrics") or {}).get("overall_assessment") or ""),
+                ])
 
         transcript = snapshot.get("transcript")
         if transcript:
@@ -328,6 +372,9 @@ def _build_snapshot(
             "form_average_score": meeting.get("form_average_score"),
             "content_grades": _clean_content_grades(meeting.get("content_grades")),
             "form_metrics": _clean_form_metrics(meeting.get("form_metrics")),
+            "scorecard_type": str(meeting.get("scorecard_type") or ""),
+            "interview_scorecard": meeting.get("interview_scorecard") if isinstance(meeting.get("interview_scorecard"), dict) else {},
+            "interview_answer_reviews": meeting.get("interview_answer_reviews") if isinstance(meeting.get("interview_answer_reviews"), list) else [],
         }
     if include_transcript:
         snapshot["transcript"] = str(

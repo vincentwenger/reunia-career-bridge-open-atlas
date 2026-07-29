@@ -145,45 +145,87 @@
 
             {% if snapshot.scorecard %}
                 {% set scorecard = snapshot.scorecard %}
+                {% set interview_scorecard = scorecard.interview_scorecard or {} %}
                 <section class="shared-content-card shared-scorecard" aria-labelledby="shared-scorecard-title">
                     <div class="shared-section-heading shared-scorecard-heading">
                         <div>
                             <p class="shared-section-eyebrow">Optional detail</p>
-                            <h2 id="shared-scorecard-title">Scorecard</h2>
+                            <h2 id="shared-scorecard-title">Interview Scorecard</h2>
                         </div>
                         <div class="shared-overall-score">
-                            <strong>{{ scorecard.overall_score if scorecard.overall_score is not none else 'N/A' }}</strong>
+                            {% set shared_overall_score = scorecard.get('overall_score') %}
+                            <strong>{{ shared_overall_score if shared_overall_score is not none else 'N/A' }}</strong>
                             <span>Overall score</span>
                         </div>
                     </div>
 
-                    <div class="shared-score-grid">
-                        <div><span>Content score</span><strong>{{ scorecard.content_average_score if scorecard.content_average_score is not none else 'N/A' }}</strong></div>
-                        <div><span>Form score</span><strong>{{ scorecard.form_average_score if scorecard.form_average_score is not none else 'N/A' }}</strong></div>
-                    </div>
-
-                    {% if scorecard.form_metrics and scorecard.form_metrics.overall_assessment %}
-                        <div class="shared-assessment">
-                            <h3>Communication assessment</h3>
-                            <p data-i18n-skip>{{ scorecard.form_metrics.overall_assessment }}</p>
+                    {% if interview_scorecard %}
+                        <p class="shared-scorecard-evidence" data-i18n-skip>{{ interview_scorecard.evidence_summary or 'Criteria marked Not observed were excluded from the overall score.' }}</p>
+                        <div class="shared-interview-criteria">
+                            {% for key, label in [
+                                ('answer_relevance', 'Answer relevance'),
+                                ('use_of_evidence', 'Use of evidence'),
+                                ('star_structure', 'STAR structure'),
+                                ('clarity_conciseness', 'Clarity and conciseness'),
+                                ('role_alignment', 'Role alignment'),
+                                ('confidence_of_delivery', 'Confidence of delivery'),
+                                ('handling_follow_up_questions', 'Handling of follow-up questions'),
+                                ('questions_asked_employer', 'Questions asked of the employer')
+                            ] %}
+                                {% set criterion = (interview_scorecard.get('criteria') or {}).get(key, {}) %}
+                                {% set criterion_score = criterion.get('score') %}
+                                <article>
+                                    <span>{{ label }}</span>
+                                    <strong data-i18n-skip>{{ criterion_score if criterion_score is not none else 'Not observed' }}</strong>
+                                    <p data-i18n-skip>{{ criterion.get('summary') or 'Not observed in this session.' }}</p>
+                                </article>
+                            {% endfor %}
                         </div>
-                    {% endif %}
 
-                    {% if scorecard.content_grades %}
-                        <div class="shared-table-wrap">
-                            <table>
-                                <thead><tr><th>Question</th><th>Answer assessment</th><th>Grade</th></tr></thead>
-                                <tbody>
-                                    {% for grade in scorecard.content_grades %}
-                                        <tr>
-                                            <td data-i18n-skip>{{ grade.question or 'Question' }}</td>
-                                            <td data-i18n-skip>{{ grade.relevance_analysis or grade.answer or 'No assessment available.' }}</td>
-                                            <td><strong data-i18n-skip>{{ grade.grade or 'N/A' }}</strong></td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                        {% if interview_scorecard.safety_note %}
+                            <div class="shared-safety-note" data-i18n-skip>{{ interview_scorecard.safety_note }}</div>
+                        {% endif %}
+
+                        {% if scorecard.interview_answer_reviews %}
+                            <div class="shared-answer-reviews">
+                                <h3>Answer-by-answer coaching</h3>
+                                {% for review in scorecard.interview_answer_reviews %}
+                                    <article class="shared-answer-review">
+                                        <div class="shared-answer-review-heading">
+                                            <div>
+                                                <small>Answer {{ review.question_number or loop.index }}</small>
+                                                <h4 data-i18n-skip>{{ review.question or 'Interview question' }}</h4>
+                                            </div>
+                                            <strong data-i18n-skip>{{ review.score if review.score is not none else 'N/A' }}/100</strong>
+                                        </div>
+                                        <div class="shared-answer-transcript"><b>Answer provided</b><p data-i18n-skip>{{ review.answer or 'No answer transcript available.' }}</p></div>
+                                        <div class="shared-answer-coaching-grid">
+                                            {% for title, field in [
+                                                ('What worked', review.what_worked),
+                                                ('What was unclear', review.what_was_unclear),
+                                                ('Evidence that could strengthen it', review.evidence_to_strengthen),
+                                                ('A better answer structure', review.better_answer_structure)
+                                            ] %}
+                                                <section>
+                                                    <h5>{{ title }}</h5>
+                                                    {% if field %}<ul>{% for item in field %}<li data-i18n-skip>{{ item }}</li>{% endfor %}</ul>{% else %}<p>No item recorded.</p>{% endif %}
+                                                </section>
+                                            {% endfor %}
+                                        </div>
+                                        <section class="shared-sample-answer"><h5>Sample improved answer — confirmed facts only</h5><p data-i18n-skip>{{ review.sample_improved_answer or 'No sample answer generated.' }}</p></section>
+                                        <section class="shared-practice-action"><h5>Recommended practice action</h5><p data-i18n-skip>{{ review.recommended_practice_action or 'Practice this answer again with confirmed evidence.' }}</p></section>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="shared-score-grid">
+                            <div><span>Answer quality score</span><strong>{{ scorecard.content_average_score if scorecard.content_average_score is not none else 'N/A' }}</strong></div>
+                            <div><span>Delivery score</span><strong>{{ scorecard.form_average_score if scorecard.form_average_score is not none else 'N/A' }}</strong></div>
                         </div>
+                        {% if scorecard.form_metrics and scorecard.form_metrics.overall_assessment %}
+                            <div class="shared-assessment"><h3>Communication assessment</h3><p data-i18n-skip>{{ scorecard.form_metrics.overall_assessment }}</p></div>
+                        {% endif %}
                     {% endif %}
                 </section>
             {% endif %}

@@ -65,6 +65,7 @@
     let meterAnimation = null;
     let lastAnswerBlob = null;
     let lastAnswerFilename = 'mock-interview-answer.webm';
+    let lastAnswerDurationSeconds = null;
     let phase = 'ready';
 
     document.querySelectorAll('input[name="interviewType"]').forEach(function (input) {
@@ -273,6 +274,7 @@
         evaluationPanel.hidden = true;
         pendingNextSession = null;
         lastAnswerBlob = null;
+        lastAnswerDurationSeconds = null;
         startAnswerButton.disabled = true;
         answerStateTitle.textContent = 'Connecting to your microphone…';
         try {
@@ -327,6 +329,7 @@
             const mimeType = mediaRecorder.mimeType || chooseMimeType() || 'audio/webm';
             lastAnswerBlob = new Blob(recordedChunks, {type: mimeType});
             lastAnswerFilename = `mock-interview-answer.${mimeExtension(mimeType)}`;
+            lastAnswerDurationSeconds = Math.max(0.1, durationMs / 1000);
             cleanupMicrophone();
             if (lastAnswerBlob.size < 700) throw new Error('The recorded answer was empty or too short to transcribe.');
             await submitAnswerBlob(lastAnswerBlob, lastAnswerFilename);
@@ -362,6 +365,7 @@
         const formData = new FormData();
         formData.append('answer_audio', blob, filename);
         formData.append('language', window.AppI18n?.language || document.documentElement.lang || 'en');
+        if (Number.isFinite(lastAnswerDurationSeconds)) formData.append('duration_seconds', String(lastAnswerDurationSeconds));
         try {
             const response = await fetch(AppUI.appUrl(currentSession.answer_url || `/api/career/mock-interviews/adaptive/sessions/${encodeURIComponent(currentSession.session_id)}/answers`), {
                 method: 'POST',
@@ -374,6 +378,7 @@
             processingPanel.hidden = true;
             currentSession = payload;
             lastAnswerBlob = null;
+            lastAnswerDurationSeconds = null;
             renderHistory(payload.answers || []);
             showEvaluation(payload.latest_answer?.evaluation || {});
             progressFill.style.width = `${Math.min(100, (Number(payload.answered_count || 0) / Math.max(1, Number(payload.question_count || 1))) * 100)}%`;
@@ -515,6 +520,7 @@
         currentSession = null;
         pendingNextSession = null;
         lastAnswerBlob = null;
+        lastAnswerDurationSeconds = null;
         phase = 'ready';
         sessionLayout.hidden = true;
         completePanel.hidden = true;

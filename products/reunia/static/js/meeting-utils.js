@@ -131,7 +131,9 @@ function getMeetingSearchableText(meeting, index = 0, options = {}) {
         getListText(meeting?.improvement_areas),
         getListText(meeting?.action_items),
         getListText(meeting?.open_questions),
-        getValue(metrics.overall_assessment, '')
+        getValue(metrics.overall_assessment, ''),
+        getListText(meeting?.interview_answer_reviews),
+        JSON.stringify(unwrapDynamoDBValue(meeting?.interview_scorecard || {}))
     ];
 
     if (includeTranscript) values.push(getMeetingTranscript(meeting));

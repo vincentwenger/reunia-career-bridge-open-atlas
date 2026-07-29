@@ -53,6 +53,23 @@ _VAGUE_TERMS = {
     "responsible for", "good", "great", "successful", "improved", "handled it",
 }
 
+_INTERVIEW_SCORECARD_CRITERIA = {
+    "answer_relevance": "Answer relevance",
+    "use_of_evidence": "Use of evidence",
+    "star_structure": "STAR structure",
+    "clarity_conciseness": "Clarity and conciseness",
+    "role_alignment": "Role alignment",
+    "confidence_of_delivery": "Confidence of delivery",
+    "handling_follow_up_questions": "Handling of follow-up questions",
+    "questions_asked_employer": "Questions asked of the employer",
+}
+
+_INTERVIEW_SCORECARD_SAFETY_NOTE = (
+    "This scorecard evaluates only observable communication characteristics and confirmed "
+    "content. It does not infer emotions, personality, health, protected traits, or other "
+    "sensitive characteristics from voice or appearance."
+)
+
 
 class MockInterviewService:
     """Runs adaptive, answer-by-answer mock interviews.
@@ -241,6 +258,7 @@ class MockInterviewService:
         answer_audio: FileStorage | None,
         *,
         language: str = "",
+        duration_seconds: float | None = None,
     ) -> dict[str, Any]:
         session = self._read_owned(user_id, session_id)
         if session.get("status") != "active":
@@ -265,11 +283,13 @@ class MockInterviewService:
                 "No reliable speech was detected. Move closer to the microphone and record the answer again."
             )
 
+        normalized_duration = _bounded_float(duration_seconds, None, 0.0, 3600.0)
         evaluation = self._evaluate_and_follow_up(
             user_id=user_id,
             session=session,
             answer_text=answer_text,
             question_number=question_number,
+            duration_seconds=normalized_duration,
         )
         total_questions = int(session["question_count"])
         is_last = question_number >= total_questions
@@ -279,6 +299,8 @@ class MockInterviewService:
             "question_type": str(session.get("current_question_type") or "question"),
             "answer": answer_text,
             "transcription_quality": transcription.get("quality") or {},
+            "duration_seconds": normalized_duration,
+            "observable_delivery": evaluation.get("observable_delivery") or {},
             "evaluation": evaluation["evaluation"],
             "answered_at": _utc_now(),
         }
@@ -386,6 +408,7 @@ class MockInterviewService:
                 user_id,
                 payload,
                 scorecard_source_override="microphone",
+                analysis_override=self._build_interview_review(session),
             )
         except Exception:
             session["status"] = "ready_for_review"
@@ -410,6 +433,215 @@ class MockInterviewService:
             },
         )
         return self._completion_payload(session)
+
+    def _build_interview_review(self, session: dict[str, Any]) -> dict[str, Any]:
+        answers = list(session.get("answers") or [])
+        criteria_values: dict[str, list[int]] = {
+            key: [] for key in _INTERVIEW_SCORECARD_CRITERIA
+        }
+        answer_reviews: list[dict[str, Any]] = []
+        total_words = 0
+        total_duration = 0.0
+        duration_samples = 0
+
+        for answer in answers:
+            evaluation = answer.get("evaluation") if isinstance(answer.get("evaluation"), dict) else {}
+            metrics = _normalize_metric_scores(
+                evaluation.get("metrics"),
+                {},
+                question_type=str(answer.get("question_type") or ""),
+                role_context_available=bool(
+                    (session.get("workspace_context") or {}).get("target_role")
+                    or (session.get("application_workspace") or {}).get("role")
+                ),
+            )
+            for key, score in metrics.items():
+                if score is not None:
+                    criteria_values[key].append(score)
+
+            observable = answer.get("observable_delivery") if isinstance(answer.get("observable_delivery"), dict) else {}
+            word_count = _bounded_int(observable.get("word_count"), len(_WORD_RE.findall(str(answer.get("answer") or ""))), 0, 10000)
+            duration = _bounded_float(observable.get("duration_seconds"), None, 0.0, 3600.0)
+            pace_wpm = _bounded_float(observable.get("pace_wpm"), None, 0.0, 500.0)
+            total_words += word_count
+            if duration is not None and duration > 0:
+                total_duration += duration
+                duration_samples += 1
+
+            answer_reviews.append(
+                {
+                    "question_number": int(answer.get("question_number") or len(answer_reviews) + 1),
+                    "question": str(answer.get("question") or ""),
+                    "question_type": str(answer.get("question_type") or "question"),
+                    "answer": str(answer.get("answer") or ""),
+                    "score": _bounded_int(evaluation.get("score"), 0, 0, 100),
+                    "evidence_status": str(evaluation.get("evidence_status") or "partial"),
+                    "metrics": metrics,
+                    "what_worked": _string_list(evaluation.get("what_worked"), 4, _string_list(evaluation.get("strengths"), 4, [])),
+                    "what_was_unclear": _string_list(evaluation.get("what_was_unclear"), 4, _string_list(evaluation.get("improvements"), 4, [])),
+                    "evidence_to_strengthen": _string_list(evaluation.get("evidence_to_strengthen"), 4, ["Add only evidence that is confirmed in the Career Evidence Library or the answer itself."]),
+                    "better_answer_structure": _string_list(evaluation.get("better_answer_structure"), 6, [
+                        "Situation or context",
+                        "Your responsibility",
+                        "Your specific actions and decisions",
+                        "Confirmed result and role connection",
+                    ]),
+                    "sample_improved_answer": str(evaluation.get("sample_improved_answer") or answer.get("answer") or "").strip()[:4000],
+                    "recommended_practice_action": str(evaluation.get("recommended_practice_action") or "Practice this answer again using a clearer structure and one confirmed result.").strip()[:1000],
+                    "observable_delivery": {
+                        "word_count": word_count,
+                        "duration_seconds": duration,
+                        "pace_wpm": pace_wpm,
+                        "answer_length_band": str(observable.get("answer_length_band") or _answer_length_band(word_count)),
+                    },
+                }
+            )
+
+        criteria: dict[str, dict[str, Any]] = {}
+        for key, label in _INTERVIEW_SCORECARD_CRITERIA.items():
+            values = criteria_values[key]
+            average = round(sum(values) / len(values), 1) if values else None
+            criteria[key] = {
+                "label": label,
+                "score": average,
+                "observations": len(values),
+                "status": "observed" if values else "not_observed",
+                "summary": _criterion_summary(key, average, len(values)),
+            }
+
+        available_criteria = [
+            item["score"] for item in criteria.values() if item["score"] is not None
+        ]
+        overall_score = round(sum(available_criteria) / len(available_criteria), 1) if available_criteria else None
+        answer_count = len(answers)
+        if answer_count >= 5 and total_words >= 250:
+            evidence_level = "reliable"
+            grade_status = "final"
+        elif answer_count >= 3 and total_words >= 100:
+            evidence_level = "limited"
+            grade_status = "preliminary"
+        else:
+            evidence_level = "insufficient"
+            grade_status = "preliminary" if overall_score is not None else "insufficient"
+
+        strongest = sorted(
+            ((key, item["score"]) for key, item in criteria.items() if item["score"] is not None),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+        weakest = sorted(
+            ((key, item["score"]) for key, item in criteria.items() if item["score"] is not None),
+            key=lambda item: item[1],
+        )
+        strongest_label = _INTERVIEW_SCORECARD_CRITERIA[strongest[0][0]] if strongest else "No criterion"
+        priority_label = _INTERVIEW_SCORECARD_CRITERIA[weakest[0][0]] if weakest else "More practice evidence"
+        summary = (
+            f"Completed a {answer_count}-question {str(session.get('interview_type_label') or 'mock interview').lower()}. "
+            f"The strongest observed area was {strongest_label.lower()}, and the primary practice priority is {priority_label.lower()}."
+        )
+
+        key_wins = _dedupe_strings(
+            item
+            for review in answer_reviews
+            for item in review.get("what_worked") or []
+        )[:6]
+        improvement_areas = _dedupe_strings(
+            item
+            for review in answer_reviews
+            for item in (review.get("what_was_unclear") or []) + (review.get("evidence_to_strengthen") or [])
+        )[:8]
+        action_items = _dedupe_strings(
+            review.get("recommended_practice_action")
+            for review in answer_reviews
+            if review.get("recommended_practice_action")
+        )[:8]
+        if not any(criteria_values["questions_asked_employer"]):
+            action_items.append("Prepare and rehearse two or three role-specific questions to ask the employer.")
+        action_items = _dedupe_strings(action_items)[:8]
+
+        content_keys = (
+            "answer_relevance",
+            "use_of_evidence",
+            "star_structure",
+            "clarity_conciseness",
+            "role_alignment",
+        )
+        delivery_keys = (
+            "confidence_of_delivery",
+            "handling_follow_up_questions",
+            "questions_asked_employer",
+        )
+        content_scores = [criteria[key]["score"] for key in content_keys if criteria[key]["score"] is not None]
+        delivery_scores = [criteria[key]["score"] for key in delivery_keys if criteria[key]["score"] is not None]
+        content_average = round(sum(content_scores) / len(content_scores), 1) if content_scores else None
+        delivery_average = round(sum(delivery_scores) / len(delivery_scores), 1) if delivery_scores else None
+        overall_pace = round(total_words / (total_duration / 60.0), 1) if total_duration > 0 else None
+
+        scorecard_evidence = {
+            "overall_grade_status": grade_status,
+            "overall_evidence_level": evidence_level,
+            "content_grade_status": grade_status,
+            "content_evidence_level": evidence_level,
+            "form_grade_status": grade_status,
+            "form_evidence_level": evidence_level,
+            "analyzed_word_count": total_words,
+            "substantive_response_count": answer_count,
+            "summary": (
+                f"Based on {answer_count} recorded answers and {total_words} transcribed candidate words. "
+                "Criteria that were not observable are shown as Not observed and are excluded from the overall score."
+            ),
+        }
+
+        legacy_content_grades = [
+            {
+                "question": review["question"],
+                "answer": review["answer"],
+                "relevance_analysis": " ".join(review["what_was_unclear"] or review["what_worked"]),
+                "grade": _score_to_grade(review["score"]),
+            }
+            for review in answer_reviews
+        ]
+
+        return {
+            "meeting_name": self._interview_name(session),
+            "summary": summary,
+            "topics": [str(session.get("interview_type_label") or "Mock Interview"), "Mock Interview"],
+            "action_items": action_items,
+            "open_questions": [],
+            "key_wins": key_wins,
+            "improvement_areas": improvement_areas,
+            "scorecard_type": "interview",
+            "interview_scorecard_version": 1,
+            "interview_scorecard": {
+                "overall_score": overall_score,
+                "criteria": criteria,
+                "evidence_level": evidence_level,
+                "grade_status": grade_status,
+                "evidence_summary": scorecard_evidence["summary"],
+                "observable_communication": {
+                    "answer_count": answer_count,
+                    "word_count": total_words,
+                    "recorded_duration_seconds": round(total_duration, 1) if duration_samples else None,
+                    "pace_wpm": overall_pace,
+                    "average_answer_words": round(total_words / answer_count, 1) if answer_count else None,
+                },
+                "safety_note": _INTERVIEW_SCORECARD_SAFETY_NOTE,
+            },
+            "interview_answer_reviews": answer_reviews,
+            "scorecard_source": "microphone",
+            "content_grades": legacy_content_grades,
+            "form_metrics": {
+                "pace_wpm": overall_pace,
+                "overall_assessment": _INTERVIEW_SCORECARD_SAFETY_NOTE,
+                "grade_status": grade_status,
+            },
+            "scorecard_evidence": scorecard_evidence,
+            "scorecard_status": grade_status,
+            "content_average_score": content_average,
+            "form_average_score": delivery_average,
+            "final_grade": overall_score,
+            "overall_score": overall_score,
+        }
 
     def get_session(self, user_id: str, session_id: str) -> dict[str, Any]:
         return self._public_session(self._read_owned(user_id, session_id))
@@ -701,6 +933,7 @@ Context:
         session: dict[str, Any],
         answer_text: str,
         question_number: int,
+        duration_seconds: float | None,
     ) -> dict[str, Any]:
         settings = self.user_service.get_settings(user_id)
         model = str(settings.get("aiModel") or current_app.config["DEFAULT_AI_MODEL"])
@@ -709,34 +942,49 @@ Context:
             history.append(
                 {
                     "question": item.get("question"),
+                    "question_type": item.get("question_type"),
                     "answer": item.get("answer"),
                     "evaluation": item.get("evaluation"),
                 }
             )
-        basic = _basic_answer_signals(answer_text)
+        basic = _basic_answer_signals(answer_text, duration_seconds=duration_seconds)
         remaining = int(session.get("question_count") or 0) - question_number
-        context = self._context_text(
-            interview_type=str(session.get("interview_type") or "custom"),
-            custom_focus=str(session.get("custom_focus") or ""),
-            workspace=session.get("application_workspace") or {},
-            workspace_context=session.get("workspace_context") or {},
-            candidate_context=session.get("candidate_context") or {},
-        )
+        context = self._interview_evaluation_context_text(session)
+        current_question_type = str(session.get("current_question_type") or "opening")
         prompt = f"""
-You are conducting a realistic adaptive mock interview.
+You are conducting a realistic adaptive mock interview and producing an interview-specific scorecard.
 Interview type: {session.get('interview_type_label')}
 Current question number: {question_number} of {session.get('question_count')}
 Questions remaining after this answer: {remaining}
+Current question type: {current_question_type}
 Current question: {session.get('current_question')}
 Candidate answer: {answer_text}
-Basic answer signals: {json.dumps(basic, ensure_ascii=False)}
+Observable answer signals: {json.dumps(basic, ensure_ascii=False)}
 Recent interview history: {json.dumps(history, ensure_ascii=False)}
 
-Evaluate the answer for relevance, specificity, evidence, structure, and credibility.
-A claim is supported only when the candidate provides concrete scope, actions, tools, decisions, examples, results, or measurable impact. Do not invent evidence.
+Evaluate only observable communication and confirmed content. Never infer emotions, personality, health, disability, age, race, ethnicity, religion, gender, sexual orientation, nationality, socioeconomic status, or any other sensitive trait from the candidate's voice, appearance, name, accent, or wording. "Confidence of delivery" means observable verbal directness, ownership language, answer pace, concision, and structure—not an internal emotional state.
+
+Score each applicable criterion from 0 to 100. Return null when a criterion was not observable or not applicable:
+- answer_relevance
+- use_of_evidence
+- star_structure
+- clarity_conciseness
+- role_alignment (null when no role context is available)
+- confidence_of_delivery
+- handling_follow_up_questions (null unless this was a follow-up or challenge question)
+- questions_asked_employer (null unless the candidate actually asked the employer a substantive question)
+
+For this answer, provide all of the following:
+- What worked
+- What was unclear
+- Evidence that could strengthen it
+- A better answer structure
+- A sample improved answer based only on confirmed candidate facts in the answer or verified candidate evidence. Never invent metrics, responsibilities, tools, employers, dates, outcomes, or experience. If a stronger claim is not confirmed, omit it or explicitly identify the missing evidence.
+- One recommended practice action
+
+A claim is supported only when concrete scope, actions, tools, decisions, examples, results, or measurable impact are present in the answer or verified candidate evidence. Role requirements and job-description text are not candidate facts.
 If the answer is vague, unsupported, evasive, contradictory, too short, or misses the question, the next question MUST challenge it and request a concrete example, action, decision, metric, or result.
 Otherwise ask an adaptive follow-up that deepens the same topic when useful, or move to the next most important interview competency. Do not repeat a prior question.
-The next question must fit the selected interview type and available role context.
 
 Return only JSON:
 {{
@@ -746,18 +994,39 @@ Return only JSON:
     "strengths": ["specific strength"],
     "improvements": ["specific improvement"],
     "evidence_status": "supported|partial|unsupported",
-    "challenge_needed": true
+    "challenge_needed": true,
+    "metrics": {{
+      "answer_relevance": 0,
+      "use_of_evidence": 0,
+      "star_structure": 0,
+      "clarity_conciseness": 0,
+      "role_alignment": null,
+      "confidence_of_delivery": 0,
+      "handling_follow_up_questions": null,
+      "questions_asked_employer": null
+    }},
+    "what_worked": ["specific observed strength"],
+    "what_was_unclear": ["specific unclear or missing point"],
+    "evidence_to_strengthen": ["confirmed evidence or type of evidence to add"],
+    "better_answer_structure": ["ordered structure step"],
+    "sample_improved_answer": "evidence-safe improved answer",
+    "recommended_practice_action": "one concrete practice action"
   }},
   "next_question": "one adaptive next question",
   "next_question_type": "challenge|follow_up|new_topic",
   "rationale": "short explanation of why this question follows"
 }}
 
-Role and candidate context:
+Role and verified candidate context:
 {context}
 """.strip()
 
-        fallback = self._fallback_evaluation(answer_text, basic, session)
+        fallback = self._fallback_evaluation(
+            answer_text,
+            basic,
+            session,
+            current_question_type=current_question_type,
+        )
         try:
             data = self._call_json(
                 user_id=user_id,
@@ -765,14 +1034,29 @@ Role and candidate context:
                 feature="mock_interview_adaptive_follow_up",
                 prompt=prompt,
                 language=str(session.get("language") or "en"),
-                max_output_tokens=650,
+                max_output_tokens=1300,
             )
         except Exception:
             current_app.logger.exception("Could not evaluate mock-interview answer")
-            return fallback
+            return self._ensure_employer_question_opportunity(
+                fallback,
+                session=session,
+                remaining=remaining,
+            )
 
         evaluation_raw = data.get("evaluation") if isinstance(data.get("evaluation"), dict) else {}
-        score = _bounded_int(evaluation_raw.get("score"), fallback["evaluation"]["score"], 0, 100)
+        metrics = _normalize_metric_scores(
+            evaluation_raw.get("metrics"),
+            fallback["evaluation"]["metrics"],
+            question_type=current_question_type,
+            role_context_available=bool(
+                (session.get("workspace_context") or {}).get("target_role")
+                or (session.get("application_workspace") or {}).get("role")
+            ),
+        )
+        available_scores = [score for score in metrics.values() if score is not None]
+        default_score = round(sum(available_scores) / len(available_scores)) if available_scores else fallback["evaluation"]["score"]
+        score = _bounded_int(evaluation_raw.get("score"), default_score, 0, 100)
         evidence_status = str(evaluation_raw.get("evidence_status") or "").strip().lower()
         if evidence_status not in {"supported", "partial", "unsupported"}:
             evidence_status = fallback["evaluation"]["evidence_status"]
@@ -780,8 +1064,6 @@ Role and candidate context:
             evaluation_raw.get("challenge_needed"),
             fallback["evaluation"]["challenge_needed"],
         )
-        # Deterministic signals are a safety net: a clearly vague or very short
-        # answer must receive a challenge even if the model labels it supported.
         if fallback["evaluation"]["challenge_needed"]:
             challenge_needed = True
 
@@ -794,66 +1076,204 @@ Role and candidate context:
         if not next_question:
             next_question = fallback["next_question"]
 
-        return {
+        what_worked = _string_list(
+            evaluation_raw.get("what_worked"),
+            4,
+            _string_list(evaluation_raw.get("strengths"), 4, fallback["evaluation"]["what_worked"]),
+        )
+        what_was_unclear = _string_list(
+            evaluation_raw.get("what_was_unclear"),
+            4,
+            _string_list(evaluation_raw.get("improvements"), 4, fallback["evaluation"]["what_was_unclear"]),
+        )
+        evidence_to_strengthen = _string_list(
+            evaluation_raw.get("evidence_to_strengthen"),
+            4,
+            fallback["evaluation"]["evidence_to_strengthen"],
+        )
+        better_answer_structure = _string_list(
+            evaluation_raw.get("better_answer_structure"),
+            6,
+            fallback["evaluation"]["better_answer_structure"],
+        )
+        sample_improved_answer = str(
+            evaluation_raw.get("sample_improved_answer")
+            or fallback["evaluation"]["sample_improved_answer"]
+        ).strip()[:4000]
+        practice_action = str(
+            evaluation_raw.get("recommended_practice_action")
+            or fallback["evaluation"]["recommended_practice_action"]
+        ).strip()[:1000]
+
+        result = {
             "evaluation": {
                 "score": score,
                 "summary": str(evaluation_raw.get("summary") or fallback["evaluation"]["summary"]).strip()[:1000],
-                "strengths": _string_list(evaluation_raw.get("strengths"), 4, fallback["evaluation"]["strengths"]),
-                "improvements": _string_list(evaluation_raw.get("improvements"), 4, fallback["evaluation"]["improvements"]),
+                "strengths": _string_list(evaluation_raw.get("strengths"), 4, what_worked),
+                "improvements": _string_list(evaluation_raw.get("improvements"), 4, what_was_unclear),
                 "evidence_status": evidence_status,
                 "challenge_needed": challenge_needed,
+                "metrics": metrics,
+                "what_worked": what_worked,
+                "what_was_unclear": what_was_unclear,
+                "evidence_to_strengthen": evidence_to_strengthen,
+                "better_answer_structure": better_answer_structure,
+                "sample_improved_answer": sample_improved_answer,
+                "recommended_practice_action": practice_action,
+            },
+            "observable_delivery": {
+                "word_count": int(basic.get("word_count") or 0),
+                "duration_seconds": basic.get("duration_seconds"),
+                "pace_wpm": basic.get("pace_wpm"),
+                "answer_length_band": basic.get("answer_length_band"),
             },
             "next_question": next_question[:700],
             "next_question_type": next_type,
             "rationale": str(data.get("rationale") or fallback["rationale"]).strip()[:700],
         }
+        return self._ensure_employer_question_opportunity(
+            result,
+            session=session,
+            remaining=remaining,
+        )
+
+    def _ensure_employer_question_opportunity(
+        self,
+        result: dict[str, Any],
+        *,
+        session: dict[str, Any],
+        remaining: int,
+    ) -> dict[str, Any]:
+        if remaining != 1 or _employer_question_was_observed(session, result):
+            return result
+
+        updated = dict(result)
+        language = str(session.get("language") or "en")
+        if language == "fr":
+            updated["next_question"] = (
+                "Avant de terminer, quelles questions poseriez-vous à l’employeur pour "
+                "mieux comprendre le poste, l’équipe et les attentes ?"
+            )
+            updated["rationale"] = (
+                "La dernière question permet d’évaluer les questions que le candidat "
+                "poserait réellement à l’employeur."
+            )
+        else:
+            updated["next_question"] = (
+                "Before we finish, what questions would you ask the employer to better "
+                "understand the role, the team, and the expectations?"
+            )
+            updated["rationale"] = (
+                "The final question gives the candidate a fair opportunity to demonstrate "
+                "the questions they would ask the employer."
+            )
+        updated["next_question_type"] = "new_topic"
+        return updated
 
     def _fallback_evaluation(
-        self, answer_text: str, signals: dict[str, Any], session: dict[str, Any]
+        self,
+        answer_text: str,
+        signals: dict[str, Any],
+        session: dict[str, Any],
+        *,
+        current_question_type: str,
     ) -> dict[str, Any]:
         word_count = int(signals["word_count"])
         has_metric = bool(signals["has_metric"])
+        has_example = bool(signals["has_example_language"])
         vague = bool(signals["vague"])
         too_short = word_count < 35
         unsupported = too_short or vague
-        if has_metric and word_count >= 55 and not vague:
-            score = 78
-            evidence_status = "supported"
-        elif word_count >= 35:
-            score = 62
-            evidence_status = "partial"
-        else:
-            score = 42
-            evidence_status = "unsupported"
+        evidence_score = 76 if has_metric and has_example else 62 if has_example else 42
+        structure_score = 72 if has_example and word_count >= 45 else 48
+        clarity_score = 76 if 45 <= word_count <= 180 and not vague else 58 if word_count >= 25 else 38
+        relevance_score = 68 if word_count >= 35 else 46
+        pace_wpm = signals.get("pace_wpm")
+        delivery_score = 68
+        if isinstance(pace_wpm, (int, float)) and (pace_wpm < 85 or pace_wpm > 190):
+            delivery_score = 52
+        if vague:
+            delivery_score = min(delivery_score, 56)
+        role_available = bool(
+            (session.get("workspace_context") or {}).get("target_role")
+            or (session.get("application_workspace") or {}).get("role")
+        )
+        metrics = {
+            "answer_relevance": relevance_score,
+            "use_of_evidence": evidence_score,
+            "star_structure": structure_score,
+            "clarity_conciseness": clarity_score,
+            "role_alignment": 58 if role_available else None,
+            "confidence_of_delivery": delivery_score,
+            "handling_follow_up_questions": (
+                62 if current_question_type in {"challenge", "follow_up"} and not too_short else
+                44 if current_question_type in {"challenge", "follow_up"} else None
+            ),
+            "questions_asked_employer": 65 if _contains_candidate_question(answer_text) else None,
+        }
+        available_scores = [score for score in metrics.values() if score is not None]
+        score = round(sum(available_scores) / len(available_scores)) if available_scores else 50
+        evidence_status = "supported" if has_metric and has_example else "partial" if word_count >= 35 else "unsupported"
         challenge_needed = unsupported or evidence_status == "unsupported"
         if challenge_needed:
             next_question = (
                 "Please make that answer more concrete. What specific situation did you face, "
-                "what actions did you personally take, and what measurable result followed?"
+                "what actions did you personally take, and what measurable or observable result followed?"
             )
             next_type = "challenge"
         else:
             next_question = self._fallback_next_topic(str(session.get("interview_type") or "custom"))
             next_type = "new_topic"
+
+        normalized_answer = " ".join(str(answer_text or "").split())
+        sample_answer = normalized_answer[:3500] or "No answer was captured."
+        unclear = []
+        if too_short:
+            unclear.append("The answer is too short to establish the situation, your actions, and the result.")
+        if vague:
+            unclear.append("The answer uses broad wording without enough specific ownership, scope, or outcome.")
+        if not unclear:
+            unclear.append("The result and its relevance to the target role could be stated more explicitly.")
+
         return {
             "evaluation": {
                 "score": score,
                 "summary": (
                     "The answer needs a more concrete example and clearer evidence."
                     if challenge_needed
-                    else "The answer is relevant and reasonably specific; deepen the evidence and impact."
+                    else "The answer is relevant and reasonably specific; strengthen the result and role connection."
                 ),
                 "strengths": ["The answer addressed the question directly."] if word_count >= 20 else [],
-                "improvements": [
-                    "Use a specific example with your actions and outcome.",
-                    "Quantify scope or impact where possible.",
-                ],
+                "improvements": unclear,
                 "evidence_status": evidence_status,
                 "challenge_needed": challenge_needed,
+                "metrics": metrics,
+                "what_worked": ["The answer addressed the question directly."] if word_count >= 20 else ["An answer was recorded and can be refined."],
+                "what_was_unclear": unclear,
+                "evidence_to_strengthen": [
+                    "Add a confirmed example of your personal actions, the scope involved, and the observable result.",
+                    "Use a metric only when it is already confirmed in your evidence or the answer itself.",
+                ],
+                "better_answer_structure": [
+                    "Situation: briefly establish the relevant context.",
+                    "Task: state what you were responsible for.",
+                    "Action: explain the decisions and actions you personally took.",
+                    "Result: give the confirmed outcome and connect it to the target role.",
+                ],
+                "sample_improved_answer": sample_answer,
+                "recommended_practice_action": (
+                    "Record this answer again in 60 to 90 seconds using one confirmed example and a clear result."
+                ),
+            },
+            "observable_delivery": {
+                "word_count": word_count,
+                "duration_seconds": signals.get("duration_seconds"),
+                "pace_wpm": pace_wpm,
+                "answer_length_band": signals.get("answer_length_band"),
             },
             "next_question": next_question,
             "next_question_type": next_type,
-            "rationale": "The follow-up is based on the specificity and evidence in the previous answer.",
+            "rationale": "The follow-up is based on observable specificity, structure, pace, and evidence in the previous answer.",
         }
 
     def _fallback_next_topic(self, interview_type: str) -> str:
@@ -942,6 +1362,33 @@ Role and candidate context:
                 current_app.logger.exception("Could not record adaptive mock-interview AI failure")
             raise_if_openai_limited(exc)
             raise
+
+    def _interview_evaluation_context_text(self, session: dict[str, Any]) -> str:
+        workspace = session.get("application_workspace") or {}
+        workspace_context = session.get("workspace_context") or {}
+        verified_evidence = workspace_context.get("verified_candidate_evidence")
+        if not isinstance(verified_evidence, list):
+            verified_evidence = []
+
+        compact = {
+            "interview_type": str(session.get("interview_type_label") or "Mock Interview"),
+            "custom_focus": str(session.get("custom_focus") or ""),
+            "role_context": {
+                "company": workspace_context.get("company") or workspace.get("company"),
+                "target_role": workspace_context.get("target_role") or workspace.get("role"),
+                "job_description": workspace_context.get("job_description"),
+                "application_status": workspace_context.get("application_status"),
+                "next_action": workspace_context.get("next_action"),
+            },
+            "confirmed_candidate_evidence": verified_evidence[:80],
+            "confirmed_evidence_source": workspace_context.get("verified_evidence_source"),
+            "grounding_rule": (
+                "The current candidate answer and confirmed_candidate_evidence are the only "
+                "candidate-fact sources allowed in the sample improved answer. Role context "
+                "describes the opportunity and must never be presented as candidate experience."
+            ),
+        }
+        return _truncate_json(compact, 14000)
 
     def _context_text(
         self,
@@ -1058,19 +1505,165 @@ def _json_object(value: Any) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
-def _basic_answer_signals(answer: str) -> dict[str, Any]:
+def _basic_answer_signals(
+    answer: str,
+    *,
+    duration_seconds: float | None = None,
+) -> dict[str, Any]:
     normalized = " ".join(str(answer or "").split())
     lowered = normalized.casefold()
     words = _WORD_RE.findall(normalized)
     vague_hits = sorted(term for term in _VAGUE_TERMS if term in lowered)
+    duration = _bounded_float(duration_seconds, None, 0.0, 3600.0)
+    pace_wpm = round(len(words) / (duration / 60.0), 1) if duration and duration > 0 else None
     return {
         "word_count": len(words),
+        "duration_seconds": duration,
+        "pace_wpm": pace_wpm,
+        "answer_length_band": _answer_length_band(len(words)),
         "has_metric": bool(re.search(r"(?:\b\d+(?:[.,]\d+)?\s*%|\$\s*\d|\b\d{2,}\b)", normalized)),
         "has_example_language": bool(re.search(r"\b(for example|for instance|specifically|when i|in my role|one time|situation)\b", lowered)),
         "vague": bool(vague_hits) or len(words) < 25,
         "vague_terms": vague_hits[:8],
     }
 
+
+
+def _bounded_float(
+    value: Any,
+    default: float | None,
+    minimum: float,
+    maximum: float,
+) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(maximum, parsed))
+
+
+def _normalize_metric_scores(
+    value: Any,
+    fallback: dict[str, Any],
+    *,
+    question_type: str,
+    role_context_available: bool,
+) -> dict[str, int | None]:
+    raw = value if isinstance(value, dict) else {}
+    normalized: dict[str, int | None] = {}
+    for key in _INTERVIEW_SCORECARD_CRITERIA:
+        fallback_value = fallback.get(key) if isinstance(fallback, dict) else None
+        candidate = raw.get(key, fallback_value)
+        if candidate is None or str(candidate).strip().lower() in {"", "null", "none", "n/a", "not_applicable"}:
+            normalized[key] = None
+        else:
+            normalized[key] = _bounded_int(candidate, _bounded_int(fallback_value, 50, 0, 100), 0, 100)
+
+    if question_type not in {"challenge", "follow_up"}:
+        normalized["handling_follow_up_questions"] = None
+    if not role_context_available:
+        normalized["role_alignment"] = None
+    return normalized
+
+
+def _contains_candidate_question(answer: str) -> bool:
+    normalized = " ".join(str(answer or "").split()).casefold()
+    return bool(
+        "?" in str(answer or "")
+        or re.search(r"\b(i(?:'d| would) like to ask|my question is|could you tell me|what does|how does|how do you)\b", normalized)
+    )
+
+
+def _employer_question_was_observed(
+    session: dict[str, Any],
+    current_result: dict[str, Any],
+) -> bool:
+    current_evaluation = (
+        current_result.get("evaluation")
+        if isinstance(current_result.get("evaluation"), dict)
+        else {}
+    )
+    current_metrics = (
+        current_evaluation.get("metrics")
+        if isinstance(current_evaluation.get("metrics"), dict)
+        else {}
+    )
+    if current_metrics.get("questions_asked_employer") is not None:
+        return True
+
+    for answer in session.get("answers") or []:
+        if _contains_candidate_question(str(answer.get("answer") or "")):
+            return True
+        evaluation = answer.get("evaluation") if isinstance(answer.get("evaluation"), dict) else {}
+        metrics = evaluation.get("metrics") if isinstance(evaluation.get("metrics"), dict) else {}
+        if metrics.get("questions_asked_employer") is not None:
+            return True
+    return False
+
+
+def _answer_length_band(word_count: int) -> str:
+    if word_count < 25:
+        return "very_short"
+    if word_count < 60:
+        return "short"
+    if word_count <= 180:
+        return "focused"
+    if word_count <= 260:
+        return "long"
+    return "very_long"
+
+
+def _criterion_summary(key: str, score: float | None, observations: int) -> str:
+    label = _INTERVIEW_SCORECARD_CRITERIA.get(key, key.replace("_", " ").title())
+    if score is None or observations <= 0:
+        return f"{label} was not observable in this practice session and was not included in the overall score."
+    if score >= 80:
+        level = "a strong observed area"
+    elif score >= 65:
+        level = "generally effective with room for refinement"
+    elif score >= 50:
+        level = "inconsistent and worth targeted practice"
+    else:
+        level = "a priority improvement area"
+    return f"{label} was {level} across {observations} observed answer{'s' if observations != 1 else ''}."
+
+
+def _dedupe_strings(values: Any) -> list[str]:
+    items: list[str] = []
+    for value in values:
+        text = " ".join(str(value or "").split()).strip()
+        if text and text.casefold() not in {item.casefold() for item in items}:
+            items.append(text[:1000])
+    return items
+
+
+def _score_to_grade(score: Any) -> str:
+    numeric = _bounded_int(score, 0, 0, 100)
+    if numeric >= 97:
+        return "A+"
+    if numeric >= 93:
+        return "A"
+    if numeric >= 90:
+        return "A-"
+    if numeric >= 87:
+        return "B+"
+    if numeric >= 83:
+        return "B"
+    if numeric >= 80:
+        return "B-"
+    if numeric >= 77:
+        return "C+"
+    if numeric >= 73:
+        return "C"
+    if numeric >= 70:
+        return "C-"
+    if numeric >= 67:
+        return "D+"
+    if numeric >= 63:
+        return "D"
+    if numeric >= 60:
+        return "D-"
+    return "F"
 
 def _string_list(value: Any, limit: int, fallback: list[str]) -> list[str]:
     if not isinstance(value, list):
