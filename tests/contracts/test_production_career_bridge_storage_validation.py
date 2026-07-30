@@ -52,9 +52,11 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
             {
                 "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "dynamodb",
+                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "dynamodb",
                 "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "s3",
                 "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME": "career-bridge-applications",
                 "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME": "career-bridge-workflows",
+                "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME": "career-bridge-job-discovery",
                 "CAREER_BRIDGE_DOCUMENTS_BUCKET": "career-bridge-documents",
             }
         )
@@ -67,6 +69,7 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
             {
                 "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "sqlite",
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory",
+                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "memory",
                 "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "local",
             }
         )
@@ -80,6 +83,7 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
         message = str(raised.exception)
         self.assertIn("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", message)
         self.assertIn("CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", message)
+        self.assertIn("CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", message)
         self.assertIn("CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", message)
         self.assertIn("CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=true", message)
 
@@ -88,9 +92,11 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
             {
                 "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "dynamodb",
+                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "dynamodb",
                 "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "s3",
                 "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME": "",
                 "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME": "",
+                "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME": "",
                 "CAREER_BRIDGE_DOCUMENTS_BUCKET": "",
             }
         )
@@ -101,6 +107,7 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
         message = str(raised.exception)
         self.assertIn("CAREER_BRIDGE_APPLICATIONS_TABLE_NAME", message)
         self.assertIn("CAREER_BRIDGE_WORKFLOWS_TABLE_NAME", message)
+        self.assertIn("CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME", message)
         self.assertIn("CAREER_BRIDGE_DOCUMENTS_BUCKET", message)
 
     def test_explicit_demo_override_allows_ephemeral_backends_and_warns(self) -> None:
@@ -108,6 +115,7 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
             {
                 "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "sqlite",
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory",
+                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "memory",
                 "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "local",
                 "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION": "true",
             }
@@ -124,6 +132,7 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
             {
                 "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "sqlite",
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory",
+                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "memory",
                 "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "local",
                 "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION": "false",
             }
@@ -173,6 +182,13 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
             (
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND",
                 "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME",
+            ),
+            string_pairs,
+        )
+        self.assertIn(
+            (
+                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND",
+                "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME",
             ),
             string_pairs,
         )

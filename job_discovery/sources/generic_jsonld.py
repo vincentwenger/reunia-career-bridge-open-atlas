@@ -10,9 +10,17 @@ from html.parser import HTMLParser
 from typing import Any, Callable, Iterable
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
-from ..models import CompanySource, DiscoveredJob, JobSourceType
+from ..models import (
+    CompanySource,
+    DiscoveredJob,
+    JobSourceType,
+    discovered_job_id,
+    normalize_iso_timestamp,
+    utc_now_iso,
+)
 from ..normalization import (
     canonicalize_url,
+    format_salary_text,
     html_to_text,
     normalize_employment_type,
     normalize_string_list,
@@ -343,27 +351,32 @@ def _job_from_jsonld(item: dict[str, Any], *, source: CompanySource, page_url: s
     location = ", ".join(locations)
     salary_min, salary_max, currency, interval, summary = _jsonld_salary(item.get("baseSalary"))
     skills = normalize_string_list(item.get("skills"))
+    seen_at = utc_now_iso()
     return DiscoveredJob(
-        source_id=source.source_id,
-        source_type=source.source_type,
-        external_id=external_id,
+        id=discovered_job_id(source.owner_id, source.id, external_id),
+        owner_id=source.owner_id,
+        source_id=source.id,
+        external_job_id=external_id,
         company=company,
         title=title,
-        job_url=job_url,
-        apply_url=canonicalize_url(item.get("applicationContact", {}).get("url", "") if isinstance(item.get("applicationContact"), dict) else ""),
-        description=html_to_text(item.get("description")),
         location=location,
         locations=locations,
         workplace_type=normalize_workplace_type(item.get("jobLocationType"), location=location),
         employment_type=normalize_employment_type(_first(item.get("employmentType"))),
+        salary_text=format_salary_text(salary_min, salary_max, currency, interval, summary),
+        description=html_to_text(item.get("description")),
+        canonical_url=job_url,
+        apply_url=canonicalize_url(item.get("applicationContact", {}).get("url", "") if isinstance(item.get("applicationContact"), dict) else ""),
+        posted_at=normalize_iso_timestamp(parse_datetime(item.get("datePosted"))),
+        first_seen_at=seen_at,
+        last_seen_at=seen_at,
+        source_type=source.source_type,
         skills=skills,
         salary_min=salary_min,
         salary_max=salary_max,
         salary_currency=currency,
         salary_interval=interval,
-        salary_summary=summary,
-        posted_at=parse_datetime(item.get("datePosted")),
-        valid_through=parse_datetime(item.get("validThrough")),
+        valid_through=normalize_iso_timestamp(parse_datetime(item.get("validThrough"))),
         metadata={
             "industry": item.get("industry"),
             "qualifications": html_to_text(item.get("qualifications")),

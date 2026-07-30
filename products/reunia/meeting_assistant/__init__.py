@@ -126,6 +126,10 @@ def _validate_dynamodb_table_configuration(app: Flask) -> None:
             "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND",
             "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME",
         ),
+        (
+            "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND",
+            "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME",
+        ),
     )
     required.extend(
         table_variable
@@ -161,11 +165,13 @@ def _validate_career_bridge_production_storage(app: Flask) -> None:
     required_backends = {
         "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
         "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "dynamodb",
+        "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "dynamodb",
         "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "s3",
     }
     required_resources = (
         "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME",
         "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME",
+        "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME",
         "CAREER_BRIDGE_DOCUMENTS_BUCKET",
     )
     invalid_backends = [

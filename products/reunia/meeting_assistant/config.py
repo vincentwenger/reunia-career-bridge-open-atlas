@@ -61,6 +61,12 @@ class BaseConfig:
     CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = os.getenv(
         "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "sqlite"
     ).strip().lower()
+    CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", "memory"
+    ).strip().lower()
+    CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME", ""
+    ).strip()
     CAREER_BRIDGE_APPLICATIONS_TABLE_NAME = os.getenv(
         "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME", ""
     ).strip()
@@ -654,6 +660,9 @@ class ProductionConfig(BaseConfig):
     CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = os.getenv(
         "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "dynamodb"
     ).strip().lower()
+    CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", "dynamodb"
+    ).strip().lower()
     CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND = os.getenv(
         "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", "s3"
     ).strip().lower()
@@ -668,6 +677,9 @@ class ProductionConfig(BaseConfig):
     KNOWLEDGE_TABLE_NAME = os.getenv("KNOWLEDGE_TABLE_NAME", "").strip()
     CAREER_BRIDGE_APPLICATIONS_TABLE_NAME = os.getenv(
         "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME", ""
     ).strip()
     CAREER_BRIDGE_WORKFLOWS_TABLE_NAME = os.getenv(
         "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME", ""

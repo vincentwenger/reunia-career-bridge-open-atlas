@@ -67,7 +67,7 @@ class GreenhouseSourceTests(unittest.TestCase):
                 )
             }
         )
-        source = CompanySource("acme-gh", "Acme", JobSourceType.GREENHOUSE, identifier="acme")
+        source = CompanySource(id="acme-gh", owner_id="owner-1", company_name="Acme", careers_url="https://boards.greenhouse.io/acme", source_type=JobSourceType.GREENHOUSE, source_identifier="acme")
 
         jobs = GreenhouseJobSource(http).fetch_jobs(source)
 
@@ -112,7 +112,7 @@ class LeverSourceTests(unittest.TestCase):
                 )
             }
         )
-        source = CompanySource("acme-lever", "Acme", JobSourceType.LEVER, identifier="acme")
+        source = CompanySource(id="acme-lever", owner_id="owner-1", company_name="Acme", careers_url="https://jobs.lever.co/acme", source_type=JobSourceType.LEVER, source_identifier="acme")
 
         job = LeverJobSource(http).fetch_jobs(source)[0]
 
@@ -158,7 +158,7 @@ class AshbySourceTests(unittest.TestCase):
                 )
             }
         )
-        source = CompanySource("acme-ashby", "Acme", JobSourceType.ASHBY, identifier="acme")
+        source = CompanySource(id="acme-ashby", owner_id="owner-1", company_name="Acme", careers_url="https://jobs.ashbyhq.com/acme", source_type=JobSourceType.ASHBY, source_identifier="acme")
 
         jobs = AshbyJobSource(http).fetch_jobs(source)
 
@@ -217,11 +217,13 @@ class GenericJsonLdSourceTests(unittest.TestCase):
             }
         )
         source = CompanySource(
-            "example-jsonld",
-            "Example Corp",
-            JobSourceType.GENERIC_JSONLD,
+            id="example-jsonld",
+            owner_id="owner-1",
+            company_name="Example Corp",
             careers_url=page_url,
-            options={"max_pages": 2, "min_request_interval_seconds": 0},
+            source_type=JobSourceType.GENERIC_JSONLD,
+            source_identifier="",
+            filters={"max_pages": 2, "min_request_interval_seconds": 0},
         )
         adapter = GenericJsonLdJobSource(http, cache=InMemoryTTLCache())
 
@@ -252,10 +254,12 @@ class GenericJsonLdSourceTests(unittest.TestCase):
             }
         )
         source = CompanySource(
-            "blocked",
-            "Example",
-            JobSourceType.GENERIC_JSONLD,
+            id="blocked",
+            owner_id="owner-1",
+            company_name="Example",
             careers_url=page_url,
+            source_type=JobSourceType.GENERIC_JSONLD,
+            source_identifier="",
         )
 
         with self.assertRaisesRegex(RuntimeError, "robots.txt disallows"):
@@ -276,7 +280,7 @@ class GenericJsonLdSourceTests(unittest.TestCase):
             robots_url: response(robots_url, "missing", status=404, content_type="text/plain"),
             page_url: response(page_url, html, content_type="text/html"),
         })
-        source = CompanySource("status", "Example", JobSourceType.GENERIC_JSONLD, careers_url=page_url, options={"min_request_interval_seconds": 0})
+        source = CompanySource(id="status", owner_id="owner-1", company_name="Example", careers_url=page_url, source_type=JobSourceType.GENERIC_JSONLD, source_identifier="", filters={"min_request_interval_seconds": 0})
         self.assertEqual(1, len(GenericJsonLdJobSource(allow_http).fetch_jobs(source)))
 
         deny_http = StubHttpClient({

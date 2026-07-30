@@ -1,0 +1,42 @@
+Job discovery records and DynamoDB persistence validation
+==========================================================
+
+Implemented discovery-only records:
+- CompanySource
+- DiscoveredJob
+- JobFitSnapshot
+
+Application boundary:
+- Collected postings are not inserted into Job Applications.
+- DiscoveryStore exposes no create/create_application operation.
+- Promotion into the existing ApplicationStore remains an explicit future user action.
+
+Dedicated table:
+- Configuration: CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME
+- Partition key: owner_id (String)
+- Sort key: storage_key (String)
+- SOURCE#<source_id>
+- JOB#<source_id>#<job_id>
+- FIT#<job_id>#<profile_fingerprint>
+
+Lifecycle behavior:
+- Stable job id from owner/source/external id.
+- first_seen_at is preserved across refreshes.
+- last_seen_at advances only when a posting is returned by the source.
+- Missing postings are retained and marked active=false.
+- Fit snapshots are profile-fingerprint-specific.
+- Queries are owner-scoped and use key-prefix queries rather than scans.
+
+Runtime wiring:
+- Development/test default: InMemoryDiscoveryStore.
+- Production default: DynamoDBDiscoveryStore.
+- Production startup requires CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND=dynamodb
+  and CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME.
+- Docker image explicitly copies the job_discovery package.
+
+Validation:
+- 161 tests run.
+- 145 passed.
+- 16 skipped because optional Flask/OpenAI/Redis/xlrd/browser runtime dependencies
+  are unavailable in the validation image.
+- 0 failures and 0 errors.

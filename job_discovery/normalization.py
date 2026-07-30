@@ -153,3 +153,33 @@ def canonicalize_url(value: str) -> str:
 
 def stable_text_key(value: Any) -> str:
     return re.sub(r"[^a-z0-9]+", " ", normalize_whitespace(value).casefold()).strip()
+
+
+def format_salary_text(
+    minimum: float | None,
+    maximum: float | None,
+    currency: str = "",
+    interval: str = "",
+    summary: str = "",
+) -> str:
+    explicit = normalize_whitespace(summary)
+    if explicit:
+        return explicit
+    if minimum is None and maximum is None:
+        return ""
+    prefix = f"{normalize_whitespace(currency)} " if currency else ""
+    if minimum is not None and maximum is not None:
+        amount = f"{_format_amount(minimum)}–{_format_amount(maximum)}"
+    else:
+        amount = _format_amount(minimum if minimum is not None else maximum)
+    suffix = f" / {normalize_whitespace(interval)}" if interval else ""
+    return f"{prefix}{amount}{suffix}".strip()
+
+
+def _format_amount(value: float | None) -> str:
+    if value is None:
+        return ""
+    number = float(value)
+    if number.is_integer():
+        return f"{int(number):,}"
+    return f"{number:,.2f}".rstrip("0").rstrip(".")

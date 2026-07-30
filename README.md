@@ -21,6 +21,8 @@ scripts/deployment/        Deployment utilities
 
 The `job_discovery` package collects publicly accessible postings from configured Greenhouse, Lever, Ashby, and generic Schema.org JSON-LD sources through one `JobSource` protocol. The bounded generic crawler honors robots.txt, uses a descriptive user agent, applies timeouts and per-host rate limits, and caches responses. The feature does not promise literally every job: internal, unlisted, removed, protected, or otherwise inaccessible positions cannot be guaranteed.
 
+Collected postings are stored separately as `CompanySource`, `DiscoveredJob`, and `JobFitSnapshot` records. They do not become Job Applications until the user explicitly chooses to track or start an application. Production uses a dedicated DynamoDB table configured with `CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND=dynamodb` and `CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME`; the existing application-store contract remains unchanged.
+
 See [`docs/job_discovery.md`](docs/job_discovery.md) for configuration and adapter behavior.
 
 ## Application Builder storage boundary
@@ -58,9 +60,11 @@ the baseline and Réunia requires the complete durable combination:
 ```text
 CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=dynamodb
 CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND=dynamodb
+CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND=dynamodb
 CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND=s3
 CAREER_BRIDGE_APPLICATIONS_TABLE_NAME=...
 CAREER_BRIDGE_WORKFLOWS_TABLE_NAME=...
+CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME=...
 CAREER_BRIDGE_DOCUMENTS_BUCKET=...
 ```
 

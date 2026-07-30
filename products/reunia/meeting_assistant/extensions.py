@@ -5,6 +5,8 @@ from flask import Flask
 
 import redis
 
+from job_discovery.storage import DynamoDBDiscoveryStore, InMemoryDiscoveryStore
+
 from meeting_assistant.repositories.action_repository import (
     DynamoActionRepository,
     InMemoryActionRepository,
@@ -150,6 +152,21 @@ def _initialize_shared_infrastructure(app: Flask) -> None:
 
 def init_extensions(app: Flask) -> None:
     _initialize_shared_infrastructure(app)
+
+    discovery_backend = str(
+        app.config.get("CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", "memory")
+    ).strip().lower()
+    if discovery_backend == "dynamodb":
+        discovery_store = DynamoDBDiscoveryStore(app.config)
+    elif discovery_backend == "memory":
+        discovery_store = InMemoryDiscoveryStore()
+    else:
+        raise RuntimeError(
+            "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND must be either "
+            "'memory' or 'dynamodb'."
+        )
+    app.extensions["career_bridge_job_discovery_store"] = discovery_store
+
     analytics_backend = str(
         app.config.get("ANALYTICS_STORAGE_BACKEND", "memory")
     ).strip().lower()

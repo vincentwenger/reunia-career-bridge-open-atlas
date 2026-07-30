@@ -16,6 +16,7 @@ RUN python -m pip install --upgrade pip \
 # shell, and the Resume Taylor Application Builder.
 COPY app.py ./app.py
 COPY career_bridge ./career_bridge
+COPY job_discovery ./job_discovery
 COPY products/reunia/meeting_assistant ./products/reunia/meeting_assistant
 COPY products/reunia/templates ./products/reunia/templates
 COPY products/reunia/static ./products/reunia/static
