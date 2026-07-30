@@ -1,0 +1,98 @@
+test_scorecard_findings_generate_expected_application_actions (tests.integration.test_product_quality.InterviewScorecardActionIntegrationTests.test_scorecard_findings_generate_expected_application_actions) ... ok
+test_all_structured_resume_findings_reach_interview_prompt (tests.integration.test_product_quality.ResumeFindingsPromptIntegrationTests.test_all_structured_resume_findings_reach_interview_prompt) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.845s
+
+OK
+test_application_fit_flags_mandatory_unsupported_requirements (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_application_fit_flags_mandatory_unsupported_requirements) ... ok
+test_background_context_never_becomes_verified_interview_evidence (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_background_context_never_becomes_verified_interview_evidence) ... ok
+test_every_fixture_is_schema_valid_and_normalized (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_every_fixture_is_schema_valid_and_normalized) ... ok
+test_expected_translation_and_gap_findings_are_preserved (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_expected_translation_and_gap_findings_are_preserved) ... ok
+test_interview_workspace_removes_unverified_evidence_references (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_interview_workspace_removes_unverified_evidence_references) ... ok
+test_invented_translation_with_valid_evidence_id_is_downgraded (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_invented_translation_with_valid_evidence_id_is_downgraded) ... ok
+test_safe_fixture_proposals_pass_deterministic_validation (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_safe_fixture_proposals_pass_deterministic_validation) ... ok
+test_suite_contains_all_required_international_scenarios (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_suite_contains_all_required_international_scenarios) ... ok
+test_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.073s
+
+OK
+test_every_international_profile_rejects_invented_bullet_responsibilities (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_every_international_profile_rejects_invented_bullet_responsibilities) ... ok
+test_every_international_profile_rejects_invented_summary_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_every_international_profile_rejects_invented_summary_claims) ... ok
+test_generation_repair_removes_unsupported_summary_and_bullet_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_generation_repair_removes_unsupported_summary_and_bullet_claims) ... ok
+test_interview_preparation_rejects_valid_ids_attached_to_invented_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_interview_preparation_rejects_valid_ids_attached_to_invented_claims) ... ok
+test_legacy_interview_actions_do_not_republish_invented_experience (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_legacy_interview_actions_do_not_republish_invented_experience) ... skipped 'Flask runtime dependencies are not installed'
+test_mock_interview_sample_answer_is_sanitized_before_scorecard_use (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_mock_interview_sample_answer_is_sanitized_before_scorecard_use) ... skipped 'Flask runtime dependencies are not installed'
+test_resume_report_contains_deterministic_grounding_result (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_resume_report_contains_deterministic_grounding_result) ... ok
+test_application_fit_flags_mandatory_unsupported_requirements (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_application_fit_flags_mandatory_unsupported_requirements) ... ok
+test_background_context_never_becomes_verified_interview_evidence (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_background_context_never_becomes_verified_interview_evidence) ... ok
+test_every_fixture_is_schema_valid_and_normalized (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_every_fixture_is_schema_valid_and_normalized) ... ok
+test_expected_translation_and_gap_findings_are_preserved (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_expected_translation_and_gap_findings_are_preserved) ... ok
+test_interview_workspace_removes_unverified_evidence_references (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_interview_workspace_removes_unverified_evidence_references) ... ok
+test_invented_translation_with_valid_evidence_id_is_downgraded (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_invented_translation_with_valid_evidence_id_is_downgraded) ... ok
+test_safe_fixture_proposals_pass_deterministic_validation (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_safe_fixture_proposals_pass_deterministic_validation) ... ok
+test_suite_contains_all_required_international_scenarios (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_suite_contains_all_required_international_scenarios) ... ok
+test_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.341s
+
+OK (skipped=2)
+test_async_error_states_have_wired_retry_controls (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_async_error_states_have_wired_retry_controls) ... ok
+test_every_major_workspace_declares_loading_empty_and_error_states (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_every_major_workspace_declares_loading_empty_and_error_states) ... ok
+test_shared_component_supports_all_three_states (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_shared_component_supports_all_three_states) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+test_active_state_contract_matches_the_three_modules (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_active_state_contract_matches_the_three_modules) ... ok
+test_admin_copy_uses_career_interview_terminology (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_admin_copy_uses_career_interview_terminology) ... ok
+test_ai_configuration_is_account_scoped_not_builder_navigation (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_ai_configuration_is_account_scoped_not_builder_navigation) ... ok
+test_all_navbar_copies_are_synchronized (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_all_navbar_copies_are_synchronized) ... ok
+test_features_are_grouped_by_product_outcome (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_features_are_grouped_by_product_outcome) ... ok
+test_home_is_not_a_fourth_primary_navigation_item (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_home_is_not_a_fourth_primary_navigation_item) ... ok
+test_homepage_groups_the_ten_steps_under_three_modules (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_homepage_groups_the_ten_steps_under_three_modules) ... ok
+test_live_assistance_never_reappears_in_candidate_navigation (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_live_assistance_never_reappears_in_candidate_navigation) ... ok
+test_module_names_are_available_in_french_navigation (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_module_names_are_available_in_french_navigation) ... ok
+test_navbar_exposes_exactly_three_product_modules (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_navbar_exposes_exactly_three_product_modules) ... ok
+test_public_workflow_and_user_guide_use_the_same_names (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_public_workflow_and_user_guide_use_the_same_names) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.003s
+
+OK
+
+[PASSED] Direct resume-findings and scorecard-to-action integrations
+
+[PASSED] Six international profile regressions
+
+[PASSED] No-invented-experience regressions
+
+[PASSED] Application Builder AI cost-control contract
+PASS: shared budget reservation
+PASS: actual usage settlement
+PASS: bounded structured output
+PASS: shared response cache
+PASS: user-scoped cache key
+PASS: retry ceiling
+PASS: resume import token limit
+PASS: job analysis token limit
+PASS: tailoring token limit
+PASS: evidence-review token limit
+PASS: interview-preparation token limit
+PASS: cache TTL configuration
+PASS: selected-model pricing
+All 13 Application Builder AI cost-control checks passed.
+
+[PASSED] Workspace loading, empty, and error-state contract
+
+[PASSED] Three-module navigation contract
+
+[BLOCKED] Full Flask runtime integration suites
+Required deployment/runtime dependencies are unavailable in this execution image: flask, redis, openai, xlrd
+
+[BLOCKED] Six-profile Playwright browser journey
+Required deployment/runtime dependencies are unavailable in this execution image: flask, redis, openai, xlrd

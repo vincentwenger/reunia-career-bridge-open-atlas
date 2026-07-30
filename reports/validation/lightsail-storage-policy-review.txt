@@ -1,0 +1,51 @@
+Réunia Career Bridge — post-migration Lightsail policy review
+Date: 2026-07-30
+
+Conclusion
+----------
+The previous unconditional single-process restriction is no longer required for
+normal production because application records and workflow metadata are stored
+in DynamoDB, documents and serialized workflow bodies are stored in S3, and
+workflow writes use optimistic concurrency. Réunia's production configuration
+also requires Redis, S3, and DynamoDB for its other shared state.
+
+Required in all deployments
+---------------------------
+- Leave the Lightsail container Command field empty so the reviewed image CMD is used.
+- Keep the startup storage diagnostic.
+- Keep /health storage metadata.
+- Keep the post-deployment validation script and authenticated create/read smoke test.
+
+Required only with the explicit demo-storage override
+-----------------------------------------------------
+- Lightsail scale must equal 1.
+- Gunicorn workers must equal 1.
+- Startup must emit a prominent data-loss/single-process warning.
+
+Persistent production behavior
+------------------------------
+- Lightsail scale may be 1 or greater.
+- Gunicorn workers may be 1 or greater.
+- The current Docker image still defaults to one worker as a conservative
+  capacity choice, not as a storage-correctness requirement.
+- The deployment validator accepts positive multi-node/multi-worker settings
+  only when /health reports DynamoDB/DynamoDB/S3 and multi-worker/multi-node safe.
+
+Implementation updates
+----------------------
+- upload_to_lightsail.bat enforces scale 1 only when
+  CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION is enabled.
+- validate_lightsail_deployment.py applies scale/worker constraints according
+  to the live /health durability mode.
+- The no-command-override check remains unconditional.
+- Deployment documentation now contains an explicit persistent-vs-demo policy table.
+- The legacy production launcher supports positive GUNICORN_WORKERS and
+  GUNICORN_THREADS values while retaining defaults of 1 and 4.
+
+Validation
+----------
+- 142 tests run; 0 failures; 16 runtime-dependent skips.
+- 24 focused Lightsail deployment-policy tests passed.
+- 7/7 Application Builder architecture checks passed.
+- Available final integration checks passed.
+- No live AWS resources were contacted.

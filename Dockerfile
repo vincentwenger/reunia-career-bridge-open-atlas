@@ -34,7 +34,9 @@ USER appuser
 
 EXPOSE 8000
 
-# Deployment invariant: Lightsail must not override this image command.
-# One worker is required because the current resume workflow store is
-# process-local. Four threads allow concurrent requests without splitting state.
+# Deployment invariant: Lightsail should not override this versioned image command.
+# Production workflow/application state is DynamoDB-backed and documents are in
+# S3. One worker remains the conservative default, not a storage-correctness
+# requirement; durable deployments may raise the worker count in a future image
+# while optimistic locking protects overlapping workflow updates.
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--timeout", "600", "--graceful-timeout", "30", "--access-logfile", "-", "--error-logfile", "-", "app:app"]

@@ -165,6 +165,7 @@ class ApplicationBuilderIntegrationTests(unittest.TestCase):
                 "application_builder": {
                     "workflow_storage": "memory",
                     "application_storage": "sqlite",
+                    "document_storage": "local",
                     "durability": "demo-only",
                     "multi_worker_safe": False,
                     "multi_node_safe": False,

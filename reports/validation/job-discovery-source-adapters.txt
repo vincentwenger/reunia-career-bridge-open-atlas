@@ -1,0 +1,41 @@
+Job discovery source-adapter implementation validation
+======================================================
+
+Implemented package:
+- job_discovery/models.py
+- job_discovery/service.py
+- job_discovery/normalization.py
+- job_discovery/deduplication.py
+- job_discovery/ranking.py
+- job_discovery/storage.py
+- job_discovery/sources/base.py
+- job_discovery/sources/greenhouse.py
+- job_discovery/sources/lever.py
+- job_discovery/sources/ashby.py
+- job_discovery/sources/generic_jsonld.py
+
+Connector contract:
+    class JobSource(Protocol):
+        def fetch_jobs(self, source: CompanySource) -> list[DiscoveredJob]: ...
+
+Implemented safeguards for generic JSON-LD crawling:
+- robots.txt policy evaluation with RFC 9309 4xx/5xx behavior
+- descriptive ReuniaJobBot user agent
+- configurable bounded HTTP timeout
+- per-host request rate limiting
+- robots cache limited to 24 hours
+- page response caching
+- 500 KiB robots parsing limit
+- 5 MiB page response limit
+- bounded same-host crawl count
+
+Coverage wording:
+The feature finds publicly accessible job postings exposed by configured sources.
+Internal, unlisted, removed, authentication-protected, or otherwise inaccessible
+positions cannot be guaranteed.
+
+Validation command:
+python -m unittest discover -s tests -t . -v
+
+Result:
+139 tests passed and 16 tests skipped (155 total). The skipped tests require optional runtime dependencies that are not installed in the validation environment. No failures or errors.

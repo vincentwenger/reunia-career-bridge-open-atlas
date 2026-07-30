@@ -10,19 +10,20 @@ ROOT = Path(__file__).resolve().parents[2]
 BUILDER_APP = ROOT / "products" / "resume_taylor" / "app.py"
 REUNIA_FACTORY = ROOT / "products" / "reunia" / "meeting_assistant" / "__init__.py"
 
-EXPECTED_STORAGE_STATUS = {
-    "workflow_storage": "memory",
-    "application_storage": "sqlite",
-    "durability": "demo-only",
-    "multi_worker_safe": False,
-    "multi_node_safe": False,
+EXPECTED_STORAGE_KEYS = {
+    "workflow_storage",
+    "application_storage",
+    "document_storage",
+    "durability",
+    "multi_worker_safe",
+    "multi_node_safe",
 }
 
 
 class ApplicationBuilderHealthStorageContractTests(unittest.TestCase):
-    """Keep deployment-limitation metadata visible and non-secret."""
+    """Keep storage capability metadata visible, dynamic, and non-secret."""
 
-    def test_storage_status_helper_returns_the_required_contract(self) -> None:
+    def test_storage_status_helper_uses_configured_backends(self) -> None:
         tree = ast.parse(BUILDER_APP.read_text(encoding="utf-8"))
         helper = next(
             node
@@ -30,10 +31,13 @@ class ApplicationBuilderHealthStorageContractTests(unittest.TestCase):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             and node.name == "application_builder_storage_status"
         )
-        return_node = next(
-            node for node in ast.walk(helper) if isinstance(node, ast.Return)
-        )
-        self.assertEqual(ast.literal_eval(return_node.value), EXPECTED_STORAGE_STATUS)
+        helper_text = ast.unparse(helper)
+        self.assertIn("configured_workflow_backend(current_app.config)", helper_text)
+        self.assertIn("configured_application_backend(current_app.config)", helper_text)
+        self.assertIn("configured_document_backend(current_app.config)", helper_text)
+        for key in EXPECTED_STORAGE_KEYS:
+            with self.subTest(key=key):
+                self.assertIn(repr(key), helper_text)
 
     def test_health_endpoint_includes_the_canonical_storage_status(self) -> None:
         factory_text = REUNIA_FACTORY.read_text(encoding="utf-8")
@@ -44,7 +48,7 @@ class ApplicationBuilderHealthStorageContractTests(unittest.TestCase):
         )
 
     def test_storage_contract_contains_no_path_or_secret_material(self) -> None:
-        for key in EXPECTED_STORAGE_STATUS:
+        for key in EXPECTED_STORAGE_KEYS:
             with self.subTest(key=key):
                 normalized = key.casefold()
                 self.assertNotIn("path", normalized)

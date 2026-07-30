@@ -32,17 +32,15 @@ class ApplicationBuilderPersistenceWarningContractTests(unittest.TestCase):
 
     def test_warning_uses_the_resolved_database_path(self) -> None:
         self.assertIn(
-            'application_database_path = app.config.get("APPLICATIONS_DB_PATH")',
+            'app.config.get("APPLICATIONS_DB_PATH") or ""',
             self.builder_text,
         )
         self.assertIn(
             'app.logger.warning(',
             self.builder_text,
         )
-        self.assertIn(
-            '            application_database_path,\n        )',
-            self.builder_text,
-        )
+        self.assertIn("application_database_path,", self.builder_text)
+
 
     def test_warning_is_logged_only_once_per_application(self) -> None:
         self.assertIn(

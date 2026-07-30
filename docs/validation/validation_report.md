@@ -193,3 +193,28 @@ python tests/run_final_integration_checks.py \
 ```
 
 See `docs/validation/final_integration_checks.md` for the detailed results and exact scope.
+
+## Serializable, versioned workflow persistence
+
+Career Bridge workflow state now uses an explicit serialization and optimistic-lock boundary rather than relying on a shared mutable Python object.
+
+The implementation provides:
+
+1. A schema-versioned canonical JSON serializer for the complete `WorkflowState` graph.
+2. Round-trip support for Pydantic models, standard dataclasses, optional nested models, lists, dictionaries, workflow snapshots, and `ResumeReport` objects.
+3. A hard rejection of embedded DOCX/PDF bytes; persisted state contains only object keys, filenames, and fingerprints.
+4. Detached load semantics in the memory adapter so local development exercises the same load/modify/save behavior as DynamoDB.
+5. A DynamoDB workflow repository with a hashed `workflow_id`, version, fingerprint, TTL, S3 `state_json_key`, `updated_at`, and `updated_by_request`.
+6. A strict save contract requiring both the loaded version and the current request ID; blind unversioned writes are not accepted.
+7. Conditional version updates that atomically increment the version and reject stale browser, worker, or node requests rather than silently overwriting newer state.
+8. A recoverable HTTP 409 response that includes safe request-attribution context and directs the user to reload the latest workflow and retry.
+9. Conditional migration of legacy workflow items that lack concurrency metadata.
+10. S3-backed state bodies, including report-heavy workflows larger than DynamoDB's 400 KB item limit.
+
+Focused validation:
+
+```bash
+python -m unittest -v tests.contracts.test_workflow_state_persistence
+```
+
+The tests verify complete serialization, binary rejection, detached memory behavior, required request attribution, atomic conditional DynamoDB version increments, stale-save diagnostics, legacy metadata migration, S3 pointer storage, large-state externalization, cleanup, and conflicts across two independent repository instances sharing the same table.

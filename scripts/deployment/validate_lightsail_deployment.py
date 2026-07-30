@@ -34,13 +34,24 @@ EXPECTED_REDEPLOY_WARNING = (
     "WARNING: Redeploying or replacing the Lightsail container can erase "
     "Application Builder records."
 )
-EXPECTED_STORAGE_STATUS = {
+PERSISTENT_STORAGE_STATUS = {
+    "workflow_storage": "dynamodb",
+    "application_storage": "dynamodb",
+    "document_storage": "s3",
+    "durability": "persistent",
+    "multi_worker_safe": True,
+    "multi_node_safe": True,
+}
+DEMO_STORAGE_STATUS = {
     "workflow_storage": "memory",
     "application_storage": "sqlite",
+    "document_storage": "local",
     "durability": "demo-only",
     "multi_worker_safe": False,
     "multi_node_safe": False,
 }
+# Backward-compatible name used by contract tests and external imports.
+EXPECTED_STORAGE_STATUS = PERSISTENT_STORAGE_STATUS
 
 
 class ValidationFailure(RuntimeError):
@@ -194,16 +205,32 @@ def _select_live_service(
     return matching[0]
 
 
-def _validate_scale(service: dict[str, Any]) -> None:
+def _validate_scale(
+    service: dict[str, Any], *, require_single_node: bool = True
+) -> int:
+    """Validate service capacity for the active storage durability mode.
+
+    Demo storage is process-local and therefore requires exactly one node.
+    Durable DynamoDB/S3 storage permits more than one node, but the service must
+    still report a positive scale.
+    """
+
     raw_scale = service.get("scale")
     try:
         scale = int(raw_scale)
     except (TypeError, ValueError) as exc:
-        raise ValidationFailure(f"Lightsail returned an invalid service scale: {raw_scale!r}") from exc
-    if scale != 1:
         raise ValidationFailure(
-            f"Unsafe Lightsail scale: expected 1, received {scale}."
+            f"Lightsail returned an invalid service scale: {raw_scale!r}"
+        ) from exc
+    if scale < 1:
+        raise ValidationFailure(
+            f"Lightsail service scale must be at least 1; received {scale}."
         )
+    if require_single_node and scale != 1:
+        raise ValidationFailure(
+            f"Unsafe demo-storage Lightsail scale: expected 1, received {scale}."
+        )
+    return scale
 
 
 def _command_tuple(raw_command: Any) -> tuple[str, ...]:
@@ -302,21 +329,40 @@ def _flag_values(arguments: Sequence[str], flag: str) -> list[str]:
     return values
 
 
-def _validate_image_command(arguments: Sequence[str]) -> None:
+def _positive_flag_value(arguments: Sequence[str], flag: str) -> int:
+    values = _flag_values(arguments, flag)
+    if len(values) != 1:
+        raise ValidationFailure(
+            f"Docker image CMD must contain exactly one {flag!r} setting."
+        )
+    try:
+        value = int(values[0])
+    except ValueError as exc:
+        raise ValidationFailure(
+            f"Docker image CMD has an invalid integer value for {flag}: {values[0]!r}."
+        ) from exc
+    if value < 1:
+        raise ValidationFailure(
+            f"Docker image CMD requires {flag} to be at least 1; received {value}."
+        )
+    return value
+
+
+def _validate_image_command(
+    arguments: Sequence[str], *, require_single_worker: bool = True
+) -> tuple[int, int]:
+    """Validate the image command for demo or durable storage operation."""
+
     if not arguments or Path(arguments[0]).name.casefold() != "gunicorn":
         raise ValidationFailure("Docker image CMD must start Gunicorn.")
 
-    worker_values = _flag_values(arguments, "--workers")
-    if worker_values != ["1"]:
+    workers = _positive_flag_value(arguments, "--workers")
+    threads = _positive_flag_value(arguments, "--threads")
+    if require_single_worker and workers != 1:
         raise ValidationFailure(
-            "Docker image CMD must contain exactly one '--workers 1' setting."
+            "Demo storage requires the Docker image CMD to use '--workers 1'."
         )
-
-    thread_values = _flag_values(arguments, "--threads")
-    if thread_values != ["4"]:
-        raise ValidationFailure(
-            "Docker image CMD must contain exactly one '--threads 4' setting."
-        )
+    return workers, threads
 
 
 def _validate_documentation(document_path: Path) -> None:
@@ -384,7 +430,12 @@ def _request(
     return Request(url, data=encoded, headers=request_headers)
 
 
-def _validate_health(base_url: str, *, timeout: float) -> dict[str, Any]:
+def _validate_health(
+    base_url: str,
+    *,
+    timeout: float,
+    allow_demo_storage: bool = False,
+) -> dict[str, Any]:
     opener = build_opener()
     status, _, body = _open(
         opener,
@@ -402,11 +453,20 @@ def _validate_health(base_url: str, *, timeout: float) -> dict[str, Any]:
         raise ValidationFailure(
             f"Health endpoint status is not 'ok': {payload.get('status')!r}."
         )
-    if payload.get("application_builder") != EXPECTED_STORAGE_STATUS:
+    storage_status = payload.get("application_builder")
+    if storage_status == PERSISTENT_STORAGE_STATUS:
+        return payload
+    if allow_demo_storage and storage_status == DEMO_STORAGE_STATUS:
+        return payload
+    if storage_status == DEMO_STORAGE_STATUS:
         raise ValidationFailure(
-            "Health endpoint does not expose the expected Application Builder storage limitations."
+            "Health endpoint reports demo-only Career Bridge storage. Production "
+            "validation requires DynamoDB/S3 unless --allow-demo-storage is supplied."
         )
-    return payload
+    raise ValidationFailure(
+        "Health endpoint does not expose a recognized persistent Application Builder "
+        "storage configuration."
+    )
 
 
 def _authenticated_application_smoke_test(
@@ -553,6 +613,10 @@ def _authenticated_application_smoke_test(
     return application_id, retrieved, cleanup_succeeded
 
 
+def _environment_flag(name: str) -> bool:
+    return os.getenv(name, "").strip().casefold() in {"1", "true", "yes", "on"}
+
+
 def _build_parser() -> argparse.ArgumentParser:
     root = _repo_root()
     parser = argparse.ArgumentParser(
@@ -619,6 +683,17 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not remove the created smoke-test application.",
     )
+    parser.add_argument(
+        "--allow-demo-storage",
+        action="store_true",
+        default=_environment_flag(
+            "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION"
+        ),
+        help=(
+            "Accept demo-only memory/SQLite/local storage. This should be used only "
+            "with the explicit production demo override."
+        ),
+    )
     return parser
 
 
@@ -654,25 +729,44 @@ def main(argv: Iterable[str] | None = None) -> int:
         service = _select_live_service(
             service_payload, service_name=args.service_name
         )
-        _validate_scale(service)
-        print("PASS  Lightsail service scale is exactly 1.")
-
         live_container = _select_live_container(
             service, requested_name=args.container_name
         )
         _validate_no_command_override(live_container)
 
-        image_command = _parse_dockerfile_command(args.dockerfile)
-        _validate_image_command(image_command)
-        print(
-            "PASS  Live container has no command override; image CMD uses "
-            "Gunicorn workers=1 and threads=4."
+        health = _validate_health(
+            base_url,
+            timeout=args.timeout,
+            allow_demo_storage=args.allow_demo_storage,
         )
+        durability = health["application_builder"]["durability"]
+        demo_storage = durability == "demo-only"
+        print(
+            "PASS  /health returned 200, status=ok, and approved storage "
+            f"configuration ({durability})."
+        )
+
+        scale = _validate_scale(
+            service, require_single_node=demo_storage
+        )
+        image_command = _parse_dockerfile_command(args.dockerfile)
+        workers, threads = _validate_image_command(
+            image_command, require_single_worker=demo_storage
+        )
+        if demo_storage:
+            print(
+                "PASS  Demo storage is constrained to Lightsail scale=1 and "
+                "Gunicorn workers=1."
+            )
+        else:
+            print(
+                "PASS  Persistent storage permits multi-node/multi-worker operation "
+                f"(Lightsail scale={scale}; Gunicorn workers={workers}; "
+                f"threads={threads})."
+            )
+        print("PASS  Live container has no Lightsail command override.")
         if live_container.image:
             print(f"INFO  Current Lightsail image: {live_container.image}")
-
-        _validate_health(base_url, timeout=args.timeout)
-        print("PASS  /health returned 200, status=ok, and storage limitations.")
 
         application_id, _, cleanup_succeeded = _authenticated_application_smoke_test(
             base_url,

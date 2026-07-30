@@ -12,8 +12,10 @@ The Application Builder uses the direct `/applications/` route and no Nginx side
 ## Data-loss warning
 
 > **WARNING: Redeploying or replacing the Lightsail container can erase Application Builder records.**
-> The SQLite database is stored on ephemeral container-node storage. Export or
-> migrate records to durable storage before any redeployment where retention matters.
+> This warning applies when the explicit demo override permits SQLite, process
+> memory, or local document storage in production. Those backends use
+> ephemeral container-node storage. Durable DynamoDB/S3 production storage is required by
+> default and should be used whenever retention matters.
 
 
 ## Build and run locally
@@ -28,10 +30,10 @@ docker run --rm -p 8000:8000 --env-file .env reunia-career-bridge
 - Container port: `8000`
 - Public endpoint port: `8000`
 - Health check path: `/health`
-- Scale: `1`
+- Scale: `1` for demo storage; `1` or greater for validated persistent storage
 - Lightsail container **Command**: leave empty
-- Gunicorn workers: `1`
-- Gunicorn threads: `4`
+- Gunicorn workers: `1` is the conservative image default; exactly `1` is required only for demo storage
+- Gunicorn threads: `4` in the current image
 
 The health endpoint exposes the non-secret Application Builder storage mode for
 deployment validation:
@@ -41,26 +43,262 @@ deployment validation:
   "status": "ok",
   "services": ["reunia", "application-builder"],
   "application_builder": {
-    "workflow_storage": "memory",
-    "application_storage": "sqlite",
-    "durability": "demo-only",
-    "multi_worker_safe": false,
-    "multi_node_safe": false
+    "workflow_storage": "dynamodb",
+    "application_storage": "dynamodb",
+    "document_storage": "s3",
+    "durability": "persistent",
+    "multi_worker_safe": true,
+    "multi_node_safe": true
   }
 }
 ```
 
-This metadata documents the application limitation; it does not detect the
-actual Gunicorn worker count or Lightsail service scale.
+This metadata documents the configured storage capabilities; it does not detect
+the actual Gunicorn worker count or Lightsail service scale.
+
+Operational policy:
+
+| Storage mode | Lightsail scale | Gunicorn workers |
+|---|---:|---:|
+| Durable DynamoDB/DynamoDB/S3 | 1 or greater | 1 or greater |
+| Demo memory/SQLite/local | exactly 1 | exactly 1 |
+
+Leaving the Lightsail **Command** field empty remains recommended in both modes
+so the deployed, reviewed image controls the complete startup command.
 
 Use the same environment variables as the existing Réunia deployment. The
-Application Builder additionally reads `OPENAI_API_KEY` and optionally
-`CAREER_BRIDGE_APPLICATIONS_DB`.
+Application Builder additionally reads `OPENAI_API_KEY` and these storage settings:
 
-## Required single-process runtime
+```text
+CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND=memory|dynamodb
+CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=sqlite|dynamodb
+CAREER_BRIDGE_APPLICATIONS_DB=/app/instance/career_bridge_applications.sqlite3
+CAREER_BRIDGE_APPLICATIONS_TABLE_NAME=career-bridge-applications
+CAREER_BRIDGE_WORKFLOWS_TABLE_NAME=career-bridge-workflows
+CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS=28800
+CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS=0
+CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND=local|s3
+CAREER_BRIDGE_DOCUMENTS_LOCAL_PATH=/app/instance/career_bridge_documents
+CAREER_BRIDGE_DOCUMENTS_BUCKET=career-bridge-documents
+CAREER_BRIDGE_DOCUMENTS_PREFIX=career-bridge
+CAREER_BRIDGE_DOCUMENTS_KMS_KEY_ID=
+CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=false
+```
 
-The current Application Builder database is SQLite and its active workflow
-state is process-local. The complete deployment invariant is therefore:
+Development and testing retain the local `memory`, `sqlite`, and `local`
+adapters. `ProductionConfig` defaults to `dynamodb`, `dynamodb`, and `s3`; a
+normal production process therefore never initializes the in-memory workflow or
+SQLite application repository. Selecting local adapters in production requires
+the explicit demo override. Storage is selected through `WorkflowStore`,
+`ApplicationStore`, and `CareerBridgeObjectStore` protocols rather than concrete
+route-level types.
+
+For durable application records and documents, configure all of the following:
+
+```text
+CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND=dynamodb
+CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=dynamodb
+CAREER_BRIDGE_APPLICATIONS_TABLE_NAME=career-bridge-applications
+CAREER_BRIDGE_WORKFLOWS_TABLE_NAME=career-bridge-workflows
+CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS=28800
+CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS=0
+CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND=s3
+CAREER_BRIDGE_DOCUMENTS_BUCKET=career-bridge-documents
+CAREER_BRIDGE_DOCUMENTS_PREFIX=career-bridge
+AWS_REGION=us-west-2
+```
+
+The package deliberately does not fall back to SQLite, process memory, or local
+container files when DynamoDB is selected. A missing table name, missing S3
+bucket, or non-S3 document backend stops startup with a configuration error.
+
+### Production startup gate
+
+With `APP_ENV=production`, `ProductionConfig` defaults to the durable backend
+names and `_validate_production_configuration()` requires all of the following
+before any Application Builder repository is initialized:
+
+```text
+CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=dynamodb
+CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND=dynamodb
+CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND=s3
+CAREER_BRIDGE_APPLICATIONS_TABLE_NAME=<explicit table name>
+CAREER_BRIDGE_WORKFLOWS_TABLE_NAME=<explicit table name>
+CAREER_BRIDGE_DOCUMENTS_BUCKET=<explicit bucket name>
+```
+
+Production startup fails when any backend is `sqlite`, `memory`, or `local`, or
+when any required table/bucket name is blank. This check runs inside Réunia's
+existing production validator and is independent of the Application Builder
+factory, so an unsafe process cannot start far enough to serve traffic.
+
+A hackathon or controlled demo may deliberately bypass only this Career Bridge
+persistence gate with:
+
+```text
+CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=true
+```
+
+The override is intentionally narrow: Redis, S3 recorder storage, DynamoDB
+actions/analytics/support/knowledge storage, secrets, and every other existing
+Réunia production safeguard are still required. Startup logs a prominent unsafe
+demo-storage warning. Such a deployment must remain at one Gunicorn worker and
+one Lightsail node and can lose records during redeployment or replacement. Do
+not use the override for normal production traffic.
+
+The live deployment validator expects persistent DynamoDB/S3 health metadata by
+default. When validating an intentional demo deployment, pass
+`--allow-demo-storage` (or set the same demo override variable in the validator
+environment).
+
+### Career Bridge workflow table
+
+Provision a DynamoDB table with this primary key:
+
+```text
+Partition key: workflow_id (String)
+```
+
+No sort key or secondary index is required. Enable DynamoDB TTL on the
+`expires_at` Number attribute, but note that the repository writes that attribute
+only to temporary records:
+
+- Scratch workflow (`...:application:scratch`): `expires_at` is refreshed on
+  save using `CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS`, which defaults to
+  28,800 seconds (eight hours). A value between eight and 24 hours is suitable
+  for normal temporary work.
+- Application-linked workflow (`...:application:<application-id>`): no
+  `expires_at` attribute by default. It is retained until explicitly deleted
+  with the application. Set `CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS` to
+  a positive value only when a deliberate longer application-workflow retention
+  window is required; zero means retained.
+
+`CAREER_BRIDGE_WORKFLOW_TTL_SECONDS` remains a backward-compatible alias for the
+scratch TTL only. It no longer causes application workflows to expire. On first
+load, the repository removes legacy blanket `expires_at` values from retained
+application workflows. Deploy this migration before an old application workflow
+reaches its previous expiry time; DynamoDB may still asynchronously delete an
+item that was already past due before the new code had a chance to clear it.
+
+The table stores only a hashed workflow ID, workflow type, retention policy,
+optimistic-lock `version`, fingerprint, S3 `state_json_key`, `updated_at`,
+`updated_by_request`, and an optional TTL. A stored item therefore includes
+metadata such as:
+
+```json
+{
+  "version": 12,
+  "updated_at": "2026-07-30T16:37:00+00:00",
+  "updated_by_request": "REQ-1A2B3C4D5E6F"
+}
+```
+
+Pydantic models,
+dataclasses, optional nested values, collections, and report objects are
+serialized as canonical versioned JSON in S3. DOCX/PDF bytes are rejected by the
+serializer and must already have been replaced by S3 keys.
+
+Every save requires the version loaded at request start and the current request
+ID. The DynamoDB `UpdateItem` condition is `attribute_not_exists(workflow_id)` for a
+new workflow or `version = :expected_version` for an existing workflow. The same
+atomic update increments `version`, refreshes `updated_at`, and stores
+`updated_by_request`. Two overlapping tabs, workers, or nodes therefore cannot
+silently overwrite one another: the stale request receives HTTP 409 with the
+latest saved request reference and instructions to reload and retry.
+`updated_by_request` is a correlation identifier, not a user identity or an
+authorization decision.
+
+Legacy workflow items missing request-attribution metadata are conditionally
+migrated on first load. That migration also increments the item version, so it
+cannot race silently with a user write.
+
+The task role requires these workflow-table actions:
+`dynamodb:GetItem`, `dynamodb:UpdateItem`, and `dynamodb:DeleteItem`.
+
+### Career Bridge application table
+
+Provision one DynamoDB table with this primary key:
+
+```text
+Partition key: owner_id    (String)
+Sort key:      storage_key (String)
+```
+
+On-demand billing is sufficient for the demo and avoids capacity tuning. No
+secondary index is required. The repository stores these item families inside
+each owner's partition:
+
+```text
+APP#<application_id>
+RESUME_FINDINGS#<application_id>
+INTERVIEW_PREPARATION#<application_id>
+IMPACT#<application_id>
+```
+
+The application task role or Lightsail AWS credentials require these actions on
+the table: `dynamodb:GetItem`, `dynamodb:PutItem`, `dynamodb:DeleteItem`, and
+`dynamodb:Query`. Application deletion explicitly removes the three linked
+artifact items to mirror SQLite foreign-key cascade behavior. Application,
+resume-findings, interview-preparation, and impact items never receive an
+`expires_at` attribute and are not subject to DynamoDB TTL.
+
+DynamoDB items do **not** contain uploaded resume bytes, final DOCX/PDF bytes,
+or large serialized report payloads. They retain filenames, fingerprints, and
+S3 keys such as `resume_docx_key`, `resume_pdf_key`, and `snapshot_json_key`.
+Repository reads hydrate bytes only when a caller requests them; list and normal
+request setup paths use metadata-only reads. Legacy inline fields remain
+readable for migration. The next successful versioned rewrite stores the state
+in S3 and removes obsolete inline workflow fields from the DynamoDB item.
+
+### Career Bridge document bucket
+
+Use a private S3 bucket with Block Public Access enabled. Enable bucket
+versioning so replacement or accidental modification can be recovered. Default
+server-side encryption is applied on every object write (`AES256`); set
+`CAREER_BRIDGE_DOCUMENTS_KMS_KEY_ID` to use a customer-managed KMS key instead.
+
+The object namespace hashes owner and workflow identifiers so email addresses,
+session keys, and other direct identifiers do not appear in S3 paths:
+
+```text
+career-bridge/users/<owner-hash>/applications/<application-id>/...
+career-bridge/users/<owner-hash>/workflows/<workflow-hash>/...
+career-bridge/workflow-state/scratch/users/<owner-hash>/<workflow-hash>/...
+career-bridge/workflow-state/application/users/<owner-hash>/<workflow-hash>/...
+```
+
+Stored objects include uploaded source resumes, final DOCX resumes, final PDF
+resumes, canonical versioned workflow-state JSON, resume-finding snapshots,
+interview-preparation snapshots, and impact snapshot details. Application or
+workflow deletion removes linked current objects; S3 versioning can retain
+noncurrent versions according to bucket lifecycle policy.
+
+DynamoDB TTL does not invoke repository cleanup, so an expired scratch workflow
+can leave its last S3 state document behind. Configure a lifecycle rule for the
+`career-bridge/workflow-state/scratch/` prefix with an expiration window longer
+than the configured scratch TTL plus DynamoDB's asynchronous deletion delay. For
+an eight-to-24-hour scratch TTL, seven days is a conservative default. Do not
+apply that rule to `career-bridge/workflow-state/application/`, which contains
+retained application workflows. Also configure lifecycle expiration for
+noncurrent versions and incomplete multipart uploads according to the required
+recovery window.
+
+The application task role or Lightsail AWS credentials also require
+`s3:GetObject`, `s3:PutObject`, and `s3:DeleteObject` on:
+
+```text
+arn:aws:s3:::career-bridge-documents/career-bridge/*
+```
+
+When KMS encryption is configured, grant the corresponding encrypt/decrypt/data
+key permissions on the selected KMS key. Do not make the bucket public and do
+not place credentials in object metadata or object keys.
+
+## Conditional deployment policy
+
+The explicit demo configuration (`memory` + `sqlite` + `local`) remains
+process-local and ephemeral. Only that configuration requires the complete
+single-process deployment invariant:
 
 ```text
 Lightsail scale = 1
@@ -75,13 +313,14 @@ The Docker image already supplies the safe startup command:
 gunicorn --bind 0.0.0.0:8000 --workers 1 --threads 4 ... app:app
 ```
 
-At application startup, Réunia emits a prominent warning with the active
-Application Builder persistence configuration. In the Lightsail image it reads:
+When demo storage is active, Réunia emits a prominent startup warning with the
+active Application Builder persistence configuration. It reads:
 
 ```text
 Application Builder persistence:
 - workflow backend: process memory
 - application backend: SQLite
+- document backend: local filesystem
 - database path: /app/instance/career_bridge_applications.sqlite3
 - safe only with one Gunicorn worker and Lightsail scale 1
 - records may be lost during container replacement
@@ -91,33 +330,46 @@ The path is resolved from `APPLICATIONS_DB_PATH` /
 `CAREER_BRIDGE_APPLICATIONS_DB`, so the log reports the actual configured path
 when an override is used. The warning is emitted once per application process.
 
-Do not enter a custom command in the Lightsail container configuration. In
-particular, a command containing `gunicorn --workers 2` creates two independent
-processes and splits process-local workflow state even when the Lightsail
-service scale remains `1`. Leave the Lightsail **Command** field empty so the
-container uses the image's existing `CMD`.
+Do not enter a custom command in the Lightsail container configuration while the
+service uses the demo storage defaults. In particular, a command containing
+`gunicorn --workers 2` creates two independent processes and splits process-local
+workflow state even when the Lightsail service scale remains `1`.
+Leave the Lightsail **Command** field empty so the container uses the image's
+existing `CMD`.
+
+When all three production settings are enabled (`dynamodb` workflow storage,
+`dynamodb` application storage, and `s3` document storage), Application Builder
+workflow state is no longer process-local. Detached serialized loads and
+conditional version updates make overlapping workers recoverably conflict-safe.
+Réunia's production gate also requires Redis, S3, and DynamoDB for its other
+shared services. A validated persistent deployment may therefore use more than
+one Gunicorn worker or Lightsail node. The current image still defaults to one
+worker as a conservative capacity choice, not as a storage requirement.
 
 The Windows deployment script at `scripts/deployment/upload_to_lightsail.bat`:
 
 1. builds and pushes the image;
 2. checks the current Lightsail deployment and stops if any container command
    override is present;
-3. sets the service scale to `1`; and
-4. queries the service to verify the returned scale.
+3. enforces scale `1` only when
+   `CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=true`; and
+4. otherwise preserves and reports the configured persistent-service scale.
 
 The script never supplies a Lightsail command override. It exits with a nonzero
-status and a prominent error banner if the command preflight, scale update,
-query, or verification fails. The preflight occurs before the scale update
-because changing Lightsail capacity redeploys the current deployment.
+status and a prominent error banner if command or scale inspection fails. In
+demo mode, a failed scale update or any returned scale other than `1` also stops
+the deployment.
 
 ## Post-deployment validation
 
 Run the standalone validator after the Lightsail deployment is active. It verifies:
 
-1. the live Lightsail service scale is exactly `1`;
-2. the public application container has no Lightsail command override and the
-   Docker image `CMD` contains exactly one Gunicorn worker and four threads;
-3. `/health` returns HTTP 200 with the documented storage limitations;
+1. `/health` returns HTTP 200 with persistent DynamoDB/S3 storage metadata, or
+   demo-only metadata only when explicitly allowed;
+2. demo storage is constrained to Lightsail scale `1` and one Gunicorn worker,
+   while persistent storage accepts any positive scale and worker count;
+3. the public application container has no Lightsail command override and the
+   Docker image `CMD` starts Gunicorn with valid positive worker/thread counts;
 4. an authenticated smoke-test application can be created and retrieved through
    the real Application Builder workflow; and
 5. this document contains the prominent redeployment data-loss warning.
@@ -150,12 +402,13 @@ The defaults are region `us-west-2` and service name
 configured AWS CLI identity with permission to call
 `lightsail:GetContainerServices`.
 
-Interview Preparation records are stored in the same SQLite database and include
-a snapshot of the exact verified evidence used for generation. A workspace is
-marked for regeneration when the company, target role, job description, or
-verified evidence changes. Generation requires either completed candidate
-evidence confirmation in the active workflow or an attached evidence-reviewed
-Final Resume.
+Interview Preparation records use the configured `ApplicationStore`: DynamoDB in
+normal production and SQLite only in local/demo mode. They include a snapshot of
+the exact verified evidence used for generation. A workspace is marked for
+regeneration when the company, target role, job description, or verified
+evidence changes. Generation requires either completed candidate evidence
+confirmation in the active workflow or an attached evidence-reviewed Final
+Resume.
 
 ## Restricted Live Interview Assistance
 

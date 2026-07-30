@@ -1,0 +1,25 @@
+{% extends 'application_builder/base.html' %}
+
+{% block title %}Workflow update conflict · Réunia Career Bridge{% endblock %}
+
+{% block content %}
+<section class="workspace-state-card workspace-state-error" role="alert" aria-labelledby="workflow-conflict-title">
+  <div class="workspace-state-icon" aria-hidden="true">↻</div>
+  <div class="workspace-state-copy">
+    <p class="application-builder-hero-eyebrow">Recoverable update conflict</p>
+    <h2 id="workflow-conflict-title">Reload the latest workflow before continuing</h2>
+    <p>{{ conflict_message }}</p>
+    {% if conflict_request_id or latest_request_id %}
+      <p class="workspace-state-reference">
+        {% if conflict_request_id %}Your request: <code>{{ conflict_request_id }}</code>{% endif %}
+        {% if conflict_request_id and latest_request_id %} · {% endif %}
+        {% if latest_request_id %}Latest saved request: <code>{{ latest_request_id }}</code>{% endif %}
+      </p>
+    {% endif %}
+    <div class="workspace-state-actions">
+      <a class="button primary" href="{{ retry_url }}">Reload latest workflow</a>
+      <a class="button secondary" href="{{ url_for('application_builder.index', tab='applications') }}">Return to job applications</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

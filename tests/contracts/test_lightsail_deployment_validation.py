@@ -126,6 +126,17 @@ class _HealthOpener:
         return _Response(json.dumps(payload), url=request.full_url)
 
 
+class _DemoHealthOpener:
+    def open(self, request, timeout):
+        del timeout
+        payload = {
+            "status": "ok",
+            "services": ["reunia", "application-builder"],
+            "application_builder": validator.DEMO_STORAGE_STATUS,
+        }
+        return _Response(json.dumps(payload), url=request.full_url)
+
+
 class LightsailDeploymentValidationTests(unittest.TestCase):
     def test_script_and_windows_wrapper_exist(self) -> None:
         self.assertTrue(VALIDATOR_PATH.is_file())
@@ -134,10 +145,19 @@ class LightsailDeploymentValidationTests(unittest.TestCase):
         self.assertIn("validate_lightsail_deployment.py", wrapper)
         self.assertIn("exit /b %VALIDATION_EXIT%", wrapper)
 
-    def test_live_scale_must_equal_one(self) -> None:
-        validator._validate_scale({"scale": 1})
+    def test_demo_storage_scale_must_equal_one(self) -> None:
+        self.assertEqual(
+            validator._validate_scale({"scale": 1}, require_single_node=True),
+            1,
+        )
         with self.assertRaisesRegex(validator.ValidationFailure, "expected 1"):
-            validator._validate_scale({"scale": 2})
+            validator._validate_scale({"scale": 2}, require_single_node=True)
+
+    def test_persistent_storage_allows_scale_greater_than_one(self) -> None:
+        self.assertEqual(
+            validator._validate_scale({"scale": 3}, require_single_node=False),
+            3,
+        )
 
     def test_public_container_must_have_no_command_override(self) -> None:
         service = {
@@ -167,11 +187,19 @@ class LightsailDeploymentValidationTests(unittest.TestCase):
         self.assertEqual(validator._flag_values(command, "--workers"), ["1"])
         self.assertEqual(validator._flag_values(command, "--threads"), ["4"])
 
-    def test_image_command_rejects_two_workers(self) -> None:
+    def test_demo_image_command_rejects_two_workers(self) -> None:
         with self.assertRaisesRegex(validator.ValidationFailure, "workers 1"):
             validator._validate_image_command(
-                ["gunicorn", "--workers", "2", "--threads", "4", "app:app"]
+                ["gunicorn", "--workers", "2", "--threads", "4", "app:app"],
+                require_single_worker=True,
             )
+
+    def test_persistent_image_command_allows_two_workers(self) -> None:
+        workers, threads = validator._validate_image_command(
+            ["gunicorn", "--workers", "2", "--threads", "4", "app:app"],
+            require_single_worker=False,
+        )
+        self.assertEqual((workers, threads), (2, 4))
 
     def test_health_validation_requires_expected_storage_contract(self) -> None:
         with patch.object(validator, "build_opener", return_value=_HealthOpener()):
@@ -179,7 +207,35 @@ class LightsailDeploymentValidationTests(unittest.TestCase):
                 "https://career.example", timeout=1
             )
         self.assertEqual(payload["status"], "ok")
-        self.assertFalse(payload["application_builder"]["multi_worker_safe"])
+        self.assertTrue(payload["application_builder"]["multi_worker_safe"])
+
+    def test_demo_health_requires_explicit_validator_override(self) -> None:
+        with patch.object(validator, "build_opener", return_value=_DemoHealthOpener()):
+            with self.assertRaisesRegex(
+                validator.ValidationFailure, "--allow-demo-storage"
+            ):
+                validator._validate_health("https://career.example", timeout=1)
+
+        with patch.object(validator, "build_opener", return_value=_DemoHealthOpener()):
+            payload = validator._validate_health(
+                "https://career.example",
+                timeout=1,
+                allow_demo_storage=True,
+            )
+        self.assertEqual(payload["application_builder"]["durability"], "demo-only")
+
+    def test_demo_storage_never_allows_lightsail_scale_greater_than_one(self) -> None:
+        # The explicit demo-storage acknowledgement only relaxes the health
+        # durability check. It must never relax the single-node scale guard.
+        with patch.object(validator, "build_opener", return_value=_DemoHealthOpener()):
+            payload = validator._validate_health(
+                "https://career.example",
+                timeout=1,
+                allow_demo_storage=True,
+            )
+        self.assertEqual(payload["application_builder"]["durability"], "demo-only")
+        with self.assertRaisesRegex(validator.ValidationFailure, "expected 1"):
+            validator._validate_scale({"scale": 2})
 
     def test_authenticated_smoke_test_creates_retrieves_and_cleans_up(self) -> None:
         opener = _SmokeOpener()

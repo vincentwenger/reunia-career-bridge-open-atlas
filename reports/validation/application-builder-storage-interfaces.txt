@@ -1,0 +1,19 @@
+Application Builder storage-interface validation
+================================================
+
+Implemented:
+- WorkflowStore runtime-checkable Protocol with new_id/get/save/reset/peek/delete.
+- ApplicationStore runtime-checkable Protocol matching every public method on SQLiteApplicationStore.
+- InMemoryWorkflowStore explicit save operation and workflow_key-compatible signatures.
+- Configuration-driven factory selection using:
+  CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND=memory|dynamodb
+  CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=sqlite|dynamodb
+- Route proxies now use WorkflowStore and ApplicationStore annotations.
+- Blueprint after_request persistence hook commits mutable workflow state through WorkflowStore.save.
+- /health derives storage capability metadata from active configuration.
+- DynamoDB selection fails at startup until the production adapter module is installed; no local fallback occurs.
+
+Validation:
+- 15 focused storage/health/persistence contract tests passed.
+- 7 Application Builder architecture checks passed.
+- Full unittest discovery: 83 tests passed or skipped as designed; 14 runtime-dependent tests skipped because Flask/Redis/OpenAI/xlrd were unavailable in the validation environment.

@@ -2,7 +2,7 @@ test_scorecard_findings_generate_expected_application_actions (tests.integration
 test_all_structured_resume_findings_reach_interview_prompt (tests.integration.test_product_quality.ResumeFindingsPromptIntegrationTests.test_all_structured_resume_findings_reach_interview_prompt) ... ok
 
 ----------------------------------------------------------------------
-Ran 2 tests in 1.742s
+Ran 2 tests in 0.869s
 
 OK
 test_application_fit_flags_mandatory_unsupported_requirements (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_application_fit_flags_mandatory_unsupported_requirements) ... ok
@@ -16,7 +16,7 @@ test_suite_contains_all_required_international_scenarios (tests.regression.test_
 test_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok
 
 ----------------------------------------------------------------------
-Ran 9 tests in 0.131s
+Ran 9 tests in 0.070s
 
 OK
 test_every_international_profile_rejects_invented_bullet_responsibilities (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_every_international_profile_rejects_invented_bullet_responsibilities) ... ok
@@ -37,7 +37,7 @@ test_suite_contains_all_required_international_scenarios (tests.regression.test_
 test_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok
 
 ----------------------------------------------------------------------
-Ran 16 tests in 0.630s
+Ran 16 tests in 0.342s
 
 OK (skipped=2)
 test_async_error_states_have_wired_retry_controls (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_async_error_states_have_wired_retry_controls) ... ok
@@ -45,7 +45,7 @@ test_every_major_workspace_declares_loading_empty_and_error_states (tests.contra
 test_shared_component_supports_all_three_states (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_shared_component_supports_all_three_states) ... ok
 
 ----------------------------------------------------------------------
-Ran 3 tests in 0.016s
+Ran 3 tests in 0.004s
 
 OK
 test_active_state_contract_matches_the_three_modules (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_active_state_contract_matches_the_three_modules) ... ok
@@ -61,7 +61,7 @@ test_navbar_exposes_exactly_three_product_modules (tests.contracts.test_three_mo
 test_public_workflow_and_user_guide_use_the_same_names (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_public_workflow_and_user_guide_use_the_same_names) ... ok
 
 ----------------------------------------------------------------------
-Ran 11 tests in 0.017s
+Ran 11 tests in 0.003s
 
 OK
 

@@ -6,7 +6,8 @@ import secrets
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Callable
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Callable
 
 from .models import (
     CandidateAnswer,
@@ -16,6 +17,9 @@ from .models import (
     TailoringProposal,
 )
 from .resume_report import ResumeReport
+
+if TYPE_CHECKING:
+    from .storage import LoadedWorkflowState
 
 
 def normalize_job_description(value: str) -> str:
@@ -79,6 +83,8 @@ class WorkflowState:
     job_description: str = ""
     target_title: str = ""
     profile_upload_name: str = ""
+    source_resume_key: str = ""
+    source_resume_fingerprint: str = ""
 
     processing_mode: str = "testing"
     custom_analysis_tailoring_model: str = "gpt-5.6-terra"
@@ -156,6 +162,10 @@ class WorkflowState:
     final_resume_title: str = ""
     final_resume_bytes: bytes | None = None
     final_resume_pdf_bytes: bytes | None = None
+    final_resume_docx_key: str = ""
+    final_resume_pdf_key: str = ""
+    final_resume_docx_fingerprint: str = ""
+    final_resume_pdf_fingerprint: str = ""
     final_resume_pdf_error: str = ""
     # Legacy template key retained for saved sessions and application records.
     resume_style: str = "professional"
@@ -220,6 +230,10 @@ class WorkflowState:
         self.final_report_exact = False
         self.final_resume_bytes = None
         self.final_resume_pdf_bytes = None
+        self.final_resume_docx_key = ""
+        self.final_resume_pdf_key = ""
+        self.final_resume_docx_fingerprint = ""
+        self.final_resume_pdf_fingerprint = ""
         self.final_resume_pdf_error = ""
 
     def clear_results(self) -> None:
@@ -238,70 +252,185 @@ class WorkflowState:
 
 @dataclass
 class _StoredState:
-    state: WorkflowState
+    serialized: bytes
+    version: int
+    fingerprint: str
     touched_at: float
+    updated_at: str
+    updated_by_request: str
 
 
 class InMemoryWorkflowStore:
-    """Thread-safe, process-local workflow storage keyed by a signed browser session ID.
+    """Thread-safe workflow storage that still enforces remote-store semantics.
 
-    The Flask cookie contains only an opaque ID. Resume contents, API results, and generated
-    Word bytes remain on the server and are never serialized into the browser cookie.
+    Each load returns a newly deserialized state object. Routes therefore cannot
+    persist changes merely by mutating a shared Python reference; they must call
+    ``save`` with the version observed at load time, exactly as they do with the
+    DynamoDB adapter.
     """
 
     def __init__(
         self,
         state_factory: Callable[[], WorkflowState],
         *,
-        ttl_seconds: int = 8 * 60 * 60,
+        scratch_ttl_seconds: int = 8 * 60 * 60,
+        application_ttl_seconds: int = 0,
+        clock: Callable[[], float] | None = None,
     ) -> None:
         self._state_factory = state_factory
-        self._ttl_seconds = max(300, ttl_seconds)
+        self._scratch_ttl_seconds = max(300, int(scratch_ttl_seconds))
+        self._application_ttl_seconds = (
+            max(300, int(application_ttl_seconds))
+            if int(application_ttl_seconds) > 0
+            else 0
+        )
+        self._clock = clock or time.time
         self._items: dict[str, _StoredState] = {}
         self._lock = threading.RLock()
 
     def new_id(self) -> str:
         return secrets.token_urlsafe(24)
 
-    def get(self, session_id: str) -> WorkflowState:
-        now = time.time()
+    def load(self, workflow_key: str) -> "LoadedWorkflowState":
+        from .storage import LoadedWorkflowState
+        from .workflow_serialization import (
+            workflow_state_from_json_bytes,
+            workflow_state_json_bytes,
+        )
+
+        now = self._clock()
         with self._lock:
             self._prune_locked(now)
-            stored = self._items.get(session_id)
+            stored = self._items.get(workflow_key)
             if stored is None:
-                stored = _StoredState(self._state_factory(), now)
-                self._items[session_id] = stored
+                state = self._state_factory()
+                serialized = workflow_state_json_bytes(state)
+                stored = _StoredState(
+                    serialized=serialized,
+                    version=0,
+                    fingerprint=hashlib.sha256(serialized).hexdigest(),
+                    touched_at=now,
+                    updated_at="",
+                    updated_by_request="",
+                )
+                self._items[workflow_key] = stored
             else:
                 stored.touched_at = now
-            return stored.state
+            return LoadedWorkflowState(
+                state=workflow_state_from_json_bytes(stored.serialized),
+                version=stored.version,
+                fingerprint=stored.fingerprint,
+                updated_at=stored.updated_at,
+                updated_by_request=stored.updated_by_request,
+            )
 
-    def reset(self, session_id: str) -> WorkflowState:
-        with self._lock:
-            state = self._state_factory()
-            self._items[session_id] = _StoredState(state, time.time())
-            return state
+    def get(self, workflow_key: str) -> WorkflowState:
+        return self.load(workflow_key).state
 
-    def peek(self, session_id: str) -> WorkflowState | None:
-        """Return an existing state without creating a new workflow."""
+    def save(
+        self,
+        workflow_key: str,
+        state: WorkflowState,
+        *,
+        expected_version: int,
+        updated_by_request: str,
+    ) -> "LoadedWorkflowState":
+        """Persist a detached snapshot using optimistic version checking."""
 
-        now = time.time()
+        from .storage import (
+            LoadedWorkflowState,
+            WorkflowConflictError,
+            normalize_workflow_request_id,
+        )
+        from .workflow_serialization import (
+            workflow_state_from_json_bytes,
+            workflow_state_json_bytes,
+        )
+
+        serialized = workflow_state_json_bytes(state)
+        fingerprint = hashlib.sha256(serialized).hexdigest()
+        request_id = normalize_workflow_request_id(updated_by_request)
+        now = self._clock()
+        updated_at = datetime.fromtimestamp(now, timezone.utc).isoformat(
+            timespec="seconds"
+        )
         with self._lock:
             self._prune_locked(now)
-            stored = self._items.get(session_id)
+            current = self._items.get(workflow_key)
+            actual_version = current.version if current is not None else 0
+            if int(expected_version) != actual_version:
+                raise WorkflowConflictError(
+                    workflow_key,
+                    expected_version=int(expected_version),
+                    actual_version=actual_version,
+                    actual_updated_by_request=(
+                        current.updated_by_request if current is not None else ""
+                    ),
+                )
+            if current is not None and current.fingerprint == fingerprint:
+                current.touched_at = now
+                return LoadedWorkflowState(
+                    state=workflow_state_from_json_bytes(current.serialized),
+                    version=current.version,
+                    fingerprint=current.fingerprint,
+                    updated_at=current.updated_at,
+                    updated_by_request=current.updated_by_request,
+                )
+            version = actual_version + 1
+            stored = _StoredState(
+                serialized=serialized,
+                version=version,
+                fingerprint=fingerprint,
+                touched_at=now,
+                updated_at=updated_at,
+                updated_by_request=request_id,
+            )
+            self._items[workflow_key] = stored
+            return LoadedWorkflowState(
+                state=workflow_state_from_json_bytes(serialized),
+                version=version,
+                fingerprint=fingerprint,
+                updated_at=updated_at,
+                updated_by_request=request_id,
+            )
+
+    def reset(self, workflow_key: str) -> WorkflowState:
+        loaded = self.load(workflow_key)
+        state = self._state_factory()
+        return self.save(
+            workflow_key,
+            state,
+            expected_version=loaded.version,
+            updated_by_request="SYSTEM-RESET",
+        ).state
+
+    def peek(self, workflow_key: str) -> WorkflowState | None:
+        from .workflow_serialization import workflow_state_from_json_bytes
+
+        now = self._clock()
+        with self._lock:
+            self._prune_locked(now)
+            stored = self._items.get(workflow_key)
             if stored is None:
                 return None
             stored.touched_at = now
-            return stored.state
+            return workflow_state_from_json_bytes(stored.serialized)
 
-    def delete(self, session_id: str) -> None:
+    def delete(self, workflow_key: str) -> None:
         with self._lock:
-            self._items.pop(session_id, None)
+            self._items.pop(workflow_key, None)
 
     def _prune_locked(self, now: float) -> None:
-        expired = [
-            session_id
-            for session_id, stored in self._items.items()
-            if now - stored.touched_at > self._ttl_seconds
-        ]
-        for session_id in expired:
-            self._items.pop(session_id, None)
+        from .storage import workflow_retention_class
+
+        expired: list[str] = []
+        for workflow_key, stored in self._items.items():
+            ttl_seconds = (
+                self._scratch_ttl_seconds
+                if workflow_retention_class(workflow_key) == "scratch"
+                else self._application_ttl_seconds
+            )
+            if ttl_seconds > 0 and now - stored.touched_at > ttl_seconds:
+                expired.append(workflow_key)
+        for workflow_key in expired:
+            self._items.pop(workflow_key, None)

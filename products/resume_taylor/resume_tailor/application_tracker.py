@@ -94,6 +94,10 @@ class ApplicationRecord:
     resume_filename: str
     resume_bytes: bytes | None
     resume_fingerprint: str
+    resume_docx_key: str = ""
+    resume_pdf_key: str = ""
+    resume_pdf_filename: str = ""
+    original_resume_key: str = ""
 
     @property
     def status_label(self) -> str:
@@ -103,7 +107,7 @@ class ApplicationRecord:
 
     @property
     def has_resume_snapshot(self) -> bool:
-        return bool(self.resume_bytes)
+        return bool(self.resume_bytes or self.resume_docx_key)
 
     @property
     def interview_readiness_label(self) -> str:
@@ -358,7 +362,8 @@ class SQLiteApplicationStore:
                     updated_at TEXT NOT NULL,
                     resume_filename TEXT NOT NULL DEFAULT '',
                     resume_bytes BLOB,
-                    resume_fingerprint TEXT NOT NULL DEFAULT ''
+                    resume_fingerprint TEXT NOT NULL DEFAULT '',
+                    original_resume_key TEXT NOT NULL DEFAULT ''
                 );
                 CREATE INDEX IF NOT EXISTS applications_owner_updated_idx
                     ON applications(owner_id, updated_at DESC);
@@ -423,6 +428,7 @@ class SQLiteApplicationStore:
                 "upcoming_event_type": "TEXT NOT NULL DEFAULT ''",
                 "job_description": "TEXT NOT NULL DEFAULT ''",
                 "workflow_step": "TEXT NOT NULL DEFAULT 'setup'",
+                "original_resume_key": "TEXT NOT NULL DEFAULT ''",
             }
             for column, definition in migrations.items():
                 if column not in existing:
@@ -488,6 +494,9 @@ class SQLiteApplicationStore:
             resume_filename=row["resume_filename"],
             resume_bytes=row["resume_bytes"],
             resume_fingerprint=row["resume_fingerprint"],
+            original_resume_key=(
+                row["original_resume_key"] if "original_resume_key" in keys else ""
+            ),
         )
 
     def list_for_owner(self, owner_id: str) -> list[ApplicationRecord]:
@@ -514,13 +523,24 @@ class SQLiteApplicationStore:
             ).fetchall()
         return [self._row_to_record(row) for row in rows]
 
-    def get(self, owner_id: str, application_id: str) -> ApplicationRecord | None:
+    def get(
+        self,
+        owner_id: str,
+        application_id: str,
+        *,
+        include_resume_bytes: bool = True,
+    ) -> ApplicationRecord | None:
         with self._lock:
             row = self._connection.execute(
                 "SELECT * FROM applications WHERE owner_id = ? AND id = ?",
                 (owner_id, application_id),
             ).fetchone()
-        return self._row_to_record(row) if row else None
+        if not row:
+            return None
+        record = self._row_to_record(row)
+        if include_resume_bytes:
+            return record
+        return ApplicationRecord(**{**record.__dict__, "resume_bytes": None})
 
     def get_resume_findings(
         self, owner_id: str, application_id: str
@@ -723,7 +743,10 @@ class SQLiteApplicationStore:
         resume_filename: str = "",
         resume_bytes: bytes | None = None,
         resume_fingerprint: str = "",
+        resume_pdf_filename: str = "",
+        resume_pdf_bytes: bytes | None = None,
     ) -> ApplicationRecord:
+        del resume_pdf_filename, resume_pdf_bytes
         normalized_status = normalize_application_status(status)
         inferred_screening, inferred_interview, inferred_offer = infer_outcomes(normalized_status)
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -854,6 +877,7 @@ class SQLiteApplicationStore:
         role: str | None = None,
         job_description: str | None = None,
         status: str | None = None,
+        original_resume_key: str | None = None,
     ) -> ApplicationRecord | None:
         current = self.get(owner_id, application_id)
         if current is None:
@@ -863,7 +887,8 @@ class SQLiteApplicationStore:
             self._connection.execute(
                 """
                 UPDATE applications SET workflow_step = ?, resume_version = ?, company = ?,
-                    role = ?, job_description = ?, status = ?, updated_at = ?
+                    role = ?, job_description = ?, status = ?, original_resume_key = ?,
+                    updated_at = ?
                 WHERE owner_id = ? AND id = ?
                 """,
                 (
@@ -873,6 +898,11 @@ class SQLiteApplicationStore:
                     (role or current.role).strip(),
                     current.job_description if job_description is None else job_description.strip(),
                     normalize_application_status(status or current.status),
+                    (
+                        current.original_resume_key
+                        if original_resume_key is None
+                        else original_resume_key.strip()
+                    ),
                     now,
                     owner_id,
                     application_id,
@@ -892,7 +922,10 @@ class SQLiteApplicationStore:
         resume_filename: str,
         resume_bytes: bytes,
         resume_fingerprint: str,
+        resume_pdf_filename: str = "",
+        resume_pdf_bytes: bytes | None = None,
     ) -> ApplicationRecord | None:
+        del resume_pdf_filename, resume_pdf_bytes
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         with self._lock, self._connection:
             self._connection.execute(

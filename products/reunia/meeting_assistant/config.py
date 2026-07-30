@@ -52,6 +52,63 @@ class BaseConfig:
 
     AWS_REGION = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-west-2"))
 
+    # Career Bridge storage adapters. Development and testing may select local
+    # adapters explicitly; ProductionConfig overrides these defaults with the
+    # durable DynamoDB/DynamoDB/S3 combination.
+    CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "memory"
+    ).strip().lower()
+    CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "sqlite"
+    ).strip().lower()
+    CAREER_BRIDGE_APPLICATIONS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_WORKFLOWS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS = int(
+        os.getenv(
+            "CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS",
+            os.getenv("CAREER_BRIDGE_WORKFLOW_TTL_SECONDS", str(8 * 60 * 60)),
+        )
+    )
+    # Backward-compatible alias. It now controls scratch workflows only.
+    CAREER_BRIDGE_WORKFLOW_TTL_SECONDS = CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS
+    # Zero retains application-linked workflows until explicit deletion.
+    CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS = int(
+        os.getenv("CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS", "0")
+    )
+    CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", "local"
+    ).strip().lower()
+    CAREER_BRIDGE_DOCUMENTS_BUCKET = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_BUCKET", ""
+    ).strip()
+    CAREER_BRIDGE_DOCUMENTS_PREFIX = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_PREFIX", "career-bridge"
+    ).strip("/")
+    CAREER_BRIDGE_DOCUMENTS_LOCAL_PATH = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_LOCAL_PATH", ""
+    ).strip()
+    CAREER_BRIDGE_DOCUMENTS_KMS_KEY_ID = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_KMS_KEY_ID", ""
+    ).strip()
+    # Narrow emergency/demo escape hatch. This bypasses only the Career Bridge
+    # persistence requirement; all other Réunia production safeguards remain active.
+    CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION = os.getenv(
+        "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION", "false"
+    ).strip().casefold() in {"1", "true", "yes", "on"}
+    CAREER_BRIDGE_S3_ACCESS_KEY_ID = os.getenv(
+        "CAREER_BRIDGE_S3_ACCESS_KEY_ID", ""
+    ).strip()
+    CAREER_BRIDGE_S3_SECRET_ACCESS_KEY = os.getenv(
+        "CAREER_BRIDGE_S3_SECRET_ACCESS_KEY", ""
+    ).strip()
+    CAREER_BRIDGE_S3_SESSION_TOKEN = os.getenv(
+        "CAREER_BRIDGE_S3_SESSION_TOKEN", ""
+    ).strip()
+
     # User-facing AI model presets. The Settings page displays simple capability
     # choices while the backend maps each choice to a deployment-configured model ID.
     AI_MODEL_FAST = os.getenv("AI_MODEL_FAST", "gpt-4o-mini").strip()
@@ -588,6 +645,19 @@ class ProductionConfig(BaseConfig):
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "").strip()
     REDIS_URL = os.getenv("REDIS_URL", "").strip()
 
+    # Durable Career Bridge persistence is the production baseline. Local
+    # memory/SQLite/filesystem adapters remain available only when explicitly
+    # selected together with the narrow demo-storage override.
+    CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "dynamodb"
+    ).strip().lower()
+    CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "dynamodb"
+    ).strip().lower()
+    CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", "s3"
+    ).strip().lower()
+
     USERS_TABLE_NAME = os.getenv("USERS_TABLE_NAME", "").strip()
     TRANSCRIPTS_TABLE_NAME = os.getenv("TRANSCRIPTS_TABLE_NAME", "").strip()
     ACTIONS_TABLE_NAME = os.getenv("ACTIONS_TABLE_NAME", "").strip()
@@ -596,6 +666,15 @@ class ProductionConfig(BaseConfig):
     LIVE_QA_TABLE_NAME = os.getenv("LIVE_QA_TABLE_NAME", "").strip()
     SUPPORT_REQUESTS_TABLE_NAME = os.getenv("SUPPORT_REQUESTS_TABLE_NAME", "").strip()
     KNOWLEDGE_TABLE_NAME = os.getenv("KNOWLEDGE_TABLE_NAME", "").strip()
+    CAREER_BRIDGE_APPLICATIONS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_WORKFLOWS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_DOCUMENTS_BUCKET = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_BUCKET", ""
+    ).strip()
 
     ANALYTICS_STORAGE_BACKEND = os.getenv(
         "ANALYTICS_STORAGE_BACKEND", "dynamodb"
@@ -636,6 +715,9 @@ class ProductionConfig(BaseConfig):
 
 class TestingConfig(BaseConfig):
     TESTING = True
+    CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = "memory"
+    CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = "sqlite"
+    CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND = "local"
     ANALYTICS_STORAGE_BACKEND = "memory"
     SESSION_COOKIE_SECURE = False
     PREFERRED_URL_SCHEME = "http"

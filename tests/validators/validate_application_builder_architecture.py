@@ -192,12 +192,17 @@ def validate_store_initialization() -> None:
         "Application store initialization is not idempotent.",
     )
     require(
-        builder.count("InMemoryWorkflowStore(_default_state)") == 1,
-        "Workflow store has more than one construction site.",
+        builder.count("create_workflow_store(") == 1,
+        "Workflow storage is not constructed through the configured factory.",
     )
     require(
-        builder.count("SQLiteApplicationStore(application_database_path)") == 1,
-        "Application store has more than one construction site.",
+        builder.count("create_application_store(") == 1,
+        "Application storage is not constructed through the configured factory.",
+    )
+    require(
+        "store: WorkflowStore" in builder
+        and "application_store: ApplicationStore" in builder,
+        "Builder store proxies are still annotated as concrete adapters.",
     )
 
 

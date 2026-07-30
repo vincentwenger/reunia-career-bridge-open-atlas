@@ -1,0 +1,48 @@
+DynamoDB workflow-state, TTL, and optimistic-concurrency validation
+====================================================================
+
+Implemented behavior:
+- schema-versioned canonical WorkflowState JSON serialization
+- Pydantic, dataclass, optional nested, collection, and ResumeReport round trips
+- embedded DOCX/PDF byte rejection; object keys only
+- detached in-memory load/save semantics with optimistic versions
+- strict save contract requiring expected_version and updated_by_request
+- workflow metadata keyed by hashed workflow_id
+- S3-backed serialized state bodies
+- atomic DynamoDB writes of version, updated_at, and updated_by_request
+- conditional UpdateItem for new and existing workflow versions
+- conflicts across independent repository instances sharing the same table
+- conflict diagnostics include the latest saved request ID
+- recoverable HTTP 409 conflict response with safe request references
+- conditional first-load migration of legacy items missing concurrency metadata
+- scratch/application workflow retention classification
+- scratch-only DynamoDB expires_at by default
+- retained application workflows omit expires_at
+- optional longer application-workflow TTL when explicitly configured
+- first-load removal of legacy blanket TTL from retained application workflows
+- separate S3 workflow-state prefixes for scratch lifecycle cleanup and retained application state
+- application, resume-findings, interview-preparation, and impact items contain no TTL attribute
+
+DynamoDB workflow item concurrency fields:
+- version (Number)
+- updated_at (String, UTC ISO-8601)
+- updated_by_request (String, bounded request/correlation ID)
+
+Configuration:
+- CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND=dynamodb
+- CAREER_BRIDGE_WORKFLOWS_TABLE_NAME=<table>
+- CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS=28800
+- CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS=0
+- CAREER_BRIDGE_WORKFLOW_TTL_SECONDS remains a scratch-only legacy alias
+- CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND=s3
+- CAREER_BRIDGE_DOCUMENTS_BUCKET=<bucket>
+- Workflow table partition key: workflow_id (String)
+- No sort key or GSI required
+- DynamoDB TTL attribute: expires_at (Number), present only when a workflow has a TTL policy
+
+Validation results:
+- Focused workflow persistence tests: 12 passed
+- Full unittest discovery: 108 run, 14 skipped for unavailable runtime dependencies, 0 failures
+- Application Builder architecture validator: 7/7 passed
+- Final integration-quality checks passed where runtime dependencies were available
+- Full Flask/browser suites remain blocked in this sandbox because Flask, Redis, OpenAI, and xlrd are unavailable

@@ -1,0 +1,26 @@
+DynamoDB ApplicationStore validation
+====================================
+
+Implemented operations:
+- list_for_owner
+- get
+- create
+- update
+- delete with linked-artifact cleanup
+- update_builder_progress
+- save/get_resume_findings
+- save/get_interview_preparation
+- save/get/list_impact_snapshot
+- find_snapshot
+- attach_resume_snapshot
+
+Configuration:
+- CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=dynamodb
+- CAREER_BRIDGE_APPLICATIONS_TABLE_NAME=<table>
+- Table partition key: owner_id (String)
+- Table sort key: storage_key (String)
+
+Validation results:
+- DynamoDB storage and interface contract tests: 14 passed
+- Full unittest discovery: 88 run, 14 skipped for unavailable runtime dependencies, 0 failures
+- Application Builder architecture validator: 7/7 passed

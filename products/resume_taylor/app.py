@@ -34,7 +34,6 @@ from resume_tailor.application_tracker import (
     APPLICATION_STATUS_OPTIONS,
     RESUME_VERSION_OPTIONS,
     UPCOMING_EVENT_TYPE_OPTIONS,
-    SQLiteApplicationStore,
     build_application_metrics,
     normalize_application_status,
     normalize_iso_date,
@@ -162,13 +161,30 @@ from resume_tailor.validation import (
     word_count,
 )
 from resume_tailor.web_state import (
-    InMemoryWorkflowStore,
     WorkflowStepSnapshot,
     WorkflowState,
     initial_report_fingerprint,
     normalize_job_description,
     normalize_target_title,
 )
+from resume_tailor.storage import (
+    ApplicationStore,
+    WorkflowStore,
+    WorkflowConflictError,
+    configured_application_backend,
+    configured_workflow_backend,
+    create_application_store,
+    create_workflow_store,
+    normalize_workflow_request_id,
+)
+from resume_tailor.object_storage import (
+    CareerBridgeObjectStore,
+    ObjectNotFoundError,
+    configured_document_backend,
+    create_document_store,
+    workflow_object_key,
+)
+from resume_tailor.workflow_serialization import workflow_state_fingerprint
 
 load_dotenv()
 
@@ -1938,35 +1954,186 @@ application_builder_bp = Blueprint(
 )
 
 
-store: InMemoryWorkflowStore = LocalProxy(
+store: WorkflowStore = LocalProxy(
     lambda: current_app.extensions["career_bridge_workflow_store"]
 )
-application_store: SQLiteApplicationStore = LocalProxy(
+application_store: ApplicationStore = LocalProxy(
     lambda: current_app.extensions["career_bridge_application_store"]
 )
+document_store: CareerBridgeObjectStore = LocalProxy(
+    lambda: current_app.extensions["career_bridge_document_store"]
+)
+
+
+def _persist_workflow_documents(
+    owner_id: str, workflow_key: str, workflow_state: WorkflowState
+) -> None:
+    """Externalize generated workflow documents before remote state persistence."""
+
+    documents = (
+        (
+            "final_resume_bytes",
+            "final_resume_docx_key",
+            "final_resume_docx_fingerprint",
+            "final-resume-docx",
+            workflow_state.final_report_filename or "final-resume.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ),
+        (
+            "final_resume_pdf_bytes",
+            "final_resume_pdf_key",
+            "final_resume_pdf_fingerprint",
+            "final-resume-pdf",
+            (
+                Path(workflow_state.final_report_filename).with_suffix(".pdf").name
+                if workflow_state.final_report_filename
+                else "final-resume.pdf"
+            ),
+            "application/pdf",
+        ),
+    )
+    for bytes_field, key_field, fingerprint_field, category, filename, content_type in documents:
+        content = getattr(workflow_state, bytes_field)
+        if not content:
+            continue
+        fingerprint = hashlib.sha256(content).hexdigest()
+        if (
+            getattr(workflow_state, fingerprint_field) == fingerprint
+            and getattr(workflow_state, key_field)
+        ):
+            setattr(workflow_state, bytes_field, None)
+            continue
+        object_key = workflow_object_key(
+            current_app.config,
+            owner_id,
+            workflow_key,
+            category,
+            filename,
+            fingerprint,
+        )
+        document_store.put(
+            object_key,
+            content,
+            content_type,
+            metadata={
+                "artifact-type": category,
+                "workflow-namespace": hashlib.sha256(
+                    workflow_key.encode("utf-8")
+                ).hexdigest()[:24],
+            },
+        )
+        previous_key = str(getattr(workflow_state, key_field) or "")
+        setattr(workflow_state, key_field, object_key)
+        setattr(workflow_state, fingerprint_field, fingerprint)
+        setattr(workflow_state, bytes_field, None)
+        if previous_key and previous_key != object_key:
+            document_store.delete(previous_key)
+
+
+def _delete_workflow_document_objects(
+    workflow_state: WorkflowState, *, include_source: bool = True
+) -> None:
+    """Remove current object references when a workflow/application is deleted."""
+
+    key_fields = ["final_resume_docx_key", "final_resume_pdf_key"]
+    if include_source:
+        key_fields.append("source_resume_key")
+    for key_field in key_fields:
+        object_key = str(getattr(workflow_state, key_field, "") or "")
+        if object_key:
+            document_store.delete(object_key)
+            setattr(workflow_state, key_field, "")
+
+
+def _hydrate_workflow_documents(workflow_state: WorkflowState) -> None:
+    """Load S3-backed final documents only when a workflow needs their bytes."""
+
+    for bytes_field, key_field in (
+        ("final_resume_bytes", "final_resume_docx_key"),
+        ("final_resume_pdf_bytes", "final_resume_pdf_key"),
+    ):
+        if getattr(workflow_state, bytes_field) is not None:
+            continue
+        object_key = str(getattr(workflow_state, key_field) or "")
+        if not object_key:
+            continue
+        try:
+            setattr(workflow_state, bytes_field, document_store.get(object_key))
+        except ObjectNotFoundError:
+            current_app.logger.warning(
+                "Career Bridge workflow document is missing from object storage: %s",
+                object_key,
+            )
 
 
 def application_builder_storage_status() -> dict[str, Any]:
-    """Return non-secret persistence limitations for operational health checks."""
+    """Return non-secret storage capabilities for operational health checks."""
 
+    workflow_backend = configured_workflow_backend(current_app.config)
+    application_backend = configured_application_backend(current_app.config)
+    document_backend = configured_document_backend(current_app.config)
+    fully_persistent = (
+        workflow_backend == "dynamodb"
+        and application_backend == "dynamodb"
+        and document_backend == "s3"
+    )
+    default_demo_storage = (
+        workflow_backend == "memory" and application_backend == "sqlite"
+    )
     return {
-        "workflow_storage": "memory",
-        "application_storage": "sqlite",
-        "durability": "demo-only",
-        "multi_worker_safe": False,
-        "multi_node_safe": False,
+        "workflow_storage": workflow_backend,
+        "application_storage": application_backend,
+        "document_storage": document_backend,
+        "durability": (
+            "persistent"
+            if fully_persistent
+            else "demo-only"
+            if default_demo_storage
+            else "mixed"
+        ),
+        "multi_worker_safe": fully_persistent,
+        "multi_node_safe": fully_persistent,
     }
 
 
 def init_application_builder(app: Flask) -> None:
-    """Initialize Application Builder stores directly on the Réunia app."""
+    """Initialize configured Application Builder stores on the Réunia app."""
+
+    app.config.setdefault("CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "memory")
+    app.config.setdefault("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "sqlite")
+    app.config.setdefault("CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", "local")
+    app.config.setdefault("CAREER_BRIDGE_DOCUMENTS_PREFIX", "career-bridge")
+    workflow_backend = configured_workflow_backend(app.config)
+    application_backend = configured_application_backend(app.config)
+    document_backend = configured_document_backend(app.config)
+
+    if document_backend == "local" and not str(
+        app.config.get("CAREER_BRIDGE_DOCUMENTS_LOCAL_PATH") or ""
+    ).strip():
+        app.config["CAREER_BRIDGE_DOCUMENTS_LOCAL_PATH"] = str(
+            Path(app.instance_path) / "career_bridge_documents"
+        )
+
+    if app.extensions.get("career_bridge_document_store") is None:
+        app.extensions["career_bridge_document_store"] = create_document_store(
+            app.config,
+            require_s3=(
+                workflow_backend == "dynamodb"
+                or application_backend == "dynamodb"
+            ),
+        )
 
     if app.extensions.get("career_bridge_workflow_store") is None:
-        workflow_store = InMemoryWorkflowStore(_default_state)
-        app.extensions["career_bridge_workflow_store"] = workflow_store
+        app.extensions["career_bridge_workflow_store"] = create_workflow_store(
+            app.config,
+            _default_state,
+            document_store=app.extensions["career_bridge_document_store"],
+        )
 
-    application_database_path = app.config.get("APPLICATIONS_DB_PATH")
-    if not application_database_path:
+    application_database_path = str(
+        app.config.get("APPLICATIONS_DB_PATH") or ""
+    ).strip()
+    if application_backend == "sqlite" and not application_database_path:
         if app.config.get("TESTING"):
             application_database_path = ":memory:"
         else:
@@ -1976,24 +2143,95 @@ def init_application_builder(app: Flask) -> None:
         app.config["APPLICATIONS_DB_PATH"] = application_database_path
 
     if app.extensions.get("career_bridge_application_store") is None:
-        application_store = SQLiteApplicationStore(application_database_path)
-        app.extensions["career_bridge_application_store"] = application_store
+        app.extensions["career_bridge_application_store"] = (
+            create_application_store(
+                app.config,
+                document_store=app.extensions["career_bridge_document_store"],
+            )
+        )
 
     warning_key = "career_bridge_application_builder_persistence_warning_logged"
     if not app.extensions.get(warning_key):
-        app.logger.warning(
-            "Application Builder persistence:\n"
-            "- workflow backend: process memory\n"
-            "- application backend: SQLite\n"
-            "- database path: %s\n"
-            "- safe only with one Gunicorn worker and Lightsail scale 1\n"
-            "- records may be lost during container replacement",
-            application_database_path,
-        )
+        if workflow_backend == "memory" and application_backend == "sqlite":
+            app.logger.warning(
+                "Application Builder persistence:\n"
+                "- workflow backend: process memory\n"
+                "- application backend: SQLite\n"
+                "- document backend: local filesystem\n"
+                "- database path: %s\n"
+                "- safe only with one Gunicorn worker and Lightsail scale 1\n"
+                "- records may be lost during container replacement",
+                application_database_path,
+            )
+        else:
+            app.logger.info(
+                "Application Builder storage configured: workflow=%s, "
+                "applications=%s, documents=%s",
+                workflow_backend,
+                application_backend,
+                document_backend,
+            )
         app.extensions[warning_key] = True
 
 
 def _register_application_builder_routes() -> None:
+    def workflow_conflict_response(
+        conflict: WorkflowConflictError | None = None,
+    ) -> Response:
+        """Return a recoverable 409 response for an optimistic-lock conflict."""
+
+        message = (
+            "This workflow changed in another browser tab or overlapping request. "
+            "Your conflicting update was not saved. Reload the latest workflow "
+            "state, review it, and apply the change again."
+        )
+        active_application = getattr(g, "active_application", None)
+        retry_url = (
+            url_for(
+                "application_builder.index",
+                tab="tailoring",
+                application_id=active_application.id,
+            )
+            if active_application is not None
+            else url_for("application_builder.index", tab="applications")
+        )
+        wants_json = bool(request.is_json) or (
+            request.accept_mimetypes.best == "application/json"
+            and request.accept_mimetypes["application/json"]
+            >= request.accept_mimetypes["text/html"]
+        )
+        request_id = str(getattr(g, "workflow_request_id", "") or "")
+        latest_request_id = str(
+            getattr(conflict, "actual_updated_by_request", "") or ""
+        )
+        if wants_json:
+            response = jsonify(
+                {
+                    "status": "conflict",
+                    "message": message,
+                    "retry_url": retry_url,
+                    "request_id": request_id,
+                    "current_version": getattr(conflict, "actual_version", None),
+                    "last_updated_by_request": latest_request_id,
+                }
+            )
+            response.status_code = 409
+        else:
+            response = Response(
+                render_template(
+                    "application_builder/workflow_conflict.html",
+                    active_tab="tailoring",
+                    conflict_message=message,
+                    retry_url=retry_url,
+                    conflict_request_id=request_id,
+                    latest_request_id=latest_request_id,
+                ),
+                status=409,
+                mimetype="text/html",
+            )
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     @application_builder_bp.before_request
     def load_workflow_state() -> Response | None:
         if current_app.config.get("CAREER_BRIDGE_REQUIRE_AUTH") and not session.get(
@@ -2024,7 +2262,9 @@ def _register_application_builder_routes() -> None:
             or str(session.get("active_application_id") or "").strip()
         )
         application = (
-            application_store.get(owner_id, requested_application_id)
+            application_store.get(
+                owner_id, requested_application_id, include_resume_bytes=False
+            )
             if requested_application_id
             else None
         )
@@ -2042,8 +2282,20 @@ def _register_application_builder_routes() -> None:
         session["active_workflow_key"] = workflow_key
         g.application_owner_id = owner_id
         g.active_application = application
-        g.workflow_state = store.get(workflow_key)
+        g.workflow_key = workflow_key
+        g.workflow_state_deleted = False
+        g.workflow_request_id = normalize_workflow_request_id(
+            getattr(g, "request_id", "")
+        )
+        loaded_workflow = store.load(workflow_key)
+        g.workflow_state = loaded_workflow.state
+        g.workflow_initial_version = loaded_workflow.version
+        g.workflow_initial_fingerprint = loaded_workflow.fingerprint
+        g.workflow_initial_updated_at = loaded_workflow.updated_at
+        g.workflow_initial_updated_by_request = loaded_workflow.updated_by_request
         if application is not None:
+            if not g.workflow_state.source_resume_key and application.original_resume_key:
+                g.workflow_state.source_resume_key = application.original_resume_key
             if not g.workflow_state.target_title:
                 g.workflow_state.target_title = application.role
             if not g.workflow_state.career_background.target_role:
@@ -2053,6 +2305,56 @@ def _register_application_builder_routes() -> None:
             if not g.workflow_state.job_description and application.job_description:
                 g.workflow_state.job_description = application.job_description
         return None
+
+    @application_builder_bp.after_request
+    def persist_workflow_state(response: Response) -> Response:
+        """Persist only changed state using optimistic version checking."""
+
+        workflow_key = str(getattr(g, "workflow_key", "") or "")
+        workflow_state = getattr(g, "workflow_state", None)
+        if (
+            workflow_key
+            and workflow_state is not None
+            and not bool(getattr(g, "workflow_state_deleted", False))
+        ):
+            _persist_workflow_documents(
+                str(getattr(g, "application_owner_id", "") or ""),
+                workflow_key,
+                workflow_state,
+            )
+            current_fingerprint = workflow_state_fingerprint(workflow_state)
+            initial_fingerprint = str(
+                getattr(g, "workflow_initial_fingerprint", "") or ""
+            )
+            if current_fingerprint == initial_fingerprint:
+                return response
+            try:
+                saved = store.save(
+                    workflow_key,
+                    workflow_state,
+                    expected_version=int(
+                        getattr(g, "workflow_initial_version", 0) or 0
+                    ),
+                    updated_by_request=str(
+                        getattr(g, "workflow_request_id", "") or ""
+                    ),
+                )
+            except WorkflowConflictError as exc:
+                current_app.logger.warning(
+                    "Career Bridge workflow conflict for %s: expected=%s actual=%s "
+                    "request=%s last_updated_by=%s",
+                    hashlib.sha256(workflow_key.encode("utf-8")).hexdigest()[:12],
+                    exc.expected_version,
+                    exc.actual_version,
+                    str(getattr(g, "workflow_request_id", "") or ""),
+                    exc.actual_updated_by_request,
+                )
+                return workflow_conflict_response(exc)
+            g.workflow_initial_version = saved.version
+            g.workflow_initial_fingerprint = saved.fingerprint
+            g.workflow_initial_updated_at = saved.updated_at
+            g.workflow_initial_updated_by_request = saved.updated_by_request
+        return response
 
     @application_builder_bp.context_processor
     def inject_common_template_values() -> dict[str, Any]:
@@ -2069,7 +2371,9 @@ def _register_application_builder_routes() -> None:
         }
 
     def state() -> WorkflowState:
-        return g.workflow_state
+        workflow_state = g.workflow_state
+        _hydrate_workflow_documents(workflow_state)
+        return workflow_state
 
     def update_job_fields() -> None:
         current = state()
@@ -2721,9 +3025,40 @@ def _register_application_builder_routes() -> None:
             flash(f"Could not import the resume: {exc}", "error")
             return redirect(redirect_target)
 
+        source_fingerprint = hashlib.sha256(data).hexdigest()
+        source_object_key = workflow_object_key(
+            current_app.config,
+            str(getattr(g, "application_owner_id", "") or ""),
+            str(getattr(g, "workflow_key", "") or "scratch"),
+            "original-resume",
+            filename,
+            source_fingerprint,
+        )
+        document_store.put(
+            source_object_key,
+            data,
+            uploaded.mimetype or "application/octet-stream",
+            metadata={
+                "artifact-type": "original-resume",
+                "source-fingerprint": source_fingerprint,
+            },
+        )
+        previous_source_key = current.source_resume_key
         current.source_profile = profile
         current.profile_upload_name = filename
+        current.source_resume_key = source_object_key
+        current.source_resume_fingerprint = source_fingerprint
+        active_application = getattr(g, "active_application", None)
+        if active_application is not None:
+            application_store.update_builder_progress(
+                str(getattr(g, "application_owner_id", "") or ""),
+                active_application.id,
+                workflow_step=active_application.workflow_step,
+                original_resume_key=source_object_key,
+            )
         current.clear_results()
+        if previous_source_key and previous_source_key != source_object_key:
+            document_store.delete(previous_source_key)
         flash(
             "International resume imported into the verified Candidate Profile. Previous analysis results were cleared.",
             "success",
@@ -2733,9 +3068,22 @@ def _register_application_builder_routes() -> None:
     @application_builder_bp.post("/profile/default")
     def restore_default_profile():
         current = state()
+        previous_source_key = current.source_resume_key
         current.source_profile = load_candidate_profile(DEFAULT_PROFILE_PATH)
         current.profile_upload_name = ""
+        current.source_resume_key = ""
+        current.source_resume_fingerprint = ""
+        active_application = getattr(g, "active_application", None)
+        if active_application is not None:
+            application_store.update_builder_progress(
+                str(getattr(g, "application_owner_id", "") or ""),
+                active_application.id,
+                workflow_step=active_application.workflow_step,
+                original_resume_key="",
+            )
         current.clear_results()
+        if previous_source_key:
+            document_store.delete(previous_source_key)
         flash("The bundled Candidate Profile was restored.", "success")
         return redirect(url_for("application_builder.index", tab="configuration"))
 
@@ -4132,9 +4480,10 @@ def _register_application_builder_routes() -> None:
             return None
 
     def _workflow_state_for_application(application_id: str) -> WorkflowState:
-        return store.get(
-            f"{_application_owner_id()}:application:{application_id}"
-        )
+        workflow_key = f"{_application_owner_id()}:application:{application_id}"
+        if str(getattr(g, "workflow_key", "") or "") == workflow_key:
+            return g.workflow_state
+        return store.get(workflow_key)
 
     def _resume_findings_for_application(application_id: str) -> ResumeFindingsSnapshot:
         application = application_store.get(_application_owner_id(), application_id)
@@ -4401,8 +4750,7 @@ def _register_application_builder_routes() -> None:
         if application is None:
             abort(404)
         session["active_application_id"] = application.id
-        workflow_key = f"{_application_owner_id()}:application:{application.id}"
-        current = store.get(workflow_key)
+        current = state()
         if not current.target_title:
             current.target_title = application.role
         if not current.job_description and application.job_description:
@@ -4492,6 +4840,8 @@ def _register_application_builder_routes() -> None:
                 resume_filename=resume_filename,
                 resume_bytes=current.final_resume_bytes,
                 resume_fingerprint=resume_fingerprint,
+                resume_pdf_filename=current_final_resume_filename(current, "pdf"),
+                resume_pdf_bytes=current.final_resume_pdf_bytes,
             )
             if saved is None:
                 abort(404)
@@ -4545,6 +4895,8 @@ def _register_application_builder_routes() -> None:
             resume_filename=resume_filename,
             resume_bytes=current.final_resume_bytes,
             resume_fingerprint=resume_fingerprint,
+            resume_pdf_filename=current_final_resume_filename(current, "pdf"),
+            resume_pdf_bytes=current.final_resume_pdf_bytes,
         )
         application_store.save_impact_snapshot(
             _application_owner_id(),
@@ -4637,10 +4989,20 @@ def _register_application_builder_routes() -> None:
 
     @application_builder_bp.post("/applications/<application_id>/delete")
     def delete_application_record(application_id: str):
+        workflow_key = f"{_application_owner_id()}:application:{application_id}"
+        workflow_state = store.peek(workflow_key)
         if not application_store.delete(_application_owner_id(), application_id):
             abort(404)
-        workflow_key = f"{_application_owner_id()}:application:{application_id}"
+        if workflow_state is not None:
+            _delete_workflow_document_objects(
+                workflow_state,
+                include_source=(
+                    configured_application_backend(current_app.config) != "dynamodb"
+                ),
+            )
         store.delete(workflow_key)
+        if str(getattr(g, "workflow_key", "")) == workflow_key:
+            g.workflow_state_deleted = True
         if session.get("active_application_id") == application_id:
             session.pop("active_application_id", None)
         flash("Application removed.", "success")
@@ -4695,6 +5057,27 @@ def _register_application_builder_routes() -> None:
                     **resume_export_kwargs(current),
                 )
                 current.final_resume_pdf_error = ""
+                active_application = getattr(g, "active_application", None)
+                if active_application is not None and current.final_resume_bytes is not None:
+                    application_store.attach_resume_snapshot(
+                        _application_owner_id(),
+                        active_application.id,
+                        resume_version=active_application.resume_version,
+                        resume_style=active_application.resume_style,
+                        alignment_score=active_application.alignment_score,
+                        overall_score=active_application.overall_score,
+                        resume_filename=(
+                            active_application.resume_filename
+                            or current_final_resume_filename(current, "docx")
+                        ),
+                        resume_bytes=current.final_resume_bytes,
+                        resume_fingerprint=(
+                            active_application.resume_fingerprint
+                            or hashlib.sha256(current.final_resume_bytes).hexdigest()
+                        ),
+                        resume_pdf_filename=current_final_resume_filename(current, "pdf"),
+                        resume_pdf_bytes=current.final_resume_pdf_bytes,
+                    )
             except (PdfConversionError, ValueError) as exc:
                 current.final_resume_pdf_error = str(exc)
                 flash(

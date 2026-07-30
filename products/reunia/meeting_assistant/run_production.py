@@ -23,17 +23,30 @@ def _terminate_children(signum=None, frame=None) -> None:  # pragma: no cover
             child.kill()
 
 
+def _positive_int_env(name: str, default: int) -> str:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a positive integer") from exc
+    if value < 1:
+        raise RuntimeError(f"{name} must be at least 1")
+    return str(value)
+
+
 def main() -> int:
     signal.signal(signal.SIGTERM, _terminate_children)
     signal.signal(signal.SIGINT, _terminate_children)
 
     worker = subprocess.Popen([sys.executable, "-m", "meeting_assistant.recorder_worker"])
+    gunicorn_workers = _positive_int_env("GUNICORN_WORKERS", 1)
+    gunicorn_threads = _positive_int_env("GUNICORN_THREADS", 4)
     web = subprocess.Popen(
         [
             "gunicorn",
             "--bind", "0.0.0.0:5000",
-            "--workers", "1",
-            "--threads", "4",
+            "--workers", gunicorn_workers,
+            "--threads", gunicorn_threads,
             "--timeout", os.getenv("GUNICORN_TIMEOUT", "900"),
             "wsgi:app",
         ]

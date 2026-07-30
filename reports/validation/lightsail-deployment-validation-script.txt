@@ -3,25 +3,22 @@ Date: 2026-07-30
 
 Implemented
 -----------
-- Added scripts/deployment/validate_lightsail_deployment.py.
-- Added a Windows wrapper at scripts/deployment/validate_lightsail_deployment.bat.
-- Validates the live Lightsail service scale is exactly 1.
-- Rejects any live Lightsail container command override.
-- Validates the deployment package Docker image CMD uses exactly one Gunicorn
-  worker and four threads.
-- Requires /health to return HTTP 200, status=ok, and the expected non-secret
-  Application Builder storage limitations.
-- Signs in with a dedicated validation account, obtains the shared CSRF token,
-  creates a uniquely named Job Application, retrieves it from the deployed
-  Application Builder, and removes the smoke-test record afterward.
-- Verifies docs/deployment/lightsail.md contains the prominent warning that
-  redeploying or replacing the container can erase records.
-- Added dependency-free contract and mocked end-to-end tests.
+- scripts/deployment/validate_lightsail_deployment.py and its Windows wrapper are present.
+- Requires /health to report persistent DynamoDB/DynamoDB/S3 storage by default.
+- Accepts demo storage only with the explicit validator override.
+- Enforces Lightsail scale 1 and one Gunicorn worker only for demo storage.
+- Accepts positive multi-node and multi-worker settings for persistent storage.
+- Rejects any live Lightsail container command override in every mode.
+- Validates that the image command starts Gunicorn with positive worker/thread counts.
+- Signs in with a dedicated validation account, creates and retrieves a uniquely
+  named Job Application, and removes the smoke-test record afterward.
+- Verifies the deployment documentation contains the prominent conditional
+  redeployment data-loss warning.
 
 Validation performed
 --------------------
-Command: python -m unittest discover -s tests -t . -v
-Result: 74 tests completed; 60 passed; 14 skipped; 0 failed.
+Command: python -m unittest discover -s tests -v
+Result: 142 tests completed; 126 passed; 16 skipped; 0 failed.
 
 The skipped tests require optional Flask, Redis, OpenAI, and/or XLRD runtime
 dependencies that were unavailable in the validation environment.

@@ -118,6 +118,14 @@ def _validate_dynamodb_table_configuration(app: Flask) -> None:
         ("LIVE_QA_STORAGE_BACKEND", "LIVE_QA_TABLE_NAME"),
         ("SUPPORT_STORAGE_BACKEND", "SUPPORT_REQUESTS_TABLE_NAME"),
         ("KNOWLEDGE_STORAGE_BACKEND", "KNOWLEDGE_TABLE_NAME"),
+        (
+            "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND",
+            "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME",
+        ),
+        (
+            "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND",
+            "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME",
+        ),
     )
     required.extend(
         table_variable
@@ -139,7 +147,70 @@ def _validate_dynamodb_table_configuration(app: Flask) -> None:
         )
 
 
+def _configuration_flag(value: object) -> bool:
+    """Return whether a configuration value explicitly enables a safety override."""
+
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().casefold() in {"1", "true", "yes", "on"}
+
+
+def _validate_career_bridge_production_storage(app: Flask) -> None:
+    """Reject ephemeral Application Builder persistence in production by default."""
+
+    required_backends = {
+        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
+        "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "dynamodb",
+        "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "s3",
+    }
+    required_resources = (
+        "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME",
+        "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME",
+        "CAREER_BRIDGE_DOCUMENTS_BUCKET",
+    )
+    invalid_backends = [
+        f"{key}={app.config.get(key)!r} (expected {expected!r})"
+        for key, expected in required_backends.items()
+        if str(app.config.get(key) or "").strip().casefold() != expected
+    ]
+    missing_resources = [
+        key for key in required_resources
+        if not str(app.config.get(key) or "").strip()
+    ]
+    if not invalid_backends and not missing_resources:
+        return
+
+    override_key = "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION"
+    details: list[str] = []
+    if invalid_backends:
+        details.append("unsafe backends: " + "; ".join(invalid_backends))
+    if missing_resources:
+        details.append("missing resources: " + ", ".join(missing_resources))
+    rendered_details = "; ".join(details)
+
+    if _configuration_flag(app.config.get(override_key)):
+        logger = getattr(app, "logger", None)
+        if logger is not None:
+            logger.warning(
+                "UNSAFE CAREER BRIDGE DEMO STORAGE OVERRIDE ENABLED: %s. "
+                "This deployment is demo-only, may lose records during container "
+                "replacement, and must remain at one worker and one node.",
+                rendered_details,
+            )
+        return
+
+    raise RuntimeError(
+        "Unsafe Career Bridge production persistence configuration: "
+        + rendered_details
+        + ". Production requires DynamoDB application/workflow storage and S3 "
+        "document storage with explicit table and bucket names. Set "
+        f"{override_key}=true only for an intentional demo deployment that accepts "
+        "ephemeral data and single-process limitations."
+    )
+
+
 def _validate_production_configuration(app: Flask) -> None:
+    _validate_career_bridge_production_storage(app)
     _validate_dynamodb_table_configuration(app)
     required = (
         "SECRET_KEY",
@@ -332,8 +403,26 @@ def register_application_builder(app: Flask, project_root: Path) -> None:
     app.config.setdefault("CAREER_BRIDGE_REQUIRE_AUTH", True)
     app.config.setdefault("CAREER_BRIDGE_LOGIN_URL", "/login.html")
     app.config.setdefault("CAREER_BRIDGE_HOME_URL", "/app")
+    app.config.setdefault(
+        "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND",
+        os.getenv("CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "memory")
+        .strip()
+        .lower(),
+    )
+    app.config.setdefault(
+        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND",
+        os.getenv("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "sqlite")
+        .strip()
+        .lower(),
+    )
 
-    if not str(app.config.get("APPLICATIONS_DB_PATH") or "").strip():
+    application_backend = str(
+        app.config.get("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "sqlite")
+    ).strip().lower()
+    if (
+        application_backend == "sqlite"
+        and not str(app.config.get("APPLICATIONS_DB_PATH") or "").strip()
+    ):
         configured_database_path = (
             os.getenv("CAREER_BRIDGE_APPLICATIONS_DB")
             or os.getenv("APPLICATIONS_DB_PATH")

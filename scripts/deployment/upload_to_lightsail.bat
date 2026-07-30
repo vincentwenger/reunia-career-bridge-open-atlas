@@ -6,10 +6,15 @@ set "AWS_REGION=us-west-2"
 set "LIGHTSAIL_SERVICE=reunia-career-bridge"
 set "IMAGE_NAME=reunia-career-bridge"
 set "IMAGE_LABEL=test"
-set "REQUIRED_SCALE=1"
 set "REQUIRED_COMMAND_OVERRIDE_COUNT=0"
 set "PROJECT_DIR=%~dp0..\.."
 set "DIRECTORY_PUSHED="
+set "DEMO_STORAGE=0"
+
+if /I "%CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION%"=="1" set "DEMO_STORAGE=1"
+if /I "%CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION%"=="true" set "DEMO_STORAGE=1"
+if /I "%CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION%"=="yes" set "DEMO_STORAGE=1"
+if /I "%CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION%"=="on" set "DEMO_STORAGE=1"
 
 pushd "%PROJECT_DIR%"
 if errorlevel 1 (
@@ -54,21 +59,25 @@ set /p "COMMAND_OVERRIDE_COUNT="<"%COMMAND_OVERRIDE_OUTPUT%"
 del /q "%COMMAND_OVERRIDE_OUTPUT%" >nul 2>&1
 
 if not "%COMMAND_OVERRIDE_COUNT%"=="%REQUIRED_COMMAND_OVERRIDE_COUNT%" (
-  set "FAILURE_MESSAGE=Unsafe Lightsail command override detected. Leave the container Command field empty so the Docker image starts Gunicorn with 1 worker and 4 threads."
+  set "FAILURE_MESSAGE=Unsafe Lightsail command override detected. Leave the container Command field empty so the versioned Docker image controls Gunicorn startup."
   goto :fail
 )
 
-echo [4/5] Enforcing Lightsail scale %REQUIRED_SCALE%...
-aws lightsail update-container-service ^
-  --region %AWS_REGION% ^
-  --service-name %LIGHTSAIL_SERVICE% ^
-  --scale %REQUIRED_SCALE% >nul
-if errorlevel 1 (
-  set "FAILURE_MESSAGE=Could not set the Lightsail service scale to %REQUIRED_SCALE%."
-  goto :fail
+if "%DEMO_STORAGE%"=="1" (
+  echo [4/5] Demo storage override detected; enforcing Lightsail scale 1...
+  aws lightsail update-container-service ^
+    --region %AWS_REGION% ^
+    --service-name %LIGHTSAIL_SERVICE% ^
+    --scale 1 >nul
+  if errorlevel 1 (
+    set "FAILURE_MESSAGE=Could not set the demo deployment Lightsail service scale to 1."
+    goto :fail
+  )
+) else (
+  echo [4/5] Persistent storage mode; preserving the configured Lightsail scale...
 )
 
-echo [5/5] Verifying Lightsail service scale...
+echo [5/5] Reading current Lightsail service scale...
 set "SCALE_OUTPUT=%TEMP%\reunia-lightsail-scale-%RANDOM%-%RANDOM%.txt"
 aws lightsail get-container-services ^
   --region %AWS_REGION% ^
@@ -85,16 +94,21 @@ set "ACTUAL_SCALE="
 set /p "ACTUAL_SCALE="<"%SCALE_OUTPUT%"
 del /q "%SCALE_OUTPUT%" >nul 2>&1
 
-if not "%ACTUAL_SCALE%"=="%REQUIRED_SCALE%" (
-  set "FAILURE_MESSAGE=Scale verification failed. Expected %REQUIRED_SCALE% but Lightsail returned '%ACTUAL_SCALE%'."
+if "%DEMO_STORAGE%"=="1" if not "%ACTUAL_SCALE%"=="1" (
+  set "FAILURE_MESSAGE=Demo-storage scale verification failed. Expected 1 but Lightsail returned '%ACTUAL_SCALE%'."
   goto :fail
 )
 
 popd
 set "DIRECTORY_PUSHED="
 echo.
-echo SUCCESS: Image pushed, no Lightsail command override detected, and service scale verified as %REQUIRED_SCALE%.
-echo Runtime invariant: Gunicorn workers = 1; Gunicorn threads = 4.
+echo SUCCESS: Image pushed and no Lightsail command override was detected.
+if "%DEMO_STORAGE%"=="1" (
+  echo Demo runtime invariant: Lightsail scale = 1; Gunicorn workers = 1.
+) else (
+  echo Persistent storage mode: current Lightsail scale = %ACTUAL_SCALE%.
+  echo Multiple nodes and Gunicorn workers are permitted after successful validation.
+)
 echo Public endpoint: port 8000, protocol HTTP; health check /health
 echo Next: run scripts\deployment\validate_lightsail_deployment.bat after the deployment is active.
 exit /b 0
@@ -106,11 +120,12 @@ echo ============================================================
 echo ERROR: DEPLOYMENT STOPPED
 echo %FAILURE_MESSAGE%
 echo Required deployment invariant:
-echo   Lightsail scale = 1
 echo   Lightsail Command field = empty (use the Docker image CMD)
-echo   Gunicorn workers = 1
-echo   Gunicorn threads = 4
-echo This is required because workflow state is process-local and application
-echo records use SQLite.
+if "%DEMO_STORAGE%"=="1" (
+  echo   Demo storage requires Lightsail scale = 1
+  echo   Demo storage requires Gunicorn workers = 1
+) else (
+  echo   Persistent storage requires DynamoDB application/workflow stores and S3 documents
+)
 echo ============================================================
 exit /b 1
