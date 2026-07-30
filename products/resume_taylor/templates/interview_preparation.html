@@ -28,7 +28,7 @@
   </div>
 
   {% if applications %}
-    <form method="get" action="{{ url_for('interview_preparation_workspace') }}" class="interview-selector-form">
+    <form method="get" action="{{ url_for('application_builder.interview_preparation_workspace') }}" class="interview-selector-form">
       <label for="interview-application-select">Job application</label>
       <div class="interview-selector-row">
         <select id="interview-application-select" name="application_id">
@@ -45,7 +45,7 @@
     <div class="empty-state interview-empty-state">
       <h3>Create an application first</h3>
       <p>Interview Preparation needs a company, target role, and job description from a saved application.</p>
-      <a class="button primary" href="{{ url_for('index', tab='applications') }}#new-application">Create job application</a>
+      <a class="button primary" href="{{ url_for('application_builder.index', tab='applications') }}#new-application">Create job application</a>
     </div>
   {% endif %}
 </section>
@@ -70,12 +70,22 @@
     </div>
   </article>
 
+  {% set connected_warning_count = (resume_findings.resume_report_weaknesses|length + resume_findings.evidence_review_warnings|length) if resume_findings else 0 %}
+  <article class="card interview-readiness-card {{ 'is-ready' if resume_findings and resume_findings.has_findings() else 'is-neutral' }}">
+    <span class="interview-readiness-icon" aria-hidden="true">{{ '✓' if resume_findings and resume_findings.has_findings() else '○' }}</span>
+    <div>
+      <span>Connected resume findings</span>
+      <strong>{% if resume_findings and resume_findings.has_findings() %}{{ resume_findings.unsupported_or_partial_requirements|length }} gap{% if resume_findings.unsupported_or_partial_requirements|length != 1 %}s{% endif %} · {{ connected_warning_count }} warning{% if connected_warning_count != 1 %}s{% endif %}{% else %}No saved findings yet{% endif %}</strong>
+      <p>{% if resume_findings and resume_findings.has_findings() %}Uses evidence gaps, report weaknesses, career translation, alignment changes, and excluded or questioned claims.{% else %}Complete the resume workflow to add structured findings to interview preparation.{% endif %}</p>
+    </div>
+  </article>
+
   <article class="card interview-readiness-card {% if preparation_is_stale %}is-warning{% elif preparation %}is-ready{% else %}is-neutral{% endif %}">
     <span class="interview-readiness-icon" aria-hidden="true">{% if preparation_is_stale %}↻{% elif preparation %}✓{% else %}○{% endif %}</span>
     <div>
       <span>Preparation workspace</span>
       <strong>{% if preparation_is_stale %}Update recommended{% elif preparation %}Generated{% else %}Not generated{% endif %}</strong>
-      <p>{% if preparation_is_stale %}The job description or verified evidence changed after this workspace was generated.{% elif preparation_record %}Last generated {{ preparation_record.updated_at }}.{% else %}Generate the first evidence-backed workspace for this application.{% endif %}</p>
+      <p>{% if preparation_is_stale %}The job description, verified evidence, or connected resume findings changed after this workspace was generated.{% elif preparation_record %}Last generated {{ preparation_record.updated_at }}.{% else %}Generate the first evidence-backed workspace for this application.{% endif %}</p>
     </div>
   </article>
 </section>
@@ -84,16 +94,17 @@
   <div class="interview-generation-copy">
     <span class="eyebrow">Evidence protection</span>
     <h2 id="interview-generate-title">Generate preparation for {{ selected_application.role }}</h2>
-    <p>Candidate claims are restricted to verified evidence. Job responsibilities, likely questions, and gaps are derived from the saved target job description.</p>
+    <p>Candidate claims are restricted to verified evidence. The workspace also directly uses the saved resume evidence matrix, evidence-review warnings, Career Translation Assessment, report weaknesses, alignment changes, and excluded or questioned claims.</p>
     <ul class="interview-protection-list">
       <li>No unsupported experience or credentials</li>
       <li>No immigration or visa questions</li>
       <li>Evidence references remain visible beside candidate-specific guidance</li>
+      <li>Existing resume findings drive targeted challenge and gap preparation</li>
     </ul>
   </div>
   <form
     method="post"
-    action="{{ url_for('generate_interview_preparation') }}"
+    action="{{ url_for('application_builder.generate_interview_preparation') }}"
     class="loading-form interview-generate-form"
     data-loading-title="Building interview preparation…"
     data-loading-message="The app is comparing the role with verified candidate evidence."
@@ -101,15 +112,15 @@
     data-loading-step-details="Identifying responsibilities and success expectations|Finding traceable strengths and challenge areas|Creating technical and behavioral preparation|Removing unsupported evidence references|Attaching the result to this application"
     data-loading-step-timings="5000,11000,18000,25000"
   >
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="application_id" value="{{ selected_application.id }}">
     <button class="button primary interview-generate-button" type="submit" {% if not selected_application.job_description or not evidence or not evidence.count %}disabled{% endif %}>
       {% if preparation %}Regenerate interview preparation{% else %}Generate interview preparation{% endif %}
     </button>
     {% if not selected_application.job_description %}
-      <a class="button secondary" href="{{ url_for('index', tab='applications') }}#application-{{ selected_application.id }}">Add job description</a>
+      <a class="button secondary" href="{{ url_for('application_builder.index', tab='applications') }}#application-{{ selected_application.id }}">Add job description</a>
     {% elif not evidence or not evidence.count %}
-      <a class="button secondary" href="{{ url_for('open_application_builder', application_id=selected_application.id) }}">Complete evidence confirmation</a>
+      <a class="button secondary" href="{{ url_for('application_builder.open_application_builder', application_id=selected_application.id) }}">Complete evidence confirmation</a>
     {% endif %}
   </form>
 </section>
@@ -124,7 +135,7 @@
     <div>
       <span class="eyebrow">{{ selected_application.company }} · {{ selected_application.role }}</span>
       <h2 id="interview-workspace-title">Interview preparation workspace</h2>
-      <p>Generated from the saved job description and {{ preparation_record.evidence_source_label if preparation_record else evidence.source_label }}.</p>
+      <p>Generated from the saved job description, {{ preparation_record.evidence_source_label if preparation_record else evidence.source_label }}, and the application’s structured resume findings.</p>
     </div>
     {% if preparation_is_stale %}<span class="interview-stale-badge">Inputs changed · regenerate</span>{% endif %}
   </header>

@@ -10,7 +10,9 @@ from typing import Iterable, Literal
 from docx import Document
 from pydantic import Field, field_validator
 
+from .grounding import validate_candidate_claim
 from .models import CandidateProfile, StrictModel
+from .resume_findings import ResumeFindingsSnapshot
 from .web_state import WorkflowState, normalize_job_description
 
 
@@ -147,6 +149,8 @@ Grounding rules:
 8. Keep the preparation practical and specific. Include approximately 5-7 technical questions and 5-7 behavioral questions when the job description supports them.
 9. Questions to ask the interviewer should help the candidate evaluate responsibilities, success measures, team practices, and role expectations; avoid questions already answered clearly in the posting.
 10. The personal introduction is an outline, not a fabricated script. It should be concise enough for a 60-90 second response.
+11. Treat the supplied STRUCTURED RESUME FINDINGS as authoritative workflow findings, but never treat a finding by itself as proof of candidate experience. Candidate claims still require verified evidence IDs.
+12. Do not revive excluded, unsupported, or unanswered claims. Use them only to prepare honest explanations, challenge questions, or gap-bridging actions.
 
 Return only the requested structured result."""
 
@@ -157,6 +161,7 @@ def build_interview_preparation_prompt(
     role: str,
     job_description: str,
     evidence: VerifiedEvidenceBundle,
+    resume_findings: ResumeFindingsSnapshot,
 ) -> str:
     return f"""Build the interview preparation workspace below.
 
@@ -175,6 +180,19 @@ Every candidate claim must be traceable to one or more of these exact IDs.
 ---
 {evidence.prompt_text()}
 ---
+
+STRUCTURED RESUME FINDINGS
+These findings were saved by the resume workflow for this application. Use them directly to prioritize interview preparation.
+---
+{resume_findings.prompt_text()}
+---
+
+HOW TO USE THE FINDINGS
+- Convert unsupported or partial requirements into explicit potential gaps, likely probing questions, and honest bridge plans.
+- Convert evidence-review warnings and resume-report weaknesses into targeted preparation or resume challenge areas when relevant to an interview.
+- Use Career Translation Assessment findings to prepare explanations of unfamiliar international titles, credentials, terminology, and transferable experience.
+- Use alignment changes to emphasize what improved while still preparing for the remaining weak areas.
+- Use excluded or questioned claims only as warnings about what must not be overstated or as prompts for clarification. Never present them as verified experience.
 
 SECTION REQUIREMENTS
 - Role summary: explain the role's purpose in 2-4 sentences.
@@ -370,9 +388,15 @@ def restrict_workspace_to_evidence(
     allowed_ids: Iterable[str],
     *,
     submitted_resume_ids: Iterable[str] = (),
+    evidence_by_id: dict[str, str] | None = None,
 ) -> InterviewPreparationWorkspace:
     allowed = frozenset(allowed_ids)
     submitted = frozenset(submitted_resume_ids)
+    evidence_lookup = {
+        str(evidence_id): str(text)
+        for evidence_id, text in (evidence_by_id or {}).items()
+        if str(evidence_id).strip() and str(text).strip()
+    }
 
     def clean(ids: list[str], accepted: frozenset[str] = allowed) -> list[str]:
         seen: set[str] = set()
@@ -384,13 +408,39 @@ def restrict_workspace_to_evidence(
                 seen.add(candidate)
         return cleaned
 
+    def is_grounded(text: str, ids: list[str], *, require_overlap: bool = True) -> bool:
+        if not evidence_lookup:
+            return True
+        cited_text = [evidence_lookup[evidence_id] for evidence_id in ids if evidence_id in evidence_lookup]
+        if not cited_text:
+            return False
+        return not validate_candidate_claim(
+            text,
+            cited_text,
+            require_overlap=require_overlap,
+        )
+
     for question in workspace.likely_technical_questions:
         question.evidence_ids = clean(question.evidence_ids)
+        if question.evidence_ids and not is_grounded(
+            question.answer_focus,
+            question.evidence_ids,
+            require_overlap=True,
+        ):
+            question.evidence_ids = []
+            question.answer_focus = (
+                "No verified evidence supports a specific candidate claim; prepare an honest "
+                "bridge and do not imply prior experience."
+            )
 
     grounded_behavioral: list[InterviewQuestionPlan] = []
     for question in workspace.likely_behavioral_questions:
         question.evidence_ids = clean(question.evidence_ids)
-        if question.evidence_ids:
+        if question.evidence_ids and is_grounded(
+            question.answer_focus,
+            question.evidence_ids,
+            require_overlap=True,
+        ):
             grounded_behavioral.append(question)
     workspace.likely_behavioral_questions = grounded_behavioral
 
@@ -398,20 +448,43 @@ def restrict_workspace_to_evidence(
     challenge_ids = submitted or allowed
     for point in workspace.resume_challenge_areas:
         point.evidence_ids = clean(point.evidence_ids, challenge_ids)
-        if point.evidence_ids:
+        if (
+            point.evidence_ids
+            and is_grounded(point.title, point.evidence_ids, require_overlap=False)
+            and is_grounded(point.detail, point.evidence_ids, require_overlap=True)
+        ):
             grounded_challenges.append(point)
     workspace.resume_challenge_areas = grounded_challenges
 
     grounded_strengths: list[InterviewPreparationPoint] = []
     for point in workspace.candidate_strengths:
         point.evidence_ids = clean(point.evidence_ids)
-        if point.evidence_ids:
+        if (
+            point.evidence_ids
+            and is_grounded(point.title, point.evidence_ids, require_overlap=False)
+            and is_grounded(point.detail, point.evidence_ids, require_overlap=True)
+        ):
             grounded_strengths.append(point)
     workspace.candidate_strengths = grounded_strengths
 
     workspace.personal_introduction.evidence_ids = clean(
         workspace.personal_introduction.evidence_ids
     )
+    introduction_text = " ".join(
+        (
+            workspace.personal_introduction.opening,
+            workspace.personal_introduction.current_value,
+            workspace.personal_introduction.relevant_background,
+            workspace.personal_introduction.role_connection,
+            workspace.personal_introduction.closing,
+        )
+    )
+    if workspace.personal_introduction.evidence_ids and not is_grounded(
+        introduction_text,
+        workspace.personal_introduction.evidence_ids,
+        require_overlap=True,
+    ):
+        workspace.personal_introduction.evidence_ids = []
     if not workspace.personal_introduction.evidence_ids:
         raise ValueError(
             "The generated personal introduction did not contain traceable verified evidence."

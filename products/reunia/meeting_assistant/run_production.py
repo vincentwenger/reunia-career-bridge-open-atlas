@@ -32,8 +32,8 @@ def main() -> int:
         [
             "gunicorn",
             "--bind", "0.0.0.0:5000",
-            "--workers", os.getenv("GUNICORN_WORKERS", "2"),
-            "--threads", os.getenv("GUNICORN_THREADS", "4"),
+            "--workers", "1",
+            "--threads", "4",
             "--timeout", os.getenv("GUNICORN_TIMEOUT", "900"),
             "wsgi:app",
         ]

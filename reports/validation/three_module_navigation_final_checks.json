@@ -1,0 +1,29 @@
+{
+  "generated_at_utc": "2026-07-30T02:16:24.882187+00:00",
+  "name": "Final three-module navigation and homepage validation",
+  "status": "passed",
+  "command": [
+    "python",
+    "-m",
+    "unittest",
+    "-v",
+    "tests.contracts.test_three_module_navigation"
+  ],
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "test_active_state_contract_matches_the_three_modules (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_active_state_contract_matches_the_three_modules) ... ok\ntest_admin_copy_uses_career_interview_terminology (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_admin_copy_uses_career_interview_terminology) ... ok\ntest_ai_configuration_is_account_scoped_not_builder_navigation (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_ai_configuration_is_account_scoped_not_builder_navigation) ... ok\ntest_all_navbar_copies_are_synchronized (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_all_navbar_copies_are_synchronized) ... ok\ntest_features_are_grouped_by_product_outcome (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_features_are_grouped_by_product_outcome) ... ok\ntest_home_is_not_a_fourth_primary_navigation_item (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_home_is_not_a_fourth_primary_navigation_item) ... ok\ntest_homepage_groups_the_ten_steps_under_three_modules (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_homepage_groups_the_ten_steps_under_three_modules) ... ok\ntest_live_assistance_never_reappears_in_candidate_navigation (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_live_assistance_never_reappears_in_candidate_navigation) ... ok\ntest_module_names_are_available_in_french_navigation (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_module_names_are_available_in_french_navigation) ... ok\ntest_navbar_exposes_exactly_three_product_modules (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_navbar_exposes_exactly_three_product_modules) ... ok\ntest_public_workflow_and_user_guide_use_the_same_names (tests.contracts.test_three_module_navigation.ThreeModuleNavigationContractTests.test_public_workflow_and_user_guide_use_the_same_names) ... ok\n\n----------------------------------------------------------------------\nRan 11 tests in 0.013s\n\nOK\n",
+  "checks": {
+    "candidate_primary_modules": [
+      "Build Your Application",
+      "Prepare and Practice",
+      "Improve and Take Action"
+    ],
+    "mvp_journey_removed_from_primary_nav": true,
+    "ai_configuration_location": "Account dropdown and account-settings presentation",
+    "application_builder_configuration_tab_removed": true,
+    "homepage_step_count": 10,
+    "homepage_module_group_count": 3,
+    "navbar_template_copies_synchronized": true,
+    "french_module_labels_present": true
+  }
+}

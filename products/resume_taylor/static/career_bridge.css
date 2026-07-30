@@ -1,28 +1,28 @@
 /* Application Builder integration with the shared Réunia Career Bridge shell. */
 :root {
-  --bg: #f4f8f6;
+  --bg: #f6f8fb;
   --surface: #ffffff;
-  --surface-alt: #f8fefc;
-  --text: #17342e;
-  --muted: #667a75;
-  --border: #dfe9e6;
-  --primary: #176b5a;
-  --primary-dark: #0f473c;
-  --success: #138a61;
-  --success-bg: #e8f7f1;
-  --warning: #a95f00;
+  --surface-alt: #f8fafc;
+  --text: #1f2937;
+  --muted: #64748b;
+  --border: #dce4ec;
+  --primary: #1d4e78;
+  --primary-dark: #143a5a;
+  --success: #137a58;
+  --success-bg: #e8f6ef;
+  --warning: #a15c00;
   --warning-bg: #fff4e4;
   --danger: #b42318;
   --danger-bg: #fff0ef;
-  --info: #268869;
-  --info-bg: #eef8f5;
-  --shadow: 0 16px 40px rgba(28, 70, 61, 0.08);
+  --info: #0f766e;
+  --info-bg: #e8f5f4;
+  --shadow: 0 16px 40px rgba(20, 58, 90, 0.08);
   --radius: 16px;
 }
 
 body.application-builder-body {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f4f8f6 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
   color: var(--text);
   font-family: "Segoe UI", Arial, sans-serif;
 }
@@ -38,7 +38,7 @@ body.application-builder-body {
 
 .application-builder-hero-eyebrow {
   margin: 0 0 7px !important;
-  color: #e3f4ef !important;
+  color: #e8f5f4 !important;
   font-size: 0.73rem !important;
   font-weight: 850;
   letter-spacing: 0.12em;
@@ -69,14 +69,14 @@ body.application-builder-body {
 }
 
 .application-builder-hero-button-primary {
-  color: #176b5a;
+  color: #1d4e78;
   background: #ffffff;
   box-shadow: 0 8px 20px rgba(10, 28, 23, 0.16);
 }
 
 .application-builder-hero-button-primary:hover {
   color: #155b44;
-  background: #f8fbfa;
+  background: #f8fafc;
 }
 
 .application-builder-hero-button-secondary {
@@ -97,10 +97,10 @@ body.application-builder-body {
   gap: 10px;
   margin: 0 0 22px;
   padding: 8px;
-  border: 1px solid #dce9e5;
+  border: 1px solid #dce4ec;
   border-radius: 17px;
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 32px rgba(28, 70, 61, 0.07);
+  box-shadow: 0 12px 32px rgba(20, 58, 90, 0.07);
 }
 
 .application-builder-subnav-link {
@@ -118,17 +118,17 @@ body.application-builder-body {
 }
 
 .application-builder-subnav-link:hover {
-  border-color: #d4e9e1;
-  color: #176b5a;
-  background: #f3faf7;
+  border-color: #d2e5e4;
+  color: #1d4e78;
+  background: #f3f8f8;
   transform: translateY(-1px);
 }
 
 .application-builder-subnav-link.active {
-  border-color: #b9dccf;
-  color: #176b5a;
-  background: linear-gradient(135deg, #e6f4ef, #f0f8f5);
-  box-shadow: inset 0 0 0 1px rgba(27, 130, 107, 0.04);
+  border-color: #b8d9d6;
+  color: #1d4e78;
+  background: linear-gradient(135deg, #e6f4ef, #f1f5f9);
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.04);
 }
 
 .application-builder-subnav-icon {
@@ -138,7 +138,7 @@ body.application-builder-body {
   display: inline-grid;
   place-items: center;
   border-radius: 10px;
-  color: #176b5a;
+  color: #1d4e78;
   background: #eaf6f2;
   font-size: 1rem;
   font-weight: 900;
@@ -146,8 +146,8 @@ body.application-builder-body {
 
 .application-builder-subnav-link.active .application-builder-subnav-icon {
   color: #ffffff;
-  background: linear-gradient(135deg, #176b5a, #1b826b);
-  box-shadow: 0 7px 18px rgba(23, 107, 90, 0.2);
+  background: linear-gradient(135deg, #1d4e78, #0f766e);
+  box-shadow: 0 7px 18px rgba(29, 78, 120, 0.2);
 }
 
 .application-builder-subnav-link > span:last-child {
@@ -188,8 +188,8 @@ body.application-builder-body {
 .application-builder-content .report-version-map-card,
 .application-builder-content .workflow-navigation,
 .application-builder-content .workflow-stage-intro {
-  border-color: #dfe9e6;
-  box-shadow: 0 16px 40px rgba(28, 70, 61, 0.075);
+  border-color: #dce4ec;
+  box-shadow: 0 16px 40px rgba(20, 58, 90, 0.075);
 }
 
 .application-builder-content .card,
@@ -199,24 +199,24 @@ body.application-builder-body {
 }
 
 .application-builder-content .button.primary {
-  background: linear-gradient(135deg, #176b5a, #1b826b);
-  box-shadow: 0 9px 22px rgba(23, 107, 90, 0.16);
+  background: linear-gradient(135deg, #1d4e78, #0f766e);
+  box-shadow: 0 9px 22px rgba(29, 78, 120, 0.16);
 }
 
 .application-builder-content .button.primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1b826b, #0f473c);
-  box-shadow: 0 12px 27px rgba(23, 107, 90, 0.23);
+  background: linear-gradient(135deg, #0f766e, #143a5a);
+  box-shadow: 0 12px 27px rgba(29, 78, 120, 0.23);
 }
 
 .application-builder-content .button.secondary {
   border-color: #d4e4de;
-  background: #f9fdfc;
+  background: #fbfcfe;
 }
 
 .application-builder-content .button.secondary:hover:not(:disabled) {
-  border-color: #b8dccc;
-  color: #176b5a;
-  background: #eef8f5;
+  border-color: #b9dad8;
+  color: #1d4e78;
+  background: #edf7f6;
 }
 
 .application-builder-content input[type="text"],
@@ -227,7 +227,7 @@ body.application-builder-body {
 .application-builder-content input:not([type]),
 .application-builder-content textarea,
 .application-builder-content select {
-  border-color: #d8e7e2;
+  border-color: #d7e2ea;
   border-radius: 10px;
   background: #ffffff;
 }
@@ -235,8 +235,8 @@ body.application-builder-body {
 .application-builder-content input:focus,
 .application-builder-content textarea:focus,
 .application-builder-content select:focus {
-  outline: 3px solid rgba(27, 130, 107, 0.14);
-  border-color: #1b826b;
+  outline: 3px solid rgba(15, 118, 110, 0.14);
+  border-color: #0f766e;
 }
 
 .application-builder-content .eyebrow {
@@ -245,21 +245,21 @@ body.application-builder-body {
 
 .application-builder-content .metric-card {
   border-color: #dee9e5;
-  background: linear-gradient(145deg, #ffffff, #f8fbfa);
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
 }
 
 .application-builder-content .application-status,
 .application-builder-content .workflow-range-badge,
 .application-builder-content .step-number {
-  border-color: rgba(23, 107, 90, 0.12);
+  border-color: rgba(29, 78, 120, 0.12);
 }
 
 .active-application-banner {
   margin: 0 0 20px;
-  border-color: #b9dccf;
+  border-color: #b8d9d6;
   border-radius: 15px;
-  background: linear-gradient(135deg, #f0fcf8, #fbfdfc);
-  box-shadow: 0 12px 30px rgba(28, 70, 61, 0.07);
+  background: linear-gradient(135deg, #f0fcf8, #fbfcfe);
+  box-shadow: 0 12px 30px rgba(20, 58, 90, 0.07);
 }
 
 .active-application-banner span {
@@ -272,7 +272,7 @@ body.application-builder-body {
 
 .flash-stack .alert {
   border-radius: 12px;
-  box-shadow: 0 9px 24px rgba(28, 70, 61, 0.05);
+  box-shadow: 0 9px 24px rgba(20, 58, 90, 0.05);
 }
 
 /* The old standalone topbar is intentionally no longer rendered. */
@@ -311,8 +311,8 @@ body.application-builder-body {
 .interview-generation-card,
 .interview-section-card,
 .interview-summary-card {
-  border: 1px solid #d9e8e3;
-  box-shadow: 0 12px 32px rgba(28, 70, 61, 0.06);
+  border: 1px solid #d8e3eb;
+  box-shadow: 0 12px 32px rgba(20, 58, 90, 0.06);
 }
 
 .interview-section-heading {
@@ -336,7 +336,7 @@ body.application-builder-body {
 
 .interview-readiness-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin: 18px 0;
 }
@@ -408,7 +408,7 @@ body.application-builder-body {
   align-items: center;
   margin-bottom: 22px;
   padding: 24px;
-  background: linear-gradient(135deg, #f3faf7, #ffffff);
+  background: linear-gradient(135deg, #f3f8f8, #ffffff);
 }
 
 .interview-generation-copy h2 {
@@ -559,9 +559,9 @@ body.application-builder-body {
 
 .interview-question-card {
   overflow: hidden;
-  border: 1px solid #d9e8e3;
+  border: 1px solid #d8e3eb;
   border-radius: 12px;
-  background: #fbfdfc;
+  background: #fbfcfe;
 }
 
 .interview-question-card summary {
@@ -633,13 +633,13 @@ body.application-builder-body {
   width: min(420px, 78vw);
   margin: 7px 0 0;
   padding: 10px 12px;
-  border: 1px solid #d9e8e3;
+  border: 1px solid #d8e3eb;
   border-radius: 10px;
   background: #ffffff;
   color: #3d7160;
   font-size: 0.82rem;
   line-height: 1.45;
-  box-shadow: 0 10px 24px rgba(28, 70, 61, 0.1);
+  box-shadow: 0 10px 24px rgba(20, 58, 90, 0.1);
 }
 
 .interview-evidence-none {
@@ -654,7 +654,7 @@ body.application-builder-body {
   padding: 14px;
   border: 1px solid #e0efea;
   border-radius: 12px;
-  background: #fbfdfc;
+  background: #fbfcfe;
 }
 
 .interview-point-card h4,
@@ -780,7 +780,7 @@ body.application-builder-body {
 .resume-import-card {
   border-color: #cfe8df;
   background: linear-gradient(145deg, #ffffff 0%, #f4fbf8 100%);
-  box-shadow: 0 16px 38px rgba(23, 107, 90, .09);
+  box-shadow: 0 16px 38px rgba(29, 78, 120, .09);
 }
 .resume-import-heading {
   align-items: flex-start;
@@ -797,7 +797,7 @@ body.application-builder-body {
 }
 .resume-import-status.is-ready {
   background: #def6ed;
-  color: #087054;
+  color: #137a58;
 }
 .resume-import-status.is-pending {
   background: #fff4dc;
@@ -822,7 +822,7 @@ body.application-builder-body {
   gap: 5px;
 }
 .resume-import-summary > span {
-  color: #267d69;
+  color: #0f766e;
   font-size: 10.5px;
   font-weight: 850;
   letter-spacing: .07em;
@@ -863,3 +863,5 @@ body.application-builder-body {
   .resume-import-status { justify-self: start; }
   .resume-import-form .button { width: 100%; }
 }
+
+.application-builder-inline-state{margin-bottom:18px}

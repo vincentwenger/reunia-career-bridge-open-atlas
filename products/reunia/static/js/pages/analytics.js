@@ -6,11 +6,13 @@
 
     function init() {
         $('impact-refresh')?.addEventListener('click', loadImpact);
+        $('impact-retry-button')?.addEventListener('click', loadImpact);
         loadImpact();
     }
 
     async function loadImpact() {
         setLoading(true);
+        showDashboardState('loading');
         setStatus('Loading measurable outcomes...');
         try {
             const endpoint = window.AppUI?.appUrl('/api/career/impact') || '/api/career/impact';
@@ -21,12 +23,26 @@
             const measured = Number(payload?.summary?.applications_measured || 0);
             const total = Number(payload?.summary?.applications_total || 0);
             setStatus(`${measured} of ${total} job applications currently have measurable outcome data.`);
+            showDashboardState(measured > 0 ? 'content' : 'empty');
         } catch (error) {
-            render({summary: {}, before_after: {}, interview_progress: {}, applications: [], warnings: [error.message]});
             setStatus(error.message || 'Unable to load social-impact outcomes.', true);
-            window.AppUI?.showToast(error.message || 'Unable to load social-impact outcomes.', {type: 'error'});
+            showDashboardState('error', error.message || 'Unable to load social-impact outcomes.');
         } finally {
             setLoading(false);
+        }
+    }
+
+    function showDashboardState(state, message = '') {
+        const loading = $('impact-loading-state');
+        const empty = $('impact-empty-state');
+        const error = $('impact-error-state');
+        const content = $('impact-dashboard-content');
+        [loading, empty, error].forEach(element => { if (element) element.hidden = true; });
+        if (content) content.hidden = state !== 'content';
+        if (state === 'loading' && loading) loading.hidden = false;
+        if (state === 'empty' && empty) empty.hidden = false;
+        if (state === 'error' && error) {
+            window.AppUI?.showWorkspaceState(error, {state: 'error', message});
         }
     }
 

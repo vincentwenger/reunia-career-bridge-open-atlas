@@ -1,0 +1,275 @@
+{
+  "scenario_id": "career_changer",
+  "label": "Career changer with transferable experience",
+  "profile": {
+    "name": "Amina El-Sayed",
+    "contact": {
+      "location": "Cairo, Egypt",
+      "phone": "+1 555 010 0000",
+      "email": "amina.elsayed@example.test",
+      "linkedin_label": "LinkedIn",
+      "linkedin_url": "",
+      "github_label": "GitHub",
+      "github_url": ""
+    },
+    "current_summary": "Secondary-school educator transitioning into customer success after leading learner onboarding, stakeholder communication, and progress reviews.",
+    "skills": {
+      "hard_skills": [
+        "Customer onboarding",
+        "Training design",
+        "Progress reporting"
+      ],
+      "soft_skills": [
+        "Stakeholder communication",
+        "Problem solving",
+        "Facilitation"
+      ],
+      "tools_software": [
+        "Microsoft Teams",
+        "Google Workspace"
+      ],
+      "industry_knowledge": [
+        "Education services"
+      ],
+      "languages": [
+        "Arabic",
+        "English"
+      ]
+    },
+    "education": [
+      {
+        "credential": "Bachelor of Education",
+        "institution": "Ain Shams University",
+        "location": "Cairo, Egypt",
+        "date": "2016",
+        "detail": "English language education."
+      }
+    ],
+    "experiences": [
+      {
+        "id": "EXP-TEACHING-1",
+        "employer": "Nile International School",
+        "location": "Cairo, Egypt",
+        "dates": "2016–2026",
+        "title": "English Teacher",
+        "bullets": [
+          {
+            "id": "EDU-1",
+            "text": "Designed onboarding sessions and learning plans for new students and their families."
+          },
+          {
+            "id": "EDU-2",
+            "text": "Led quarterly progress reviews with families, teachers, and school leadership to resolve concerns."
+          },
+          {
+            "id": "EDU-3",
+            "text": "Created training materials and facilitated workshops for teachers adopting new classroom tools."
+          },
+          {
+            "id": "EDU-4",
+            "text": "Tracked onboarding participation and adoption progress for new students using structured progress reports."
+          },
+          {
+            "id": "EDU-5",
+            "text": "Responded to stakeholder questions and coordinated follow-up actions across families and school teams."
+          },
+          {
+            "id": "EDU-6",
+            "text": "Maintained accurate learner records in the school information system and escalated data issues."
+          }
+        ]
+      }
+    ],
+    "supplemental_evidence": []
+  },
+  "career_background": {
+    "countries_worked": [
+      "Egypt"
+    ],
+    "industries": [
+      "Education"
+    ],
+    "roles": [
+      "English Teacher"
+    ],
+    "languages": [
+      "Arabic",
+      "English"
+    ],
+    "target_country": "United States",
+    "target_role": "Customer Success Manager",
+    "international_credentials": [
+      "Bachelor of Education"
+    ],
+    "professional_certifications": [],
+    "unfamiliar_job_titles": [],
+    "career_transitions": [
+      "Education to customer success"
+    ],
+    "us_employment_experience": "No U.S. employment experience."
+  },
+  "job_description": "LearningCloud is hiring a Customer Success Manager.\n\nKey requirements:\n- Lead customer onboarding and adoption programs\n- Run stakeholder progress reviews and resolve concerns\n- Maintain customer activity in Salesforce CRM\n\nCandidates should present only experience and qualifications they can verify.",
+  "job_analysis": {
+    "target_title": "Customer Success Manager",
+    "target_company": "LearningCloud",
+    "requirements": [
+      {
+        "id": "REQ-1",
+        "category": "responsibility",
+        "priority": "critical",
+        "requirement": "Lead customer onboarding and adoption programs",
+        "keywords": [
+          "customer onboarding",
+          "adoption programs"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "category": "responsibility",
+        "priority": "important",
+        "requirement": "Run stakeholder progress reviews and resolve concerns",
+        "keywords": [
+          "stakeholder",
+          "progress reviews",
+          "resolve concerns"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "category": "technical_skill",
+        "priority": "secondary",
+        "requirement": "Maintain customer activity in Salesforce CRM",
+        "keywords": [
+          "Salesforce",
+          "CRM"
+        ]
+      }
+    ],
+    "ignored_boilerplate": []
+  },
+  "proposal": {
+    "professional_summary": "Educator transitioning into customer success with verified experience designing onboarding, leading stakeholder progress reviews, and resolving participant concerns. Has documented strengths in training design, facilitation, and cross-functional communication across students, families, teachers, and school leaders. Offers credible transferable evidence for customer adoption work while treating Salesforce CRM experience as a learning need instead of an existing capability.",
+    "skills": {
+      "hard_skills": [
+        "Customer onboarding",
+        "Training design",
+        "Progress reporting"
+      ],
+      "soft_skills": [
+        "Stakeholder communication",
+        "Problem solving",
+        "Facilitation"
+      ],
+      "tools_software": [
+        "Microsoft Teams",
+        "Google Workspace"
+      ],
+      "industry_knowledge": [
+        "Education services"
+      ]
+    },
+    "bullet_proposals": [
+      {
+        "source_bullet_id": "EDU-1",
+        "include": true,
+        "proposed_text": "Designed onboarding sessions and learning plans for new students and their families.",
+        "matched_requirement_ids": [
+          "REQ-1"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "EDU-2",
+        "include": true,
+        "proposed_text": "Led quarterly progress reviews with families, teachers, and school leadership to resolve concerns.",
+        "matched_requirement_ids": [
+          "REQ-2"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "EDU-3",
+        "include": true,
+        "proposed_text": "Created training materials and facilitated workshops for teachers adopting new classroom tools.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "EDU-4",
+        "include": true,
+        "proposed_text": "Tracked onboarding participation and adoption progress for new students using structured progress reports.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "EDU-5",
+        "include": true,
+        "proposed_text": "Responded to stakeholder questions and coordinated follow-up actions across families and school teams.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "EDU-6",
+        "include": true,
+        "proposed_text": "Maintained accurate learner records in the school information system and escalated data issues.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "requirement_id": "REQ-1",
+        "status": "supported",
+        "evidence_ids": [
+          "EDU-1"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-2",
+        "status": "supported",
+        "evidence_ids": [
+          "EDU-2"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-3",
+        "status": "unsupported",
+        "evidence_ids": [],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      }
+    ],
+    "unsupported_requirements": [
+      "Maintain customer activity in Salesforce CRM"
+    ],
+    "candidate_questions": [],
+    "career_translation_assessment": {
+      "summary": "",
+      "target_country": "",
+      "target_role": "",
+      "findings": []
+    }
+  },
+  "expectations": {
+    "expected_findings": [
+      {
+        "category": "credential_explanation",
+        "source_text": "Bachelor of Education",
+        "disposition": "confirmed_experience"
+      },
+      {
+        "category": "unsupported_requirement",
+        "source_text": "Maintain customer activity in Salesforce CRM",
+        "disposition": "recommended_learning_or_future_action"
+      }
+    ],
+    "expected_min_transferable_findings": 2,
+    "expected_hard_blockers": 0,
+    "forbidden_evidence_phrases": [
+      "Education to customer success",
+      "No U.S. employment experience."
+    ],
+    "unicode_tokens": []
+  }
+}

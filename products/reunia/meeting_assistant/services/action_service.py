@@ -53,6 +53,35 @@ _SOURCE_LABELS = {
 }
 
 
+def _safe_interview_practice_action(
+    value: str,
+    *,
+    answer_text: str,
+    question_number: str,
+) -> str:
+    fallback = (
+        f"Review weak interview answer {question_number} using one confirmed example and a clear result"
+        if question_number
+        else "Review the weak interview answer using one confirmed example and a clear result"
+    )
+    candidate = str(value or "").strip()
+    if not candidate:
+        return fallback
+    try:
+        from resume_tailor.grounding import validate_candidate_claim  # type: ignore
+
+        findings = validate_candidate_claim(
+            candidate,
+            [answer_text],
+            require_overlap=False,
+        )
+        return fallback if findings else candidate
+    except Exception:
+        # Do not republish model-generated candidate claims when the shared
+        # grounding validator is unavailable.
+        return fallback
+
+
 class ActionService:
     """Build and manage the application-linked Career Action Plan.
 
@@ -770,9 +799,14 @@ class ActionService:
                 question = str(
                     _unwrap_scalar(answer_value.get("question")) or ""
                 ).strip()
-                if not practice:
-                    answer_label = f" {question_number}" if question_number else ""
-                    practice = f"Review weak interview answer{answer_label}"
+                answer_text = str(
+                    _unwrap_scalar(answer_value.get("answer")) or ""
+                ).strip()
+                practice = _safe_interview_practice_action(
+                    practice,
+                    answer_text=answer_text,
+                    question_number=question_number,
+                )
                 low_answers.append((score, question_number, question, practice))
             low_answers.sort(key=lambda item: item[0])
             for score, question_number, question, practice in low_answers[:3]:

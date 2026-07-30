@@ -18,8 +18,8 @@
             background: white;
             border-radius: 28px;
             overflow: hidden;
-            box-shadow: 0 24px 60px rgba(23, 107, 90, 0.18);
-            border: 1px solid #eff6f4;
+            box-shadow: 0 24px 60px rgba(29, 78, 120, 0.18);
+            border: 1px solid #f1f5f9;
         }
 
         .auth-brand-panel {
@@ -28,7 +28,7 @@
             color: white;
             background:
                 radial-gradient(circle at top right, rgba(255,255,255,0.24), transparent 34%),
-                linear-gradient(135deg, #176b5a, #1b826b);
+                linear-gradient(135deg, #1d4e78, #0f766e);
             overflow: hidden;
         }
 
@@ -135,13 +135,13 @@
         .auth-header h2 {
             margin: 0;
             font-size: 34px;
-            color: #18231f;
+            color: #27364a;
             letter-spacing: -0.03em;
         }
 
         .auth-header p {
             margin: 10px 0 0 0;
-            color: #707d79;
+            color: #64748b;
             font-size: 15px;
             line-height: 1.6;
         }
@@ -150,7 +150,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
-            background: #f2f8f6;
+            background: #f3f7fa;
             padding: 6px;
             border-radius: 16px;
             margin-bottom: 28px;
@@ -180,14 +180,14 @@
             border-radius: 12px;
             cursor: pointer;
             font-weight: 800;
-            color: #697b77;
+            color: #64748b;
             transition: 0.2s;
         }
 
         .toggle-tab.active {
             background: white;
-            color: #176b5a;
-            box-shadow: 0 6px 16px rgba(23, 107, 90, 0.12);
+            color: #1d4e78;
+            box-shadow: 0 6px 16px rgba(29, 78, 120, 0.12);
         }
 
         .input-wrapper {
@@ -200,7 +200,7 @@
         }
 
         .form-input.success {
-            border-color: #35a487;
+            border-color: #137a58;
             background: #f0fdfa;
         }
 
@@ -212,7 +212,7 @@
             border: none;
             background: transparent;
             cursor: pointer;
-            color: #697b77;
+            color: #64748b;
             font-weight: 700;
             font-size: 12px;
         }
@@ -238,7 +238,7 @@
             border-radius: 14px;
             cursor: pointer;
             color: white;
-            background: linear-gradient(135deg, #176b5a, #1b826b);
+            background: linear-gradient(135deg, #1d4e78, #0f766e);
             box-shadow: 0 10px 24px rgba(26,188,156,0.28);
             transition: 0.25s;
             margin-top: 8px;
@@ -250,19 +250,19 @@
         }
 
         .submit-btn.dark {
-            background: linear-gradient(135deg, #176b5a, #1b826b);
-            box-shadow: 0 10px 24px rgba(27, 130, 107,0.28);
+            background: linear-gradient(135deg, #1d4e78, #0f766e);
+            box-shadow: 0 10px 24px rgba(15, 118, 110,0.28);
         }
 
         .submit-btn.dark:hover {
-            box-shadow: 0 14px 30px rgba(27, 130, 107,0.36);
+            box-shadow: 0 14px 30px rgba(15, 118, 110,0.36);
         }
 
         .switch-prompt {
             text-align: center;
             margin-top: 22px;
             font-size: 14px;
-            color: #697b77;
+            color: #64748b;
         }
 
         .forgot-password-row {
@@ -273,7 +273,7 @@
 
         .forgot-password-row a,
         .recovery-link {
-            color: #1b826b;
+            color: #0f766e;
             font-size: 14px;
             font-weight: 800;
             text-decoration: none;
@@ -304,7 +304,7 @@
         }
 
         .switch-link {
-            color: #1b826b;
+            color: #0f766e;
             text-decoration: none;
             font-weight: 800;
         }
@@ -317,15 +317,15 @@
             margin-top: 24px;
             padding: 14px;
             border-radius: 14px;
-            background: #f8fcfb;
-            border: 1px solid #eff6f4;
-            color: #697b77;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
+            color: #64748b;
             font-size: 13px;
             line-height: 1.6;
         }
 
         .security-note strong {
-            color: #176b5a;
+            color: #1d4e78;
         }
 
         @media (max-width: 980px) {

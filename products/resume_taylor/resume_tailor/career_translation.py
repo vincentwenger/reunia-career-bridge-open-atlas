@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 
+from .grounding import validate_candidate_claim
 from .models import (
     CandidateProfile,
     CareerTranslationAssessment,
@@ -53,6 +54,41 @@ def _finding_key(finding: CareerTranslationFinding) -> tuple[str, str]:
 
 def _profile_contains(profile: CandidateProfile, value: str) -> bool:
     return bool(value.strip()) and _normalized(value) in _normalized(profile.all_source_text())
+
+
+def _evidence_text_lookup(profile: CandidateProfile) -> dict[str, str]:
+    lookup: dict[str, str] = {"CANDIDATE-PROFILE": profile.all_source_text()}
+    for experience in profile.experiences:
+        lookup[experience.id] = " ".join(
+            value
+            for value in (
+                experience.title,
+                experience.employer,
+                experience.location,
+                experience.dates,
+                *(bullet.text for bullet in experience.bullets),
+            )
+            if value.strip()
+        )
+        for bullet in experience.bullets:
+            lookup[bullet.id] = bullet.text
+    for index, education in enumerate(profile.education, start=1):
+        lookup[f"EDUCATION-{index}"] = " ".join(
+            value
+            for value in (
+                education.credential,
+                education.institution,
+                education.location,
+                education.date,
+                education.detail,
+            )
+            if value.strip()
+        )
+    for item in profile.supplemental_evidence:
+        lookup[item.id] = " ".join(
+            value for value in (item.statement, *item.verified_skills) if value.strip()
+        )
+    return lookup
 
 
 def _valid_evidence_ids(profile: CandidateProfile) -> set[str]:
@@ -110,6 +146,15 @@ def ensure_career_translation_assessment(
     assessment.target_role = assessment.target_role or context.target_role or analysis.target_title
 
     valid_ids = _valid_evidence_ids(profile)
+    evidence_lookup = _evidence_text_lookup(profile)
+    job_context = "\n".join(
+        [
+            analysis.target_title,
+            analysis.target_company,
+            *(requirement.requirement for requirement in analysis.requirements),
+            *(keyword for requirement in analysis.requirements for keyword in requirement.keywords),
+        ]
+    )
     protected_findings: list[CareerTranslationFinding] = []
     for finding in assessment.findings:
         protected = finding.model_copy(deep=True)
@@ -134,6 +179,48 @@ def ensure_career_translation_assessment(
                 protected.recommended_action = (
                     protected.recommended_action
                     or "Confirm the exact fact and attach it to a documented role before using it."
+                )
+
+        if protected.disposition in {"confirmed_experience", "reasonable_rephrasing"}:
+            cited_evidence = [
+                evidence_lookup[evidence_id]
+                for evidence_id in protected.evidence_ids
+                if evidence_id in evidence_lookup
+            ]
+            source_findings = validate_candidate_claim(
+                protected.source_text,
+                cited_evidence,
+                require_overlap=True,
+            ) if cited_evidence else []
+            translation_findings = validate_candidate_claim(
+                protected.translated_meaning,
+                cited_evidence,
+                context_texts=[job_context],
+                allow_gap_context=False,
+                require_overlap=True,
+            ) if cited_evidence and protected.translated_meaning.strip() else []
+            if not cited_evidence or source_findings or translation_findings:
+                protected.disposition = "user_clarification_required"
+                protected.evidence_ids = []
+                protected.translated_meaning = (
+                    "This proposed translation or interpretation requires candidate confirmation "
+                    "before it can shape resume or interview wording."
+                )
+                protected.rationale = (
+                    "The generated interpretation was not fully traceable to the cited Candidate "
+                    "Profile evidence."
+                )
+                protected.recommended_action = (
+                    "Confirm the official wording, factual responsibilities, and closest target-market "
+                    "explanation before using it."
+                )
+            else:
+                protected.rationale = (
+                    "The source wording and evidence IDs are present in the verified Candidate "
+                    "Profile; any explanation must preserve those facts."
+                )
+                protected.recommended_action = (
+                    "Keep official facts unchanged and use only the evidence-supported explanation."
                 )
         protected_findings.append(protected)
     assessment.findings = protected_findings
@@ -342,11 +429,10 @@ def ensure_career_translation_assessment(
         )
 
     counts = Counter(item.disposition for item in assessment.findings)
-    base_summary = assessment.summary.split(" Evidence protection result:", 1)[0].strip()
-    if not base_summary:
-        base_summary = (
-            "Career Bridge reviewed how the candidate's titles, credentials, terminology, accomplishments, and transferable skills may be interpreted in the target market."
-        )
+    base_summary = (
+        "Career Bridge reviewed documented titles, credentials, terminology, accomplishments, "
+        "and transferable skills while keeping unsupported interpretations outside candidate claims."
+    )
     assessment.summary = (
         base_summary
         + " Evidence protection result: "

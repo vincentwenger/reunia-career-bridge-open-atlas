@@ -152,6 +152,23 @@ class ApplicationRecord:
 
 
 @dataclass(frozen=True)
+class ResumeFindingsRecord:
+    application_id: str
+    owner_id: str
+    snapshot_json: str
+    fingerprint: str
+    created_at: str
+    updated_at: str
+
+    def payload(self) -> dict[str, object]:
+        try:
+            value = json.loads(self.snapshot_json)
+        except (TypeError, json.JSONDecodeError):
+            return {}
+        return value if isinstance(value, dict) else {}
+
+
+@dataclass(frozen=True)
 class InterviewPreparationRecord:
     application_id: str
     owner_id: str
@@ -160,6 +177,8 @@ class InterviewPreparationRecord:
     evidence_fingerprint: str
     evidence_source_label: str
     evidence_snapshot_json: str
+    resume_findings_fingerprint: str
+    resume_findings_snapshot_json: str
     model_name: str
     created_at: str
     updated_at: str
@@ -353,6 +372,8 @@ class SQLiteApplicationStore:
                     evidence_fingerprint TEXT NOT NULL,
                     evidence_source_label TEXT NOT NULL DEFAULT '',
                     evidence_snapshot_json TEXT NOT NULL DEFAULT '{}',
+                    resume_findings_fingerprint TEXT NOT NULL DEFAULT '',
+                    resume_findings_snapshot_json TEXT NOT NULL DEFAULT '{}',
                     model_name TEXT NOT NULL DEFAULT '',
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
@@ -360,6 +381,17 @@ class SQLiteApplicationStore:
                 );
                 CREATE INDEX IF NOT EXISTS interview_preparations_owner_updated_idx
                     ON interview_preparations(owner_id, updated_at DESC);
+                CREATE TABLE IF NOT EXISTS application_resume_findings (
+                    application_id TEXT PRIMARY KEY,
+                    owner_id TEXT NOT NULL,
+                    snapshot_json TEXT NOT NULL DEFAULT '{}',
+                    fingerprint TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(application_id) REFERENCES applications(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS application_resume_findings_owner_updated_idx
+                    ON application_resume_findings(owner_id, updated_at DESC);
                 CREATE TABLE IF NOT EXISTS application_impact_snapshots (
                     application_id TEXT PRIMARY KEY,
                     owner_id TEXT NOT NULL,
@@ -407,6 +439,16 @@ class SQLiteApplicationStore:
                 self._connection.execute(
                     "ALTER TABLE interview_preparations "
                     "ADD COLUMN evidence_snapshot_json TEXT NOT NULL DEFAULT '{}'"
+                )
+            if "resume_findings_fingerprint" not in preparation_columns:
+                self._connection.execute(
+                    "ALTER TABLE interview_preparations "
+                    "ADD COLUMN resume_findings_fingerprint TEXT NOT NULL DEFAULT ''"
+                )
+            if "resume_findings_snapshot_json" not in preparation_columns:
+                self._connection.execute(
+                    "ALTER TABLE interview_preparations "
+                    "ADD COLUMN resume_findings_snapshot_json TEXT NOT NULL DEFAULT '{}'"
                 )
 
             for legacy, canonical in _APPLICATION_STATUS_ALIASES.items():
@@ -480,6 +522,68 @@ class SQLiteApplicationStore:
             ).fetchone()
         return self._row_to_record(row) if row else None
 
+    def get_resume_findings(
+        self, owner_id: str, application_id: str
+    ) -> ResumeFindingsRecord | None:
+        with self._lock:
+            row = self._connection.execute(
+                """
+                SELECT * FROM application_resume_findings
+                WHERE owner_id = ? AND application_id = ?
+                """,
+                (owner_id, application_id),
+            ).fetchone()
+        if row is None:
+            return None
+        return ResumeFindingsRecord(
+            application_id=row["application_id"],
+            owner_id=row["owner_id"],
+            snapshot_json=row["snapshot_json"],
+            fingerprint=row["fingerprint"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    def save_resume_findings(
+        self,
+        owner_id: str,
+        application_id: str,
+        *,
+        snapshot_json: str,
+        fingerprint: str,
+    ) -> ResumeFindingsRecord:
+        if self.get(owner_id, application_id) is None:
+            raise ValueError("The selected application does not exist.")
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        existing = self.get_resume_findings(owner_id, application_id)
+        created_at = existing.created_at if existing is not None else now
+        with self._lock, self._connection:
+            self._connection.execute(
+                """
+                INSERT INTO application_resume_findings (
+                    application_id, owner_id, snapshot_json, fingerprint,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(application_id) DO UPDATE SET
+                    owner_id = excluded.owner_id,
+                    snapshot_json = excluded.snapshot_json,
+                    fingerprint = excluded.fingerprint,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    application_id,
+                    owner_id,
+                    snapshot_json,
+                    fingerprint.strip(),
+                    created_at,
+                    now,
+                ),
+            )
+        saved = self.get_resume_findings(owner_id, application_id)
+        if saved is None:  # pragma: no cover
+            raise RuntimeError("The resume findings snapshot was not saved.")
+        return saved
+
     def get_interview_preparation(
         self, owner_id: str, application_id: str
     ) -> InterviewPreparationRecord | None:
@@ -501,6 +605,8 @@ class SQLiteApplicationStore:
             evidence_fingerprint=row["evidence_fingerprint"],
             evidence_source_label=row["evidence_source_label"],
             evidence_snapshot_json=row["evidence_snapshot_json"],
+            resume_findings_fingerprint=row["resume_findings_fingerprint"],
+            resume_findings_snapshot_json=row["resume_findings_snapshot_json"],
             model_name=row["model_name"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
@@ -516,6 +622,8 @@ class SQLiteApplicationStore:
         evidence_fingerprint: str,
         evidence_source_label: str,
         evidence_snapshot_json: str,
+        resume_findings_fingerprint: str,
+        resume_findings_snapshot_json: str,
         model_name: str,
     ) -> InterviewPreparationRecord:
         application = self.get(owner_id, application_id)
@@ -530,9 +638,10 @@ class SQLiteApplicationStore:
                 INSERT INTO interview_preparations (
                     application_id, owner_id, content_json,
                     job_description_fingerprint, evidence_fingerprint,
-                    evidence_source_label, evidence_snapshot_json, model_name,
+                    evidence_source_label, evidence_snapshot_json,
+                    resume_findings_fingerprint, resume_findings_snapshot_json, model_name,
                     created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(application_id) DO UPDATE SET
                     owner_id = excluded.owner_id,
                     content_json = excluded.content_json,
@@ -540,6 +649,8 @@ class SQLiteApplicationStore:
                     evidence_fingerprint = excluded.evidence_fingerprint,
                     evidence_source_label = excluded.evidence_source_label,
                     evidence_snapshot_json = excluded.evidence_snapshot_json,
+                    resume_findings_fingerprint = excluded.resume_findings_fingerprint,
+                    resume_findings_snapshot_json = excluded.resume_findings_snapshot_json,
                     model_name = excluded.model_name,
                     updated_at = excluded.updated_at
                 """,
@@ -551,6 +662,8 @@ class SQLiteApplicationStore:
                     evidence_fingerprint,
                     evidence_source_label.strip(),
                     evidence_snapshot_json,
+                    resume_findings_fingerprint.strip(),
+                    resume_findings_snapshot_json,
                     model_name.strip(),
                     created_at,
                     now,

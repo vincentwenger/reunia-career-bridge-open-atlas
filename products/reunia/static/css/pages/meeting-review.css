@@ -18,21 +18,21 @@
             background: white;
             border-radius: 22px;
             box-shadow: 0 12px 35px rgba(0,0,0,0.08);
-            border: 1px solid #eff6f4;
+            border: 1px solid #f1f5f9;
             overflow: hidden;
         }
 
         .panel-header,
         .section-header {
             padding: 22px 24px;
-            border-bottom: 1px solid #eff6f4;
-            background: #f8fcfb;
+            border-bottom: 1px solid #f1f5f9;
+            background: #f8fafc;
         }
 
         .panel-header h2,
         .section-header h3 {
             margin: 0;
-            color: #18231f;
+            color: #27364a;
         }
 
         .panel-header h2 {
@@ -46,21 +46,21 @@
         .panel-header p,
         .section-header p {
             margin: 6px 0 0 0;
-            color: #707d79;
+            color: #64748b;
             font-size: 14px;
         }
 
         .search-wrapper {
             padding: 18px;
-            border-bottom: 1px solid #eff6f4;
+            border-bottom: 1px solid #f1f5f9;
             background: white;
         }
 
         .search-input,
         .transcript-search-input {
             width: 100%;
-            border: 1px solid #d8e7e2;
-            background: #f8fcfb;
+            border: 1px solid #d7e2ea;
+            background: #f8fafc;
             padding: 13px 14px;
             border-radius: 12px;
             font-size: 14px;
@@ -70,9 +70,9 @@
 
         .search-input:focus,
         .transcript-search-input:focus {
-            border-color: #1b826b;
+            border-color: #0f766e;
             background: white;
-            box-shadow: 0 0 0 4px rgba(27, 130, 107,0.12);
+            box-shadow: 0 0 0 4px rgba(15, 118, 110,0.12);
         }
 
         /*
@@ -101,17 +101,17 @@
             grid-template-columns: minmax(0, 1fr) auto;
             align-items: stretch;
             background: white;
-            border-bottom: 1px solid #eff6f4;
+            border-bottom: 1px solid #f1f5f9;
             transition: 0.2s;
         }
 
         .meeting-list-item:hover {
-            background: #f8fbfa;
+            background: #f8fafc;
         }
 
         .meeting-list-item.selected-row {
             background: #edfcf7;
-            box-shadow: inset 5px 0 0 #1b826b;
+            box-shadow: inset 5px 0 0 #0f766e;
         }
 
         .meeting-row {
@@ -152,15 +152,15 @@
         }
 
         .meeting-edit-button {
-            border: 1px solid #c6e8de;
-            background: #f0f8f5;
-            color: #176b5a;
+            border: 1px solid #c9e5e3;
+            background: #f1f5f9;
+            color: #1d4e78;
         }
 
         .meeting-edit-button:hover,
         .meeting-edit-button:focus-visible {
-            background: #e3f4ef;
-            border-color: #8fd3bd;
+            background: #e8f5f4;
+            border-color: #8bc9c4;
             color: #2e9f7e;
             outline: none;
             transform: translateY(-1px);
@@ -204,7 +204,7 @@
             padding: 0 12px;
             border: 1px solid #d1d5db;
             background: #f9fafb;
-            color: #56625e;
+            color: #64748b;
         }
 
         .meeting-cancel-button:hover,
@@ -266,7 +266,7 @@
 
         .meeting-edit-label {
             display: block;
-            color: #56625e;
+            color: #64748b;
             font-size: 12px;
             font-weight: 800;
             margin-bottom: 6px;
@@ -277,9 +277,9 @@
         .meeting-name-input,
         .meeting-summary-input {
             width: 100%;
-            border: 1px solid #8fd3bd;
+            border: 1px solid #8bc9c4;
             background: white;
-            color: #18231f;
+            color: #27364a;
             padding: 10px 12px;
             border-radius: 10px;
             font-size: 14px;
@@ -301,13 +301,13 @@
 
         .meeting-name-input:focus,
         .meeting-summary-input:focus {
-            border-color: #1b826b;
-            box-shadow: 0 0 0 4px rgba(27, 130, 107,0.12);
+            border-color: #0f766e;
+            box-shadow: 0 0 0 4px rgba(15, 118, 110,0.12);
         }
 
         .meeting-edit-help {
             display: block;
-            color: #707d79;
+            color: #64748b;
             font-size: 12px;
             margin-top: 7px;
             line-height: 1.4;
@@ -324,7 +324,7 @@
         .meeting-date,
         .summary-date {
             display: inline-block;
-            color: #1b7864;
+            color: #0f766e;
             background: #e6f5f1;
             padding: 7px 11px;
             border-radius: 999px;
@@ -340,14 +340,14 @@
         .meeting-name {
             display: block;
             font-weight: 700;
-            color: #18231f;
+            color: #27364a;
             font-size: 15px;
             line-height: 1.4;
         }
 
         .meeting-preview {
             display: block;
-            color: #707d79;
+            color: #64748b;
             font-size: 13px;
             margin-top: 7px;
             line-height: 1.5;
@@ -368,7 +368,7 @@
             gap: 22px;
         }
 .btn-secondary {
-            background: #176b5a;
+            background: #1d4e78;
             color: white;
             border: none;
             padding: 10px 14px;
@@ -381,7 +381,7 @@
         }
 
         .btn-secondary:hover {
-            background: #1b826b;
+            background: #0f766e;
             transform: translateY(-1px);
         }
 
@@ -395,7 +395,7 @@
         }
 
         .score-green {
-            background: linear-gradient(135deg, #176b5a 0%, #1b826b 100%);
+            background: linear-gradient(135deg, #1d4e78 0%, #0f766e 100%);
         }
 
         .score-orange {
@@ -407,7 +407,7 @@
         }
 
         .text-score-green {
-            color: #1b826b !important;
+            color: #0f766e !important;
             background: #d1fae5;
         }
 
@@ -463,14 +463,14 @@
             display: block;
             font-size: 36px;
             font-weight: 900;
-            color: #18231f;
+            color: #27364a;
             line-height: 1;
         }
 
         .score-label {
             display: block;
             margin-top: 6px;
-            color: #707d79;
+            color: #64748b;
             font-size: 12px;
             font-weight: 800;
             text-transform: uppercase;
@@ -485,8 +485,8 @@
             display: flex;
             gap: 8px;
             padding: 14px;
-            background: #f8fcfb;
-            border-bottom: 1px solid #eff6f4;
+            background: #f8fafc;
+            border-bottom: 1px solid #f1f5f9;
             flex-wrap: wrap;
             position: sticky;
             top: 0;
@@ -494,9 +494,9 @@
         }
 
         .tab-button {
-            border: 1px solid #d8e7e2;
+            border: 1px solid #d7e2ea;
             background: white;
-            color: #56625e;
+            color: #64748b;
             padding: 11px 16px;
             border-radius: 999px;
             font-size: 14px;
@@ -506,15 +506,15 @@
         }
 
         .tab-button:hover {
-            background: #edf8f4;
-            color: #176b5a;
+            background: #edf7f6;
+            color: #1d4e78;
         }
 
         .tab-button.active {
-            background: #176b5a;
+            background: #1d4e78;
             color: white;
-            border-color: #176b5a;
-            box-shadow: 0 10px 24px rgba(23, 107, 90,0.22);
+            border-color: #1d4e78;
+            box-shadow: 0 10px 24px rgba(29, 78, 120,0.22);
         }
 
         .tab-content {
@@ -528,12 +528,12 @@
 
         .summary-card {
             padding: 28px;
-            background: linear-gradient(135deg, #ffffff, #f8fbfa);
+            background: linear-gradient(135deg, #ffffff, #f8fafc);
         }
 
         .summary-title {
             margin: 0;
-            color: #18231f;
+            color: #27364a;
             font-size: 24px;
             letter-spacing: -0.02em;
         }
@@ -541,7 +541,7 @@
         .summary-text {
             margin-top: 18px;
             line-height: 1.75;
-            color: #56625e;
+            color: #64748b;
             font-size: 15px;
         }
 
@@ -557,11 +557,11 @@
             border-radius: 20px;
             padding: 22px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.07);
-            border: 1px solid #eff6f4;
+            border: 1px solid #f1f5f9;
         }
 
         .stat-label {
-            color: #707d79;
+            color: #64748b;
             font-size: 12px;
             font-weight: 800;
             text-transform: uppercase;
@@ -572,7 +572,7 @@
             margin-top: 10px;
             font-size: 30px;
             font-weight: 900;
-            color: #18231f;
+            color: #27364a;
         }
 
         .section-card {
@@ -594,8 +594,8 @@
         }
 
         .metric-box {
-            background: #f8fcfb;
-            border: 1px solid #eff6f4;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
             border-radius: 18px;
             padding: 18px;
         }
@@ -613,23 +613,23 @@
 
         .metric-box-clickable:hover,
         .metric-box-clickable:focus-visible {
-            background: #edf8f4;
-            border-color: #8fd3bd;
-            box-shadow: 0 10px 24px rgba(27, 130, 107, 0.12);
+            background: #edf7f6;
+            border-color: #8bc9c4;
+            box-shadow: 0 10px 24px rgba(15, 118, 110, 0.12);
             outline: none;
             transform: translateY(-2px);
         }
 
         .metric-box-clickable.active {
             background: #edfcf7;
-            border-color: #1b826b;
-            box-shadow: 0 0 0 3px rgba(27, 130, 107, 0.12);
+            border-color: #0f766e;
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
         }
 
         .metric-click-hint {
             display: block;
             margin-top: 12px;
-            color: #1b826b;
+            color: #0f766e;
             font-size: 12px;
             font-weight: 800;
         }
@@ -640,7 +640,7 @@
 
         .metric-title {
             font-size: 12px;
-            color: #707d79;
+            color: #64748b;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -649,7 +649,7 @@
         .metric-value {
             font-size: 26px;
             font-weight: 900;
-            color: #18231f;
+            color: #27364a;
             margin: 12px 0 10px 0;
         }
 
@@ -664,20 +664,20 @@
 
         .badge-grade {
             background: #e6f5f1;
-            color: #1b7864;
+            color: #0f766e;
         }
 
         .badge-owner {
             margin-left: 8px;
             background: #e6f5f1;
-            color: #1b7864;
+            color: #0f766e;
             padding: 3px 7px;
             font-size: 11px;
         }
 
         .qa-item {
-            background: #f8fcfb;
-            border: 1px solid #eff6f4;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
             border-radius: 18px;
             padding: 18px;
             margin-bottom: 16px;
@@ -697,24 +697,24 @@
 
         .qa-question {
             font-weight: 800;
-            color: #18231f;
+            color: #27364a;
             line-height: 1.5;
         }
 
         .qa-text {
             font-size: 14px;
             line-height: 1.6;
-            color: #56625e;
+            color: #64748b;
             margin: 10px 0 0 0;
         }
 
         .qa-analysis {
             margin-top: 14px;
             background: white;
-            border-left: 4px solid #1b826b;
+            border-left: 4px solid #0f766e;
             border-radius: 12px;
             padding: 13px;
-            color: #40504b;
+            color: #475569;
             font-size: 14px;
             line-height: 1.6;
         }
@@ -723,10 +723,10 @@
             margin-top: 20px;
             padding: 20px;
             background: #ffffff;
-            border: 1px solid #c6e8de;
-            border-left: 5px solid #1b826b;
+            border: 1px solid #c9e5e3;
+            border-left: 5px solid #0f766e;
             border-radius: 18px;
-            box-shadow: 0 10px 28px rgba(23, 107, 90, 0.08);
+            box-shadow: 0 10px 28px rgba(29, 78, 120, 0.08);
             scroll-margin-top: 90px;
         }
 
@@ -746,7 +746,7 @@
         }
 
         .form-metric-details-eyebrow {
-            color: #1b826b;
+            color: #0f766e;
             font-size: 11px;
             font-weight: 900;
             letter-spacing: 0.08em;
@@ -755,14 +755,14 @@
 
         .form-metric-details h4 {
             margin: 5px 0 0;
-            color: #18231f;
+            color: #27364a;
             font-size: 19px;
         }
 
         .form-metric-details-count {
             flex: 0 0 auto;
             padding: 6px 10px;
-            color: #1b7864;
+            color: #0f766e;
             background: #e6f5f1;
             border-radius: 999px;
             font-size: 12px;
@@ -771,7 +771,7 @@
 
         .form-metric-details-description {
             margin: 12px 0 0;
-            color: #707d79;
+            color: #64748b;
             font-size: 14px;
             line-height: 1.6;
         }
@@ -790,9 +790,9 @@
 
         .word-detail-list li {
             padding: 8px 12px;
-            color: #1e3830;
-            background: #f8fcfb;
-            border: 1px solid #d8e7e2;
+            color: #27364a;
+            background: #f8fafc;
+            border: 1px solid #d7e2ea;
             border-radius: 999px;
             font-size: 13px;
             font-weight: 700;
@@ -806,7 +806,7 @@
         .tone-detail-list li {
             position: relative;
             padding: 12px 14px 12px 36px;
-            color: #40504b;
+            color: #475569;
             background: #fff7ed;
             border: 1px solid #fed7aa;
             border-radius: 13px;
@@ -827,9 +827,9 @@
         .form-metric-details-list .form-metric-details-empty {
             width: 100%;
             padding: 13px 14px;
-            color: #707d79;
-            background: #f8fcfb;
-            border: 1px dashed #cae2db;
+            color: #64748b;
+            background: #f8fafc;
+            border: 1px dashed #d6e1ea;
             border-radius: 13px;
             font-size: 14px;
             font-weight: 600;
@@ -840,16 +840,16 @@
         }
 
         .overall-assessment-box {
-            background: linear-gradient(135deg, #f8fcfb, #edf8f4);
-            border: 1px solid #e3f4ef;
-            border-left: 5px solid #1b826b;
+            background: linear-gradient(135deg, #f8fafc, #edf7f6);
+            border: 1px solid #e8f5f4;
+            border-left: 5px solid #0f766e;
             border-radius: 18px;
             padding: 18px;
             margin-top: 20px;
         }
 
         .overall-assessment-title {
-            color: #1b7864;
+            color: #0f766e;
             font-size: 12px;
             font-weight: 900;
             text-transform: uppercase;
@@ -858,7 +858,7 @@
         }
 
         .overall-assessment-text {
-            color: #40504b;
+            color: #475569;
             margin: 0;
             line-height: 1.7;
             font-size: 14px;
@@ -880,10 +880,10 @@
             position: relative;
             padding: 14px 14px 14px 42px;
             margin-bottom: 10px;
-            background: #f8fcfb;
-            border: 1px solid #eff6f4;
+            background: #f8fafc;
+            border: 1px solid #f1f5f9;
             border-radius: 14px;
-            color: #40504b;
+            color: #475569;
             line-height: 1.5;
             font-size: 14px;
         }
@@ -936,12 +936,12 @@
         .transcript-content {
             white-space: pre-wrap;
             line-height: 1.75;
-            color: #40504b;
+            color: #475569;
             font-size: 14px;
             max-height: 560px;
             overflow-y: auto;
             background: white;
-            border: 1px solid #eff6f4;
+            border: 1px solid #f1f5f9;
             border-radius: 18px;
             padding: 24px;
         }
@@ -952,7 +952,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: #f4f8f6 !important;
+            background: #f6f8fb !important;
             z-index: 9999;
             padding: 25px;
             overflow-y: auto;
@@ -1038,10 +1038,10 @@
 /* Contextual meeting knowledge */
 .meeting-ask-card {
     overflow: hidden;
-    border: 1px solid #e5f1ed;
+    border: 1px solid #e2e8f0;
     border-radius: 22px;
     background: #fff;
-    box-shadow: 0 14px 36px rgba(23, 107, 90, 0.08);
+    box-shadow: 0 14px 36px rgba(29, 78, 120, 0.08);
 }
 
 .meeting-ask-header {
@@ -1051,7 +1051,7 @@
     justify-content: space-between;
     gap: 22px;
     border-bottom: 1px solid #eaf4f1;
-    background: linear-gradient(135deg, #ffffff, #f1f8f6);
+    background: linear-gradient(135deg, #ffffff, #f3f7fa);
 }
 
 .meeting-ask-heading {
@@ -1068,13 +1068,13 @@
     place-items: center;
     border-radius: 14px;
     background: #e9f9f4;
-    color: #176b5a;
+    color: #1d4e78;
     font-size: 1.2rem;
 }
 
 .meeting-ask-eyebrow {
     margin: 0 0 4px;
-    color: #176b5a;
+    color: #1d4e78;
     font-size: 11px;
     font-weight: 900;
     letter-spacing: 0.1em;
@@ -1083,7 +1083,7 @@
 
 .meeting-ask-heading h3 {
     margin: 0;
-    color: #18231f;
+    color: #27364a;
     font-size: 23px;
     letter-spacing: -0.02em;
 }
@@ -1091,7 +1091,7 @@
 .meeting-ask-heading p:not(.meeting-ask-eyebrow) {
     max-width: 700px;
     margin: 8px 0 0;
-    color: #697b77;
+    color: #64748b;
     line-height: 1.6;
 }
 
@@ -1104,14 +1104,14 @@
     border: 1px solid #cfe9e1;
     border-radius: 11px;
     background: #fff;
-    color: #176b5a;
+    color: #1d4e78;
     font-size: 13px;
     font-weight: 800;
     text-decoration: none;
 }
 
 .meeting-knowledge-link:hover {
-    background: #e8f5f1;
+    background: #eaf4f6;
 }
 
 .selected-meeting-context {
@@ -1122,9 +1122,9 @@
     align-items: center;
     column-gap: 11px;
     row-gap: 3px;
-    border: 1px solid #e5f1ed;
+    border: 1px solid #e2e8f0;
     border-radius: 14px;
-    background: #f8fcfb;
+    background: #f8fafc;
 }
 
 .selected-meeting-context-label {
@@ -1132,14 +1132,14 @@
     padding: 6px 9px;
     border-radius: 999px;
     background: #e9f9f4;
-    color: #176b5a;
+    color: #1d4e78;
     font-size: 11px;
     font-weight: 900;
     text-transform: uppercase;
 }
 
 .selected-meeting-context strong {
-    color: #17342e;
+    color: #1f2937;
     font-size: 14px;
 }
 
@@ -1157,9 +1157,9 @@
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    border: 1px solid #d9e6e1;
+    border: 1px solid #d8e3eb;
     border-radius: 14px;
-    background: #f8fcfb;
+    background: #f8fafc;
     cursor: pointer;
     transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
@@ -1170,9 +1170,9 @@
 }
 
 .meeting-related-toggle:has(input:checked) {
-    border-color: #176b5a;
-    background: #edf8f4;
-    box-shadow: 0 0 0 2px rgba(23, 107, 90, 0.08);
+    border-color: #1d4e78;
+    background: #edf7f6;
+    box-shadow: 0 0 0 2px rgba(29, 78, 120, 0.08);
 }
 
 .meeting-related-toggle input {
@@ -1180,7 +1180,7 @@
     height: 18px;
     margin: 2px 0 0;
     flex: 0 0 auto;
-    accent-color: #176b5a;
+    accent-color: #1d4e78;
 }
 
 .meeting-related-toggle-copy {
@@ -1189,12 +1189,12 @@
 }
 
 .meeting-related-toggle-copy strong {
-    color: #17342e;
+    color: #1f2937;
     font-size: 13px;
 }
 
 .meeting-related-toggle-copy small {
-    color: #707d79;
+    color: #64748b;
     font-size: 12px;
     line-height: 1.5;
 }
@@ -1208,7 +1208,7 @@
 }
 
 .meeting-ask-suggestions > span {
-    color: #707d79;
+    color: #64748b;
     font-size: 11px;
     font-weight: 900;
     text-transform: uppercase;
@@ -1217,29 +1217,29 @@
 
 .meeting-ask-suggestions button {
     padding: 7px 10px;
-    border: 1px solid #d9e6e1;
+    border: 1px solid #d8e3eb;
     border-radius: 999px;
     background: #fff;
-    color: #40514c;
+    color: #475569;
     font: inherit;
     font-size: 12px;
     cursor: pointer;
 }
 
 .meeting-ask-suggestions button:hover {
-    border-color: #176b5a;
-    background: #edf8f4;
-    color: #176b5a;
+    border-color: #1d4e78;
+    background: #edf7f6;
+    color: #1d4e78;
 }
 
 .meeting-ask-question textarea {
     width: 100%;
     min-height: 128px;
     padding: 15px 16px;
-    border: 1px solid #d9e6e1;
+    border: 1px solid #d8e3eb;
     border-radius: 14px;
     background: #fff;
-    color: #17342e;
+    color: #1f2937;
     font: inherit;
     line-height: 1.55;
     resize: vertical;
@@ -1247,8 +1247,8 @@
 }
 
 .meeting-ask-question textarea:focus {
-    border-color: #176b5a;
-    box-shadow: 0 0 0 3px rgba(23, 107, 90, 0.1);
+    border-color: #1d4e78;
+    box-shadow: 0 0 0 3px rgba(29, 78, 120, 0.1);
 }
 
 .meeting-ask-actions {
@@ -1261,7 +1261,7 @@
 
 .meeting-ask-actions p {
     margin: 0;
-    color: #707d79;
+    color: #64748b;
     font-size: 12px;
 }
 
@@ -1276,7 +1276,7 @@
 .meeting-answer-panel {
     margin: 0 24px 24px;
     padding: 20px;
-    border: 1px solid #d9e6e1;
+    border: 1px solid #d8e3eb;
     border-radius: 15px;
     background: #fafdfc;
 }
@@ -1290,7 +1290,7 @@
 .meeting-answer-header h4,
 .meeting-answer-sources h5 {
     margin: 0;
-    color: #17342e;
+    color: #1f2937;
 }
 
 .meeting-answer-copy {
@@ -1298,7 +1298,7 @@
     border: 0;
     border-radius: 7px;
     background: transparent;
-    color: #176b5a;
+    color: #1d4e78;
     font-weight: 800;
     cursor: pointer;
 }
@@ -1309,7 +1309,7 @@
 
 .meeting-answer-content {
     margin-top: 13px;
-    color: #40514c;
+    color: #475569;
     line-height: 1.72;
     white-space: pre-wrap;
 }
@@ -1317,7 +1317,7 @@
 .meeting-answer-sources {
     margin-top: 18px;
     padding-top: 16px;
-    border-top: 1px solid #e5f1ed;
+    border-top: 1px solid #e2e8f0;
 }
 
 .meeting-source-list {
@@ -1329,10 +1329,10 @@
 
 .meeting-source-chip {
     padding: 7px 10px;
-    border: 1px solid #d9e6e1;
+    border: 1px solid #d8e3eb;
     border-radius: 999px;
     background: #fff;
-    color: #40514c;
+    color: #475569;
     font-size: 12px;
 }
 
@@ -1389,8 +1389,8 @@
     padding: 0 9px;
     border: 1px solid #c4e4da;
     border-radius: 8px;
-    color: #176b5a;
-    background: #eef8f5;
+    color: #1d4e78;
+    background: #edf7f6;
     font-size: 11px;
     font-weight: 850;
     text-decoration: none;
@@ -1412,7 +1412,7 @@
 }
 
 .meeting-action-task {
-    color: #2b4039;
+    color: #334155;
     font-weight: 750;
 }
 
@@ -1434,7 +1434,7 @@
     min-height: 24px;
     padding: 3px 8px;
     border-radius: 999px;
-    color: #526b64;
+    color: #475569;
     background: #e9f3f0;
     font-size: 10.5px;
     font-weight: 800;
@@ -1452,7 +1452,7 @@
 
 .meeting-action-priority-medium {
     color: #258c6a;
-    background: #e8f5f1;
+    background: #eaf4f6;
 }
 
 .meeting-action-priority-low {
@@ -1493,10 +1493,10 @@
     min-height: 42px;
     margin-left: auto;
     padding: 0 16px;
-    border: 1px solid #176b5a;
+    border: 1px solid #1d4e78;
     border-radius: 999px;
     color: #ffffff;
-    background: #176b5a;
+    background: #1d4e78;
     font-size: 14px;
     font-weight: 800;
     cursor: pointer;
@@ -1505,15 +1505,15 @@
 
 .meeting-share-trigger:hover,
 .meeting-share-trigger:focus-visible {
-    border-color: #1b826b;
-    background: #1b826b;
+    border-color: #0f766e;
+    background: #0f766e;
     outline: none;
     transform: translateY(-1px);
-    box-shadow: 0 9px 22px rgba(23, 107, 90, 0.2);
+    box-shadow: 0 9px 22px rgba(29, 78, 120, 0.2);
 }
 
 .meeting-share-trigger:disabled {
-    border-color: #d8eae4;
+    border-color: #d9e5ec;
     color: #98a2b3;
     background: #eef6f3;
     cursor: not-allowed;
@@ -1545,7 +1545,7 @@
     width: min(860px, 100%);
     max-height: calc(100vh - 56px);
     overflow: hidden;
-    border: 1px solid #ddede8;
+    border: 1px solid #dde7ee;
     border-radius: 22px;
     outline: none;
     background: #ffffff;
@@ -1563,19 +1563,19 @@
 
 .meeting-share-header h2 {
     margin: 0;
-    color: #17342e;
+    color: #1f2937;
     font-size: 24px;
 }
 
 .meeting-share-header p:not(.meeting-share-eyebrow) {
     margin: 7px 0 0;
-    color: #667a75;
+    color: #64748b;
     line-height: 1.5;
 }
 
 .meeting-share-eyebrow {
     margin: 0 0 6px;
-    color: #1b826b;
+    color: #0f766e;
     font-size: 11px;
     font-weight: 900;
     letter-spacing: 0.09em;
@@ -1586,10 +1586,10 @@
     width: 38px;
     height: 38px;
     flex: 0 0 38px;
-    border: 1px solid #d8eae4;
+    border: 1px solid #d9e5ec;
     border-radius: 12px;
     color: #475467;
-    background: #f8fcfb;
+    background: #f8fafc;
     font-size: 24px;
     line-height: 1;
     cursor: pointer;
@@ -1597,8 +1597,8 @@
 
 .meeting-share-close:hover,
 .meeting-share-close:focus-visible {
-    color: #176b5a;
-    background: #edf8f4;
+    color: #1d4e78;
+    background: #edf7f6;
     outline: none;
 }
 
@@ -1625,14 +1625,14 @@
 .meeting-share-section-heading h3,
 .meeting-share-created h3 {
     margin: 0;
-    color: #17342e;
+    color: #1f2937;
     font-size: 17px;
 }
 
 .meeting-share-section-heading p,
 .meeting-share-created p:not(.meeting-share-eyebrow) {
     margin: 5px 0 0;
-    color: #667a75;
+    color: #64748b;
     font-size: 13px;
     line-height: 1.5;
 }
@@ -1646,7 +1646,7 @@
     padding: 14px;
     border: 1px solid #e0efea;
     border-radius: 14px;
-    background: #f9fdfc;
+    background: #fbfcfe;
     cursor: pointer;
 }
 
@@ -1659,7 +1659,7 @@
     width: 18px;
     height: 18px;
     margin-top: 2px;
-    accent-color: #176b5a;
+    accent-color: #1d4e78;
 }
 
 .meeting-share-option strong,
@@ -1668,13 +1668,13 @@
 }
 
 .meeting-share-option strong {
-    color: #28493f;
+    color: #334155;
     font-size: 14px;
 }
 
 .meeting-share-option small {
     margin-top: 4px;
-    color: #667a75;
+    color: #64748b;
     font-size: 12px;
     line-height: 1.45;
 }
@@ -1686,7 +1686,7 @@
 .meeting-share-required-label {
     padding: 5px 8px;
     border-radius: 999px;
-    color: #176b5a;
+    color: #1d4e78;
     background: #eafbf6;
     font-size: 11px;
     font-weight: 800;
@@ -1720,15 +1720,15 @@
     border: 1px solid #cce4dc;
     border-radius: 11px;
     outline: none;
-    color: #17342e;
+    color: #1f2937;
     background: #ffffff;
 }
 
 .meeting-share-field input:focus,
 .meeting-share-field select:focus,
 .meeting-share-link-row input:focus {
-    border-color: #1b826b;
-    box-shadow: 0 0 0 4px rgba(27, 130, 107, 0.12);
+    border-color: #0f766e;
+    box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
 }
 
 .meeting-share-download-option {
@@ -1778,14 +1778,14 @@
 
 .meeting-share-create,
 .meeting-share-link-row button {
-    border: 1px solid #176b5a;
+    border: 1px solid #1d4e78;
     color: #ffffff;
-    background: #176b5a;
+    background: #1d4e78;
 }
 
 .meeting-share-create:hover,
 .meeting-share-link-row button:hover {
-    background: #1b826b;
+    background: #0f766e;
 }
 
 .meeting-share-create:disabled {
@@ -1807,7 +1807,7 @@
 
 .meeting-share-link-row a {
     border: 1px solid #b8d9ce;
-    color: #176b5a;
+    color: #1d4e78;
     background: #ffffff;
 }
 
@@ -1819,10 +1819,10 @@
 .meeting-share-empty {
     margin: 0;
     padding: 17px;
-    border: 1px dashed #cee5de;
+    border: 1px dashed #d4e2e9;
     border-radius: 12px;
-    color: #667a75;
-    background: #f9fdfc;
+    color: #64748b;
+    background: #fbfcfe;
     text-align: center;
     font-size: 13px;
 }
@@ -1842,7 +1842,7 @@
 
 .meeting-share-record.is-inactive {
     opacity: 0.72;
-    background: #f8fcfb;
+    background: #f8fafc;
 }
 
 .meeting-share-record-heading {
@@ -1858,13 +1858,13 @@
 }
 
 .meeting-share-record-heading strong {
-    color: #28493f;
+    color: #334155;
     font-size: 14px;
 }
 
 .meeting-share-record-heading div > span {
     margin-top: 4px;
-    color: #667a75;
+    color: #64748b;
     font-size: 12px;
 }
 
@@ -1881,7 +1881,7 @@
 }
 
 .meeting-share-status.is-inactive {
-    color: #667a75;
+    color: #64748b;
     background: #eaecf0;
 }
 
@@ -1913,14 +1913,14 @@
     min-height: 34px;
     padding: 0 10px;
     border: 1px solid #cee4dd;
-    color: #176b5a;
+    color: #1d4e78;
     background: #ffffff;
     font-size: 12px;
 }
 
 .meeting-share-record-actions button:hover,
 .meeting-share-record-actions a:hover {
-    background: #edf8f4;
+    background: #edf7f6;
 }
 
 .meeting-share-record-actions .is-danger {
@@ -1998,9 +1998,9 @@
 }
 
 .meeting-share-expiration-control select:focus {
-    border-color: #1b826b;
+    border-color: #0f766e;
     outline: none;
-    box-shadow: 0 0 0 3px rgba(27, 130, 107, 0.12);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
 }
 
 @media (max-width: 560px) {
@@ -2046,7 +2046,7 @@
 
 .stat-evidence {
     margin-top: 8px;
-    color: #697b77;
+    color: #64748b;
     font-size: 12px;
     font-weight: 800;
 }
@@ -2054,9 +2054,9 @@
 .section-evidence-note {
     margin: 18px 24px 0;
     padding: 13px 15px;
-    border: 1px solid #c6e8de;
+    border: 1px solid #c9e5e3;
     border-radius: 14px;
-    background: #f0f8f5;
+    background: #f1f5f9;
     color: #255848;
     font-size: 13px;
     font-weight: 700;
@@ -2066,7 +2066,7 @@
 .metric-rate {
     display: block;
     margin-top: 8px;
-    color: #697b77;
+    color: #64748b;
     font-size: 11px;
     font-weight: 700;
 }
@@ -2078,12 +2078,12 @@
 }
 
 .score-neutral {
-    background: linear-gradient(135deg, #697b77 0%, #586762 100%);
+    background: linear-gradient(135deg, #64748b 0%, #64748b 100%);
 }
 
 .text-score-neutral {
-    color: #586762 !important;
-    background: #e2f0eb;
+    color: #64748b !important;
+    background: #e2e8f0;
 }
 
 /* Meeting topics, grouping, and filters */
@@ -2091,8 +2091,8 @@
     display: grid;
     gap: 12px;
     padding: 14px 18px 16px;
-    border-bottom: 1px solid #eff6f4;
-    background: #fbfdfc;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fbfcfe;
 }
 
 .meeting-view-toggle {
@@ -2100,7 +2100,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 4px;
     padding: 4px;
-    border: 1px solid #d8e7e2;
+    border: 1px solid #d7e2ea;
     border-radius: 12px;
     background: #eff7f4;
 }
@@ -2109,7 +2109,7 @@
     min-height: 34px;
     border: 0;
     border-radius: 9px;
-    color: #697b77;
+    color: #64748b;
     background: transparent;
     font: inherit;
     font-size: 12px;
@@ -2120,10 +2120,10 @@
 .meeting-view-button.active,
 .meeting-view-button:hover,
 .meeting-view-button:focus-visible {
-    color: #176b5a;
+    color: #1d4e78;
     background: #ffffff;
     outline: none;
-    box-shadow: 0 3px 10px rgba(23, 107, 90, 0.1);
+    box-shadow: 0 3px 10px rgba(29, 78, 120, 0.1);
 }
 
 .meeting-organizer-grid,
@@ -2137,7 +2137,7 @@
     display: grid;
     gap: 5px;
     min-width: 0;
-    color: #526b64;
+    color: #475569;
     font-size: 10px;
     font-weight: 900;
     letter-spacing: 0.05em;
@@ -2150,9 +2150,9 @@
     min-width: 0;
     min-height: 38px;
     padding: 8px 10px;
-    border: 1px solid #d8eae4;
+    border: 1px solid #d9e5ec;
     border-radius: 10px;
-    color: #2b4039;
+    color: #334155;
     background: #ffffff;
     font: inherit;
     font-size: 12px;
@@ -2164,8 +2164,8 @@
 
 .meeting-organizer-field select:focus,
 .meeting-organizer-field input:focus {
-    border-color: #1b826b;
-    box-shadow: 0 0 0 3px rgba(27, 130, 107, 0.1);
+    border-color: #0f766e;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 .meeting-organizer-actions {
@@ -2188,21 +2188,21 @@
 
 .meeting-filter-clear {
     border: 1px solid transparent;
-    color: #697b77;
+    color: #64748b;
     background: transparent;
 }
 
 .meeting-filter-clear:hover,
 .meeting-filter-clear:focus-visible {
-    color: #176b5a;
-    background: #edf8f4;
+    color: #1d4e78;
+    background: #edf7f6;
     outline: none;
 }
 
 .meeting-manage-topics {
     border: 1px solid #c4e4da;
-    color: #176b5a;
-    background: #eef8f5;
+    color: #1d4e78;
+    background: #edf7f6;
 }
 
 .meeting-manage-topics:hover,
@@ -2218,7 +2218,7 @@
 }
 
 .meeting-list-group + .meeting-list-group {
-    border-top: 1px solid #e5f1ed;
+    border-top: 1px solid #e2e8f0;
 }
 
 .meeting-list-group-header {
@@ -2245,7 +2245,7 @@
     min-width: 25px;
     padding: 3px 7px;
     border-radius: 999px;
-    color: #176b5a;
+    color: #1d4e78;
     background: #e3faf3;
     text-align: center;
     font-size: 10px;
@@ -2272,8 +2272,8 @@
     padding: 3px 8px;
     border: 1px solid #caebe0;
     border-radius: 999px;
-    color: #176b5a;
-    background: #eef8f5;
+    color: #1d4e78;
+    background: #edf7f6;
     font: inherit;
     font-size: 10.5px;
     font-weight: 850;
@@ -2297,15 +2297,15 @@ button.meeting-topic-chip:focus-visible,
 }
 
 .meeting-topic-chip.is-removable {
-    border-color: #d8eae4;
+    border-color: #d9e5ec;
     color: #3d7161;
-    background: #f8fcfb;
+    background: #f8fafc;
 }
 
 .meeting-topic-empty {
     display: block;
     margin-top: 8px;
-    color: #96a6a1;
+    color: #94a3b8;
     font-size: 11px;
     font-style: italic;
 }
@@ -2314,7 +2314,7 @@ button.meeting-topic-chip:focus-visible,
     padding: 11px;
     border: 1px solid #deeee9;
     border-radius: 12px;
-    background: #f9fdfc;
+    background: #fbfcfe;
 }
 
 .meeting-topic-add-row {
@@ -2332,24 +2332,24 @@ button.meeting-topic-chip:focus-visible,
     border: 1px solid #cde4dd;
     border-radius: 9px;
     outline: none;
-    color: #2b4039;
+    color: #334155;
     background: #ffffff;
     font: inherit;
     font-size: 12px;
 }
 
 .meeting-topic-add-input:focus {
-    border-color: #1b826b;
-    box-shadow: 0 0 0 3px rgba(27, 130, 107, 0.1);
+    border-color: #0f766e;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 .meeting-topic-add-button {
     min-height: 36px;
     padding: 0 11px;
-    border: 1px solid #176b5a;
+    border: 1px solid #1d4e78;
     border-radius: 9px;
     color: #ffffff;
-    background: #176b5a;
+    background: #1d4e78;
     font: inherit;
     font-size: 11px;
     font-weight: 850;
@@ -2369,7 +2369,7 @@ button.meeting-topic-chip:focus-visible,
 }
 
 .selected-meeting-topics-label {
-    color: #697b77;
+    color: #64748b;
     font-size: 10px;
     font-weight: 900;
     letter-spacing: 0.05em;
@@ -2401,7 +2401,7 @@ button.meeting-topic-chip:focus-visible,
     width: min(780px, 100%);
     max-height: calc(100vh - 56px);
     overflow: hidden;
-    border: 1px solid #ddede8;
+    border: 1px solid #dde7ee;
     border-radius: 22px;
     outline: none;
     background: #ffffff;
@@ -2419,19 +2419,19 @@ button.meeting-topic-chip:focus-visible,
 
 .meeting-topic-header h2 {
     margin: 0;
-    color: #17342e;
+    color: #1f2937;
     font-size: 24px;
 }
 
 .meeting-topic-header p:not(.meeting-topic-eyebrow) {
     margin: 7px 0 0;
-    color: #667a75;
+    color: #64748b;
     line-height: 1.5;
 }
 
 .meeting-topic-eyebrow {
     margin: 0 0 6px;
-    color: #1b826b;
+    color: #0f766e;
     font-size: 11px;
     font-weight: 900;
     letter-spacing: 0.09em;
@@ -2442,10 +2442,10 @@ button.meeting-topic-chip:focus-visible,
     width: 38px;
     height: 38px;
     flex: 0 0 38px;
-    border: 1px solid #d8eae4;
+    border: 1px solid #d9e5ec;
     border-radius: 12px;
     color: #475467;
-    background: #f8fcfb;
+    background: #f8fafc;
     font-size: 24px;
     line-height: 1;
     cursor: pointer;
@@ -2453,8 +2453,8 @@ button.meeting-topic-chip:focus-visible,
 
 .meeting-topic-close:hover,
 .meeting-topic-close:focus-visible {
-    color: #176b5a;
-    background: #edf8f4;
+    color: #1d4e78;
+    background: #edf7f6;
     outline: none;
 }
 
@@ -2481,13 +2481,13 @@ button.meeting-topic-chip:focus-visible,
 
 .meeting-topic-section-heading h3 {
     margin: 0;
-    color: #17342e;
+    color: #1f2937;
     font-size: 17px;
 }
 
 .meeting-topic-section-heading p {
     margin: 5px 0 0;
-    color: #667a75;
+    color: #64748b;
     font-size: 13px;
     line-height: 1.5;
 }
@@ -2514,7 +2514,7 @@ button.meeting-topic-chip:focus-visible,
     padding: 8px 10px;
     border: 1px solid #cce4dc;
     border-radius: 10px;
-    color: #2b4039;
+    color: #334155;
     background: #ffffff;
     font: inherit;
     outline: none;
@@ -2522,8 +2522,8 @@ button.meeting-topic-chip:focus-visible,
 
 .meeting-topic-merge-grid select:focus,
 .meeting-topic-manager-field input:focus {
-    border-color: #1b826b;
-    box-shadow: 0 0 0 3px rgba(27, 130, 107, 0.1);
+    border-color: #0f766e;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 .meeting-topic-merge-arrow {
@@ -2546,14 +2546,14 @@ button.meeting-topic-chip:focus-visible,
 
 .meeting-topic-merge-grid button,
 .meeting-topic-rename {
-    border: 1px solid #176b5a;
+    border: 1px solid #1d4e78;
     color: #ffffff;
-    background: #176b5a;
+    background: #1d4e78;
 }
 
 .meeting-topic-merge-grid button:hover,
 .meeting-topic-rename:hover {
-    background: #1b826b;
+    background: #0f766e;
 }
 
 .meeting-topic-list {
@@ -2569,7 +2569,7 @@ button.meeting-topic-chip:focus-visible,
     padding: 13px;
     border: 1px solid #e1efeb;
     border-radius: 13px;
-    background: #f9fdfc;
+    background: #fbfcfe;
 }
 
 .meeting-topic-manager-field {
@@ -2582,7 +2582,7 @@ button.meeting-topic-chip:focus-visible,
 .meeting-topic-count {
     padding: 5px 8px;
     border-radius: 999px;
-    color: #526b64;
+    color: #475569;
     background: #e8f3ef;
     font-size: 10.5px;
     font-weight: 850;
@@ -2607,10 +2607,10 @@ button.meeting-topic-chip:focus-visible,
 .meeting-topic-empty-state {
     margin: 0;
     padding: 18px;
-    border: 1px dashed #cee5de;
+    border: 1px dashed #d4e2e9;
     border-radius: 12px;
-    color: #667a75;
-    background: #f9fdfc;
+    color: #64748b;
+    background: #fbfcfe;
     text-align: center;
 }
 
@@ -2667,9 +2667,9 @@ button.meeting-topic-chip:focus-visible,
 .interview-criterion-card {
     min-width: 0;
     padding: 18px;
-    background: #f8fcfb;
-    border: 1px solid #e2f0eb;
-    border-left: 5px solid #96a6a1;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 5px solid #94a3b8;
     border-radius: 18px;
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
@@ -2683,7 +2683,7 @@ button.meeting-topic-chip:focus-visible,
 .interview-criterion-card[data-score-state="effective"] { border-left-color: #20a97b; }
 .interview-criterion-card[data-score-state="developing"] { border-left-color: #f59e0b; }
 .interview-criterion-card[data-score-state="priority"] { border-left-color: #dc2626; }
-.interview-criterion-card[data-score-state="not-observed"] { border-left-color: #96a6a1; }
+.interview-criterion-card[data-score-state="not-observed"] { border-left-color: #94a3b8; }
 
 .interview-criterion-heading {
     display: flex;
@@ -2693,7 +2693,7 @@ button.meeting-topic-chip:focus-visible,
 }
 
 .interview-criterion-heading span {
-    color: #18231f;
+    color: #27364a;
     font-size: 15px;
     font-weight: 850;
     line-height: 1.35;
@@ -2701,7 +2701,7 @@ button.meeting-topic-chip:focus-visible,
 
 .interview-criterion-heading strong {
     flex: 0 0 auto;
-    color: #176b5a;
+    color: #1d4e78;
     font-size: 25px;
     line-height: 1;
 }
@@ -2710,8 +2710,8 @@ button.meeting-topic-chip:focus-visible,
     display: inline-flex;
     margin-top: 10px;
     padding: 5px 9px;
-    color: #586762;
-    background: #e2f0eb;
+    color: #64748b;
+    background: #e2e8f0;
     border-radius: 999px;
     font-size: 11px;
     font-weight: 850;
@@ -2721,7 +2721,7 @@ button.meeting-topic-chip:focus-visible,
 
 .interview-criterion-card p {
     margin: 12px 0 0;
-    color: #697b77;
+    color: #64748b;
     font-size: 13px;
     line-height: 1.55;
 }
@@ -2733,10 +2733,10 @@ button.meeting-topic-chip:focus-visible,
 .interview-safety-note {
     margin-top: 18px;
     padding: 16px 18px;
-    color: #40514c;
-    background: #f0f8f5;
-    border: 1px solid #c6e8de;
-    border-left: 5px solid #1b826b;
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px solid #c9e5e3;
+    border-left: 5px solid #0f766e;
     border-radius: 16px;
     font-size: 13px;
     line-height: 1.65;
@@ -2746,7 +2746,7 @@ button.meeting-topic-chip:focus-visible,
     padding: 22px;
     margin-bottom: 22px;
     background: #ffffff;
-    border: 1px solid #e2f0eb;
+    border: 1px solid #e2e8f0;
     border-radius: 20px;
     box-shadow: 0 12px 32px rgba(18, 39, 33, 0.07);
 }
@@ -2763,7 +2763,7 @@ button.meeting-topic-chip:focus-visible,
 .answer-review-eyebrow {
     display: block;
     margin-bottom: 6px;
-    color: #1b826b;
+    color: #0f766e;
     font-size: 11px;
     font-weight: 900;
     letter-spacing: 0.08em;
@@ -2772,7 +2772,7 @@ button.meeting-topic-chip:focus-visible,
 
 .answer-review-header h3 {
     margin: 0;
-    color: #14211e;
+    color: #1f2937;
     font-size: 19px;
     line-height: 1.45;
 }
@@ -2780,7 +2780,7 @@ button.meeting-topic-chip:focus-visible,
 .answer-review-score {
     flex: 0 0 auto;
     padding: 8px 12px;
-    color: #155f50;
+    color: #0d5f5a;
     background: #e6f5f1;
     border-radius: 999px;
     font-size: 13px;
@@ -2790,8 +2790,8 @@ button.meeting-topic-chip:focus-visible,
 .answer-transcript-box {
     margin-top: 18px;
     padding: 16px;
-    background: #f8fcfb;
-    border: 1px solid #e2f0eb;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 15px;
 }
 
@@ -2799,7 +2799,7 @@ button.meeting-topic-chip:focus-visible,
 .answer-coaching-section h4,
 .answer-sample-section h4,
 .answer-practice-action h4 {
-    color: #14211e;
+    color: #1f2937;
     font-size: 13px;
     font-weight: 900;
 }
@@ -2808,7 +2808,7 @@ button.meeting-topic-chip:focus-visible,
 .answer-sample-section p,
 .answer-practice-action p {
     margin: 8px 0 0;
-    color: #586762;
+    color: #64748b;
     font-size: 14px;
     line-height: 1.7;
     white-space: pre-wrap;
@@ -2825,16 +2825,16 @@ button.meeting-topic-chip:focus-visible,
 .answer-observable-meta span,
 .answer-metric-chip {
     padding: 6px 9px;
-    color: #586762;
-    background: #f2f8f6;
-    border: 1px solid #e2f0eb;
+    color: #64748b;
+    background: #f3f7fa;
+    border: 1px solid #e2e8f0;
     border-radius: 999px;
     font-size: 11px;
     font-weight: 800;
 }
 
 .answer-metric-chip {
-    color: #155f50;
+    color: #0d5f5a;
     background: #f2fdf9;
     border-color: #c3f4e3;
 }
@@ -2849,8 +2849,8 @@ button.meeting-topic-chip:focus-visible,
 .answer-coaching-section {
     min-width: 0;
     padding: 16px;
-    background: #f8fcfb;
-    border: 1px solid #e2f0eb;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 15px;
 }
 
@@ -2861,7 +2861,7 @@ button.meeting-topic-chip:focus-visible,
 .answer-coaching-section ul {
     margin: 10px 0 0;
     padding-left: 20px;
-    color: #586762;
+    color: #64748b;
 }
 
 .answer-coaching-section li {
@@ -2874,7 +2874,7 @@ button.meeting-topic-chip:focus-visible,
 
 .answer-coaching-empty {
     margin: 10px 0 0;
-    color: #697b77;
+    color: #64748b;
     font-size: 13px;
     line-height: 1.55;
 }

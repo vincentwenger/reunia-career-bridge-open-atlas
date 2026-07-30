@@ -8,3 +8,33 @@
     </div>
 </section>
 {%- endmacro %}
+
+
+{% macro workspace_state(id, state, title, message, hidden=true, action_label='', action_id='', action_href='', compact=false, extra_class='') -%}
+<section
+    id="{{ id }}"
+    class="app-state app-state--{{ state }}{% if compact %} app-state--compact{% endif %}{% if extra_class %} {{ extra_class }}{% endif %}"
+    data-ui-state="{{ state }}"
+    {% if hidden %}hidden{% endif %}
+    role="{{ 'alert' if state == 'error' else 'status' }}"
+    aria-live="{{ 'assertive' if state == 'error' else 'polite' }}"
+    {% if state == 'loading' %}aria-busy="true"{% endif %}
+>
+    <span class="app-state__icon" aria-hidden="true">
+        {% if state == 'loading' %}<span class="app-state__spinner"></span>{% elif state == 'error' %}!{% else %}○{% endif %}
+    </span>
+    <div class="app-state__body">
+        <strong class="app-state__title" data-state-title>{{ title }}</strong>
+        <p class="app-state__message" data-state-message>{{ message }}</p>
+        {% if action_label %}
+        <div class="app-state__actions">
+            {% if action_href %}
+            <a class="app-state__action"{% if action_id %} id="{{ action_id }}"{% endif %} href="{{ action_href }}">{{ action_label }}</a>
+            {% else %}
+            <button class="app-state__action"{% if action_id %} id="{{ action_id }}"{% endif %} type="button">{{ action_label }}</button>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+{%- endmacro %}

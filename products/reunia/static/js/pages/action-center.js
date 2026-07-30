@@ -38,7 +38,8 @@
         requestedApplication: '',
         currentUser: '',
         openPopoverId: null,
-        modalPreviousFocus: null
+        modalPreviousFocus: null,
+        loadError: ''
     };
     const elements = {};
 
@@ -61,8 +62,10 @@
         elements.tableBody = document.getElementById('action-table-body');
         elements.loadingState = document.getElementById('action-loading-state');
         elements.emptyState = document.getElementById('action-empty-state');
-        elements.emptyTitle = document.getElementById('action-empty-title');
-        elements.emptyMessage = document.getElementById('action-empty-message');
+        elements.emptyTitle = elements.emptyState?.querySelector('[data-state-title]');
+        elements.emptyMessage = elements.emptyState?.querySelector('[data-state-message]');
+        elements.errorState = document.getElementById('action-error-state');
+        elements.retryButton = document.getElementById('action-retry-button');
         elements.resultsSummary = document.getElementById('action-results-summary');
         elements.search = document.getElementById('action-search');
         elements.applicationFilter = document.getElementById('action-application-filter');
@@ -106,6 +109,7 @@
         elements.clearFilters?.addEventListener('click', clearFilters);
         elements.addAction?.addEventListener('click', () => openActionModal());
         elements.emptyAddAction?.addEventListener('click', () => openActionModal());
+        elements.retryButton?.addEventListener('click', loadPlan);
         elements.modalClose?.addEventListener('click', closeActionModal);
         elements.formCancel?.addEventListener('click', closeActionModal);
         elements.form?.addEventListener('submit', saveActionFromForm);
@@ -150,6 +154,7 @@
 
     async function loadPlan() {
         state.loading = true;
+        state.loadError = '';
         updateLoadingState();
 
         const [contextResult, actionsResult] = await Promise.allSettled([
@@ -157,6 +162,7 @@
             fetchJson(API_ACTIONS)
         ]);
 
+        const loadIssues = [];
         if (contextResult.status === 'fulfilled') {
             const context = contextResult.value || {};
             state.applications = ensureArray(context.applications).map(normalizeApplication);
@@ -165,6 +171,7 @@
             console.error('Unable to load Career Action Plan context:', contextResult.reason);
             state.applications = [];
             state.sources = DEFAULT_SOURCES;
+            loadIssues.push('Job application context is unavailable.');
         }
 
         if (actionsResult.status === 'fulfilled') {
@@ -179,7 +186,11 @@
             state.actions = readLocalActions();
             elements.storageStatus.textContent =
                 'The action service is unavailable. Manual changes are temporarily saved in this browser.';
+            loadIssues.push(state.actions.length
+                ? 'Generated actions are unavailable; browser-saved manual actions are shown below.'
+                : 'No generated actions could be loaded.');
         }
+        state.loadError = loadIssues.join(' ');
 
         state.loading = false;
         populateOptions();
@@ -313,6 +324,7 @@
         closeAllPopovers();
         const actions = getFilteredActions();
         renderApplicationStrip();
+        renderLoadError();
         renderActions(actions);
         updateKpis();
         updateResultsSummary(actions);
@@ -461,7 +473,7 @@
 
     function renderActions(actions) {
         elements.tableBody.replaceChildren(...actions.map(createActionRow));
-        const empty = !actions.length;
+        const empty = !actions.length && !state.loadError;
         elements.emptyState.hidden = !empty;
         if (empty) {
             const hasApplications = state.applications.length > 0;
@@ -668,6 +680,21 @@
         state.openPopoverId = null;
     }
 
+    function renderLoadError() {
+        if (!elements.errorState) return;
+        if (!state.loadError) {
+            elements.errorState.hidden = true;
+            return;
+        }
+        window.AppUI?.showWorkspaceState(elements.errorState, {
+            state: 'error',
+            title: state.actions.length
+                ? 'Some Career Action Plan data is unavailable'
+                : 'Career actions could not be loaded',
+            message: state.loadError
+        });
+    }
+
     function updateKpis() {
         setText('action-open-count', state.actions.filter(action => action.status !== 'done').length);
         setText('action-overdue-count', state.actions.filter(isOverdue).length);
@@ -687,6 +714,7 @@
         elements.tableShell?.setAttribute('aria-busy', String(state.loading));
         if (state.loading) {
             elements.emptyState.hidden = true;
+            if (elements.errorState) elements.errorState.hidden = true;
             elements.tableBody.replaceChildren();
         }
     }

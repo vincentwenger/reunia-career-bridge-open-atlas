@@ -71,6 +71,89 @@ _INTERVIEW_SCORECARD_SAFETY_NOTE = (
 )
 
 
+def _mock_interview_evidence_texts(
+    session: dict[str, Any],
+    answer_text: str,
+) -> list[str]:
+    evidence = [str(answer_text or "").strip()]
+    workspace_context = session.get("workspace_context") or {}
+    verified = workspace_context.get("verified_candidate_evidence")
+    if isinstance(verified, list):
+        for item in verified[:80]:
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text") or "").strip()
+            if text:
+                evidence.append(text)
+    return [item for item in evidence if item]
+
+
+def _mock_interview_text_is_grounded(
+    text: str,
+    *,
+    session: dict[str, Any],
+    answer_text: str,
+    require_overlap: bool,
+) -> bool:
+    normalized = str(text or "").strip()
+    if not normalized:
+        return True
+    try:
+        from resume_tailor.grounding import validate_candidate_claim  # type: ignore
+
+        return not validate_candidate_claim(
+            normalized,
+            _mock_interview_evidence_texts(session, answer_text),
+            require_overlap=require_overlap,
+        )
+    except Exception:
+        # Evidence validation is a safety gate. If it is unavailable, reject the
+        # generated candidate-facing text and use the caller's safe fallback.
+        return False
+
+
+def _grounded_mock_text(
+    value: str,
+    fallback: str,
+    *,
+    session: dict[str, Any],
+    answer_text: str,
+    require_overlap: bool,
+) -> tuple[str, bool]:
+    candidate = str(value or "").strip()
+    if candidate and _mock_interview_text_is_grounded(
+        candidate,
+        session=session,
+        answer_text=answer_text,
+        require_overlap=require_overlap,
+    ):
+        return candidate, True
+    return str(fallback or "").strip(), False
+
+
+def _grounded_mock_list(
+    values: list[str],
+    fallback: list[str],
+    *,
+    session: dict[str, Any],
+    answer_text: str,
+    require_overlap: bool = False,
+) -> tuple[list[str], bool]:
+    grounded = [
+        value
+        for value in values
+        if _mock_interview_text_is_grounded(
+            value,
+            session=session,
+            answer_text=answer_text,
+            require_overlap=require_overlap,
+        )
+    ]
+    if grounded:
+        return grounded, len(grounded) == len(values)
+    return list(fallback), False
+
+
 class MockInterviewService:
     """Runs adaptive, answer-by-answer mock interviews.
 
@@ -496,6 +579,7 @@ class MockInterviewService:
                     ]),
                     "sample_improved_answer": str(evaluation.get("sample_improved_answer") or answer.get("answer") or "").strip()[:4000],
                     "recommended_practice_action": str(evaluation.get("recommended_practice_action") or "Practice this answer again using a clearer structure and one confirmed result.").strip()[:1000],
+                    "grounding_status": str(evaluation.get("grounding_status") or "legacy_unverified"),
                     "observable_delivery": {
                         "word_count": word_count,
                         "duration_seconds": duration,
@@ -1084,41 +1168,92 @@ Role and verified candidate context:
         if not next_question:
             next_question = fallback["next_question"]
 
-        what_worked = _string_list(
+        raw_what_worked = _string_list(
             evaluation_raw.get("what_worked"),
             4,
             _string_list(evaluation_raw.get("strengths"), 4, fallback["evaluation"]["what_worked"]),
         )
-        what_was_unclear = _string_list(
+        what_worked, what_worked_grounded = _grounded_mock_list(
+            raw_what_worked,
+            fallback["evaluation"]["what_worked"],
+            session=session,
+            answer_text=answer_text,
+        )
+        raw_what_was_unclear = _string_list(
             evaluation_raw.get("what_was_unclear"),
             4,
             _string_list(evaluation_raw.get("improvements"), 4, fallback["evaluation"]["what_was_unclear"]),
         )
-        evidence_to_strengthen = _string_list(
+        what_was_unclear, unclear_grounded = _grounded_mock_list(
+            raw_what_was_unclear,
+            fallback["evaluation"]["what_was_unclear"],
+            session=session,
+            answer_text=answer_text,
+        )
+        raw_evidence_to_strengthen = _string_list(
             evaluation_raw.get("evidence_to_strengthen"),
             4,
             fallback["evaluation"]["evidence_to_strengthen"],
+        )
+        evidence_to_strengthen, strengthen_grounded = _grounded_mock_list(
+            raw_evidence_to_strengthen,
+            fallback["evaluation"]["evidence_to_strengthen"],
+            session=session,
+            answer_text=answer_text,
         )
         better_answer_structure = _string_list(
             evaluation_raw.get("better_answer_structure"),
             6,
             fallback["evaluation"]["better_answer_structure"],
         )
-        sample_improved_answer = str(
-            evaluation_raw.get("sample_improved_answer")
-            or fallback["evaluation"]["sample_improved_answer"]
-        ).strip()[:4000]
-        practice_action = str(
-            evaluation_raw.get("recommended_practice_action")
-            or fallback["evaluation"]["recommended_practice_action"]
-        ).strip()[:1000]
+        sample_improved_answer, sample_grounded = _grounded_mock_text(
+            str(
+                evaluation_raw.get("sample_improved_answer")
+                or fallback["evaluation"]["sample_improved_answer"]
+            ).strip()[:4000],
+            fallback["evaluation"]["sample_improved_answer"],
+            session=session,
+            answer_text=answer_text,
+            require_overlap=True,
+        )
+        practice_action, practice_grounded = _grounded_mock_text(
+            str(
+                evaluation_raw.get("recommended_practice_action")
+                or fallback["evaluation"]["recommended_practice_action"]
+            ).strip()[:1000],
+            fallback["evaluation"]["recommended_practice_action"],
+            session=session,
+            answer_text=answer_text,
+            require_overlap=False,
+        )
+        evaluation_summary, summary_grounded = _grounded_mock_text(
+            str(evaluation_raw.get("summary") or fallback["evaluation"]["summary"]).strip()[:1000],
+            fallback["evaluation"]["summary"],
+            session=session,
+            answer_text=answer_text,
+            require_overlap=False,
+        )
+        grounding_status = (
+            "verified"
+            if all(
+                (
+                    what_worked_grounded,
+                    unclear_grounded,
+                    strengthen_grounded,
+                    sample_grounded,
+                    practice_grounded,
+                    summary_grounded,
+                )
+            )
+            else "sanitized"
+        )
 
         result = {
             "evaluation": {
                 "score": score,
-                "summary": str(evaluation_raw.get("summary") or fallback["evaluation"]["summary"]).strip()[:1000],
-                "strengths": _string_list(evaluation_raw.get("strengths"), 4, what_worked),
-                "improvements": _string_list(evaluation_raw.get("improvements"), 4, what_was_unclear),
+                "summary": evaluation_summary,
+                "strengths": what_worked,
+                "improvements": what_was_unclear,
                 "evidence_status": evidence_status,
                 "challenge_needed": challenge_needed,
                 "metrics": metrics,
@@ -1128,6 +1263,7 @@ Role and verified candidate context:
                 "better_answer_structure": better_answer_structure,
                 "sample_improved_answer": sample_improved_answer,
                 "recommended_practice_action": practice_action,
+                "grounding_status": grounding_status,
             },
             "observable_delivery": {
                 "word_count": int(basic.get("word_count") or 0),

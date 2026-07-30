@@ -29,13 +29,19 @@
     const continueTitle = document.getElementById('home-continue-title');
     const continueSummary = document.getElementById('home-continue-summary');
     const continueLink = document.getElementById('home-continue-link');
+    const homeLoadingState = document.getElementById('home-loading-state');
+    const homeEmptyState = document.getElementById('home-empty-state');
+    const homeErrorState = document.getElementById('home-error-state');
+    const homeRetryButton = document.getElementById('home-retry-button');
 
+    homeRetryButton?.addEventListener('click', initializeHomepage);
     initializeHomepage();
     window.addEventListener('storage', function (event) {
         if ([ACTIVE_RECORDING_KEY, ACTIVE_MOCK_SESSION_KEY].includes(event.key)) initializeHomepage();
     });
 
     async function initializeHomepage() {
+        showHomeState('loading');
         const activeRecording = getActiveRecording();
         initializePrimaryAction(activeRecording);
         await Promise.all([
@@ -78,10 +84,25 @@
             if (!response.ok) throw new Error(`Progress request failed with ${response.status}`);
             const progress = await response.json();
             renderMvpProgress(progress, activeRecording);
+            const hasJourneyData = Number(progress?.completed_count || 0) > 0
+                || Boolean(progress?.application?.id || progress?.application?.company || progress?.application?.role);
+            showHomeState(hasJourneyData ? 'ready' : 'empty');
         } catch (error) {
             console.warn('The MVP journey progress could not be loaded:', error);
             if (progressLabel) progressLabel.textContent = 'Recommended MVP journey';
             if (progressValue) progressValue.textContent = '10 connected steps';
+            showHomeState('error', 'Personalized journey progress is temporarily unavailable. The static ten-step guide remains ready below.');
+        }
+    }
+
+    function showHomeState(state, message = '') {
+        [homeLoadingState, homeEmptyState, homeErrorState].forEach(element => {
+            if (element) element.hidden = true;
+        });
+        if (state === 'loading' && homeLoadingState) homeLoadingState.hidden = false;
+        if (state === 'empty' && homeEmptyState) homeEmptyState.hidden = false;
+        if (state === 'error' && homeErrorState) {
+            window.AppUI?.showWorkspaceState(homeErrorState, {state: 'error', message});
         }
     }
 

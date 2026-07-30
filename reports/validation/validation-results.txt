@@ -1,0 +1,152 @@
+APPLICATION BUILDER ARCHITECTURE
+================================
+PASS  single Flask app and shared error handlers
+PASS  recovery-focused 404 and 500 pages
+PASS  shared CSRF handling
+PASS  shared authentication session
+PASS  Blueprint and shared static assets
+PASS  one store initialization per app
+PASS  namespaced Builder endpoints
+
+All 7 architecture validation checks passed.
+
+APPLICATION BUILDER AI COST CONTROLS
+====================================
+PASS: shared budget reservation
+PASS: actual usage settlement
+PASS: bounded structured output
+PASS: shared response cache
+PASS: user-scoped cache key
+PASS: retry ceiling
+PASS: resume import token limit
+PASS: job analysis token limit
+PASS: tailoring token limit
+PASS: evidence-review token limit
+PASS: interview-preparation token limit
+PASS: cache TTL configuration
+PASS: selected-model pricing
+All 13 Application Builder AI cost-control checks passed.
+
+UNITTEST DISCOVERY
+==================
+test_six_profiles_reject_adversarial_interview_claims_end_to_end (tests.browser.test_international_profile_journey.InternationalProfileBrowserJourneyTests.test_six_profiles_reject_adversarial_interview_claims_end_to_end) ... skipped 'Missing runtime dependencies: flask, redis, openai, xlrd'
+test_async_error_states_have_wired_retry_controls (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_async_error_states_have_wired_retry_controls) ... ok
+test_every_major_workspace_declares_loading_empty_and_error_states (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_every_major_workspace_declares_loading_empty_and_error_states) ... ok
+test_shared_component_supports_all_three_states (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_shared_component_supports_all_three_states) ... ok
+test_authentication_session_is_shared_across_shell_and_builder (tests.integration.test_application_builder.ApplicationBuilderIntegrationTests.test_authentication_session_is_shared_across_shell_and_builder) ... skipped 'Missing runtime dependencies: flask, redis, openai, xlrd'
+test_builder_and_shared_static_assets_resolve (tests.integration.test_application_builder.ApplicationBuilderIntegrationTests.test_builder_and_shared_static_assets_resolve) ... skipped 'Missing runtime dependencies: flask, redis, openai, xlrd'
+test_builder_exception_uses_reunia_recovery_page (tests.integration.test_application_builder.ApplicationBuilderIntegrationTests.test_builder_exception_uses_reunia_recovery_page) ... skipped 'Missing runtime dependencies: flask, redis, openai, xlrd'
+test_builder_forms_use_shared_reunia_csrf_token (tests.integration.test_application_builder.ApplicationBuilderIntegrationTests.test_builder_forms_use_shared_reunia_csrf_token) ... skipped 'Missing runtime dependencies: flask, redis, openai, xlrd'
+test_builder_routes_and_urls_are_namespaced (tests.integration.test_application_builder.ApplicationBuilderIntegrationTests.test_builder_routes_and_urls_are_namespaced) ... skipped 'Missing runtime dependencies: flask, redis, openai, xlrd'
+test_builder_stores_are_initialized_once_per_app (tests.integration.test_application_builder.ApplicationBuilderIntegrationTests.test_builder_stores_are_initialized_once_per_app) ... skipped 'Missing runtime dependencies: flask, redis, openai, xlrd'
+test_missing_builder_url_uses_reunia_404_page (tests.integration.test_application_builder.ApplicationBuilderIntegrationTests.test_missing_builder_url_uses_reunia_404_page) ... skipped 'Missing runtime dependencies: flask, redis, openai, xlrd'
+test_scorecard_findings_generate_expected_application_actions (tests.integration.test_product_quality.InterviewScorecardActionIntegrationTests.test_scorecard_findings_generate_expected_application_actions) ... ok
+test_all_structured_resume_findings_reach_interview_prompt (tests.integration.test_product_quality.ResumeFindingsPromptIntegrationTests.test_all_structured_resume_findings_reach_interview_prompt) ... ok
+test_attempt_defaults_and_cap (tests.integration.test_resume_ai_cost_controls.ResumeAICostControlTests.test_attempt_defaults_and_cap) ... skipped 'Missing runtime dependencies: flask, redis, openai'
+test_budget_output_settlement_and_cache (tests.integration.test_resume_ai_cost_controls.ResumeAICostControlTests.test_budget_output_settlement_and_cache) ... skipped 'Missing runtime dependencies: flask, redis, openai'
+test_application_fit_flags_mandatory_unsupported_requirements (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_application_fit_flags_mandatory_unsupported_requirements) ... ok
+test_background_context_never_becomes_verified_interview_evidence (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_background_context_never_becomes_verified_interview_evidence) ... ok
+test_every_fixture_is_schema_valid_and_normalized (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_every_fixture_is_schema_valid_and_normalized) ... ok
+test_expected_translation_and_gap_findings_are_preserved (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_expected_translation_and_gap_findings_are_preserved) ... ok
+test_interview_workspace_removes_unverified_evidence_references (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_interview_workspace_removes_unverified_evidence_references) ... ok
+test_invented_translation_with_valid_evidence_id_is_downgraded (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_invented_translation_with_valid_evidence_id_is_downgraded) ... ok
+test_safe_fixture_proposals_pass_deterministic_validation (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_safe_fixture_proposals_pass_deterministic_validation) ... ok
+test_suite_contains_all_required_international_scenarios (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_suite_contains_all_required_international_scenarios) ... ok
+test_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok
+test_every_international_profile_rejects_invented_bullet_responsibilities (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_every_international_profile_rejects_invented_bullet_responsibilities) ... ok
+test_every_international_profile_rejects_invented_summary_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_every_international_profile_rejects_invented_summary_claims) ... ok
+test_generation_repair_removes_unsupported_summary_and_bullet_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_generation_repair_removes_unsupported_summary_and_bullet_claims) ... ok
+test_interview_preparation_rejects_valid_ids_attached_to_invented_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_interview_preparation_rejects_valid_ids_attached_to_invented_claims) ... ok
+test_legacy_interview_actions_do_not_republish_invented_experience (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_legacy_interview_actions_do_not_republish_invented_experience) ... skipped 'Flask runtime dependencies are not installed'
+test_mock_interview_sample_answer_is_sanitized_before_scorecard_use (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_mock_interview_sample_answer_is_sanitized_before_scorecard_use) ... skipped 'Flask runtime dependencies are not installed'
+test_resume_report_contains_deterministic_grounding_result (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_resume_report_contains_deterministic_grounding_result) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 1.251s
+
+OK (skipped=12)
+
+FINAL INTEGRATION CHECKS
+========================
+test_scorecard_findings_generate_expected_application_actions (tests.integration.test_product_quality.InterviewScorecardActionIntegrationTests.test_scorecard_findings_generate_expected_application_actions) ... ok
+test_all_structured_resume_findings_reach_interview_prompt (tests.integration.test_product_quality.ResumeFindingsPromptIntegrationTests.test_all_structured_resume_findings_reach_interview_prompt) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.863s
+
+OK
+test_application_fit_flags_mandatory_unsupported_requirements (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_application_fit_flags_mandatory_unsupported_requirements) ... ok
+test_background_context_never_becomes_verified_interview_evidence (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_background_context_never_becomes_verified_interview_evidence) ... ok
+test_every_fixture_is_schema_valid_and_normalized (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_every_fixture_is_schema_valid_and_normalized) ... ok
+test_expected_translation_and_gap_findings_are_preserved (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_expected_translation_and_gap_findings_are_preserved) ... ok
+test_interview_workspace_removes_unverified_evidence_references (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_interview_workspace_removes_unverified_evidence_references) ... ok
+test_invented_translation_with_valid_evidence_id_is_downgraded (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_invented_translation_with_valid_evidence_id_is_downgraded) ... ok
+test_safe_fixture_proposals_pass_deterministic_validation (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_safe_fixture_proposals_pass_deterministic_validation) ... ok
+test_suite_contains_all_required_international_scenarios (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_suite_contains_all_required_international_scenarios) ... ok
+test_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.074s
+
+OK
+test_every_international_profile_rejects_invented_bullet_responsibilities (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_every_international_profile_rejects_invented_bullet_responsibilities) ... ok
+test_every_international_profile_rejects_invented_summary_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_every_international_profile_rejects_invented_summary_claims) ... ok
+test_generation_repair_removes_unsupported_summary_and_bullet_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_generation_repair_removes_unsupported_summary_and_bullet_claims) ... ok
+test_interview_preparation_rejects_valid_ids_attached_to_invented_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_interview_preparation_rejects_valid_ids_attached_to_invented_claims) ... ok
+test_legacy_interview_actions_do_not_republish_invented_experience (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_legacy_interview_actions_do_not_republish_invented_experience) ... skipped 'Flask runtime dependencies are not installed'
+test_mock_interview_sample_answer_is_sanitized_before_scorecard_use (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_mock_interview_sample_answer_is_sanitized_before_scorecard_use) ... skipped 'Flask runtime dependencies are not installed'
+test_resume_report_contains_deterministic_grounding_result (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_resume_report_contains_deterministic_grounding_result) ... ok
+test_application_fit_flags_mandatory_unsupported_requirements (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_application_fit_flags_mandatory_unsupported_requirements) ... ok
+test_background_context_never_becomes_verified_interview_evidence (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_background_context_never_becomes_verified_interview_evidence) ... ok
+test_every_fixture_is_schema_valid_and_normalized (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_every_fixture_is_schema_valid_and_normalized) ... ok
+test_expected_translation_and_gap_findings_are_preserved (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_expected_translation_and_gap_findings_are_preserved) ... ok
+test_interview_workspace_removes_unverified_evidence_references (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_interview_workspace_removes_unverified_evidence_references) ... ok
+test_invented_translation_with_valid_evidence_id_is_downgraded (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_invented_translation_with_valid_evidence_id_is_downgraded) ... ok
+test_safe_fixture_proposals_pass_deterministic_validation (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_safe_fixture_proposals_pass_deterministic_validation) ... ok
+test_suite_contains_all_required_international_scenarios (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_suite_contains_all_required_international_scenarios) ... ok
+test_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.365s
+
+OK (skipped=2)
+test_async_error_states_have_wired_retry_controls (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_async_error_states_have_wired_retry_controls) ... ok
+test_every_major_workspace_declares_loading_empty_and_error_states (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_every_major_workspace_declares_loading_empty_and_error_states) ... ok
+test_shared_component_supports_all_three_states (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_shared_component_supports_all_three_states) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
+
+[PASSED] Direct resume-findings and scorecard-to-action integrations
+
+[PASSED] Six international profile regressions
+
+[PASSED] No-invented-experience regressions
+
+[PASSED] Application Builder AI cost-control contract
+PASS: shared budget reservation
+PASS: actual usage settlement
+PASS: bounded structured output
+PASS: shared response cache
+PASS: user-scoped cache key
+PASS: retry ceiling
+PASS: resume import token limit
+PASS: job analysis token limit
+PASS: tailoring token limit
+PASS: evidence-review token limit
+PASS: interview-preparation token limit
+PASS: cache TTL configuration
+PASS: selected-model pricing
+All 13 Application Builder AI cost-control checks passed.
+
+[PASSED] Workspace loading, empty, and error-state contract
+
+[BLOCKED] Full Flask runtime integration suites
+Required deployment/runtime dependencies are unavailable in this execution image: flask, redis, openai, xlrd
+
+[BLOCKED] Six-profile Playwright browser journey
+Required deployment/runtime dependencies are unavailable in this execution image: flask, redis, openai, xlrd
+
+Wrote JSON results to reports/validation/final-integration-check-results.json

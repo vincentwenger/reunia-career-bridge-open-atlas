@@ -25,7 +25,7 @@ from docx.parts.hdrftr import FooterPart, HeaderPart
 
 from .docx_export import export_resume_docx
 from .docx_styles import normalize_career_stage, normalize_resume_format
-from .validation import adjacent_repeated_words
+from .validation import adjacent_repeated_words, validate_proposal
 from .models import (
     ApprovedResume,
     BulletProposal,
@@ -2963,6 +2963,11 @@ def build_resume_report(
 
     total_resume_words = _estimated_resume_word_count(profile, analysis, proposal, effective_resume_title)
 
+    grounding_issues = [
+        issue
+        for issue in validate_proposal(profile, analysis, proposal)
+        if issue.issue.startswith("Generated candidate claim")
+    ]
     job_level_checks = [
         _job_level_match(profile, analysis),
         ReportCheck(
@@ -2971,6 +2976,14 @@ def build_resume_report(
             "No unsupported critical requirement was converted into a resume claim."
             if not unsupported_critical
             else "The following critical requirements remain gaps: " + "; ".join(unsupported_critical),
+        ),
+        ReportCheck(
+            "Generated candidate claims are traceable to verified evidence",
+            "pass" if not grounding_issues else "fail",
+            "The professional summary and selected experience bullets passed deterministic grounding checks."
+            if not grounding_issues
+            else "Unsupported generated claim(s) were detected: "
+            + " | ".join(issue.issue for issue in grounding_issues[:3]),
         ),
     ]
     measurable_checks = [

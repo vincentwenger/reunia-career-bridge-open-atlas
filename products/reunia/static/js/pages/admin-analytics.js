@@ -6,6 +6,10 @@
     const refreshButton = document.getElementById('admin-refresh');
     const exportLink = document.getElementById('admin-export');
     const status = document.getElementById('admin-status');
+    const adminLoadingState = document.getElementById('admin-loading-state');
+    const adminEmptyState = document.getElementById('admin-empty-state');
+    const adminErrorState = document.getElementById('admin-error-state');
+    const adminRetryStateButton = document.getElementById('admin-retry-state-button');
     const searchInput = document.getElementById('admin-user-search');
     const activationFilter = document.getElementById('admin-user-activation-filter');
     const activityFilter = document.getElementById('admin-user-activity-filter');
@@ -221,6 +225,34 @@
         }
     };
 
+    const showAdminWorkspaceState = (state, message = '') => {
+        [adminLoadingState, adminEmptyState, adminErrorState].forEach((element) => {
+            if (element) element.hidden = true;
+        });
+        if (state === 'loading' && adminLoadingState) adminLoadingState.hidden = false;
+        if (state === 'empty' && adminEmptyState) adminEmptyState.hidden = false;
+        if (state === 'error' && adminErrorState) {
+            window.AppUI?.showWorkspaceState(adminErrorState, {state: 'error', message});
+        }
+    };
+
+    const dashboardHasData = (data) => {
+        const summary = data?.summary || {};
+        const summaryKeys = [
+            'unique_guests',
+            'registered_users',
+            'active_registered_users',
+            'document_count',
+            'saved_meeting_count',
+            'career_action_count'
+        ];
+        if (users.length) return true;
+        if (summaryKeys.some((key) => Number(summary[key] || 0) > 0)) return true;
+        return Array.isArray(data?.daily) && data.daily.some((item) =>
+            Number(item?.guests || 0) > 0 || Number(item?.registered_users || item?.users || 0) > 0
+        );
+    };
+
     const setLoading = (loading) => {
         refreshButton.disabled = loading;
         refreshButton.textContent = loading ? 'Refreshing…' : 'Refresh';
@@ -274,8 +306,8 @@
 
         const sourceLabels = {
             documents: 'Career Evidence Library',
-            meetings: 'saved meetings',
-            live_qa_answers: 'Live Q&A answers',
+            meetings: 'saved mock interviews',
+            live_qa_answers: 'Live Assistance answers',
             desktop_downloads: 'desktop downloads',
             desktop_uses: 'desktop client uses',
             recording_durations: 'recording-length statistics',
@@ -393,33 +425,33 @@
         <div class="admin-stat-row"><span><strong>${escapeHtml(label)}</strong>${note ? `<small>${escapeHtml(note)}</small>` : ''}</span><b>${escapeHtml(value)}</b></div>`;
 
     const funnelDescriptions = {
-        'Recording started': 'Recording sessions that users started during the selected period.',
-        'Recording completed': 'Recordings that reached the stop or completion step.',
-        'Recording uploaded': 'Completed recordings successfully sent to Réunia for processing.',
-        'Processing succeeded': 'Meeting-processing attempts that finished without a recorded error.',
-        'Meeting saved': 'Processed meetings stored and available in Meeting Review.',
-        'Meeting Review opened': 'Times users opened the review experience for a meeting.',
-        'Action created': 'Follow-up tasks created from meetings during the selected period.',
+        'Mock interview started': 'Mock interview recording sessions started during the selected period.',
+        'Mock interview completed': 'Mock interview recordings that reached the stop or completion step.',
+        'Recording uploaded': 'Completed mock interview recordings successfully sent to Réunia for processing.',
+        'Interview processing succeeded': 'Mock interview processing attempts that finished without a recorded error.',
+        'Mock interview saved': 'Processed mock interviews stored and available in Interview Review.',
+        'Interview Review opened': 'Times users opened Interview Review for a completed mock interview.',
+        'Career action created': 'Career Action Plan tasks created from interview findings during the selected period.',
     };
 
     const featureDescriptions = {
-        'Meeting Preparation': 'Accounts that opened or used the meeting-preparation area.',
+        'Interview Preparation': 'Accounts that opened or used the interview-preparation area.',
         'Career Evidence Library': 'Accounts that used reusable verified career evidence.',
         'Application Materials': 'Accounts that selected or uploaded materials for a job application.',
-        'AI Context': 'Accounts that configured context or response preferences for the AI.',
-        'Knowledge Search': 'Accounts that searched or asked questions across their knowledge sources.',
-        'Browser Recorder': 'Accounts that used the recorder built into the web application.',
-        'Desktop Client': 'Accounts that successfully signed in through the desktop application.',
-        'Live Q&A': 'Accounts that started a Live Q&A session or requested an AI answer.',
+        'AI Configuration': 'Accounts that configured model or response preferences for career AI workflows.',
+        'Career Evidence Search': 'Accounts that searched or asked questions across verified career evidence.',
+        'Mock Interview': 'Accounts that used the browser-based adaptive mock interview experience.',
+        'Mock Interview Desktop Recorder': 'Accounts that successfully used the optional desktop interview recorder.',
+        'Live Assistance': 'Accounts authorized for live interview assistance that started a session or requested an AI answer.',
         'Interview Review': 'Accounts that opened a saved mock interview for review and follow-up.',
         'Career Action Plan': 'Accounts that opened or used the application-linked career planning area.',
-        'Analytics': 'Accounts that opened the user-facing Analytics area.',
+        'Impact & Progress': 'Accounts that opened the user-facing Impact & Progress area.',
     };
 
     const operationDescriptions = {
-        'Meeting processing': 'Turning a completed recording into a saved meeting and review.',
+        'Interview processing': 'Turning a completed mock interview recording into a saved Interview Review.',
         'Document processing': 'Preparing an uploaded document so it can be searched or used by AI.',
-        'Live Q&A': 'Generating an AI answer for a question during a live meeting.',
+        'Live Assistance': 'Generating an AI answer during authorized live interview assistance.',
         'AI requests': 'Measured AI calls across supported Réunia features.',
     };
 
@@ -463,10 +495,10 @@
         ].join('');
 
         document.getElementById('admin-activation-retention').innerHTML = [
-            statRow('Activated users', formatNumber.format(activation.activated_users || 0), 'Accounts that saved at least one meeting and opened Meeting Review.'),
-            statRow('Activated within 1 day', formatNumber.format(activation.activated_within_1_day || 0), 'Activated accounts whose first saved meeting was created within 24 hours of registration.'),
-            statRow('Activated within 7 days', formatNumber.format(activation.activated_within_7_days || 0), 'Activated accounts whose first saved meeting was created within seven days of registration.'),
-            statRow('Average time to activation', activation.average_hours_to_activation == null ? '—' : `${activation.average_hours_to_activation} hr`, 'Average time from account creation to the first saved meeting among users with measurable activation dates.'),
+            statRow('Activated users', formatNumber.format(activation.activated_users || 0), 'Accounts that completed at least one mock interview and opened Interview Review.'),
+            statRow('Activated within 1 day', formatNumber.format(activation.activated_within_1_day || 0), 'Activated accounts whose first saved mock interview was created within 24 hours of registration.'),
+            statRow('Activated within 7 days', formatNumber.format(activation.activated_within_7_days || 0), 'Activated accounts whose first saved mock interview was created within seven days of registration.'),
+            statRow('Average time to activation', activation.average_hours_to_activation == null ? '—' : `${activation.average_hours_to_activation} hr`, 'Average time from account creation to the first saved mock interview among users with measurable activation dates.'),
             statRow('Next-day return', formatPercent(retention.return_next_day_rate), 'Percentage of eligible accounts that were active again exactly one day after registration.'),
             statRow('7-day return', formatPercent(retention.return_7_day_rate), 'Percentage of accounts at least seven days old that returned on any day from day 1 through day 7.'),
             statRow('30-day return', formatPercent(retention.return_30_day_rate), 'Percentage of accounts at least 30 days old that returned on any day from day 1 through day 30.'),
@@ -478,15 +510,15 @@
             const index = funnel.indexOf(item);
             return `
                 <div class="admin-progress-row">
-                    <div><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(funnelDescriptions[item.label] || 'A measured step in the meeting workflow.')}</small></span><strong>${formatNumber.format(item.count || 0)}</strong></div>
+                    <div><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(funnelDescriptions[item.label] || 'A measured step in the interview-practice workflow.')}</small></span><strong>${formatNumber.format(item.count || 0)}</strong></div>
                     <div class="admin-progress-track"><i style="width:${Number(item.count || 0) > 0 ? Math.max(2, Number(item.count || 0) / funnelMax * 100) : 0}%"></i></div>
                     <small>${index === 0 ? 'This is the starting point for the funnel.' : `${Number(item.from_previous_rate || 0).toFixed(1)}% compared with the previous workflow step.`}</small>
                 </div>`;
         };
         document.getElementById('admin-meeting-funnel').innerHTML = renderProgressCollection(
             funnel, (item) => item.count, funnelRow,
-            'No meeting workflow activity yet',
-            'Recorded funnel steps will appear after users begin and complete meetings.',
+            'No interview-practice activity yet',
+            'Recorded funnel steps will appear after users begin and complete mock interviews.',
             'steps',
         );
 
@@ -538,12 +570,12 @@
         const live = data.live_qa_health || {};
         const ai = data.ai_usage || {};
         document.getElementById('admin-live-ai-health').innerHTML = [
-            statRow('Live Q&A sessions', formatNumber.format(live.sessions || 0), 'Distinct Live Q&A sessions started during the selected period.'),
-            statRow('Questions/requests', formatNumber.format(live.requests || 0), 'Questions sent to Live Q&A for an AI-generated response.'),
-            statRow('AI answers', formatNumber.format(live.answers || 0), 'Live Q&A requests that produced and saved an AI answer.'),
-            statRow('Live Q&A failures', formatNumber.format(live.failures || 0), 'Live Q&A requests that ended with a recorded error.'),
-            statRow('Live Q&A success rate', formatPercent(live.success_rate), 'Successful AI answers divided by successful answers plus recorded failures.'),
-            statRow('Average response time', formatMilliseconds(live.average_response_ms), 'Average measured time between a Live Q&A request and its result.'),
+            statRow('Live Assistance sessions', formatNumber.format(live.sessions || 0), 'Distinct authorized Live Assistance sessions started during the selected period.'),
+            statRow('Questions/requests', formatNumber.format(live.requests || 0), 'Questions sent to Live Assistance for an AI-generated response.'),
+            statRow('AI answers', formatNumber.format(live.answers || 0), 'Live Assistance requests that produced and saved an AI answer.'),
+            statRow('Live Assistance failures', formatNumber.format(live.failures || 0), 'Live Assistance requests that ended with a recorded error.'),
+            statRow('Live Assistance success rate', formatPercent(live.success_rate), 'Successful AI answers divided by successful answers plus recorded failures.'),
+            statRow('Average response time', formatMilliseconds(live.average_response_ms), 'Average measured time between a Live Assistance request and its result.'),
             statRow('Measured AI requests', formatNumber.format(ai.requests || 0), 'AI and transcription calls recorded during the selected period across supported features.'),
             statRow(
                 'Estimated AI cost',
@@ -1097,7 +1129,7 @@
 
     const renderUsageItems = (items, kind) => {
         if (!Array.isArray(items) || items.length === 0) {
-            return `<div class="admin-usage-list-empty">No ${kind === 'documents' ? 'documents' : 'saved meetings'} for this user.</div>`;
+            return `<div class="admin-usage-list-empty">No ${kind === 'documents' ? 'documents' : 'saved mock interviews'} for this user.</div>`;
         }
         if (kind === 'documents') {
             return items.map((item) => `
@@ -1112,7 +1144,7 @@
         return items.map((item) => `
             <div class="admin-usage-list-item">
                 <span>
-                    <strong>${escapeHtml(item.title || 'Unnamed Meeting')}</strong>
+                    <strong>${escapeHtml(item.title || 'Unnamed Mock Interview')}</strong>
                     <small>${escapeHtml(formatIsoDateTime(item.timestamp))}</small>
                 </span>
             </div>`).join('');
@@ -1180,8 +1212,8 @@
                 .filter(([, available]) => !available)
                 .map(([source]) => ({
                     documents: 'documents',
-                    meetings: 'saved meetings',
-                    live_qa_answers: 'Live Q&A totals',
+                    meetings: 'saved mock interviews',
+                    live_qa_answers: 'Live Assistance totals',
                     desktop_downloads: 'desktop downloads',
                     desktop_uses: 'desktop client uses',
                     recording_durations: 'recording-length statistics',
@@ -1199,6 +1231,7 @@
     };
 
     const loadAnalytics = async () => {
+        showAdminWorkspaceState('loading');
         status.hidden = false;
         status.classList.remove('is-error');
         status.textContent = 'Loading admin analytics…';
@@ -1219,10 +1252,13 @@
             renderUsers();
             const generated = new Date(data.generated_at);
             status.textContent = `Last updated ${new Intl.DateTimeFormat(window.AppI18n?.locale || undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(generated)}`;
+            showAdminWorkspaceState(dashboardHasData(data) ? 'ready' : 'empty');
         } catch (error) {
             status.hidden = false;
             status.classList.add('is-error');
-            status.textContent = 'Admin analytics could not be loaded. Check the application configuration and access permissions.';
+            const message = 'Admin analytics could not be loaded. Check the application configuration and access permissions.';
+            status.textContent = message;
+            showAdminWorkspaceState('error', message);
         }
     };
 
@@ -1234,6 +1270,7 @@
 
     periodSelect.addEventListener('change', loadAnalytics);
     refreshButton.addEventListener('click', loadAll);
+    adminRetryStateButton?.addEventListener('click', loadAll);
     searchInput.addEventListener('input', renderUsers);
     activationFilter?.addEventListener('change', renderUsers);
     activityFilter?.addEventListener('change', renderUsers);

@@ -36,8 +36,8 @@
     const microphoneState = document.getElementById('microphoneState');
     const microphoneMeter = document.getElementById('microphoneMeter');
     const processingPanel = document.getElementById('mockProcessingPanel');
-    const processingTitle = document.getElementById('mockProcessingTitle');
-    const processingMessage = document.getElementById('mockProcessingMessage');
+    const processingTitle = processingPanel?.querySelector('[data-state-title]');
+    const processingMessage = processingPanel?.querySelector('[data-state-message]');
     const evaluationPanel = document.getElementById('mockEvaluationPanel');
     const evaluationScore = document.getElementById('evaluationScore');
     const evaluationEvidenceBadge = document.getElementById('evaluationEvidenceBadge');
@@ -45,7 +45,7 @@
     const evaluationStrengths = document.getElementById('evaluationStrengths');
     const evaluationImprovements = document.getElementById('evaluationImprovements');
     const errorPanel = document.getElementById('mockErrorPanel');
-    const errorMessage = document.getElementById('mockErrorMessage');
+    const errorMessage = errorPanel?.querySelector('[data-state-message]');
     const historyCount = document.getElementById('mockHistoryCount');
     const historyList = document.getElementById('mockHistoryList');
     const completeMessage = document.getElementById('mockCompleteMessage');
@@ -552,8 +552,22 @@
         historyList.replaceChildren();
         if (!records.length) {
             const empty = document.createElement('li');
-            empty.className = 'mock-history-empty';
-            empty.textContent = 'Your completed questions and coaching signals will appear here.';
+            empty.className = 'mock-history-empty app-state app-state--empty app-state--compact';
+            empty.dataset.uiState = 'empty';
+            const icon = document.createElement('span');
+            icon.className = 'app-state__icon';
+            icon.setAttribute('aria-hidden', 'true');
+            icon.textContent = '○';
+            const body = document.createElement('div');
+            body.className = 'app-state__body';
+            const title = document.createElement('strong');
+            title.className = 'app-state__title';
+            title.textContent = 'No answers completed yet';
+            const message = document.createElement('p');
+            message.className = 'app-state__message';
+            message.textContent = 'Your completed questions and coaching signals will appear here.';
+            body.append(title, message);
+            empty.append(icon, body);
             historyList.appendChild(empty);
             return;
         }

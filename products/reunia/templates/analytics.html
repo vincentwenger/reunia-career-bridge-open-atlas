@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'macros/ui.html' import page_hero %}
+{% from 'macros/ui.html' import page_hero, workspace_state %}
 
 {% block title %}Réunia - Social Impact{% endblock %}
 
@@ -28,6 +28,35 @@
 
     <div class="impact-status" id="impact-status" role="status" aria-live="polite">Loading measurable outcomes...</div>
 
+    <div class="impact-workspace-states" aria-live="polite">
+        {{ workspace_state(
+            'impact-loading-state',
+            'loading',
+            'Loading measurable outcomes',
+            'Collecting saved Career Translation, resume, interview, and action-plan evidence.',
+            hidden=false
+        ) }}
+        {{ workspace_state(
+            'impact-empty-state',
+            'empty',
+            'No measurable outcomes yet',
+            'Complete at least one application workflow step to begin the evidence-backed outcome ledger.',
+            hidden=true,
+            action_label='Open job applications',
+            action_href=request.script_root ~ '/applications/?tab=applications'
+        ) }}
+        {{ workspace_state(
+            'impact-error-state',
+            'error',
+            'Social-impact outcomes could not be loaded',
+            'The saved evidence remains unchanged. Retry the dashboard request when the service is available.',
+            hidden=true,
+            action_label='Retry loading',
+            action_id='impact-retry-button'
+        ) }}
+    </div>
+
+    <div id="impact-dashboard-content" hidden>
     <section class="impact-metric-grid" aria-label="Measured social-impact outcomes">
         <article class="impact-metric-card"><span class="impact-metric-icon">◎</span><div><span>International credentials identified</span><strong id="impact-credentials">—</strong><small>Credential explanations found in Career Translation</small></div></article>
         <article class="impact-metric-card"><span class="impact-metric-icon">Aa</span><div><span>Career terminology clarified</span><strong id="impact-terminology">—</strong><small>Titles and regional terms translated for the target market</small></div></article>
@@ -93,6 +122,7 @@
         <div class="impact-integrity-icon">i</div>
         <div><strong>Measurement integrity</strong><p>Career Bridge does not infer sensitive traits, immigration status, personality, or emotion. It counts workflow artifacts, confirmed evidence, report score changes, observable interview criteria, and completed actions. A zero can mean either no issue was found or the related workflow has not yet been completed.</p><ul id="impact-warnings"></ul></div>
     </section>
+    </div>
 </div>
 {% endblock %}
 

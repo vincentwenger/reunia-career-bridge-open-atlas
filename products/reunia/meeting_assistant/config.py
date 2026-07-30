@@ -240,6 +240,35 @@ class BaseConfig:
     AI_MAX_OUTPUT_TOKENS_MEETING_ANALYSIS = int(
         os.getenv("AI_MAX_OUTPUT_TOKENS_MEETING_ANALYSIS", "2600")
     )
+    # Application Builder structured-output ceilings. These values are used both
+    # for provider requests and conservative pre-request budget reservations.
+    AI_MAX_OUTPUT_TOKENS_APPLICATION_BUILDER = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_APPLICATION_BUILDER", "4000")
+    )
+    AI_MAX_OUTPUT_TOKENS_RESUME_IMPORT = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_RESUME_IMPORT", "3200")
+    )
+    AI_MAX_OUTPUT_TOKENS_RESUME_JOB_ANALYSIS = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_RESUME_JOB_ANALYSIS", "2400")
+    )
+    AI_MAX_OUTPUT_TOKENS_RESUME_TAILORING = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_RESUME_TAILORING", "5200")
+    )
+    AI_MAX_OUTPUT_TOKENS_RESUME_EVIDENCE_REVIEW = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_RESUME_EVIDENCE_REVIEW", "3600")
+    )
+    AI_MAX_OUTPUT_TOKENS_INTERVIEW_PREPARATION = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_INTERVIEW_PREPARATION", "4200")
+    )
+    AI_APPLICATION_BUILDER_MAX_ATTEMPTS = int(
+        os.getenv("AI_APPLICATION_BUILDER_MAX_ATTEMPTS", "2")
+    )
+    AI_APPLICATION_BUILDER_CACHE_SECONDS = int(
+        os.getenv(
+            "AI_APPLICATION_BUILDER_CACHE_SECONDS",
+            os.getenv("AI_RESPONSE_CACHE_SECONDS", "3600"),
+        )
+    )
     AI_COMBINE_MEETING_ANALYSIS_REQUESTS = (
         os.getenv("AI_COMBINE_MEETING_ANALYSIS_REQUESTS", "true").strip().lower() == "true"
     )
@@ -327,6 +356,23 @@ class BaseConfig:
     ANALYTICS_AI_MODEL_PRICING = _pricing_table_from_env(
         "ANALYTICS_AI_PRICING_JSON",
         {
+            # Standard direct-API prices per one million tokens. Keep this table
+            # overridable through ANALYTICS_AI_PRICING_JSON as provider prices evolve.
+            "gpt-5.6-sol": {
+                "input": 5.00,
+                "cached_input": 0.50,
+                "output": 30.00,
+            },
+            "gpt-5.6-terra": {
+                "input": 2.50,
+                "cached_input": 0.25,
+                "output": 15.00,
+            },
+            "gpt-5.6-luna": {
+                "input": 1.00,
+                "cached_input": 0.10,
+                "output": 6.00,
+            },
             "gpt-4o-mini": {
                 "input": 0.15,
                 "cached_input": 0.075,

@@ -1,4 +1,5 @@
 (() => {
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
   const modeSelect = document.querySelector('[data-processing-mode]');
   const customModels = document.querySelector('[data-custom-models]');
   const syncCustomModels = () => {
@@ -333,20 +334,36 @@
   });
 
 
+  const builderErrorState = document.getElementById('application-builder-error-state');
+  const builderErrorRetry = document.getElementById('application-builder-error-retry');
+  const showBuilderError = (message) => {
+    if (!builderErrorState) return;
+    window.AppUI?.showWorkspaceState(builderErrorState, {
+      state: 'error',
+      title: 'This workspace could not finish the requested update',
+      message: message || 'The current application data remains unchanged. Reload the workspace or retry the available action.'
+    });
+    builderErrorState.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  builderErrorRetry?.addEventListener('click', () => window.location.reload());
+
   const automaticReports = [...document.querySelectorAll('[data-auto-report]')];
   if (automaticReports.length) {
     (async () => {
       let shouldRefresh = false;
+      let failedReportCount = 0;
       for (const item of automaticReports) {
         item.textContent = `${item.dataset.label || 'Resume Report'} · generating…`;
         const body = new FormData();
-        body.append('csrf_token', item.dataset.csrf || '');
         try {
           const response = await fetch(item.dataset.url, {
             method: 'POST',
             body,
             credentials: 'same-origin',
-            headers: { Accept: 'application/json' },
+            headers: {
+              Accept: 'application/json',
+              ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
+            },
           });
           const result = await response.json();
           if (!response.ok || !result.ok) throw new Error(result.message || 'Report generation failed.');
@@ -354,9 +371,13 @@
           item.classList.add('is-ready');
           shouldRefresh ||= item.dataset.refresh === 'true';
         } catch (error) {
+          failedReportCount += 1;
           item.textContent = `${item.dataset.label || 'Resume Report'} · retry available in Resume Reports`;
           item.classList.add('is-error');
         }
+      }
+      if (failedReportCount) {
+        showBuilderError(`${failedReportCount} automatic resume report${failedReportCount === 1 ? '' : 's'} could not be generated. Open Resume Reports to retry without losing the current workflow.`);
       }
       if (shouldRefresh) window.location.reload();
     })();

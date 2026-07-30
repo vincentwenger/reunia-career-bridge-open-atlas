@@ -12,8 +12,8 @@
     color: #ffffff;
     background:
         radial-gradient(circle at 92% 0%, rgba(255, 255, 255, 0.12), transparent 32%),
-        linear-gradient(135deg, #176b5a, #1b826b);
-    box-shadow: 0 10px 24px rgba(23, 107, 90, 0.16);
+        linear-gradient(135deg, #1d4e78, #0f766e);
+    box-shadow: 0 10px 24px rgba(29, 78, 120, 0.16);
     margin-bottom: 18px;
 }
 
@@ -85,7 +85,7 @@
 .form-label {
     display: block;
     margin-bottom: 8px;
-    color: #40504b;
+    color: #475569;
     font-size: 13px;
     font-weight: 800;
 }
@@ -94,19 +94,19 @@
 .form-control {
     width: 100%;
     padding: 14px 15px;
-    border: 1px solid #d8e7e2;
+    border: 1px solid #d7e2ea;
     border-radius: 14px;
     outline: none;
-    background: #f8fcfb;
+    background: #f8fafc;
     font-size: 15px;
     transition: 0.2s;
 }
 
 .form-input:focus,
 .form-control:focus {
-    border-color: #1b826b;
+    border-color: #0f766e;
     background: white;
-    box-shadow: 0 0 0 4px rgba(27, 130, 107, 0.12);
+    box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
 }
 
 .flash-messages {
@@ -171,14 +171,14 @@
 .empty-message::before {
     content: "—" !important;
     background: #e5e7eb !important;
-    color: #707d79 !important;
+    color: #64748b !important;
 }
 
 .loading-state,
 .no-records-state {
     padding: 36px 22px;
     text-align: center;
-    color: #707d79;
+    color: #64748b;
     line-height: 1.6;
 }
 
@@ -186,7 +186,7 @@
 .no-records-state strong {
     display: block;
     margin-bottom: 6px;
-    color: #176b5a;
+    color: #1d4e78;
     font-size: 18px;
 }
 
@@ -243,9 +243,9 @@
 
 .app-toast {
     padding: 13px 15px;
-    border: 1px solid #ddede8;
+    border: 1px solid #dde7ee;
     border-radius: 12px;
-    color: #17342e;
+    color: #1f2937;
     background: #ffffff;
     box-shadow: 0 18px 45px rgba(18, 39, 33, 0.16);
     opacity: 0;
@@ -261,7 +261,7 @@
 
 .app-toast-success { border-left: 4px solid #138a61; }
 .app-toast-error { border-left: 4px solid #c53b48; }
-.app-toast-info { border-left: 4px solid #56d6b3; }
+.app-toast-info { border-left: 4px solid #2a9d8f; }
 
 .app-confirm-backdrop {
     position: fixed;
@@ -284,13 +284,13 @@
 
 .app-confirm-card h2 {
     margin: 0;
-    color: #17342e;
+    color: #1f2937;
     font-size: 1.25rem;
 }
 
 .app-confirm-card p {
     margin: 10px 0 0;
-    color: #667a75;
+    color: #64748b;
     line-height: 1.6;
 }
 
@@ -304,22 +304,174 @@
 .app-confirm-actions button {
     min-height: 40px;
     padding: 0 16px;
-    border: 1px solid #ddede8;
+    border: 1px solid #dde7ee;
     border-radius: 10px;
     background: #ffffff;
-    color: #17342e;
+    color: #1f2937;
     font: inherit;
     font-weight: 700;
     cursor: pointer;
 }
 
 .app-confirm-submit {
-    border-color: #56d6b3 !important;
+    border-color: #2a9d8f !important;
     color: #ffffff !important;
-    background: #56d6b3 !important;
+    background: #2a9d8f !important;
 }
 
 .app-confirm-submit.danger {
     border-color: #c53b48 !important;
     background: #c53b48 !important;
+}
+
+
+/* Shared workspace loading, empty, and error states */
+.app-state {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+    width: 100%;
+    padding: 20px;
+    border: 1px solid #d9e9e4;
+    border-radius: 16px;
+    color: #334155;
+    background: #fbfcfe;
+    box-sizing: border-box;
+}
+
+.app-state[hidden] {
+    display: none !important;
+}
+
+.app-state--compact {
+    padding: 15px 16px;
+    border-radius: 13px;
+}
+
+.app-state__icon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    color: #1d4e78;
+    background: #e8f7f2;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.app-state__spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(29, 78, 120, 0.2);
+    border-top-color: #1d4e78;
+    border-radius: 50%;
+    animation: appStateSpin 0.8s linear infinite;
+}
+
+.app-state__body {
+    min-width: 0;
+}
+
+.app-state__title {
+    display: block;
+    color: #28483f;
+    font-size: 15px;
+    line-height: 1.35;
+}
+
+.app-state__message {
+    margin: 5px 0 0;
+    color: #6c807a;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.app-state__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 13px;
+}
+
+.app-state__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 13px;
+    border: 1px solid #b9ddd1;
+    border-radius: 10px;
+    color: #1d4e78;
+    background: #ffffff;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.app-state__action:hover {
+    border-color: #75c4aa;
+    background: #f2fbf8;
+}
+
+.app-state--loading {
+    border-color: #bfe2d7;
+    background: #f3fbf8;
+}
+
+.app-state--empty {
+    border-style: dashed;
+    border-color: #cfdeda;
+    background: #fafcfb;
+}
+
+.app-state--empty .app-state__icon {
+    color: #617770;
+    background: #eef3f1;
+}
+
+.app-state--error {
+    border-color: #efbbc1;
+    background: #fff5f6;
+}
+
+.app-state--error .app-state__icon {
+    color: #a42637;
+    background: #ffe4e7;
+}
+
+.app-state--error .app-state__title {
+    color: #922334;
+}
+
+.app-state--error .app-state__message {
+    color: #87525b;
+}
+
+.app-state--error .app-state__action {
+    border-color: #e3a4ad;
+    color: #9f2637;
+    background: #ffffff;
+}
+
+@keyframes appStateSpin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+    .app-state {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 16px;
+    }
+
+    .app-state__icon {
+        width: 34px;
+        height: 34px;
+    }
 }

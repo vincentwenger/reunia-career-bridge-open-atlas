@@ -34,6 +34,7 @@ USER appuser
 
 EXPOSE 8000
 
+# Deployment invariant: Lightsail must not override this image command.
 # One worker is required because the current resume workflow store is
-# process-local. Threads allow concurrent requests without splitting state.
+# process-local. Four threads allow concurrent requests without splitting state.
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--timeout", "600", "--graceful-timeout", "30", "--access-logfile", "-", "--error-logfile", "-", "app:app"]

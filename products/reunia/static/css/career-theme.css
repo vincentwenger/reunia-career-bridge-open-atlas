@@ -1,85 +1,216 @@
 /*
- * Réunia Career Bridge visual system
+ * Réunia Career Bridge — Trust + Action visual system
  *
- * Primary: deep teal and emerald communicate progress, trust, and forward motion.
- * Secondary: warm amber highlights deadlines and noteworthy guidance.
- * Semantic red/orange/green states remain reserved for errors, cautions, and success.
+ * 60% canvas: white and cool near-white surfaces keep document-heavy screens calm.
+ * 30% anchor: navy/slate establishes credibility, privacy, and professional trust.
+ * 10% action: teal/emerald communicates progress; warm orange is reserved for
+ *             the most important user actions. Semantic colors remain distinct.
  */
 :root {
-    --career-ink: #17342e;
-    --career-ink-soft: #40514c;
-    --career-muted: #667a75;
-    --career-primary: #176b5a;
-    --career-primary-dark: #0f473c;
-    --career-primary-bright: #1b826b;
-    --career-emerald: #35a487;
-    --career-mint: #e8f6f2;
-    --career-mint-soft: #f4f8f6;
-    --career-border: #dfe9e6;
-    --career-accent: #c18a38;
-    --career-accent-soft: #fff6df;
-    --career-danger: #b42318;
-    --career-warning: #a95f00;
+    color-scheme: light;
 
-    /* Shared shell tokens. */
+    /* Neutral canvas and readable typography. */
+    --career-canvas: #f8fafc;
+    --career-surface: #ffffff;
+    --career-surface-alt: #f3f7fa;
+    --career-ink: #1f2937;
+    --career-ink-soft: #475569;
+    --career-muted: #64748b;
+    --career-border: #dce4ec;
+
+    /* Trust anchor. */
+    --career-primary: #1d4e78;
+    --career-primary-dark: #143a5a;
+    --career-primary-bright: #2f6f9f;
+    --career-primary-soft: #eaf2f8;
+
+    /* Bridge and progress. */
+    --career-teal: #0f766e;
+    --career-teal-dark: #0d5f5a;
+    --career-teal-soft: #e8f5f4;
+    --career-emerald: #137a58;
+    --career-emerald-soft: #e8f6ef;
+
+    /* High-value action. */
+    --career-cta: #c2410c;
+    --career-cta-dark: #9a3412;
+    --career-cta-soft: #fff7ed;
+
+    /* Semantic feedback. */
+    --career-danger: #b42318;
+    --career-warning: #a15c00;
+    --career-success: #137a58;
+
+    /* Shared Réunia shell tokens. */
     --ma-primary: var(--career-primary);
     --ma-primary-light: var(--career-primary-bright);
     --ma-text: var(--career-ink);
     --ma-muted: var(--career-muted);
     --ma-border: var(--career-border);
-    --ma-page-background: linear-gradient(180deg, var(--career-mint-soft) 0%, #ffffff 100%);
+    --ma-surface: var(--career-surface);
+    --ma-page-background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
 
     /* Application Builder tokens. */
-    --bg: #f5f8f7;
-    --surface: #ffffff;
-    --surface-alt: #f8fcfb;
+    --bg: #f6f8fb;
+    --surface: var(--career-surface);
+    --surface-alt: #f8fafc;
     --text: var(--career-ink);
     --muted: var(--career-muted);
-    --border: #dbe8e3;
+    --border: var(--career-border);
     --primary: var(--career-primary);
     --primary-dark: var(--career-primary-dark);
-    --info: var(--career-primary);
-    --info-bg: #f0f8f5;
+    --info: var(--career-teal);
+    --info-bg: var(--career-teal-soft);
 }
 
 html {
-    scrollbar-color: #9fc8bb #eef5f2;
+    scrollbar-color: #9db4c7 #eef2f6;
 }
 
 body {
-    accent-color: var(--career-primary-bright);
+    accent-color: var(--career-teal);
+    background: var(--ma-page-background);
+    color: var(--career-ink);
 }
 
 ::selection {
     color: var(--career-ink);
-    background: #cce9df;
+    background: #cfe5ef;
 }
 
 :focus-visible {
-    outline-color: var(--career-primary-bright);
+    outline-color: var(--career-teal);
 }
 
 input[type="checkbox"],
 input[type="radio"],
 progress {
-    accent-color: var(--career-primary-bright);
+    accent-color: var(--career-teal);
 }
 
-/* Keep shared hero treatments identical across product modules. */
+/* Navy carries the structural 30%: heroes, headers, and trusted shell surfaces. */
 .page-hero {
     background:
-        radial-gradient(circle at 92% 0%, rgba(255, 255, 255, 0.13), transparent 32%),
-        linear-gradient(135deg, var(--career-primary), var(--career-primary-bright));
-    box-shadow: 0 12px 28px rgba(23, 107, 90, 0.17);
+        radial-gradient(circle at 90% 0%, rgba(42, 157, 143, 0.28), transparent 34%),
+        linear-gradient(135deg, var(--career-primary-dark), var(--career-primary) 58%, var(--career-primary-bright));
+    box-shadow: 0 14px 32px rgba(20, 58, 90, 0.20);
 }
 
-/* Career-relevant warm accent for deadlines and emphasized guidance. */
+/* Teal is used for active state, orientation, and forward progress. */
+.button.text,
+.loading-state strong,
+.no-records-state strong {
+    color: var(--career-teal);
+}
+
+progress::-webkit-progress-value {
+    background: linear-gradient(90deg, var(--career-teal), var(--career-emerald));
+}
+
+progress::-moz-progress-bar {
+    background: linear-gradient(90deg, var(--career-teal), var(--career-emerald));
+}
+
+/* Orange is deliberately limited to primary, high-intent actions. */
+.button.primary,
+.btn-primary,
+.submit-btn,
+.btn-submit,
+.action-primary-button,
+.admin-primary-button,
+.support-button-primary,
+.guide-button-primary,
+.marketing-button-primary,
+.marketing-get-started-btn,
+.context-save-button,
+.shared-primary-button,
+.mock-button-primary,
+.interview-generate-button,
+.application-builder-content .button.primary {
+    border-color: var(--career-cta) !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, var(--career-cta), #d05a18) !important;
+    box-shadow: 0 10px 24px rgba(194, 65, 12, 0.24) !important;
+}
+
+.button.primary:hover:not(:disabled),
+.btn-primary:hover:not(:disabled),
+.submit-btn:hover:not(:disabled),
+.btn-submit:hover:not(:disabled),
+.action-primary-button:hover:not(:disabled),
+.admin-primary-button:hover:not(:disabled),
+.support-button-primary:hover:not(:disabled),
+.guide-button-primary:hover:not(:disabled),
+.marketing-button-primary:hover:not(:disabled),
+.marketing-get-started-btn:hover:not(:disabled),
+.context-save-button:hover:not(:disabled),
+.shared-primary-button:hover:not(:disabled),
+.mock-button-primary:hover:not(:disabled),
+.interview-generate-button:hover:not(:disabled),
+.application-builder-content .button.primary:hover:not(:disabled) {
+    border-color: var(--career-cta-dark) !important;
+    color: #ffffff !important;
+    background: linear-gradient(135deg, var(--career-cta-dark), var(--career-cta)) !important;
+    box-shadow: 0 14px 30px rgba(154, 52, 18, 0.30) !important;
+}
+
+.button.primary:focus-visible,
+.btn-primary:focus-visible,
+.submit-btn:focus-visible,
+.btn-submit:focus-visible,
+.action-primary-button:focus-visible,
+.admin-primary-button:focus-visible,
+.support-button-primary:focus-visible,
+.guide-button-primary:focus-visible,
+.marketing-button-primary:focus-visible,
+.context-save-button:focus-visible,
+.mock-button-primary:focus-visible,
+.interview-generate-button:focus-visible {
+    outline: 3px solid rgba(194, 65, 12, 0.30);
+    outline-offset: 3px;
+}
+
+/* Hero actions stay quiet and trustworthy rather than competing with page CTAs. */
+.application-builder-hero-button-primary,
+.knowledge-hero-button-primary,
+.guide-button-light,
+.marketing-button-light {
+    color: var(--career-primary) !important;
+    background: #ffffff !important;
+}
+
+/* Shared active and progress treatments use the bridge color, not CTA orange. */
+.nav-link.active::after,
+.progress span,
+.impact-score-current,
+.application-fit-progress span,
+.admin-progress-track i {
+    background: linear-gradient(90deg, var(--career-teal), var(--career-emerald)) !important;
+}
+
+.nav-link:hover,
+.nav-link.active,
+.dropdown-content a:hover,
+.tab-button.active,
+.admin-section-tabs button[aria-selected="true"],
+.admin-operations-tabs button[aria-selected="true"] {
+    color: var(--career-teal) !important;
+}
+
+/* Warm accent for deadlines, priority guidance, and selected attention states. */
 [data-tone="deadline"],
 [data-tone="priority"],
 .career-accent {
-    color: #765414;
-    background: var(--career-accent-soft);
-    border-color: #efd8a9;
+    color: #7c3d0b;
+    background: var(--career-cta-soft);
+    border-color: #fed7aa;
+}
+
+/* Keep non-semantic empty states neutral and low-pressure. */
+.empty-message {
+    color: var(--career-muted) !important;
+    background: var(--career-surface-alt) !important;
+    border-color: var(--career-border) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

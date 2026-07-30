@@ -1,0 +1,14 @@
+PASS: shared budget reservation
+PASS: actual usage settlement
+PASS: bounded structured output
+PASS: shared response cache
+PASS: user-scoped cache key
+PASS: retry ceiling
+PASS: resume import token limit
+PASS: job analysis token limit
+PASS: tailoring token limit
+PASS: evidence-review token limit
+PASS: interview-preparation token limit
+PASS: cache TTL configuration
+PASS: selected-model pricing
+All 13 Application Builder AI cost-control checks passed.

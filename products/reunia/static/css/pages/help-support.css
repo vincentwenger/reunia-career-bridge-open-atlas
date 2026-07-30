@@ -1,11 +1,11 @@
 .support-page {
-    --support-primary: #176b5a;
-    --support-blue: #1b826b;
-    --support-accent: #1b826b;
-    --support-text: #17342e;
-    --support-muted: #667a75;
-    --support-border: #e2f0eb;
-    --support-soft: #f8fcfb;
+    --support-primary: #1d4e78;
+    --support-blue: #0f766e;
+    --support-accent: #0f766e;
+    --support-text: #1f2937;
+    --support-muted: #64748b;
+    --support-border: #e2e8f0;
+    --support-soft: #f8fafc;
 }
 
 .support-shortcuts {
@@ -14,7 +14,7 @@
     border: 1px solid var(--support-border);
     border-radius: 20px;
     background: #ffffff;
-    box-shadow: 0 9px 28px rgba(28, 70, 61, 0.055);
+    box-shadow: 0 9px 28px rgba(20, 58, 90, 0.055);
 }
 
 .support-section-heading {
@@ -73,7 +73,7 @@
 .support-shortcut-card:focus-visible {
     border-color: #bfe9db;
     background: #ffffff;
-    box-shadow: 0 12px 28px rgba(23, 107, 90, 0.11);
+    box-shadow: 0 12px 28px rgba(29, 78, 120, 0.11);
     transform: translateY(-2px);
 }
 
@@ -82,7 +82,7 @@
 .support-file-picker:focus-within,
 .support-faq-list summary:focus-visible,
 .support-faq-search input:focus-visible {
-    outline: 3px solid rgba(27, 130, 107, 0.2);
+    outline: 3px solid rgba(15, 118, 110, 0.2);
     outline-offset: 2px;
 }
 
@@ -92,7 +92,7 @@
     display: grid;
     place-items: center;
     border-radius: 12px;
-    background: linear-gradient(135deg, #e7f5f0, #e9fbf6);
+    background: linear-gradient(135deg, #e8f2f5, #e9fbf6);
     font-size: 19px;
 }
 
@@ -130,7 +130,7 @@
     border: 1px solid var(--support-border);
     border-radius: 20px;
     background: #ffffff;
-    box-shadow: 0 10px 30px rgba(28, 70, 61, 0.055);
+    box-shadow: 0 10px 30px rgba(20, 58, 90, 0.055);
 }
 
 .support-contact-card,
@@ -156,7 +156,7 @@
     border: 1px solid #d1f1e7;
     border-radius: 999px;
     color: var(--support-primary);
-    background: #eef8f5;
+    background: #edf7f6;
     font-size: 11px;
     font-weight: 850;
 }
@@ -196,13 +196,13 @@
     margin-top: -2px;
     border: 1px solid #dff0eb;
     color: #4f6275;
-    background: #f9fdfc;
+    background: #fbfcfe;
 }
 
 .support-detail-hint.has-guidance {
     border-color: #cdf0e5;
     color: #2e755e;
-    background: #f0f8f5;
+    background: #f1f5f9;
 }
 
 .support-detail-hint > span,
@@ -249,7 +249,7 @@
     border: 1px solid #deede8;
     border-radius: 12px;
     color: #7a8998;
-    background: #f9fdfc;
+    background: #fbfcfe;
 }
 
 .support-faq-search input {
@@ -362,14 +362,14 @@
     padding: 13px 14px;
     border: 1px dashed #bbdad0;
     border-radius: 14px;
-    background: #f9fdfc;
+    background: #fbfcfe;
     cursor: pointer;
     transition: border-color 0.18s ease, background 0.18s ease;
 }
 
 .support-file-picker:hover {
     border-color: var(--support-blue);
-    background: #f0f8f5;
+    background: #f1f5f9;
 }
 
 .support-file-icon {
@@ -378,7 +378,7 @@
     display: grid;
     place-items: center;
     border-radius: 11px;
-    background: #e7f5f0;
+    background: #e8f2f5;
 }
 
 .support-file-picker strong,
@@ -463,7 +463,7 @@
 .support-button-primary {
     color: #ffffff;
     background: linear-gradient(135deg, var(--support-primary), var(--support-blue));
-    box-shadow: 0 10px 24px rgba(23, 107, 90, 0.2);
+    box-shadow: 0 10px 24px rgba(29, 78, 120, 0.2);
 }
 
 .support-button:disabled {
@@ -562,8 +562,8 @@
     padding: 21px;
     color: #ffffff;
     border-color: transparent;
-    background: linear-gradient(145deg, #176b5a, #268c6b);
-    box-shadow: 0 15px 35px rgba(23, 107, 90, 0.19);
+    background: linear-gradient(145deg, #1d4e78, #268c6b);
+    box-shadow: 0 15px 35px rgba(29, 78, 120, 0.19);
 }
 
 .support-info-icon {

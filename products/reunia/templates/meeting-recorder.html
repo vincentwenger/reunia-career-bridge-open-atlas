@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'macros/ui.html' import page_hero %}
+{% from 'macros/ui.html' import page_hero, workspace_state %}
 {% set guided_flow = request.args.get('guided') == '1' %}
 
 {% block title %}Réunia - Adaptive Mock Interview{% endblock %}
@@ -172,10 +172,15 @@
                 <p class="mock-answer-tip">Aim for a clear example with the situation, your actions, and the result. The interviewer will challenge unsupported claims.</p>
             </section>
 
-            <section class="mock-processing-panel" id="mockProcessingPanel" hidden aria-live="polite">
-                <span class="mock-spinner" aria-hidden="true"></span>
-                <div><strong id="mockProcessingTitle">Transcribing your answer</strong><p id="mockProcessingMessage">Réunia is evaluating the content and preparing an adaptive follow-up.</p></div>
-            </section>
+            {{ workspace_state(
+                'mockProcessingPanel',
+                'loading',
+                'Transcribing your answer',
+                'Réunia is evaluating the content and preparing an adaptive follow-up.',
+                hidden=true,
+                compact=true,
+                extra_class='mock-processing-panel'
+            ) }}
 
             <section class="mock-evaluation-panel" id="mockEvaluationPanel" hidden aria-live="polite">
                 <div class="mock-evaluation-score"><span id="evaluationScore">—</span><small>/100</small></div>
@@ -195,11 +200,17 @@
                 </div>
             </section>
 
-            <section class="mock-error-panel" id="mockErrorPanel" hidden role="alert">
-                <strong>Unable to continue the mock interview</strong>
-                <p id="mockErrorMessage">An unexpected error occurred.</p>
-                <button class="mock-button mock-button-secondary" id="retryAnswerButton" type="button">Try again</button>
-            </section>
+            {{ workspace_state(
+                'mockErrorPanel',
+                'error',
+                'Unable to continue the mock interview',
+                'An unexpected error occurred.',
+                hidden=true,
+                action_label='Try again',
+                action_id='retryAnswerButton',
+                compact=true,
+                extra_class='mock-error-panel'
+            ) }}
         </main>
 
         <aside class="mock-history-card" aria-label="Interview progress">
@@ -208,7 +219,10 @@
                 <strong id="mockHistoryCount">0 answers completed</strong>
             </div>
             <ol id="mockHistoryList" class="mock-history-list">
-                <li class="mock-history-empty">Your completed questions and coaching signals will appear here.</li>
+                <li class="mock-history-empty app-state app-state--empty app-state--compact" data-ui-state="empty">
+                    <span class="app-state__icon" aria-hidden="true">○</span>
+                    <div class="app-state__body"><strong class="app-state__title">No answers completed yet</strong><p class="app-state__message">Your completed questions and coaching signals will appear here.</p></div>
+                </li>
             </ol>
             <div class="mock-history-note">
                 <strong>Adaptive by design</strong>

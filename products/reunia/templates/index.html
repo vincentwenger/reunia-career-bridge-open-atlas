@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'macros/ui.html' import workspace_state %}
 
 {% block title %}Réunia Career Bridge - Hackathon MVP Journey{% endblock %}
 
@@ -47,7 +48,7 @@
                 <span aria-hidden="true">→</span>
             </a>
 
-            <p class="home-flow-note">The recommended demo intentionally keeps cover letters, calendar sync, recruiter messaging, and advanced analytics outside the primary path.</p>
+            <p class="home-flow-note">The recommended demo intentionally keeps cover letters, calendar sync, recruiter messaging, and administrator analytics outside the primary path.</p>
         </div>
 
         <div class="home-start-visual" aria-hidden="true">
@@ -69,97 +70,174 @@
         </div>
     </section>
 
+    <div class="home-workspace-states" aria-live="polite">
+        {{ workspace_state(
+            'home-loading-state',
+            'loading',
+            'Loading your Career Bridge journey',
+            'Checking the active application, completed evidence steps, and latest mock-interview review.',
+            hidden=false,
+            compact=true
+        ) }}
+        {{ workspace_state(
+            'home-empty-state',
+            'empty',
+            'Your evidence-backed journey is ready to begin',
+            'Start with Career Profile, then connect an international resume and one target job application.',
+            hidden=true,
+            action_label='Start Career Profile',
+            action_href=request.script_root ~ '/career-profile?guided=1',
+            compact=true
+        ) }}
+        {{ workspace_state(
+            'home-error-state',
+            'error',
+            'Journey progress could not be loaded',
+            'The ten-step guide remains available below. Retry to restore personalized progress and the recommended next step.',
+            hidden=true,
+            action_label='Retry progress',
+            action_id='home-retry-button',
+            compact=true
+        ) }}
+    </div>
+
     <section class="home-mvp-journey" aria-labelledby="mvp-journey-title">
         <div class="home-section-heading">
-            <div><span>Recommended demonstration</span><h2 id="mvp-journey-title">Complete the 10-step MVP journey</h2></div>
-            <p id="home-journey-context">Each step builds on the evidence confirmed in the previous one.</p>
+            <div><span>Recommended demonstration</span><h2 id="mvp-journey-title">Complete the 10-step journey across three modules</h2></div>
+            <p id="home-journey-context">Each module carries verified evidence forward into the next stage.</p>
         </div>
 
-        <ol class="home-journey-grid" id="home-journey-grid">
-            <li>
-                <a href="{{ request.script_root }}/career-profile?guided=1" data-mvp-step data-step-key="career-profile" data-status="current">
-                    <span class="home-step-number">1</span>
-                    <span class="home-step-copy"><strong>Create a Career Profile</strong><small>Capture background, goals, preferences, and constraints.</small></span>
-                    <span class="home-step-status">Start here</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ request.script_root }}/applications/?tab=tailoring&amp;stage=setup#resume-import" data-mvp-step data-step-key="resume-upload" data-status="upcoming">
-                    <span class="home-step-number">2</span>
-                    <span class="home-step-copy"><strong>Upload an international resume</strong><small>Import PDF, Word, text, or a structured profile without rewriting facts.</small></span>
-                    <span class="home-step-status">Next</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ request.script_root }}/applications/?tab=applications#new-application" data-mvp-step data-step-key="target-job" data-status="upcoming">
-                    <span class="home-step-number">3</span>
-                    <span class="home-step-copy"><strong>Add a target job</strong><small>Attach one company, role, and complete job description.</small></span>
-                    <span class="home-step-status">Upcoming</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ request.script_root }}/applications/?tab=tailoring&amp;stage=confirmation#career-translation-assessment" data-mvp-step data-step-key="translation" data-status="upcoming">
-                    <span class="home-step-number">4</span>
-                    <span class="home-step-copy"><strong>Review Career Translation</strong><small>Identify unfamiliar titles, credentials, terminology, and transferable evidence.</small></span>
-                    <span class="home-step-status">Upcoming</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ request.script_root }}/applications/?tab=tailoring&amp;stage=confirmation#confirmation" data-mvp-step data-step-key="evidence" data-status="upcoming">
-                    <span class="home-step-number">5</span>
-                    <span class="home-step-copy"><strong>Answer evidence questions</strong><small>Confirm relevant experience and prevent unsupported resume claims.</small></span>
-                    <span class="home-step-status">Upcoming</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ request.script_root }}/applications/?tab=tailoring&amp;stage=review#tailored-resume" data-mvp-step data-step-key="tailored-resume" data-status="upcoming">
-                    <span class="home-step-number">6</span>
-                    <span class="home-step-copy"><strong>Generate a tailored resume</strong><small>Create a role-aligned resume using only verified evidence.</small></span>
-                    <span class="home-step-status">Upcoming</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ request.script_root }}/applications/interview-preparation" data-mvp-step data-step-key="interview-preparation" data-status="upcoming">
-                    <span class="home-step-number">7</span>
-                    <span class="home-step-copy"><strong>Open Interview Preparation</strong><small>Prepare likely questions, strengths, gaps, and an introduction.</small></span>
-                    <span class="home-step-status">Upcoming</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ request.script_root }}/mock-interview" data-mvp-step data-step-key="mock-interview" data-status="upcoming">
-                    <span class="home-step-number">8</span>
-                    <span class="home-step-copy"><strong>Complete a short mock interview</strong><small>Answer adaptive questions and receive evidence-aware follow-ups.</small></span>
-                    <span class="home-step-status">Upcoming</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ request.script_root }}/interview-review" data-mvp-step data-step-key="scorecard" data-status="upcoming">
-                    <span class="home-step-number">9</span>
-                    <span class="home-step-copy"><strong>Review the Interview Scorecard</strong><small>See relevance, evidence, STAR structure, clarity, alignment, and delivery.</small></span>
-                    <span class="home-step-status">Upcoming</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ request.script_root }}/career-action-plan" data-mvp-step data-step-key="action-plan" data-status="upcoming">
-                    <span class="home-step-number">10</span>
-                    <span class="home-step-copy"><strong>See generated actions</strong><small>Turn resume gaps and interview findings into a Career Action Plan.</small></span>
-                    <span class="home-step-status">Upcoming</span>
-                </a>
-            </li>
-        </ol>
-    </section>
+        <div class="home-module-journey" id="home-journey-grid">
+            <section class="home-module-card home-module-build" aria-labelledby="home-module-build-title">
+                <header class="home-module-header">
+                    <span class="home-module-index" aria-hidden="true">1</span>
+                    <div class="home-module-copy">
+                        <span class="home-module-eyebrow">Module one</span>
+                        <h3 id="home-module-build-title">Build Your Application</h3>
+                        <p>Translate international experience, verify the evidence, and produce a credible role-specific application.</p>
+                    </div>
+                    <span class="home-module-step-count">Steps 1–6</span>
+                </header>
+                <nav class="home-module-tools" aria-label="Build Your Application tools">
+                    <a href="{{ request.script_root }}/career-profile">Career Profile</a>
+                    <a href="{{ request.script_root }}/applications/career-translation">Career Translation</a>
+                    <a href="{{ request.script_root }}/career-evidence-library">Career Evidence Library</a>
+                    <a href="{{ request.script_root }}/applications/?tab=applications">Job Applications</a>
+                    <a href="{{ request.script_root }}/applications/?tab=tailoring">Resume Workflow</a>
+                    <a href="{{ request.script_root }}/applications/?tab=reports">Resume Reports</a>
+                    <a href="{{ request.script_root }}/application-materials">Application Materials</a>
+                </nav>
+                <ol class="home-journey-grid">
+                    <li>
+                        <a href="{{ request.script_root }}/career-profile?guided=1" data-mvp-step data-step-key="career-profile" data-status="current">
+                            <span class="home-step-number">1</span>
+                            <span class="home-step-copy"><strong>Create a Career Profile</strong><small>Capture background, goals, preferences, and constraints.</small></span>
+                            <span class="home-step-status">Start here</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ request.script_root }}/applications/?tab=tailoring&amp;stage=setup#resume-import" data-mvp-step data-step-key="resume-upload" data-status="upcoming">
+                            <span class="home-step-number">2</span>
+                            <span class="home-step-copy"><strong>Upload an international resume</strong><small>Import PDF, Word, text, or a structured profile without rewriting facts.</small></span>
+                            <span class="home-step-status">Next</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ request.script_root }}/applications/?tab=applications#new-application" data-mvp-step data-step-key="target-job" data-status="upcoming">
+                            <span class="home-step-number">3</span>
+                            <span class="home-step-copy"><strong>Add a target job</strong><small>Attach one company, role, and complete job description.</small></span>
+                            <span class="home-step-status">Upcoming</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ request.script_root }}/applications/?tab=tailoring&amp;stage=confirmation#career-translation-assessment" data-mvp-step data-step-key="translation" data-status="upcoming">
+                            <span class="home-step-number">4</span>
+                            <span class="home-step-copy"><strong>Review Career Translation</strong><small>Identify unfamiliar titles, credentials, terminology, and transferable evidence.</small></span>
+                            <span class="home-step-status">Upcoming</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ request.script_root }}/applications/?tab=tailoring&amp;stage=confirmation#confirmation" data-mvp-step data-step-key="evidence" data-status="upcoming">
+                            <span class="home-step-number">5</span>
+                            <span class="home-step-copy"><strong>Answer evidence questions</strong><small>Confirm relevant experience and prevent unsupported resume claims.</small></span>
+                            <span class="home-step-status">Upcoming</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ request.script_root }}/applications/?tab=tailoring&amp;stage=review#tailored-resume" data-mvp-step data-step-key="tailored-resume" data-status="upcoming">
+                            <span class="home-step-number">6</span>
+                            <span class="home-step-copy"><strong>Generate a tailored resume</strong><small>Create a role-aligned resume using only verified evidence.</small></span>
+                            <span class="home-step-status">Upcoming</span>
+                        </a>
+                    </li>
+                </ol>
+            </section>
 
-    <section class="home-secondary-tools" aria-labelledby="secondary-tools-title">
-        <div class="home-section-heading">
-            <div><span>Secondary features</span><h2 id="secondary-tools-title">Useful, but outside the core demo</h2></div>
-            <p>These remain available without distracting judges from the main social-impact story.</p>
+            <section class="home-module-card home-module-prepare" aria-labelledby="home-module-prepare-title">
+                <header class="home-module-header">
+                    <span class="home-module-index" aria-hidden="true">2</span>
+                    <div class="home-module-copy">
+                        <span class="home-module-eyebrow">Module two</span>
+                        <h3 id="home-module-prepare-title">Prepare and Practice</h3>
+                        <p>Turn the application evidence into personalized preparation and adaptive interview practice.</p>
+                    </div>
+                    <span class="home-module-step-count">Steps 7–8</span>
+                </header>
+                <nav class="home-module-tools" aria-label="Prepare and Practice tools">
+                    <a href="{{ request.script_root }}/applications/interview-preparation">Interview Preparation</a>
+                    <a href="{{ request.script_root }}/mock-interview">Mock Interview</a>
+                </nav>
+                <ol class="home-journey-grid">
+                    <li>
+                        <a href="{{ request.script_root }}/applications/interview-preparation" data-mvp-step data-step-key="interview-preparation" data-status="upcoming">
+                            <span class="home-step-number">7</span>
+                            <span class="home-step-copy"><strong>Open Interview Preparation</strong><small>Prepare likely questions, strengths, gaps, and an introduction.</small></span>
+                            <span class="home-step-status">Upcoming</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ request.script_root }}/mock-interview" data-mvp-step data-step-key="mock-interview" data-status="upcoming">
+                            <span class="home-step-number">8</span>
+                            <span class="home-step-copy"><strong>Complete a short mock interview</strong><small>Answer adaptive questions and receive evidence-aware follow-ups.</small></span>
+                            <span class="home-step-status">Upcoming</span>
+                        </a>
+                    </li>
+                </ol>
+            </section>
+
+            <section class="home-module-card home-module-improve" aria-labelledby="home-module-improve-title">
+                <header class="home-module-header">
+                    <span class="home-module-index" aria-hidden="true">3</span>
+                    <div class="home-module-copy">
+                        <span class="home-module-eyebrow">Module three</span>
+                        <h3 id="home-module-improve-title">Improve and Take Action</h3>
+                        <p>Review performance, convert findings into concrete actions, and measure progress over time.</p>
+                    </div>
+                    <span class="home-module-step-count">Steps 9–10</span>
+                </header>
+                <nav class="home-module-tools" aria-label="Improve and Take Action tools">
+                    <a href="{{ request.script_root }}/interview-review">Interview Review</a>
+                    <a href="{{ request.script_root }}/career-action-plan">Career Action Plan</a>
+                    <a href="{{ request.script_root }}/progress">Impact &amp; Progress</a>
+                </nav>
+                <ol class="home-journey-grid">
+                    <li>
+                        <a href="{{ request.script_root }}/interview-review" data-mvp-step data-step-key="scorecard" data-status="upcoming">
+                            <span class="home-step-number">9</span>
+                            <span class="home-step-copy"><strong>Review the Interview Scorecard</strong><small>See relevance, evidence, STAR structure, clarity, alignment, and delivery.</small></span>
+                            <span class="home-step-status">Upcoming</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ request.script_root }}/career-action-plan" data-mvp-step data-step-key="action-plan" data-status="upcoming">
+                            <span class="home-step-number">10</span>
+                            <span class="home-step-copy"><strong>See generated actions</strong><small>Turn resume gaps and interview findings into a Career Action Plan.</small></span>
+                            <span class="home-step-status">Upcoming</span>
+                        </a>
+                    </li>
+                </ol>
+            </section>
         </div>
-        <nav class="home-secondary-grid" aria-label="Secondary Career Bridge tools">
-            <a href="{{ request.script_root }}/career-evidence-library"><strong>Career Evidence Library</strong><small>Manage supporting documents and verified achievements.</small><span aria-hidden="true">→</span></a>
-            <a href="{{ request.script_root }}/application-materials"><strong>Application Materials</strong><small>Store company notes and optional recruiter messages.</small><span aria-hidden="true">→</span></a>
-            <a href="{{ request.script_root }}/applications/?tab=reports"><strong>Resume Reports</strong><small>Review detailed version-by-version scoring.</small><span aria-hidden="true">→</span></a>
-            <a href="{{ request.script_root }}/progress"><strong>Impact &amp; Progress</strong><small>Explore advanced outcome and improvement analytics.</small><span aria-hidden="true">→</span></a>
-        </nav>
     </section>
 
     <section class="home-continue" id="home-continue" aria-labelledby="home-continue-title" hidden>

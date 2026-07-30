@@ -120,11 +120,11 @@
           {% if section.primary_workflow_step %}
             <div class="report-workflow-ownership" aria-label="Workflow ownership">
               <span>Primarily improved in:</span>
-              <a href="{{ url_for('index', tab='tailoring', stage=section.primary_workflow_stage) }}">{{ section.primary_workflow_step }}</a>
+              <a href="{{ url_for('application_builder.index', tab='tailoring', stage=section.primary_workflow_stage) }}">{{ section.primary_workflow_step }}</a>
               {% if section.verification_workflow_step %}
                 <span class="report-workflow-separator" aria-hidden="true">·</span>
                 <span>Also verified in:</span>
-                <a href="{{ url_for('index', tab='tailoring', stage=section.verification_workflow_stage) }}">{{ section.verification_workflow_step }}</a>
+                <a href="{{ url_for('application_builder.index', tab='tailoring', stage=section.verification_workflow_stage) }}">{{ section.verification_workflow_step }}</a>
               {% endif %}
             </div>
           {% endif %}
@@ -249,7 +249,7 @@
           </p>
           {% if impact.certainty != 'observed' %}<p class="caption">Several resume changes can affect the same report score, so this connection is shown as likely rather than certain.</p>{% endif %}
         {% elif not report_available %}
-          <p class="caption change-impact-unavailable">The Initial and Job-Aligned Resume Reports are generated automatically at their workflow steps. Complete Step 3 to measure possible score impact. <a href="{{ url_for('index', tab='reports', report='comparison') }}#reports-comparison">Open Resume Reports</a></p>
+          <p class="caption change-impact-unavailable">The Initial and Job-Aligned Resume Reports are generated automatically at their workflow steps. Complete Step 3 to measure possible score impact. <a href="{{ url_for('application_builder.index', tab='reports', report='comparison') }}#reports-comparison">Open Resume Reports</a></p>
         {% endif %}
 
         {% if supporting_reasons or added or removed or evidence_note or matched_requirements is not none %}
@@ -379,7 +379,7 @@
       </div>
       <div class="resume-version-actions">
         <span class="version-lock {{ 'editable' if editable else 'locked' }}">{{ 'Editing enabled' if editable else 'View only' }}</span>
-        <a class="button secondary compact-button" data-resume-download href="{{ url_for('download_workflow_snapshot', stage=data.snapshot_stage) if data.snapshot_stage is defined else url_for('download_resume_version', version=version) }}">Download resume</a>
+        <a class="button secondary compact-button" data-resume-download href="{{ url_for('application_builder.download_workflow_snapshot', stage=data.snapshot_stage) if data.snapshot_stage is defined else url_for('application_builder.download_resume_version', version=version) }}">Download resume</a>
         <span class="caption" data-download-status data-saved-status="{{ download_status }}">{{ download_status }}</span>
         <span class="caption download-filename"><strong>Downloading:</strong> <code>{{ download_filename }}</code></span>
       </div>
@@ -412,8 +412,8 @@
     {% endif %}
 
     {% if editable %}
-      <form action="{{ url_for('save_resume_version', version=version) }}" method="post" class="loading-form resume-editor-form" id="{{ version }}-resume-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <form action="{{ url_for('application_builder.save_resume_version', version=version) }}" method="post" class="loading-form resume-editor-form" id="{{ version }}-resume-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% endif %}
 
     {% if data.has_comparison %}
@@ -441,9 +441,9 @@
         {% if version == 'draft' and comparison %}
           <div class="comparison-choice" role="group" aria-label="Compare {{ comparison.current_label }} with">
             <span class="comparison-choice-label">Compare {{ comparison.current_label }} with:</span>
-            <a class="button compact-button {{ 'primary' if comparison.mode == 'initial' else 'secondary' }}" href="{{ url_for('index', tab='tailoring', stage=comparison_stage, compare='initial') }}{{ comparison_anchor }}">Initial Resume</a>
+            <a class="button compact-button {{ 'primary' if comparison.mode == 'initial' else 'secondary' }}" href="{{ url_for('application_builder.index', tab='tailoring', stage=comparison_stage, compare='initial') }}{{ comparison_anchor }}">Initial Resume</a>
             {% if comparison.previous_available %}
-              <a class="button compact-button {{ 'primary' if comparison.mode == 'previous' else 'secondary' }}" href="{{ url_for('index', tab='tailoring', stage=comparison_stage, compare='previous') }}{{ comparison_anchor }}">{{ comparison.previous_choice_label }}</a>
+              <a class="button compact-button {{ 'primary' if comparison.mode == 'previous' else 'secondary' }}" href="{{ url_for('application_builder.index', tab='tailoring', stage=comparison_stage, compare='previous') }}{{ comparison_anchor }}">{{ comparison.previous_choice_label }}</a>
             {% else %}
               <span class="button secondary compact-button disabled-link" aria-disabled="true">{{ comparison.previous_choice_label }}</span>
             {% endif %}
@@ -789,7 +789,7 @@
               <button
                 class="button primary"
                 type="submit"
-                formaction="{{ url_for('start_final_stage') }}"
+                formaction="{{ url_for('application_builder.start_final_stage') }}"
                 formmethod="post"
                 {% if not input_is_current %}disabled{% endif %}
                 data-loading-title="Creating final resume…"
@@ -823,8 +823,8 @@
         <p>Choose the models used for routine tailoring and the independent evidence review performed during Step 3.</p>
       </div>
     </div>
-    <form action="{{ url_for('configuration') }}" method="post" class="stack-form loading-form config-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <form action="{{ url_for('application_builder.configuration') }}" method="post" class="stack-form loading-form config-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field-grid two">
         <div>
           <label for="processing-mode">Processing mode</label>
@@ -899,22 +899,22 @@
       <div class="metric-card compact"><span>Source experience bullets</span><strong>{{ profile_stats.bullets }}</strong></div>
     </div>
     <div class="button-row">
-      <a class="button secondary" href="{{ url_for('download_source_profile') }}">Download source profile JSON</a>
+      <a class="button secondary" href="{{ url_for('application_builder.download_source_profile') }}">Download source profile JSON</a>
     </div>
-    <form action="{{ url_for('upload_profile') }}" method="post" enctype="multipart/form-data" class="stack-form loading-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <form action="{{ url_for('application_builder.upload_profile') }}" method="post" enctype="multipart/form-data" class="stack-form loading-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label for="profile-file">Replace source resume or Candidate Profile</label>
       <input id="profile-file" type="file" name="profile_file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,.md,application/json,.json">
       <button class="button secondary" type="submit">Import source resume</button>
     </form>
     {% if state.profile_upload_name %}<p class="caption">Using uploaded profile: {{ state.profile_upload_name }}</p>{% endif %}
     <div class="button-row">
-      <form action="{{ url_for('restore_default_profile') }}" method="post" class="inline-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <form action="{{ url_for('application_builder.restore_default_profile') }}" method="post" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="button text" type="submit">Restore bundled profile</button>
       </form>
-      <form action="{{ url_for('reset_workflow') }}" method="post" class="inline-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <form action="{{ url_for('application_builder.reset_workflow') }}" method="post" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="button danger-outline" type="submit">Reset workflow</button>
       </form>
     </div>
@@ -971,8 +971,8 @@
         <div class="section-heading">
           <div><h2>Initial Resume Report</h2><p>Generated automatically when Step 1 analyzes the job and resume. It establishes the unmodified comparison baseline.</p></div>
           {% if state.initial_report or state.initial_report_error or initial_report_stale %}
-            <form action="{{ url_for('run_initial_report') }}" method="post" class="loading-form inline-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <form action="{{ url_for('application_builder.run_initial_report') }}" method="post" class="loading-form inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="button secondary" type="submit" {% if not state.job_description.strip() or (not ai_ready and not (analysis_is_current and state.initial_evidence_proposal)) %}disabled{% endif %}>{{ 'Retry report' if state.initial_report_error else 'Rerun report' }}</button>
             </form>
           {% endif %}
@@ -998,8 +998,8 @@
         <div class="section-heading">
           <div><h2>Job-Aligned Resume Report</h2><p>Generated automatically when the Job-Aligned Resume is created and refreshed after every saved Step 3 edit or applied improvement.</p></div>
           {% if state.updated_report or state.updated_report_error or draft_report_stale %}
-            <form action="{{ url_for('run_draft_report') }}" method="post" class="loading-form inline-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <form action="{{ url_for('application_builder.run_draft_report') }}" method="post" class="loading-form inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="button secondary" type="submit" {% if not input_is_current or not state.confirmation_complete %}disabled{% endif %}>{{ 'Retry report' if state.updated_report_error else 'Rerun report' }}</button>
             </form>
           {% endif %}
@@ -1010,7 +1010,7 @@
         {% if draft_report %}
           {% if state.updated_report_created_at %}<p class="caption">Generated automatically: {{ state.updated_report_created_at }}</p>{% endif %}
           {{ report_panel(draft_report, 'draft') }}
-          <details><summary>Proposal data download</summary><p class="caption">Includes the proposal, candidate confirmation responses, supplemental evidence, unsupported requirements, and evidence decisions.</p><a class="button secondary" href="{{ url_for('download_proposal') }}">Download proposal JSON</a></details>
+          <details><summary>Proposal data download</summary><p class="caption">Includes the proposal, candidate confirmation responses, supplemental evidence, unsupported requirements, and evidence decisions.</p><a class="button secondary" href="{{ url_for('application_builder.download_proposal') }}">Download proposal JSON</a></details>
         {% else %}
           <div class="empty-state"><h3>Generating automatically</h3><p>The Job-Aligned Resume Report continues after the resume becomes available for review.</p></div>
         {% endif %}
@@ -1027,14 +1027,14 @@
           <div><h2>Final Resume Report</h2><p>Generated during Improve Resume Quality and refreshed through Finalize Resume and Evidence Review and Export.</p></div>
           <div class="button-row">
             {% if state.final_report or state.final_report_error or final_report_stale %}
-              <form action="{{ url_for('run_final_report') }}" method="post" class="loading-form inline-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <form action="{{ url_for('application_builder.run_final_report') }}" method="post" class="loading-form inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="button secondary" type="submit">{{ 'Retry report' if state.final_report_error else 'Rerun report' }}</button>
               </form>
             {% endif %}
             {% if state.final_resume_bytes %}
-              <a class="button primary" href="{{ url_for('download_final_resume') }}">Download final PDF</a>
-              <a class="button secondary" href="{{ url_for('download_final_resume_word') }}">Download Word (.docx)</a>
+              <a class="button primary" href="{{ url_for('application_builder.download_final_resume') }}">Download final PDF</a>
+              <a class="button secondary" href="{{ url_for('application_builder.download_final_resume_word') }}">Download Word (.docx)</a>
             {% endif %}
           </div>
         </div>
@@ -1108,19 +1108,19 @@
   </section>
 
   <div class="report-status-grid" aria-label="Resume report status">
-    <a class="report-status-card" href="{{ url_for('index', tab='reports', report='initial') }}#reports-initial">
+    <a class="report-status-card" href="{{ url_for('application_builder.index', tab='reports', report='initial') }}#reports-initial">
       <span>Initial report · Step 1</span>
       {% if initial_report %}<strong>{{ score(initial_report.overall) }}</strong><em>Generated automatically</em>{% elif state.initial_report_error %}<strong>Retry</strong><em>Automatic generation failed</em>{% elif initial_report_stale %}<strong>Refresh</strong><em>Updates with Step 1</em>{% else %}<strong>Pending</strong><em>Generated in Step 1</em>{% endif %}
     </a>
-    <a class="report-status-card" href="{{ url_for('index', tab='reports', report='draft') }}#reports-draft">
+    <a class="report-status-card" href="{{ url_for('application_builder.index', tab='reports', report='draft') }}#reports-draft">
       <span>Job-Aligned report · Step 3</span>
       {% if draft_report %}<strong>{{ score(draft_report.overall) }}</strong><em>Generated automatically</em>{% elif state.updated_report_error %}<strong>Retry</strong><em>Automatic generation failed</em>{% elif draft_report_stale %}<strong>Refresh</strong><em>Updates with Step 3</em>{% else %}<strong>Pending</strong><em>Generated in Step 3</em>{% endif %}
     </a>
-    <a class="report-status-card" href="{{ url_for('index', tab='reports', report='final') }}#reports-final">
+    <a class="report-status-card" href="{{ url_for('application_builder.index', tab='reports', report='final') }}#reports-final">
       <span>Final report · Steps 4–6</span>
       {% if final_report %}<strong>{{ score(final_report.overall) }}</strong><em>{{ 'Refresh pending' if final_report_stale else ('Page verification complete' if state.final_report_exact else 'Page verification finishing') }}</em>{% elif state.final_report_error %}<strong>Retry</strong><em>Export remains available</em>{% else %}<strong>Pending</strong><em>Generated across Steps 4–6</em>{% endif %}
     </a>
-    <a class="report-status-card" href="{{ url_for('index', tab='reports', report='comparison') }}#reports-comparison">
+    <a class="report-status-card" href="{{ url_for('application_builder.index', tab='reports', report='comparison') }}#reports-comparison">
       <span>Improvement</span>
       {% if comparisons.get('initial_final') %}<strong>{{ '%+.1f'|format(comparisons.initial_final.overall_delta) }}</strong><em>Initial → Final</em>{% elif comparisons.get('initial_draft') %}<strong>{{ '%+.1f'|format(comparisons.initial_draft.overall_delta) }}</strong><em>Initial → Job-Aligned</em>{% else %}<strong>—</strong><em>Run at least two reports</em>{% endif %}
     </a>
@@ -1134,13 +1134,13 @@
       <strong>Resume Reports are continuing automatically</strong>
       <span>You can keep reviewing the current workflow step while document rendering finishes.</span>
       {% if initial_report_needs_background %}
-        <span class="automatic-report-item" data-auto-report data-url="{{ url_for('run_automatic_report', report_name='initial') }}" data-csrf="{{ csrf_token }}" data-label="Initial Resume Report" data-refresh="{{ 'true' if active_tab == 'reports' else 'false' }}">Initial Resume Report · queued</span>
+        <span class="automatic-report-item" data-auto-report data-url="{{ url_for('application_builder.run_automatic_report', report_name='initial') }}" data-label="Initial Resume Report" data-refresh="{{ 'true' if active_tab == 'reports' else 'false' }}">Initial Resume Report · queued</span>
       {% endif %}
       {% if draft_report_needs_background %}
-        <span class="automatic-report-item" data-auto-report data-url="{{ url_for('run_automatic_report', report_name='draft') }}" data-csrf="{{ csrf_token }}" data-label="Job-Aligned Resume Report" data-refresh="{{ 'true' if active_tab == 'reports' else 'false' }}">Job-Aligned Resume Report · queued</span>
+        <span class="automatic-report-item" data-auto-report data-url="{{ url_for('application_builder.run_automatic_report', report_name='draft') }}" data-label="Job-Aligned Resume Report" data-refresh="{{ 'true' if active_tab == 'reports' else 'false' }}">Job-Aligned Resume Report · queued</span>
       {% endif %}
       {% if final_report_needs_background %}
-        <span class="automatic-report-item" data-auto-report data-url="{{ url_for('run_automatic_report', report_name='final') }}" data-csrf="{{ csrf_token }}" data-label="Final Resume Report" data-refresh="{{ 'true' if active_tab == 'reports' else 'false' }}">Final Resume Report · verifying page count…</span>
+        <span class="automatic-report-item" data-auto-report data-url="{{ url_for('application_builder.run_automatic_report', report_name='final') }}" data-label="Final Resume Report" data-refresh="{{ 'true' if active_tab == 'reports' else 'false' }}">Final Resume Report · verifying page count…</span>
       {% endif %}
     </aside>
   {% endif %}
@@ -1171,7 +1171,7 @@
         {% endif %}
       </div>
       <form
-        action="{{ url_for('upload_profile') }}"
+        action="{{ url_for('application_builder.upload_profile') }}"
         method="post"
         enctype="multipart/form-data"
         class="resume-import-form loading-form"
@@ -1180,7 +1180,7 @@
         data-loading-steps="Reading the resume|Preserving international titles and credentials|Structuring experience evidence|Checking unsupported additions|Opening target-job setup"
         data-loading-step-details="Extracting text from the uploaded file.|Keeping original terminology for the Career Translation Assessment.|Assigning traceable IDs to roles and accomplishments.|Ensuring the import contains only facts from the source resume.|Returning to the first Application Builder step."
       >
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="return_to" value="setup">
         <label for="mvp-profile-file">Resume file</label>
         <input id="mvp-profile-file" type="file" name="profile_file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,.md,application/json,.json" required>
@@ -1241,7 +1241,7 @@
       </div>
       <form
         id="setup-workflow-form"
-        action="{{ url_for('start_workflow') }}"
+        action="{{ url_for('application_builder.start_workflow') }}"
         method="post"
         enctype="multipart/form-data"
         class="loading-form"
@@ -1254,7 +1254,7 @@
         data-loading-reassurance-delayed="Still working. The app is comparing the role with your experience and narrowing the list to the most useful confirmation questions."
         data-loading-reassurance-extended="Still working. A detailed role can require additional review before the experience questions are ready."
       >
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <section class="newcomer-onboarding" aria-labelledby="newcomer-onboarding-title">
           <div class="newcomer-onboarding-heading">
@@ -1339,7 +1339,7 @@
         <span>Reviewing this step does not change the active resume. Edit only when the job inputs need to be replaced.</span>
       </div>
       <div class="workflow-action-content">
-        <div class="workflow-action-controls"><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='setup', edit='setup') }}#job-input">Edit this step</a></div>
+        <div class="workflow-action-controls"><a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='setup', edit='setup') }}#job-input">Edit this step</a></div>
         <span class="caption">Restarting from Step 1 will replace all later workflow results.</span>
       </div>
     </div>
@@ -1469,7 +1469,7 @@
       {% if not state.confirmation_complete %}
         <form
           id="confirmation-workflow-form"
-          action="{{ url_for('apply_confirmation') }}"
+          action="{{ url_for('application_builder.apply_confirmation') }}"
           method="post"
           class="loading-form"
           data-confirmation-form
@@ -1482,7 +1482,7 @@
           data-loading-reassurance-delayed="{% if state.confirmation_follow_up_count %}Still working. The app is rechecking the affected statements and choosing safer wording where needed.{% else %}Still working. The app is checking the updated wording against your confirmed experience.{% endif %}"
           data-loading-reassurance-extended="{% if state.confirmation_follow_up_count %}Still working. The final evidence pass may take longer when multiple sections need review.{% else %}Still working. A longer evidence review can take additional time when several resume sections are affected.{% endif %}"
         >
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           {% if confirmation_rows %}
             {% if proposal.unsupported_requirements %}<details><summary>Current unsupported requirements</summary><ul>{% for item in proposal.unsupported_requirements %}<li>{{ item }}</li>{% endfor %}</ul></details>{% endif %}
             <div class="bulk-confirmation-controls" aria-labelledby="bulk-confirmation-heading">
@@ -1606,12 +1606,12 @@
               </div>
             </details>
           {% endif %}
-          {% if state.save_confirmed_profile and state.confirmed_profile %}<a class="button secondary" href="{{ url_for('download_confirmed_profile') }}">Download updated Candidate Profile JSON</a>{% endif %}
+          {% if state.save_confirmed_profile and state.confirmed_profile %}<a class="button secondary" href="{{ url_for('application_builder.download_confirmed_profile') }}">Download updated Candidate Profile JSON</a>{% endif %}
         {% else %}
           <div class="alert alert-info">No additional experience confirmations were required.</div>
         {% endif %}
-        <form action="{{ url_for('reopen_confirmation') }}" method="post" class="inline-form">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <form action="{{ url_for('application_builder.reopen_confirmation') }}" method="post" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="workflow-reopen-control">
             <button class="button secondary" type="submit" data-confirm-reopen="Changing these answers will clear Steps 3–4 and create a new tailored resume. Continue?">Edit this step</button>
             <span class="caption">Your saved answers will reopen prefilled. Saving changes clears every later resume snapshot.</span>
@@ -1621,7 +1621,7 @@
     </section>
   {% else %}
     <section class="card" id="confirmation-stage">
-      <div class="empty-state"><h3>Experience confirmation has not started</h3><p>Return to Setup and start tailoring first.</p><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='setup') }}#job-input">Return to Setup</a></div>
+      <div class="empty-state"><h3>Experience confirmation has not started</h3><p>Return to Setup and start tailoring first.</p><a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='setup') }}#job-input">Return to Setup</a></div>
     </section>
   {% endif %}
   </div>
@@ -1667,9 +1667,9 @@
           </div>
           <div class="workflow-action-content">
             <div class="workflow-action-controls">
-              <a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='quality') }}#final-review">Open Improve Resume Quality</a>
-              <form action="{{ url_for('reopen_workflow_stage', stage='review') }}" method="post" class="inline-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='quality') }}#final-review">Open Improve Resume Quality</a>
+              <form action="{{ url_for('application_builder.reopen_workflow_stage', stage='review') }}" method="post" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="button text" type="submit" data-confirm-reopen="Editing Step 3 will clear the Final Resume, optimization report, and export. Continue?">Edit this step</button>
               </form>
             </div>
@@ -1799,8 +1799,8 @@
                 </div>
                 <p>Controls document density, accomplishment scope, and the prominence of education versus leadership.</p>
               </div>
-              <form action="{{ url_for('select_resume_style') }}" method="post" class="resume-style-form loading-form" data-auto-submit-radio="career_stage" data-loading-title="Applying career stage…" data-loading-message="Refreshing the resume export and Resume Reports without rerunning optimization.">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <form action="{{ url_for('application_builder.select_resume_style') }}" method="post" class="resume-style-form loading-form" data-auto-submit-radio="career_stage" data-loading-title="Applying career stage…" data-loading-message="Refreshing the resume export and Resume Reports without rerunning optimization.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="resume-style-grid resume-style-grid-three">
                   {% for option in career_stage_options %}
                     <label class="resume-style-card resume-preference-card{% if selected_career_stage == option.key %} selected{% endif %}">
@@ -1824,8 +1824,8 @@
                 </div>
                 <p>Controls which sections lead and how the same verified experience is framed for the target role.</p>
               </div>
-              <form action="{{ url_for('select_resume_style') }}" method="post" class="resume-style-form loading-form" data-auto-submit-radio="resume_format" data-loading-title="Applying resume format…" data-loading-message="Reordering and relabeling the resume without changing verified content.">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <form action="{{ url_for('application_builder.select_resume_style') }}" method="post" class="resume-style-form loading-form" data-auto-submit-radio="resume_format" data-loading-title="Applying resume format…" data-loading-message="Reordering and relabeling the resume without changing verified content.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="resume-style-grid resume-style-grid-four">
                   {% for option in resume_format_options %}
                     <label class="resume-style-card resume-preference-card{% if selected_resume_format == option.key %} selected{% endif %}">
@@ -1849,8 +1849,8 @@
                 </div>
                 <p>Controls typography, alignment, spacing, and accent treatment while keeping the document single-column and ATS-friendly.</p>
               </div>
-              <form action="{{ url_for('select_resume_style') }}" method="post" class="resume-style-form loading-form" data-auto-submit-radio="visual_design" data-loading-title="Applying visual design…" data-loading-message="Refreshing resume formatting and Resume Reports without rerunning optimization.">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <form action="{{ url_for('application_builder.select_resume_style') }}" method="post" class="resume-style-form loading-form" data-auto-submit-radio="visual_design" data-loading-title="Applying visual design…" data-loading-message="Refreshing resume formatting and Resume Reports without rerunning optimization.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="resume-style-grid resume-style-grid-two">
                   {% for option in visual_design_options %}
                     <label class="resume-style-card resume-preference-card visual-design-card{% if selected_visual_design == option.key %} selected{% endif %}">
@@ -1900,18 +1900,18 @@
           </div>
           <div class="workflow-action-content">
             <div class="workflow-action-controls final-primary-download">
-              <a class="button primary" href="{{ url_for('download_final_resume') }}">Download PDF</a>
-              <a class="button secondary" href="{{ url_for('download_final_resume_word') }}">Download Word (.docx)</a>
-              <form action="{{ url_for('save_final_as_application') }}" method="post" class="inline-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <a class="button primary" href="{{ url_for('application_builder.download_final_resume') }}">Download PDF</a>
+              <a class="button secondary" href="{{ url_for('application_builder.download_final_resume_word') }}">Download Word (.docx)</a>
+              <form action="{{ url_for('application_builder.save_final_as_application') }}" method="post" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="button secondary" type="submit">Save as application</button>
               </form>
               <details class="final-secondary-actions">
                 <summary>More actions</summary>
                 <div class="button-row">
-                  <a class="button secondary" href="{{ url_for('index', tab='reports', report='final') }}#reports-final">View Final Resume Report</a>
-                  <form action="{{ url_for('start_final_stage') }}" method="post" class="loading-form inline-form" data-loading-title="Re-optimizing resume…" data-loading-message="Checking for newly available score-safe improvements.">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <a class="button secondary" href="{{ url_for('application_builder.index', tab='reports', report='final') }}#reports-final">View Final Resume Report</a>
+                  <form action="{{ url_for('application_builder.start_final_stage') }}" method="post" class="loading-form inline-form" data-loading-title="Re-optimizing resume…" data-loading-message="Checking for newly available score-safe improvements.">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="button secondary" type="submit">Rerun optimization</button>
                   </form>
                 </div>
@@ -1924,18 +1924,18 @@
           <div class="empty-state">
             <h3>Resume optimization has not started</h3>
             <p>Complete Review Tailored Resume and select Improve Resume Quality.</p>
-            <a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='review') }}#tailored-resume">Open Review Tailored Resume</a>
+            <a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='review') }}#tailored-resume">Open Review Tailored Resume</a>
           </div>
         </section>
       {% endif %}
     </div>
   {% elif selected_workflow_panel == 'draft' %}
     <div class="workflow-stage-panel">
-      <section class="card" id="draft-stage"><div class="empty-state"><h3>The tailored resume has not been created</h3><p>Complete Confirm Relevant Experience and select Create tailored resume first.</p><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='confirmation') }}#confirmation-stage">Open Confirm Relevant Experience</a></div></section>
+      <section class="card" id="draft-stage"><div class="empty-state"><h3>The tailored resume has not been created</h3><p>Complete Confirm Relevant Experience and select Create tailored resume first.</p><a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='confirmation') }}#confirmation-stage">Open Confirm Relevant Experience</a></div></section>
     </div>
   {% elif selected_workflow_panel == 'final' %}
     <div class="workflow-stage-panel">
-      <section class="card" id="final-review"><div class="empty-state"><h3>Final optimization has not started</h3><p>Complete Review Tailored Resume and select Improve Resume Quality.</p><a class="button secondary" href="{{ url_for('index', tab='tailoring', stage='review') }}#tailored-resume">Open Review Tailored Resume</a></div></section>
+      <section class="card" id="final-review"><div class="empty-state"><h3>Final optimization has not started</h3><p>Complete Review Tailored Resume and select Improve Resume Quality.</p><a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='review') }}#tailored-resume">Open Review Tailored Resume</a></div></section>
     </div>
   {% endif %}
 {% endif %}

@@ -13,6 +13,7 @@ from .models import (
     TailoringProposal,
 )
 from .confirmation import ensure_confirmed_answers_visible
+from .grounding import validate_candidate_claim
 from .skill_rules import balance_skill_categories
 from .validation import (
     normalize,
@@ -55,106 +56,107 @@ def _ensure_period(text: str) -> str:
     return f"{text}." if text else ""
 
 
-def _build_safe_summary(profile: CandidateProfile, preferred: str) -> str:
-    """Return a 3-4 sentence, 50-80 word summary using only profile-backed facts."""
+def _build_safe_summary(
+    profile: CandidateProfile,
+    analysis: JobAnalysis,
+    preferred: str,
+) -> str:
+    """Return a 3-4 sentence, 50-80 word summary using only source-backed text."""
     cleaned_preferred = remove_adjacent_repeated_words(preferred).strip()
     cleaned_source_summary = remove_adjacent_repeated_words(
         profile.current_summary
     ).strip()
-    for candidate in (cleaned_preferred, cleaned_source_summary):
-        if _summary_is_valid(candidate):
-            return candidate
+    job_context = "\n".join(
+        [
+            analysis.target_title,
+            analysis.target_company,
+            *(requirement.requirement for requirement in analysis.requirements),
+            *(keyword for requirement in analysis.requirements for keyword in requirement.keywords),
+        ]
+    )
 
-    source_sentences = _sentence_parts(cleaned_source_summary)
-    preferred_sentences = _sentence_parts(cleaned_preferred)
-    sentences: list[str] = []
-    seen: set[str] = set()
-    for item in preferred_sentences + source_sentences:
-        key = normalize(item)
-        if key and key not in seen:
-            sentences.append(item)
-            seen.add(key)
-        if len(sentences) == 4:
+    # Preserve a model-written summary only when the complete text is already
+    # structurally valid and every claim is traceable to verified evidence.
+    if _summary_is_valid(cleaned_preferred) and not validate_candidate_claim(
+        cleaned_preferred,
+        [profile.all_source_text()],
+        context_texts=[job_context],
+        allow_gap_context=True,
+    ):
+        return cleaned_preferred
+
+    # Otherwise compose exclusively from verbatim source-summary sentences,
+    # source bullets, and candidate-confirmed supplemental statements.
+    source_units: list[str] = []
+    source_units.extend(_sentence_parts(cleaned_source_summary))
+    source_units.extend(
+        remove_adjacent_repeated_words(bullet.text).strip().rstrip(".!?")
+        for experience in profile.experiences
+        for bullet in experience.bullets
+        if remove_adjacent_repeated_words(bullet.text).strip()
+    )
+    source_units.extend(
+        remove_adjacent_repeated_words(item.statement).strip().rstrip(".!?")
+        for item in profile.supplemental_evidence
+        if remove_adjacent_repeated_words(item.statement).strip()
+    )
+    source_units = _dedupe(source_units)
+
+    selected: list[str] = []
+    for unit in source_units:
+        if not unit:
+            continue
+        selected.append(unit)
+        if len(selected) >= 3 and sum(word_count(item) for item in selected) >= 52:
+            break
+        if len(selected) == 4:
             break
 
-    employers = [experience.employer for experience in profile.experiences if experience.employer]
-    titles = [experience.title for experience in profile.experiences if experience.title]
+    # Profiles with unusually terse source text can be expanded using only
+    # exact verified skill names and exact employer/title values.
+    if len(selected) < 3:
+        skills = _dedupe(profile.all_verified_skills())
+        if skills:
+            selected.append("Verified skills: " + ", ".join(skills[:12]))
+    if len(selected) < 3:
+        for experience in profile.experiences:
+            selected.append(
+                f"Documented role: {experience.title} at {experience.employer}"
+            )
+            if len(selected) >= 3:
+                break
+    while len(selected) < 3:
+        selected.append("Documented professional experience from the Candidate Profile")
+
+    selected = selected[:4]
     skills = _dedupe(profile.all_verified_skills())
-    education = profile.education[0] if profile.education else None
-
-    fallbacks = []
-    if skills:
-        fallbacks.append("Verified skills include " + ", ".join(skills[:8]))
-    if employers:
-        role_text = ", ".join(titles[:3]) if titles else "professional roles"
-        fallbacks.append(
-            f"Professional experience includes {role_text} at {', '.join(employers[:3])}"
-        )
-    if education:
-        fallbacks.append(
-            f"Education includes {education.credential} from {education.institution}"
-        )
-    fallbacks.append("The resume documents experience, skills, and accomplishments from the candidate profile")
-
-    for item in fallbacks:
-        if len(sentences) >= 3:
-            break
-        key = normalize(item)
-        if key and key not in seen:
-            sentences.append(item)
-            seen.add(key)
-
-    sentences = sentences[:4]
-    summary = " ".join(_ensure_period(item) for item in sentences if item)
-
-    # If the summary is short, expand only with verified skills and documented employers.
-    if word_count(summary) < 50 and skills:
-        extra = "Additional verified capabilities include " + ", ".join(skills[8:16] or skills[:8])
-        if len(sentences) < 4:
-            sentences.append(extra)
+    if sum(word_count(item) for item in selected) < 50 and skills:
+        verified_skill_text = "Verified skills: " + ", ".join(skills[:16])
+        if len(selected) < 4:
+            selected.append(verified_skill_text)
         else:
-            sentences[-1] = sentences[-1].rstrip(".!?") + "; " + extra[0].lower() + extra[1:]
-        summary = " ".join(_ensure_period(item) for item in sentences[:4] if item)
+            selected[-1] = selected[-1].rstrip(".!?") + "; " + verified_skill_text
 
-    if word_count(summary) < 50 and employers:
-        extra = "The documented work history spans " + ", ".join(employers)
-        if len(sentences) < 4:
-            sentences.append(extra)
-        else:
-            sentences[-1] = sentences[-1].rstrip(".!?") + "; " + extra[0].lower() + extra[1:]
-        summary = " ".join(_ensure_period(item) for item in sentences[:4] if item)
-
-    # Keep at most 80 words while retaining 3 sentences. Truncate only the final sentence.
-    parts = _sentence_parts(summary)
-    while len(parts) < 3:
-        parts.append("The candidate profile provides verified professional evidence")
-    parts = parts[:4]
-    while sum(word_count(_ensure_period(part)) for part in parts) > 80 and parts:
-        last_words = parts[-1].split()
-        if len(last_words) > 6:
-            parts[-1] = " ".join(last_words[:-1])
-        elif len(parts) == 4:
-            parts.pop()
+    # Trim only the final source-backed sentence to satisfy the upper bound.
+    while sum(word_count(item) for item in selected) > 80:
+        words = selected[-1].split()
+        if len(words) > 8:
+            selected[-1] = " ".join(words[:-1])
+        elif len(selected) == 4:
+            selected.pop()
         else:
             break
-    summary = " ".join(_ensure_period(item) for item in parts)
 
-    # Last-resort padding with verified skill names. This remains profile-backed.
-    if word_count(summary) < 50:
-        padding = skills or employers or ["documented professional experience"]
-        words = summary.rstrip(".").split()
-        index = 0
-        while len(words) < 50:
-            words.extend(str(padding[index % len(padding)]).split())
-            index += 1
-        words = words[:50]
-        # Preserve 3 sentences by appending the padding to the final sentence.
-        summary_parts = _sentence_parts(summary)
-        prefix = " ".join(_ensure_period(item) for item in summary_parts[:-1])
-        used = word_count(prefix)
-        final_words = words[used:]
-        summary = (prefix + " " + " ".join(final_words).rstrip(".") + ".").strip()
-
+    summary = " ".join(_ensure_period(item) for item in selected if item)
+    # Do not return a fallback that fails its own grounding gate. A source summary
+    # is safer than preserving unsupported generated language, even when terse.
+    if validate_candidate_claim(
+        summary,
+        [profile.all_source_text()],
+        context_texts=[job_context],
+        allow_gap_context=True,
+    ):
+        return cleaned_source_summary
     return summary
 
 
@@ -187,6 +189,60 @@ def _clean_skills(
 def _requirement_score(ids: list[str], analysis: JobAnalysis) -> int:
     lookup = {item.id: item for item in analysis.requirements}
     return sum(_PRIORITY_WEIGHT[lookup[item].priority] for item in set(ids) if item in lookup)
+
+
+def _bullet_grounding_evidence(
+    profile: CandidateProfile,
+    source_text: str,
+    evidence_note: str,
+) -> list[str]:
+    grounding_evidence = [source_text]
+    evidence_note_normalized = normalize(evidence_note)
+    for evidence_item in profile.supplemental_evidence:
+        if normalize(evidence_item.id) in evidence_note_normalized:
+            grounding_evidence.append(evidence_item.statement)
+            grounding_evidence.extend(evidence_item.verified_skills)
+    for verified_skill in profile.all_verified_skills():
+        if normalize(verified_skill) in evidence_note_normalized:
+            grounding_evidence.append(verified_skill)
+    return grounding_evidence
+
+
+def repair_unsupported_candidate_claims(
+    profile: CandidateProfile,
+    analysis: JobAnalysis,
+    proposal: TailoringProposal,
+) -> TailoringProposal:
+    """Remove unsupported generated candidate claims without changing workflow metadata.
+
+    Unlike the full deterministic repair pass, this function preserves candidate
+    questions, inclusion choices, evidence decisions, and Career Translation
+    findings. It is safe to run immediately after every model-generated proposal.
+    """
+
+    repaired = proposal.model_copy(deep=True)
+    repaired.professional_summary = _build_safe_summary(
+        profile,
+        analysis,
+        repaired.professional_summary,
+    )
+    source_lookup = profile.bullet_lookup()
+    for bullet in repaired.bullet_proposals:
+        source_text = source_lookup.get(bullet.source_bullet_id)
+        if source_text is None or not bullet.include:
+            continue
+        findings = validate_candidate_claim(
+            bullet.proposed_text,
+            _bullet_grounding_evidence(profile, source_text, bullet.evidence_note),
+            require_overlap=True,
+        )
+        if findings:
+            bullet.proposed_text = source_text.strip()
+            bullet.evidence_note = (
+                bullet.evidence_note.strip()
+                or f"Directly supported by source bullet {bullet.source_bullet_id}."
+            )
+    return repaired
 
 
 def _clean_bullets(
@@ -241,7 +297,12 @@ def _clean_bullets(
                 )
             source_numbers = numeric_tokens(source.text)
             new_numbers = numeric_tokens(text) - source_numbers - supplemental_numbers
-            if not text or new_numbers or word_count(text) > 55:
+            grounding_findings = validate_candidate_claim(
+                text,
+                _bullet_grounding_evidence(profile, source.text, existing.evidence_note),
+                require_overlap=True,
+            ) if text else []
+            if not text or new_numbers or grounding_findings or word_count(text) > 55:
                 text = source_text
 
             matched = [
@@ -396,7 +457,9 @@ def apply_deterministic_repairs(
 ) -> TailoringProposal:
     """Normalize every rule enforced by validate_proposal without inventing evidence."""
     repaired = remove_adjacent_repeated_words_from_proposal(proposal)
-    repaired.professional_summary = _build_safe_summary(profile, repaired.professional_summary)
+    repaired.professional_summary = _build_safe_summary(
+        profile, analysis, repaired.professional_summary
+    )
     repaired.skills = _clean_skills(profile, analysis, repaired)
     repaired.bullet_proposals = _clean_bullets(profile, analysis, repaired)
     repaired.evidence_matches = _clean_evidence(profile, analysis, repaired)

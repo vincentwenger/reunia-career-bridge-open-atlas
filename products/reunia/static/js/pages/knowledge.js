@@ -2041,6 +2041,11 @@
     const answerContent = document.getElementById('answerContent');
     const sourcesSection = document.getElementById('sourcesSection');
     const sourceList = document.getElementById('sourceList');
+    const answerLoadingState = document.getElementById('knowledge-answer-loading');
+    const answerEmptyState = document.getElementById('knowledge-answer-empty');
+    const answerErrorState = document.getElementById('knowledge-answer-error');
+    const answerRetryButton = document.getElementById('knowledge-answer-retry');
+    const copyAnswerButton = document.getElementById('copyAnswerButton');
 
     function selectedSearchScope() {
         return document.querySelector('input[name="search_scope"]:checked')?.value || 'current_meeting';
@@ -2108,6 +2113,22 @@
         sourcesSection.hidden = uniqueSources.length === 0;
     }
 
+    function setAnswerState(state, message = '') {
+        [answerLoadingState, answerEmptyState, answerErrorState].forEach(element => {
+            if (element) element.hidden = true;
+        });
+        if (answerContent) answerContent.hidden = state !== 'answer';
+        if (copyAnswerButton) copyAnswerButton.hidden = state !== 'answer';
+        if (sourcesSection && state !== 'answer') sourcesSection.hidden = true;
+        if (state === 'loading' && answerLoadingState) answerLoadingState.hidden = false;
+        if (state === 'empty' && answerEmptyState) answerEmptyState.hidden = false;
+        if (state === 'error' && answerErrorState) {
+            window.AppUI?.showWorkspaceState(answerErrorState, {state: 'error', message});
+        }
+    }
+
+    answerRetryButton?.addEventListener('click', () => knowledgeForm?.requestSubmit());
+
     knowledgeForm?.addEventListener('submit', async event => {
         event.preventDefault();
         const question = questionInput?.value.trim() || '';
@@ -2147,8 +2168,7 @@
             answerPanel.hidden = false;
             answerPanel.setAttribute('aria-busy', 'true');
         }
-        if (answerContent) answerContent.textContent = 'Searching the selected knowledge sources…';
-        if (sourcesSection) sourcesSection.hidden = true;
+        setAnswerState('loading');
 
         try {
             const response = await fetch(endpoints.ask, {
@@ -2158,11 +2178,16 @@
             });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(result.error || 'The question could not be answered.');
-            if (answerContent) answerContent.textContent = result.answer || 'No answer was returned.';
-            renderSources(result.sources || result.meeting_sources || []);
+            const answer = String(result.answer || '').trim();
+            if (!answer) {
+                setAnswerState('empty');
+            } else {
+                if (answerContent) answerContent.textContent = answer;
+                setAnswerState('answer');
+                renderSources(result.sources || result.meeting_sources || []);
+            }
         } catch (error) {
-            if (answerContent) answerContent.textContent = error.message;
-            showToast(error.message, true);
+            setAnswerState('error', error.message || 'The question could not be answered.');
         } finally {
             answerPanel?.setAttribute('aria-busy', 'false');
             if (button) {

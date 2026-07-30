@@ -1,12 +1,12 @@
 :root {
     color-scheme: light;
-    --ma-primary: #176b5a;
-    --ma-primary-light: #1b826b;
-    --ma-text: #1e3830;
-    --ma-muted: #707d79;
-    --ma-border: #eff6f4;
+    --ma-primary: #1d4e78;
+    --ma-primary-light: #2f6f9f;
+    --ma-text: #1f2937;
+    --ma-muted: #64748b;
+    --ma-border: #dce4ec;
     --ma-surface: #ffffff;
-    --ma-page-background: linear-gradient(180deg, #f4f8f6 0%, #ffffff 100%);
+    --ma-page-background: linear-gradient(180deg, #f6f8fb 0%, #ffffff 100%);
 }
 
 *,
@@ -51,7 +51,7 @@ svg {
     z-index: 10000;
     padding: 10px 14px;
     border-radius: 10px;
-    background: #18231f;
+    background: #27364a;
     color: #ffffff;
     text-decoration: none;
     transform: translateY(-150%);

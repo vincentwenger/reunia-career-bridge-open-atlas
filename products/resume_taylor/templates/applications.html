@@ -35,8 +35,8 @@
   </div>
   <details {% if not applications %}open{% endif %}>
     <summary>Enter company and job details</summary>
-    <form action="{{ url_for('create_application_record') }}" method="post" class="stack-form application-form">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <form action="{{ url_for('application_builder.create_application_record') }}" method="post" class="stack-form application-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field-grid two">
         <div><label for="new-company">Company</label><input id="new-company" name="company" type="text" required></div>
         <div><label for="new-role">Job title</label><input id="new-role" name="role" type="text" required></div>
@@ -110,15 +110,15 @@
           {% if application.notes %}<p class="application-notes">{{ application.notes }}</p>{% endif %}
 
           <footer class="application-card-actions application-dashboard-actions">
-            <a class="button primary" href="{{ url_for('open_application_builder', application_id=application.id) }}">{% if application.workflow_step == 'setup' %}Start resume workflow{% else %}Continue resume workflow{% endif %}</a>
-            <a class="button secondary" href="{{ url_for('interview_preparation_workspace', application_id=application.id) }}">Prepare for interview</a>
-            {% if application.has_resume_snapshot %}<a class="button secondary" href="{{ url_for('download_application_resume', application_id=application.id) }}">Download submitted resume</a>{% endif %}
+            <a class="button primary" href="{{ url_for('application_builder.open_application_builder', application_id=application.id) }}">{% if application.workflow_step == 'setup' %}Start resume workflow{% else %}Continue resume workflow{% endif %}</a>
+            <a class="button secondary" href="{{ url_for('application_builder.interview_preparation_workspace', application_id=application.id) }}">Prepare for interview</a>
+            {% if application.has_resume_snapshot %}<a class="button secondary" href="{{ url_for('application_builder.download_application_resume', application_id=application.id) }}">Download submitted resume</a>{% endif %}
           </footer>
 
           <details class="application-edit-details">
             <summary>Update dashboard details</summary>
-            <form action="{{ url_for('update_application_record', application_id=application.id) }}" method="post" class="stack-form application-form">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <form action="{{ url_for('application_builder.update_application_record', application_id=application.id) }}" method="post" class="stack-form application-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="field-grid two">
                 <div><label for="company-{{ application.id }}">Company</label><input id="company-{{ application.id }}" name="company" type="text" value="{{ application.company }}" required></div>
                 <div><label for="role-{{ application.id }}">Job title</label><input id="role-{{ application.id }}" name="role" type="text" value="{{ application.role }}" required></div>
@@ -157,8 +157,8 @@
             </form>
           </details>
 
-          <form action="{{ url_for('delete_application_record', application_id=application.id) }}" method="post" class="inline-form application-remove-form" data-confirm-submit="Remove this application and its in-memory workflow?">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <form action="{{ url_for('application_builder.delete_application_record', application_id=application.id) }}" method="post" class="inline-form application-remove-form" data-confirm-submit="Remove this application and its in-memory workflow?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="button text application-delete-button" type="submit">Remove application</button>
           </form>
         </article>

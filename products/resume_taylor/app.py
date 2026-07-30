@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-import hmac
 import json
 import os
 import re
-import secrets
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from io import BytesIO
@@ -14,6 +12,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 from flask import (
+    Blueprint,
     Flask,
     Response,
     abort,
@@ -28,6 +27,7 @@ from flask import (
     url_for,
     jsonify,
 )
+from werkzeug.local import LocalProxy
 
 from resume_tailor.ai import ResumeAI, ResumeAIError
 from resume_tailor.application_tracker import (
@@ -50,6 +50,11 @@ from resume_tailor.interview_preparation import (
     restrict_workspace_to_evidence,
 )
 from resume_tailor.impact_tracking import build_workflow_impact_snapshot
+from resume_tailor.resume_findings import (
+    ResumeFindingsSnapshot,
+    build_resume_findings_snapshot,
+    resume_findings_fingerprint,
+)
 from resume_tailor.evidence_fixes import apply_concrete_individual_audit_rephrase
 from resume_tailor.export_naming import final_resume_filename, safe_filename
 from resume_tailor.audit_identity import audit_issue_family
@@ -150,6 +155,7 @@ from resume_tailor.deterministic_fixes import (
 )
 from resume_tailor.validation import (
     build_approved_resume,
+    candidate_claim_grounding_issues,
     reconcile_audit_with_deterministic_rules,
     sentence_count,
     validate_proposal,
@@ -512,8 +518,17 @@ def _approved_resume_from_proposal(
     profile: CandidateProfile,
     title: str,
     proposal: TailoringProposal,
+    analysis: Any | None = None,
 ) -> ApprovedResume:
-    """Build downloadable Word content from any stored resume-version snapshot."""
+    """Build export content only after generated claims pass evidence grounding."""
+    if analysis is not None:
+        grounding_issues = candidate_claim_grounding_issues(profile, analysis, proposal)
+        if grounding_issues:
+            details = "; ".join(issue.issue for issue in grounding_issues[:3])
+            raise ValueError(
+                "Export blocked because generated candidate claims are not traceable "
+                f"to verified evidence. {details}"
+            )
     proposal_lookup = {
         item.source_bullet_id: item for item in proposal.bullet_proposals
     }
@@ -771,7 +786,7 @@ def build_guided_workflow(
                 "status": status,
                 "status_label": labels[status],
                 "href": url_for(
-                    "index",
+                    "application_builder.index",
                     tab="tailoring",
                     stage=key,
                     **({"application_id": application_id} if application_id else {}),
@@ -1606,7 +1621,9 @@ def _store_optimized_final_export(
     if state.analysis is None:
         raise ValueError("Job analysis is required before creating the Final Resume.")
     title = effective_final_resume_title(state)
-    approved = _approved_resume_from_proposal(profile, title, proposal)
+    approved = _approved_resume_from_proposal(
+        profile, title, proposal, state.analysis
+    )
     resume_bytes = export_resume_docx(
         resume_template_path(state.resume_career_stage),
         profile,
@@ -1912,37 +1929,82 @@ def _run_post_confirmation_evidence_review(
     return reviewed, audit, question_issues
 
 
-def create_app(test_config: dict[str, Any] | None = None) -> Flask:
-    app = Flask(__name__)
-    app.config.update(
-        SECRET_KEY=os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32),
-        MAX_CONTENT_LENGTH=4 * 1024 * 1024,
-        SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=os.environ.get("FLASK_COOKIE_SECURE", "").casefold() == "true",
-        CAREER_BRIDGE_REQUIRE_AUTH=False,
-        CAREER_BRIDGE_LOGIN_URL="/login.html",
-        CAREER_BRIDGE_HOME_URL="/app",
-    )
-    if test_config:
-        app.config.update(test_config)
+application_builder_bp = Blueprint(
+    "application_builder",
+    __name__,
+    template_folder="templates",
+    static_folder="static",
+    static_url_path="/static",
+)
 
-    store = InMemoryWorkflowStore(_default_state)
-    app.extensions["workflow_store"] = store
+
+store: InMemoryWorkflowStore = LocalProxy(
+    lambda: current_app.extensions["career_bridge_workflow_store"]
+)
+application_store: SQLiteApplicationStore = LocalProxy(
+    lambda: current_app.extensions["career_bridge_application_store"]
+)
+
+
+def application_builder_storage_status() -> dict[str, Any]:
+    """Return non-secret persistence limitations for operational health checks."""
+
+    return {
+        "workflow_storage": "memory",
+        "application_storage": "sqlite",
+        "durability": "demo-only",
+        "multi_worker_safe": False,
+        "multi_node_safe": False,
+    }
+
+
+def init_application_builder(app: Flask) -> None:
+    """Initialize Application Builder stores directly on the Réunia app."""
+
+    if app.extensions.get("career_bridge_workflow_store") is None:
+        workflow_store = InMemoryWorkflowStore(_default_state)
+        app.extensions["career_bridge_workflow_store"] = workflow_store
 
     application_database_path = app.config.get("APPLICATIONS_DB_PATH")
     if not application_database_path:
         if app.config.get("TESTING"):
             application_database_path = ":memory:"
         else:
-            application_database_path = str(Path(app.instance_path) / "applications.sqlite3")
-    application_store = SQLiteApplicationStore(application_database_path)
-    app.extensions["application_store"] = application_store
+            application_database_path = str(
+                Path(app.instance_path) / "career_bridge_applications.sqlite3"
+            )
+        app.config["APPLICATIONS_DB_PATH"] = application_database_path
 
-    @app.before_request
+    if app.extensions.get("career_bridge_application_store") is None:
+        application_store = SQLiteApplicationStore(application_database_path)
+        app.extensions["career_bridge_application_store"] = application_store
+
+    warning_key = "career_bridge_application_builder_persistence_warning_logged"
+    if not app.extensions.get(warning_key):
+        app.logger.warning(
+            "Application Builder persistence:\n"
+            "- workflow backend: process memory\n"
+            "- application backend: SQLite\n"
+            "- database path: %s\n"
+            "- safe only with one Gunicorn worker and Lightsail scale 1\n"
+            "- records may be lost during container replacement",
+            application_database_path,
+        )
+        app.extensions[warning_key] = True
+
+
+def _register_application_builder_routes() -> None:
+    @application_builder_bp.before_request
     def load_workflow_state() -> Response | None:
-        if app.config.get("CAREER_BRIDGE_REQUIRE_AUTH") and not session.get("user_id"):
-            return redirect(str(app.config.get("CAREER_BRIDGE_LOGIN_URL") or "/login.html"))
+        if current_app.config.get("CAREER_BRIDGE_REQUIRE_AUTH") and not session.get(
+            "user_id"
+        ):
+            return redirect(
+                str(
+                    current_app.config.get("CAREER_BRIDGE_LOGIN_URL")
+                    or "/login.html"
+                )
+            )
 
         owner_id = (
             str(session.get("user_id") or "").strip()
@@ -1978,15 +2040,6 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             else f"{owner_id}:application:scratch"
         )
         session["active_workflow_key"] = workflow_key
-        session.setdefault("csrf_token", secrets.token_urlsafe(24))
-        # Réunia's shared shell uses a separate CSRF session key. Keep it
-        # available here so the common account menu can safely post to /logout.
-        session.setdefault("_csrf_token", secrets.token_urlsafe(32))
-        if request.method == "POST":
-            submitted = request.form.get("csrf_token", "")
-            if not hmac.compare_digest(submitted, session["csrf_token"]):
-                abort(400, description="The form security token is invalid or expired. Refresh and try again.")
-
         g.application_owner_id = owner_id
         g.active_application = application
         g.workflow_state = store.get(workflow_key)
@@ -2001,16 +2054,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 g.workflow_state.job_description = application.job_description
         return None
 
-    @app.context_processor
+    @application_builder_bp.context_processor
     def inject_common_template_values() -> dict[str, Any]:
         return {
-            "csrf_token": session.get("csrf_token", ""),
             "processing_mode_labels": PROCESSING_MODE_LABELS,
             "processing_mode_order": PROCESSING_MODE_ORDER,
             "reasoning_efforts": ("automatic",) + REASONING_EFFORTS,
             "reasoning_effort_label": reasoning_effort_label,
-            "career_bridge_home_url": str(app.config.get("CAREER_BRIDGE_HOME_URL") or "/app"),
-            "career_bridge_csrf_token": session.get("_csrf_token", ""),
+            "career_bridge_home_url": str(
+                current_app.config.get("CAREER_BRIDGE_HOME_URL") or "/app"
+            ),
             "is_admin_session": bool(session.get("is_admin")),
             "active_application": getattr(g, "active_application", None),
         }
@@ -2037,7 +2090,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             target_role=current.target_title,
         )
 
-    @app.get("/")
+    @application_builder_bp.get("/")
     def index():
         current = state()
         ensure_recommended_resume_style(current)
@@ -2051,7 +2104,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             applications = application_store.list_for_owner(owner_id)
             style_options = resume_style_options()
             return render_template(
-                "applications.html",
+                "application_builder/applications.html",
                 active_tab=active_tab,
                 applications=applications,
                 application_metrics=build_application_metrics(applications),
@@ -2428,6 +2481,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 job_description=current.job_description,
                 status=dashboard_status,
             )
+            if g.active_application is not None:
+                _persist_resume_findings(
+                    g.active_application.id,
+                    build_resume_findings_snapshot(
+                        current,
+                        company=g.active_application.company,
+                        role=g.active_application.role,
+                        job_description=g.active_application.job_description,
+                    ),
+                )
 
         initial_editor_filename = (
             safe_filename(f"{source_profile.name}_Initial_Resume") + ".docx"
@@ -2455,7 +2518,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             current.provisional_proposal or proposal
         )
         return render_template(
-            "index.html",
+            "application_builder/index.html",
             state=current,
             active_tab=active_tab,
             guided_workflow=guided_workflow,
@@ -2550,7 +2613,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             },
         )
 
-    @app.post("/configuration")
+    @application_builder_bp.post("/configuration")
     def configuration():
         current = state()
         try:
@@ -2561,7 +2624,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         mode = request.form.get("processing_mode", current.processing_mode)
         if mode not in PROCESSING_MODE_ORDER:
             flash("Unknown processing mode.", "error")
-            return redirect(url_for("index", tab="configuration"))
+            return redirect(url_for("application_builder.index", tab="configuration"))
         current.processing_mode = mode
         current.custom_analysis_tailoring_model = request.form.get(
             "custom_analysis_tailoring_model", current.custom_analysis_tailoring_model
@@ -2590,7 +2653,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             new_models = resolve_models(current)
         except ValueError as exc:
             flash(str(exc), "error")
-            return redirect(url_for("index", tab="configuration"))
+            return redirect(url_for("application_builder.index", tab="configuration"))
 
         old_analysis_tailoring = (
             old_models.analysis_tailoring_model,
@@ -2619,16 +2682,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             )
         else:
             flash("Configuration saved.", "success")
-        return redirect(url_for("index", tab="configuration"))
+        return redirect(url_for("application_builder.index", tab="configuration"))
 
-    @app.post("/profile/upload")
+    @application_builder_bp.post("/profile/upload")
     def upload_profile():
         uploaded = request.files.get("profile_file")
         return_to = str(request.form.get("return_to") or "").strip().casefold()
         redirect_target = (
-            url_for("index", tab="tailoring", stage="setup") + "#resume-import"
+            url_for("application_builder.index", tab="tailoring", stage="setup") + "#resume-import"
             if return_to == "setup"
-            else url_for("index", tab="configuration") + "#candidate-profile"
+            else url_for("application_builder.index", tab="configuration") + "#candidate-profile"
         )
         if not uploaded or not uploaded.filename:
             flash("Choose a PDF, Word, text, Markdown, or Candidate Profile JSON file.", "error")
@@ -2667,23 +2730,23 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         return redirect(redirect_target)
 
-    @app.post("/profile/default")
+    @application_builder_bp.post("/profile/default")
     def restore_default_profile():
         current = state()
         current.source_profile = load_candidate_profile(DEFAULT_PROFILE_PATH)
         current.profile_upload_name = ""
         current.clear_results()
         flash("The bundled Candidate Profile was restored.", "success")
-        return redirect(url_for("index", tab="configuration"))
+        return redirect(url_for("application_builder.index", tab="configuration"))
 
-    @app.post("/reset")
+    @application_builder_bp.post("/reset")
     def reset_workflow():
         current = state()
         current.clear_results()
         flash("Workflow results were reset. Your configuration and current inputs were preserved.", "success")
-        return redirect(url_for("index", tab="configuration"))
+        return redirect(url_for("application_builder.index", tab="configuration"))
 
-    @app.post("/workflow/start")
+    @application_builder_bp.post("/workflow/start")
     def start_workflow():
         current = state()
         update_job_fields()
@@ -2691,7 +2754,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         tailoring_started = False
         if not current.job_description.strip():
             flash("Paste or upload a job description first.", "error")
-            return redirect(url_for("index", tab="tailoring"))
+            return redirect(url_for("application_builder.index", tab="tailoring"))
         try:
             models = resolve_models(current)
             current_input = input_fingerprint(current, models)
@@ -2834,13 +2897,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             flash(str(exc), "error")
         if tailoring_started:
             return redirect(
-                url_for("index", tab="tailoring", stage="confirmation")
+                url_for("application_builder.index", tab="tailoring", stage="confirmation")
                 + "#confirmation-stage"
             )
-        return redirect(url_for("index", tab="tailoring"))
+        return redirect(url_for("application_builder.index", tab="tailoring"))
 
 
-    @app.post("/reports/initial")
+    @application_builder_bp.post("/reports/initial")
     def run_initial_report():
         """Manual recovery action; normal workflow generation is automatic."""
         current = state()
@@ -2849,7 +2912,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "Save a job description in Career and Job Setup before retrying the report.",
                 "error",
             )
-            return redirect(url_for("index", tab="reports", report="initial"))
+            return redirect(url_for("application_builder.index", tab="reports", report="initial"))
         try:
             models = resolve_models(current)
             current_input = input_fingerprint(current, models)
@@ -2921,11 +2984,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "warning",
             )
         return redirect(
-            url_for("index", tab="reports", report="initial")
+            url_for("application_builder.index", tab="reports", report="initial")
             + "#reports-initial"
         )
 
-    @app.post("/reports/draft")
+    @application_builder_bp.post("/reports/draft")
     def run_draft_report():
         """Manual recovery action; Step 3 normally refreshes this report automatically."""
         current = state()
@@ -2935,7 +2998,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "Complete the Job-Aligned Resume before retrying its report.",
                 "error",
             )
-            return redirect(url_for("index", tab="reports", report="draft"))
+            return redirect(url_for("application_builder.index", tab="reports", report="draft"))
         try:
             models = resolve_models(current)
             current_input = input_fingerprint(current, models)
@@ -2961,11 +3024,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "warning",
             )
         return redirect(
-            url_for("index", tab="reports", report="draft")
+            url_for("application_builder.index", tab="reports", report="draft")
             + "#reports-draft"
         )
 
-    @app.post("/reports/auto/<report_name>")
+    @application_builder_bp.post("/reports/auto/<report_name>")
     def run_automatic_report(report_name: str):
         """Generate a milestone report after the next workflow screen is visible."""
         current = state()
@@ -3034,7 +3097,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 current.final_report_exact = False
             return jsonify(ok=False, message=str(exc)), 500
 
-    @app.post("/reports/final")
+    @application_builder_bp.post("/reports/final")
     def run_final_report():
         """Retry only the Final Resume Report without rerunning optimization."""
         current = state()
@@ -3044,7 +3107,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "Complete Improve Resume Quality before retrying the Final Resume Report.",
                 "error",
             )
-            return redirect(url_for("index", tab="reports", report="final"))
+            return redirect(url_for("application_builder.index", tab="reports", report="final"))
         try:
             models = resolve_models(current)
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
@@ -3066,16 +3129,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 "warning",
             )
         return redirect(
-            url_for("index", tab="reports", report="final")
+            url_for("application_builder.index", tab="reports", report="final")
             + "#reports-final"
         )
 
-    @app.post("/confirmation/apply")
+    @application_builder_bp.post("/confirmation/apply")
     def apply_confirmation():
         current = state()
         if current.analysis is None or current.provisional_proposal is None:
             flash("Analyze the job and resume before confirming relevant experience.", "error")
-            return redirect(url_for("index", tab="tailoring", stage="initial"))
+            return redirect(url_for("application_builder.index", tab="tailoring", stage="initial"))
 
         redirect_stage = "draft"
         redirect_anchor = "#tailored-resume"
@@ -3095,7 +3158,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 for error in errors:
                     flash(error, "error")
                 return redirect(
-                    url_for("index", tab="tailoring", stage="confirmation")
+                    url_for("application_builder.index", tab="tailoring", stage="confirmation")
                     + "#confirmation"
                 )
 
@@ -3136,7 +3199,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                     # questions when the optional refinement request fails. The
                     # provisional proposal already contains source-backed decisions;
                     # confirmed answers are added deterministically below.
-                    app.logger.warning(
+                    current_app.logger.warning(
                         "Confirmation refinement failed; using the safe provisional proposal: %s",
                         exc,
                     )
@@ -3173,7 +3236,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 # had not been created. Fall back to the conservative pre-refinement
                 # proposal, add confirmed evidence, and run deterministic validation
                 # so the completed Step 2 can still advance to Step 3.
-                app.logger.warning(
+                current_app.logger.warning(
                     "Post-confirmation evidence review failed; using deterministic fallback: %s",
                     exc,
                 )
@@ -3298,10 +3361,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             redirect_anchor = "#confirmation"
 
         return redirect(
-            url_for("index", tab="tailoring", stage=redirect_stage) + redirect_anchor
+            url_for("application_builder.index", tab="tailoring", stage=redirect_stage) + redirect_anchor
         )
 
-    @app.post("/confirmation/reopen")
+    @application_builder_bp.post("/confirmation/reopen")
     def reopen_confirmation():
         current = state()
         if current.provisional_proposal is not None:
@@ -3350,11 +3413,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             current.clear_final_report()
             flash("Confirmation questions reopened. Confirm the answers again to create a new tailored resume.", "success")
         return redirect(
-            url_for("index", tab="tailoring", stage="confirmation")
+            url_for("application_builder.index", tab="tailoring", stage="confirmation")
             + "#confirmation"
         )
 
-    @app.post("/workflow/reopen/<stage>")
+    @application_builder_bp.post("/workflow/reopen/<stage>")
     def reopen_workflow_stage(stage: str):
         """Restore the completed tailored-resume snapshot and invalidate later outputs."""
         internal_stage = "draft" if stage in {"draft", "review"} else stage
@@ -3365,7 +3428,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if snapshot is None or snapshot.proposal is None:
             flash("The saved Job-Aligned Resume is no longer available.", "warning")
             return redirect(
-                url_for("index", tab="tailoring", stage=guided_stage_for_state(current))
+                url_for("application_builder.index", tab="tailoring", stage=guided_stage_for_state(current))
             )
 
         restored = snapshot.proposal.model_copy(deep=True)
@@ -3394,12 +3457,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "warning",
         )
         return redirect(
-            url_for("index", tab="tailoring", stage="review") + "#tailored-resume"
+            url_for("application_builder.index", tab="tailoring", stage="review") + "#tailored-resume"
         )
 
 
 
-    @app.post("/resume-style")
+    @application_builder_bp.post("/resume-style")
     def select_resume_style():
         current = state()
         before_preferences = (
@@ -3417,7 +3480,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if raw_stage not in allowed:
                 flash("Choose one of the available career stages.", "error")
                 return redirect(
-                    url_for("index", tab="tailoring", stage="final")
+                    url_for("application_builder.index", tab="tailoring", stage="final")
                     + "#resume-style-selector"
                 )
             if normalize_career_stage(current.resume_career_stage) != raw_stage:
@@ -3432,7 +3495,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if raw_format not in allowed:
                 flash("Choose one of the available resume formats.", "error")
                 return redirect(
-                    url_for("index", tab="tailoring", stage="final")
+                    url_for("application_builder.index", tab="tailoring", stage="final")
                     + "#resume-style-selector"
                 )
             if normalize_resume_format(current.resume_format) != raw_format:
@@ -3447,7 +3510,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if raw_design not in allowed:
                 flash("Choose one of the available visual designs.", "error")
                 return redirect(
-                    url_for("index", tab="tailoring", stage="final")
+                    url_for("application_builder.index", tab="tailoring", stage="final")
                     + "#resume-style-selector"
                 )
             if normalize_visual_design(current.resume_visual_design) != raw_design:
@@ -3461,7 +3524,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if raw_legacy not in RESUME_STYLE_THEMES:
                 flash("Choose one of the available career stages.", "error")
                 return redirect(
-                    url_for("index", tab="tailoring", stage="final")
+                    url_for("application_builder.index", tab="tailoring", stage="final")
                     + "#resume-style-selector"
                 )
             current.resume_career_stage = normalize_career_stage(raw_legacy)
@@ -3470,7 +3533,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not supplied_dimension:
             flash("Choose a career stage, resume format, or visual design.", "error")
             return redirect(
-                url_for("index", tab="tailoring", stage="final")
+                url_for("application_builder.index", tab="tailoring", stage="final")
                 + "#resume-style-selector"
             )
 
@@ -3549,12 +3612,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             else guided_stage_for_state(current)
         )
         return redirect(
-            url_for("index", tab="tailoring", stage=target_stage)
+            url_for("application_builder.index", tab="tailoring", stage=target_stage)
             + ("#resume-style-selector" if target_stage == "final" else "")
         )
 
 
-    @app.post("/workflow/start-final")
+    @application_builder_bp.post("/workflow/start-final")
     def start_final_stage():
         """Run one score-guarded quality pass and open Step 4 quickly."""
         current = state()
@@ -3566,7 +3629,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         if current.analysis is None or job_aligned is None or working is None or not current.confirmation_complete:
             flash("Complete the Job-Aligned Resume before running final optimization.", "error")
-            return redirect(url_for("index", tab="tailoring", stage="draft") + "#tailored-resume")
+            return redirect(url_for("application_builder.index", tab="tailoring", stage="draft") + "#tailored-resume")
 
         try:
             if current.workflow_stage != "final":
@@ -3808,14 +3871,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         except (ResumeAIError, TemplateError, ValueError) as exc:
             flash(str(exc), "error")
             return redirect(
-                url_for("index", tab="tailoring", stage="draft") + "#tailored-resume"
+                url_for("application_builder.index", tab="tailoring", stage="draft") + "#tailored-resume"
             )
 
         return redirect(
-            url_for("index", tab="tailoring", stage="final") + "#final-review"
+            url_for("application_builder.index", tab="tailoring", stage="final") + "#final-review"
         )
 
-    @app.post("/resume/save/<version>")
+    @application_builder_bp.post("/resume/save/<version>")
     def save_resume_version(version: str):
         if version not in {"draft", "final"}:
             abort(404)
@@ -3823,15 +3886,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         anchor = "#tailored-resume" if version == "draft" else "#final-resume-editor"
         if current.analysis is None or not current.confirmation_complete:
             flash("Complete the tailoring workflow before editing this resume.", "error")
-            return redirect(url_for("index", tab="tailoring", stage=version) + anchor)
+            return redirect(url_for("application_builder.index", tab="tailoring", stage=version) + anchor)
         if version != current.workflow_stage:
             flash(f"The {version.title()} resume is view-only at this stage.", "warning")
-            return redirect(url_for("index", tab="tailoring", stage=version) + anchor)
+            return redirect(url_for("application_builder.index", tab="tailoring", stage=version) + anchor)
 
         base = current.draft_proposal if version == "draft" else current.final_proposal
         if base is None:
             flash(f"The {version.title()} resume has not been created yet.", "error")
-            return redirect(url_for("index", tab="tailoring", stage=version) + anchor)
+            return redirect(url_for("application_builder.index", tab="tailoring", stage=version) + anchor)
 
         changed = False
         try:
@@ -3893,7 +3956,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         redirect_args = {"tab": "tailoring", "stage": version}
         if version == "draft" and changed:
             redirect_args["compare"] = "previous"
-        return redirect(url_for("index", **redirect_args) + anchor)
+        return redirect(url_for("application_builder.index", **redirect_args) + anchor)
 
 
 
@@ -3908,7 +3971,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
 
 
-    @app.get("/download/workflow-snapshot/<stage>")
+    @application_builder_bp.get("/download/workflow-snapshot/<stage>")
     def download_workflow_snapshot(stage: str):
         """Download the exact resume stored for a completed workflow step."""
         if stage not in {"draft", "final"}:
@@ -3922,7 +3985,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         try:
             approved = _approved_resume_from_proposal(
-                snapshot.profile, title, snapshot.proposal
+                snapshot.profile, title, snapshot.proposal, current.analysis
             )
             document_bytes = export_resume_docx(
                 resume_template_path(current.resume_career_stage),
@@ -3930,7 +3993,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 approved,
                 **resume_export_kwargs(current),
             )
-        except TemplateError as exc:
+        except (TemplateError, ValueError) as exc:
             abort(409, description=str(exc))
 
         filename = (
@@ -3946,7 +4009,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
 
 
-    @app.get("/download/resume-version/<version>")
+    @application_builder_bp.get("/download/resume-version/<version>")
     def download_resume_version(version: str):
         """Download the Initial, Job-Aligned, or Final resume version."""
         if version not in {"initial", "draft", "final"}:
@@ -3980,15 +4043,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 document_bytes = current.final_resume_bytes
 
         try:
+            # Validate the proposal even when a cached DOCX already exists.
+            approved = _approved_resume_from_proposal(
+                profile, title, proposal, current.analysis
+            )
             if document_bytes is None:
-                approved = _approved_resume_from_proposal(profile, title, proposal)
                 document_bytes = export_resume_docx(
                     resume_template_path(current.resume_career_stage),
                     profile,
                     approved,
                     **resume_export_kwargs(current),
                 )
-        except TemplateError as exc:
+        except (TemplateError, ValueError) as exc:
             abort(409, description=str(exc))
 
         download_name = (
@@ -4004,7 +4070,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
 
 
-    @app.get("/download/source-profile")
+    @application_builder_bp.get("/download/source-profile")
     def download_source_profile():
         payload = json.dumps(state().source_profile.model_dump(), ensure_ascii=False, indent=2)
         return Response(
@@ -4013,7 +4079,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             headers={"Content-Disposition": 'attachment; filename="candidate_profile.json"'},
         )
 
-    @app.get("/download/confirmed-profile")
+    @application_builder_bp.get("/download/confirmed-profile")
     def download_confirmed_profile():
         current = state()
         if not current.save_confirmed_profile or current.confirmed_profile is None:
@@ -4027,7 +4093,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             },
         )
 
-    @app.get("/download/proposal")
+    @application_builder_bp.get("/download/proposal")
     def download_proposal():
         current = state()
         proposal = current.draft_proposal
@@ -4070,6 +4136,64 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             f"{_application_owner_id()}:application:{application_id}"
         )
 
+    def _resume_findings_for_application(application_id: str) -> ResumeFindingsSnapshot:
+        application = application_store.get(_application_owner_id(), application_id)
+        workflow_state = _workflow_state_for_application(application_id)
+        snapshot_state = workflow_state
+        if application is not None and (
+            normalize_job_description(workflow_state.job_description)
+            != normalize_job_description(application.job_description)
+            or normalize_target_title(workflow_state.target_title)
+            != normalize_target_title(application.role)
+        ):
+            snapshot_state = WorkflowState(source_profile=workflow_state.source_profile)
+            snapshot_state.job_description = application.job_description
+            snapshot_state.target_title = application.role
+        live_snapshot = build_resume_findings_snapshot(
+            snapshot_state,
+            company=application.company if application is not None else "",
+            role=application.role if application is not None else "",
+            job_description=(
+                application.job_description if application is not None else workflow_state.job_description
+            ),
+        )
+        if live_snapshot.has_findings():
+            return live_snapshot
+
+        stored = application_store.get_resume_findings(
+            _application_owner_id(), application_id
+        )
+        if stored is not None:
+            try:
+                stored_snapshot = ResumeFindingsSnapshot.model_validate_json(
+                    stored.snapshot_json
+                )
+                if (
+                    stored_snapshot.application_context_fingerprint
+                    == live_snapshot.application_context_fingerprint
+                ):
+                    return stored_snapshot
+            except Exception:
+                pass
+        return live_snapshot
+
+    def _persist_resume_findings(
+        application_id: str, snapshot: ResumeFindingsSnapshot
+    ) -> str:
+        fingerprint = resume_findings_fingerprint(snapshot)
+        existing = application_store.get_resume_findings(
+            _application_owner_id(), application_id
+        )
+        if existing is not None and existing.fingerprint == fingerprint:
+            return fingerprint
+        application_store.save_resume_findings(
+            _application_owner_id(),
+            application_id,
+            snapshot_json=snapshot.model_dump_json(),
+            fingerprint=fingerprint,
+        )
+        return fingerprint
+
     def _selected_interview_application():
         applications = application_store.list_for_owner(_application_owner_id())
         requested_id = (
@@ -4089,12 +4213,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             g.active_application = selected
         return applications, selected
 
-    @app.get("/career-translation")
+    @application_builder_bp.get("/career-translation")
     def career_translation_workspace():
         """Open the newcomer career context inside the editable setup step."""
         return redirect(
             url_for(
-                "index",
+                "application_builder.index",
                 tab="tailoring",
                 stage="setup",
                 edit="setup",
@@ -4103,7 +4227,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             + "#newcomer-onboarding"
         )
 
-    @app.get("/interview-preparation")
+    @application_builder_bp.get("/interview-preparation")
     def interview_preparation_workspace():
         applications, application = _selected_interview_application()
         preparation = None
@@ -4112,6 +4236,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         evidence_lookup: dict[str, str] = {}
         preparation_is_stale = False
         preparation_load_error = ""
+        resume_findings = None
+        resume_findings_fingerprint_value = ""
 
         if application is not None:
             workflow_state = _workflow_state_for_application(application.id)
@@ -4119,6 +4245,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 workflow_state, submitted_resume_bytes=application.resume_bytes
             )
             evidence_lookup = {item.id: item.text for item in evidence.items}
+            resume_findings = _resume_findings_for_application(application.id)
+            resume_findings_fingerprint_value = resume_findings_fingerprint(
+                resume_findings
+            )
             preparation_record = application_store.get_interview_preparation(
                 _application_owner_id(), application.id
             )
@@ -4151,10 +4281,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                         role=application.role,
                     )
                     or preparation_record.evidence_fingerprint != evidence.fingerprint
+                    or preparation_record.resume_findings_fingerprint
+                    != resume_findings_fingerprint_value
                 )
 
         return render_template(
-            "interview_preparation.html",
+            "application_builder/interview_preparation.html",
             active_tab="interview_preparation",
             career_section="interview_preparation",
             applications=applications,
@@ -4165,14 +4297,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             preparation_load_error=preparation_load_error,
             evidence=evidence,
             evidence_lookup=evidence_lookup,
+            resume_findings=resume_findings,
         )
 
-    @app.post("/interview-preparation/generate")
+    @application_builder_bp.post("/interview-preparation/generate")
     def generate_interview_preparation():
         _, application = _selected_interview_application()
         if application is None:
             flash("Create a job application before generating interview preparation.", "error")
-            return redirect(url_for("interview_preparation_workspace"))
+            return redirect(url_for("application_builder.interview_preparation_workspace"))
         if not application.job_description.strip():
             flash(
                 "Add the target job description to this application before generating interview preparation.",
@@ -4180,7 +4313,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             )
             return redirect(
                 url_for(
-                    "interview_preparation_workspace",
+                    "application_builder.interview_preparation_workspace",
                     application_id=application.id,
                 )
             )
@@ -4197,10 +4330,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             )
             return redirect(
                 url_for(
-                    "interview_preparation_workspace",
+                    "application_builder.interview_preparation_workspace",
                     application_id=application.id,
                 )
             )
+
+        resume_findings = _resume_findings_for_application(application.id)
+        resume_findings_fingerprint_value = _persist_resume_findings(
+            application.id, resume_findings
+        )
 
         try:
             models = resolve_models(workflow_state)
@@ -4213,11 +4351,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 role=application.role,
                 job_description=application.job_description,
                 evidence=evidence,
+                resume_findings=resume_findings,
             )
             preparation = restrict_workspace_to_evidence(
                 preparation,
                 evidence.ids,
                 submitted_resume_ids=evidence.submitted_resume_ids,
+                evidence_by_id={item.id: item.text for item in evidence.items},
             )
             application_store.save_interview_preparation(
                 _application_owner_id(),
@@ -4235,25 +4375,27 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                     ensure_ascii=False,
                     sort_keys=True,
                 ),
+                resume_findings_fingerprint=resume_findings_fingerprint_value,
+                resume_findings_snapshot_json=resume_findings.model_dump_json(),
                 model_name=models.analysis_tailoring_model,
             )
         except (ResumeAIError, ValueError) as exc:
             flash(str(exc), "error")
         else:
             flash(
-                "Interview preparation generated from this job description and verified candidate evidence.",
+                "Interview preparation generated from the job description, verified candidate evidence, and saved resume findings.",
                 "success",
             )
 
         return redirect(
             url_for(
-                "interview_preparation_workspace",
+                "application_builder.interview_preparation_workspace",
                 application_id=application.id,
             )
             + "#interview-workspace"
         )
 
-    @app.get("/applications/<application_id>/builder")
+    @application_builder_bp.get("/applications/<application_id>/builder")
     def open_application_builder(application_id: str):
         application = application_store.get(_application_owner_id(), application_id)
         if application is None:
@@ -4267,14 +4409,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             current.job_description = application.job_description
         return redirect(
             url_for(
-                "index",
+                "application_builder.index",
                 tab="tailoring",
                 stage=application.workflow_step or "setup",
                 application_id=application.id,
             )
         )
 
-    @app.post("/applications/<application_id>/activate")
+    @application_builder_bp.post("/applications/<application_id>/activate")
     def activate_application_builder(application_id: str):
         application = application_store.get(_application_owner_id(), application_id)
         if application is None:
@@ -4282,22 +4424,42 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         session["active_application_id"] = application.id
         return redirect(
             url_for(
-                "open_application_builder",
+                "application_builder.open_application_builder",
                 application_id=application.id,
             )
         )
 
-    @app.post("/applications/from-final")
+    @application_builder_bp.post("/applications/from-final")
     def save_final_as_application():
         current = state()
         if current.final_resume_bytes is None or current.final_proposal is None:
             flash("Create the Final Resume before saving an application.", "error")
             return redirect(
-                url_for("index", tab="tailoring", stage="finalize")
+                url_for("application_builder.index", tab="tailoring", stage="finalize")
                 + "#finalize-resume"
             )
 
         analysis = current.analysis
+        if analysis is None:
+            flash("Run job analysis before saving an application.", "error")
+            return redirect(
+                url_for("application_builder.index", tab="tailoring", stage="finalize")
+                + "#finalize-resume"
+            )
+        profile = current.confirmed_profile or current.source_profile
+        try:
+            _approved_resume_from_proposal(
+                profile,
+                effective_final_resume_title(current),
+                current.final_proposal,
+                analysis,
+            )
+        except ValueError as exc:
+            flash(str(exc), "error")
+            return redirect(
+                url_for("application_builder.index", tab="tailoring", stage="finalize")
+                + "#finalize-resume"
+            )
         company = (analysis.target_company if analysis is not None else "").strip()
         role = effective_final_resume_title(current).strip()
         report = current.final_report or current.optimization_report_after or current.updated_report
@@ -4338,9 +4500,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 saved.id,
                 build_workflow_impact_snapshot(current),
             )
+            _persist_resume_findings(
+                saved.id,
+                build_resume_findings_snapshot(
+                    current,
+                    company=saved.company,
+                    role=saved.role,
+                    job_description=saved.job_description,
+                ),
+            )
             flash("Final Resume saved to this job application.", "success")
             return redirect(
-                url_for("index", tab="applications")
+                url_for("application_builder.index", tab="applications")
                 + f"#application-{saved.id}"
             )
 
@@ -4353,7 +4524,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if existing is not None:
             flash("This Final Resume is already attached to an application.", "info")
             return redirect(
-                url_for("index", tab="applications")
+                url_for("application_builder.index", tab="applications")
                 + f"#application-{existing.id}"
             )
 
@@ -4380,19 +4551,28 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             created.id,
             build_workflow_impact_snapshot(current),
         )
+        _persist_resume_findings(
+            created.id,
+            build_resume_findings_snapshot(
+                current,
+                company=created.company,
+                role=created.role,
+                job_description=created.job_description,
+            ),
+        )
         session["active_application_id"] = created.id
         flash("Application created and Final Resume attached.", "success")
         return redirect(
-            url_for("index", tab="applications") + f"#application-{created.id}"
+            url_for("application_builder.index", tab="applications") + f"#application-{created.id}"
         )
 
-    @app.post("/applications/create")
+    @application_builder_bp.post("/applications/create")
     def create_application_record():
         company = request.form.get("company", "").strip()
         role = request.form.get("role", "").strip()
         if not company or not role:
             flash("Company and job title are required.", "error")
-            return redirect(url_for("index", tab="applications") + "#new-application")
+            return redirect(url_for("application_builder.index", tab="applications") + "#new-application")
 
         created = application_store.create(
             _application_owner_id(),
@@ -4421,13 +4601,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         flash("Job application created. Continue with Career and Job Setup.", "success")
         if request.form.get("start_builder") == "1":
             return redirect(
-                url_for("open_application_builder", application_id=created.id)
+                url_for("application_builder.open_application_builder", application_id=created.id)
             )
         return redirect(
-            url_for("index", tab="applications") + f"#application-{created.id}"
+            url_for("application_builder.index", tab="applications") + f"#application-{created.id}"
         )
 
-    @app.post("/applications/<application_id>/update")
+    @application_builder_bp.post("/applications/<application_id>/update")
     def update_application_record(application_id: str):
         updated = application_store.update(
             _application_owner_id(),
@@ -4452,10 +4632,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             abort(404)
         flash("Application updated.", "success")
         return redirect(
-            url_for("index", tab="applications") + f"#application-{updated.id}"
+            url_for("application_builder.index", tab="applications") + f"#application-{updated.id}"
         )
 
-    @app.post("/applications/<application_id>/delete")
+    @application_builder_bp.post("/applications/<application_id>/delete")
     def delete_application_record(application_id: str):
         if not application_store.delete(_application_owner_id(), application_id):
             abort(404)
@@ -4464,9 +4644,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if session.get("active_application_id") == application_id:
             session.pop("active_application_id", None)
         flash("Application removed.", "success")
-        return redirect(url_for("index", tab="applications"))
+        return redirect(url_for("application_builder.index", tab="applications"))
 
-    @app.get("/applications/<application_id>/resume")
+    @application_builder_bp.get("/applications/<application_id>/resume")
     def download_application_resume(application_id: str):
         application = application_store.get(_application_owner_id(), application_id)
         if application is None or not application.resume_bytes:
@@ -4479,23 +4659,35 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
 
 
-    @app.get("/download/final-resume")
+    @application_builder_bp.get("/download/final-resume")
     def download_final_resume():
         """Download the final resume as PDF, the recommended default format."""
         current = state()
         if current.final_resume_bytes is None:
             abort(404)
-        if current.final_resume_pdf_bytes is None:
-            if current.analysis is None or current.final_proposal is None:
-                abort(404)
-            profile = (
-                current.final_report_profile
-                or current.confirmed_profile
-                or current.source_profile
+        if current.analysis is None or current.final_proposal is None:
+            abort(404)
+        profile = (
+            current.final_report_profile
+            or current.confirmed_profile
+            or current.source_profile
+        )
+        try:
+            _approved_resume_from_proposal(
+                profile,
+                effective_final_resume_title(current),
+                current.final_proposal,
+                current.analysis,
             )
+        except ValueError as exc:
+            abort(409, description=str(exc))
+        if current.final_resume_pdf_bytes is None:
             try:
                 approved = _approved_resume_from_proposal(
-                    profile, effective_final_resume_title(current), current.final_proposal
+                    profile,
+                    effective_final_resume_title(current),
+                    current.final_proposal,
+                    current.analysis,
                 )
                 current.final_resume_pdf_bytes = export_resume_pdf(
                     profile,
@@ -4511,7 +4703,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                     "error",
                 )
                 return redirect(
-                    url_for("index", tab="tailoring", stage="final")
+                    url_for("application_builder.index", tab="tailoring", stage="final")
                     + "#final-resume-actions"
                 )
         return send_file(
@@ -4521,12 +4713,28 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             mimetype="application/pdf",
         )
 
-    @app.get("/download/final-resume-word")
+    @application_builder_bp.get("/download/final-resume-word")
     def download_final_resume_word():
         """Download the editable Word alternative when an employer requests DOCX."""
         current = state()
         if current.final_resume_bytes is None:
             abort(404)
+        if current.analysis is None or current.final_proposal is None:
+            abort(404)
+        profile = (
+            current.final_report_profile
+            or current.confirmed_profile
+            or current.source_profile
+        )
+        try:
+            _approved_resume_from_proposal(
+                profile,
+                effective_final_resume_title(current),
+                current.final_proposal,
+                current.analysis,
+            )
+        except ValueError as exc:
+            abort(409, description=str(exc))
         return send_file(
             BytesIO(current.final_resume_bytes),
             as_attachment=True,
@@ -4536,14 +4744,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
 
 
-    return app
+    return None
 
 
-app = create_app()
-
-
-if __name__ == "__main__":
-    host = os.environ.get("FLASK_HOST", "127.0.0.1")
-    port = int(os.environ.get("FLASK_PORT", "5000"))
-    debug = os.environ.get("FLASK_DEBUG", "").casefold() == "true"
-    app.run(host=host, port=port, debug=debug)
+_register_application_builder_routes()

@@ -1,18 +1,18 @@
 .impact-container { width: min(1500px, calc(100% - 48px)); margin: 28px auto 64px; }
-.impact-toolbar { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:12px; padding:20px 22px; border:1px solid #dfe9e6; border-radius:18px; background:linear-gradient(135deg,#f8fcfb,#f2f8f6); box-shadow:0 14px 36px rgba(28,70,61,.07); }
-.impact-toolbar strong { display:block; color:#17342e; font-size:16px; }
-.impact-toolbar p { margin:5px 0 0; color:#667a75; font-size:13px; line-height:1.45; }
+.impact-toolbar { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:12px; padding:20px 22px; border:1px solid #dce4ec; border-radius:18px; background:linear-gradient(135deg,#f8fafc,#f3f7fa); box-shadow:0 14px 36px rgba(28,70,61,.07); }
+.impact-toolbar strong { display:block; color:#1f2937; font-size:16px; }
+.impact-toolbar p { margin:5px 0 0; color:#64748b; font-size:13px; line-height:1.45; }
 .impact-eyebrow { display:block; margin-bottom:6px; color:#16745f; font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
-.impact-refresh { min-height:44px; display:inline-flex; align-items:center; gap:8px; flex:0 0 auto; padding:0 17px; border:0; border-radius:12px; color:#fff; background:linear-gradient(135deg,#176b5a,#1b826b); box-shadow:0 10px 22px rgba(23,107,90,.22); font-weight:800; cursor:pointer; }
+.impact-refresh { min-height:44px; display:inline-flex; align-items:center; gap:8px; flex:0 0 auto; padding:0 17px; border:0; border-radius:12px; color:#fff; background:linear-gradient(135deg,#1d4e78,#0f766e); box-shadow:0 10px 22px rgba(23,107,90,.22); font-weight:800; cursor:pointer; }
 .impact-refresh svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .impact-refresh:disabled { opacity:.65; cursor:progress; }
 .impact-refresh.is-loading svg { animation:impact-spin .8s linear infinite; }
 @keyframes impact-spin { to { transform:rotate(360deg); } }
-.impact-status { min-height:22px; margin:0 2px 15px; color:#667a75; font-size:13px; font-weight:650; }
+.impact-status { min-height:22px; margin:0 2px 15px; color:#64748b; font-size:13px; font-weight:650; }
 .impact-status.is-error { color:#b4232d; }
 .impact-metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:15px; margin-bottom:18px; }
 .impact-metric-card { min-width:0; display:flex; gap:14px; min-height:148px; padding:21px; border:1px solid #e3ebe9; border-radius:18px; background:#fff; box-shadow:0 13px 34px rgba(28,70,61,.055); }
-.impact-metric-icon { width:45px; height:45px; display:grid; place-items:center; flex:0 0 45px; border-radius:14px; color:#176b5a; background:#e8f6f2; font-weight:900; font-size:17px; }
+.impact-metric-icon { width:45px; height:45px; display:grid; place-items:center; flex:0 0 45px; border-radius:14px; color:#1d4e78; background:#e8f5f4; font-weight:900; font-size:17px; }
 .impact-metric-card div { min-width:0; }
 .impact-metric-card div>span { display:block; color:#52635f; font-size:11px; font-weight:850; line-height:1.35; letter-spacing:.025em; text-transform:uppercase; }
 .impact-metric-card strong { display:block; margin-top:9px; color:#152e29; font-size:31px; line-height:1; letter-spacing:-.04em; }
@@ -25,14 +25,14 @@
 .impact-story-card li { margin:10px 0; line-height:1.5; }
 .impact-before { border:1px solid #f0ddd7; background:linear-gradient(145deg,#fffaf8,#fff4f0); color:#61372d; }
 .impact-before header span { color:#a24a35; }
-.impact-after { border:1px solid #cfe8df; background:linear-gradient(145deg,#f7fcfa,#edf8f4); color:#214b40; }
+.impact-after { border:1px solid #cfe8df; background:linear-gradient(145deg,#f7fcfa,#edf7f6); color:#214b40; }
 .impact-after header span { color:#16745f; }
 .impact-panel-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:18px; }
 .impact-panel { min-width:0; padding:25px; border:1px solid #e3ebe9; border-radius:20px; background:#fff; box-shadow:0 15px 38px rgba(28,70,61,.06); }
 .impact-panel-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:22px; }
-.impact-panel-header h2 { margin:6px 0; color:#17342e; font-size:23px; letter-spacing:-.025em; }
-.impact-panel-header p { margin:0; color:#697b77; font-size:13px; line-height:1.5; }
-.impact-panel-header a { flex:0 0 auto; color:#176b5a; font-size:13px; font-weight:800; text-decoration:none; }
+.impact-panel-header h2 { margin:6px 0; color:#1f2937; font-size:23px; letter-spacing:-.025em; }
+.impact-panel-header p { margin:0; color:#64748b; font-size:13px; line-height:1.5; }
+.impact-panel-header a { flex:0 0 auto; color:#1d4e78; font-size:13px; font-weight:800; text-decoration:none; }
 .impact-alignment-list { display:grid; gap:17px; }
 .impact-alignment-row { display:grid; grid-template-columns:minmax(130px,.8fr) minmax(170px,1.3fr) auto; align-items:center; gap:14px; }
 .impact-alignment-label strong,.impact-alignment-label span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -41,22 +41,22 @@
 .impact-score-track { position:relative; height:11px; overflow:hidden; border-radius:999px; background:#eef3f2; }
 .impact-score-track span { position:absolute; inset:0 auto 0 0; border-radius:999px; }
 .impact-score-baseline { background:#c4cfcc; }
-.impact-score-current { height:5px!important; top:3px!important; background:#1b826b; }
+.impact-score-current { height:5px!important; top:3px!important; background:#0f766e; }
 .impact-score-values { text-align:right; }
 .impact-score-values span,.impact-score-values strong { display:block; white-space:nowrap; }
 .impact-score-values span { color:#7a8985; font-size:12px; }
-.impact-score-values strong { margin-top:3px; color:#176b5a; font-size:14px; }
+.impact-score-values strong { margin-top:3px; color:#1d4e78; font-size:14px; }
 .impact-interview-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
 .impact-interview-summary div { padding:14px; border-radius:14px; background:#f5f9f8; text-align:center; }
 .impact-interview-summary span { display:block; color:#71817d; font-size:11px; font-weight:800; text-transform:uppercase; }
-.impact-interview-summary strong { display:block; margin-top:5px; color:#17342e; font-size:20px; }
+.impact-interview-summary strong { display:block; margin-top:5px; color:#1f2937; font-size:20px; }
 .impact-trend { height:170px; display:flex; align-items:flex-end; gap:9px; padding:12px 6px 0; border-bottom:1px solid #dfe7e5; }
 .impact-trend-point { height:100%; flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:6px; }
-.impact-trend-point span { width:min(34px,75%); min-height:8px; border-radius:8px 8px 2px 2px; background:linear-gradient(180deg,#35a487,#176b5a); }
+.impact-trend-point span { width:min(34px,75%); min-height:8px; border-radius:8px 8px 2px 2px; background:linear-gradient(180deg,#137a58,#1d4e78); }
 .impact-trend-point small { color:#8a9794; font-size:10px; }
 .impact-empty { padding:22px; border:1px dashed #cedbd7; border-radius:14px; color:#75847f; background:#f9fbfa; font-size:13px; line-height:1.5; text-align:center; }
 .impact-application-panel { margin-bottom:18px; }
-.impact-count-badge { padding:7px 11px; border-radius:999px; color:#176b5a; background:#e8f6f2; font-size:12px; font-weight:850; }
+.impact-count-badge { padding:7px 11px; border-radius:999px; color:#1d4e78; background:#e8f5f4; font-size:12px; font-weight:850; }
 .impact-table-scroll { overflow:auto; }
 .impact-table { width:100%; min-width:1120px; border-collapse:collapse; }
 .impact-table th { padding:11px 12px; border-bottom:1px solid #dfe7e5; color:#657671; font-size:11px; font-weight:850; text-align:left; text-transform:uppercase; letter-spacing:.045em; }
@@ -65,14 +65,16 @@
 .impact-table td strong { color:#203934; font-size:13px; }
 .impact-table td>span { margin-top:4px; color:#7b8986; font-size:11px; line-height:1.4; }
 .impact-tags { display:flex; flex-wrap:wrap; gap:6px; }
-.impact-tag { display:inline-flex!important; width:max-content; padding:5px 8px; border-radius:999px; color:#4b675f; background:#eef5f3; font-size:10px!important; font-weight:800; }
+.impact-tag { display:inline-flex!important; width:max-content; padding:5px 8px; border-radius:999px; color:#4b675f; background:#f1f5f9; font-size:10px!important; font-weight:800; }
 .impact-tag.success { color:#12634f; background:#dff4ed; }
 .impact-tag.live { color:#71530d; background:#fff0c7; }
 .impact-tag.muted { color:#697671; background:#f0f2f1; }
 .impact-integrity { display:flex; gap:14px; padding:20px 22px; border:1px solid #d9e5e2; border-radius:18px; color:#4d625d; background:#f7faf9; }
-.impact-integrity-icon { width:30px; height:30px; display:grid; place-items:center; flex:0 0 30px; border-radius:50%; color:#fff; background:#176b5a; font-weight:900; }
-.impact-integrity strong { color:#17342e; }
+.impact-integrity-icon { width:30px; height:30px; display:grid; place-items:center; flex:0 0 30px; border-radius:50%; color:#fff; background:#1d4e78; font-weight:900; }
+.impact-integrity strong { color:#1f2937; }
 .impact-integrity p { margin:5px 0 0; font-size:13px; line-height:1.55; }
 .impact-integrity ul { margin:9px 0 0; padding-left:18px; color:#9a4d37; font-size:12px; }
 @media (max-width:1150px) { .impact-metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .impact-panel-grid { grid-template-columns:1fr; } }
 @media (max-width:760px) { .impact-container { width:min(100% - 24px,1500px); margin-top:16px; } .impact-toolbar,.impact-panel-header { align-items:stretch; flex-direction:column; } .impact-refresh { justify-content:center; } .impact-metric-grid,.impact-story-grid { grid-template-columns:1fr; } .impact-alignment-row { grid-template-columns:1fr; } .impact-score-values { text-align:left; display:flex; justify-content:space-between; } }
+
+.impact-workspace-states{display:grid;gap:10px;margin:16px 0 20px}

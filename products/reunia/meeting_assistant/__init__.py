@@ -5,6 +5,7 @@ import hashlib
 import os
 import re
 import secrets
+import sys
 from pathlib import Path
 
 from flask import Flask, g, request, session, url_for
@@ -95,6 +96,7 @@ def create_app(config_name: str | None = None) -> Flask:
     init_csrf(app)
     init_extensions(app)
     register_blueprints(app)
+    register_application_builder(app, project_root)
     register_error_handlers(app)
     register_legacy_endpoint_aliases(app)
     register_response_headers(app)
@@ -310,6 +312,58 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(recorder_bp)
 
     _validate_document_library_routes(app)
+
+
+def register_application_builder(app: Flask, project_root: Path) -> None:
+    """Register the Application Builder Blueprint on the Réunia application."""
+
+    repository_root = project_root.parent.parent
+    resume_taylor_root = repository_root / "products" / "resume_taylor"
+    resume_taylor_path = str(resume_taylor_root)
+    if resume_taylor_path not in sys.path:
+        sys.path.insert(0, resume_taylor_path)
+
+    from products.resume_taylor.app import (
+        application_builder_bp,
+        application_builder_storage_status,
+        init_application_builder,
+    )
+
+    app.config.setdefault("CAREER_BRIDGE_REQUIRE_AUTH", True)
+    app.config.setdefault("CAREER_BRIDGE_LOGIN_URL", "/login.html")
+    app.config.setdefault("CAREER_BRIDGE_HOME_URL", "/app")
+
+    if not str(app.config.get("APPLICATIONS_DB_PATH") or "").strip():
+        configured_database_path = (
+            os.getenv("CAREER_BRIDGE_APPLICATIONS_DB")
+            or os.getenv("APPLICATIONS_DB_PATH")
+            or ""
+        ).strip()
+        if configured_database_path:
+            application_database_path = Path(configured_database_path)
+        elif app.testing:
+            application_database_path = Path(":memory:")
+        else:
+            application_database_path = (
+                repository_root
+                / "instance"
+                / "career_bridge_applications.sqlite3"
+            )
+
+        if str(application_database_path) != ":memory:":
+            application_database_path.parent.mkdir(parents=True, exist_ok=True)
+        app.config["APPLICATIONS_DB_PATH"] = str(application_database_path)
+
+    init_application_builder(app)
+    app.register_blueprint(application_builder_bp, url_prefix="/applications")
+
+    @app.get("/health")
+    def health_check():
+        return {
+            "status": "ok",
+            "services": ["reunia", "application-builder"],
+            "application_builder": application_builder_storage_status(),
+        }
 
 
 def _validate_document_library_routes(app: Flask) -> None:

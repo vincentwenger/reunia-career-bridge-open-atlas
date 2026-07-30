@@ -39,6 +39,57 @@
         return window.AppI18n?.t(text) || text;
     }
 
+    function resolveElement(target) {
+        if (!target) return null;
+        if (typeof target === 'string') return document.getElementById(target);
+        return target;
+    }
+
+    function setWorkspaceState(target, options = {}) {
+        const element = resolveElement(target);
+        if (!element) return null;
+
+        const state = String(options.state || element.dataset.uiState || 'empty');
+        element.dataset.uiState = state;
+        element.classList.remove('app-state--loading', 'app-state--empty', 'app-state--error');
+        element.classList.add(`app-state--${state}`);
+        element.setAttribute('role', state === 'error' ? 'alert' : 'status');
+        element.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');
+        if (state === 'loading') element.setAttribute('aria-busy', 'true');
+        else element.removeAttribute('aria-busy');
+
+        const icon = element.querySelector('.app-state__icon');
+        const title = element.querySelector('[data-state-title]');
+        const message = element.querySelector('[data-state-message]');
+        const action = element.querySelector('.app-state__action');
+        if (icon) {
+            icon.replaceChildren();
+            if (state === 'loading') {
+                const spinner = document.createElement('span');
+                spinner.className = 'app-state__spinner';
+                icon.appendChild(spinner);
+            } else {
+                icon.textContent = state === 'error' ? '!' : '○';
+            }
+        }
+        if (title && options.title !== undefined) title.textContent = translated(options.title);
+        if (message && options.message !== undefined) message.textContent = translated(options.message);
+        if (action && options.actionLabel !== undefined) action.textContent = translated(options.actionLabel);
+        if (action && options.actionHidden !== undefined) action.hidden = Boolean(options.actionHidden);
+        if (options.hidden !== undefined) element.hidden = Boolean(options.hidden);
+        return element;
+    }
+
+    function showWorkspaceState(target, options = {}) {
+        return setWorkspaceState(target, {...options, hidden: false});
+    }
+
+    function hideWorkspaceState(target) {
+        const element = resolveElement(target);
+        if (element) element.hidden = true;
+        return element;
+    }
+
     function showToast(message, options = {}) {
         const {type = 'info', duration = 4000} = options;
         const region = ensureToastRegion();
@@ -164,6 +215,9 @@
         appUrl,
         debounce,
         showToast,
+        setWorkspaceState,
+        showWorkspaceState,
+        hideWorkspaceState,
         confirm: confirmAction
     });
 })();

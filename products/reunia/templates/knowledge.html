@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/ui.html' import workspace_state %}
 
 {% set guided_flow = request.args.get('guided') == '1' %}
 {% set preparation_view = route_view | default(request.args.get('view', 'library'), true) %}
@@ -799,9 +800,35 @@
                 <section class="answer-panel unified-answer-panel" id="answerPanel" aria-live="polite" hidden>
                     <div class="answer-header">
                         <h3>Answer</h3>
-                        <button type="button" class="copy-button" id="copyAnswerButton">Copy</button>
+                        <button type="button" class="copy-button" id="copyAnswerButton" hidden>Copy</button>
                     </div>
-                    <div class="answer-content" id="answerContent"></div>
+                    {{ workspace_state(
+                        'knowledge-answer-loading',
+                        'loading',
+                        'Searching verified career evidence',
+                        'Reviewing the selected documents, application materials, and mock-interview history.',
+                        hidden=true,
+                        compact=true
+                    ) }}
+                    {{ workspace_state(
+                        'knowledge-answer-empty',
+                        'empty',
+                        'No grounded answer was returned',
+                        'Try a narrower question, select another source scope, or add more verified evidence.',
+                        hidden=true,
+                        compact=true
+                    ) }}
+                    {{ workspace_state(
+                        'knowledge-answer-error',
+                        'error',
+                        'The evidence search could not be completed',
+                        'Your documents were not changed. Retry the same question or adjust the selected sources.',
+                        hidden=true,
+                        action_label='Retry question',
+                        action_id='knowledge-answer-retry',
+                        compact=true
+                    ) }}
+                    <div class="answer-content" id="answerContent" hidden></div>
                     <div class="sources-section" id="sourcesSection" hidden>
                         <h4>Sources</h4>
                         <div class="knowledge-source-list" id="sourceList"></div>

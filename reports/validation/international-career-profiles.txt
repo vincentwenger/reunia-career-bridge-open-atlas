@@ -1,0 +1,14 @@
+test_application_fit_flags_mandatory_unsupported_requirements (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_application_fit_flags_mandatory_unsupported_requirements) ... ok
+test_background_context_never_becomes_verified_interview_evidence (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_background_context_never_becomes_verified_interview_evidence) ... ok
+test_every_fixture_is_schema_valid_and_normalized (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_every_fixture_is_schema_valid_and_normalized) ... ok
+test_expected_translation_and_gap_findings_are_preserved (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_expected_translation_and_gap_findings_are_preserved) ... ok
+test_interview_workspace_removes_unverified_evidence_references (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_interview_workspace_removes_unverified_evidence_references) ... ok
+test_invented_translation_with_valid_evidence_id_is_downgraded (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_invented_translation_with_valid_evidence_id_is_downgraded) ... ok
+test_safe_fixture_proposals_pass_deterministic_validation (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_safe_fixture_proposals_pass_deterministic_validation) ... ok
+test_suite_contains_all_required_international_scenarios (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_suite_contains_all_required_international_scenarios) ... ok
+test_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.075s
+
+OK

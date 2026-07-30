@@ -25,7 +25,7 @@
 
         .status-indicator {
             font-weight: 700;
-            color: #1b826b;
+            color: #0f766e;
         }
 
         .expiry-notice {
@@ -45,7 +45,7 @@
         }
 
         .filter-container {
-            background: #f8fcfb;
+            background: #f8fafc;
             padding: 10px 14px;
             border-radius: 12px;
             border: 1px solid #e5e7eb;
@@ -56,7 +56,7 @@
 
         .filter-label {
             font-weight: 700;
-            color: #40504b;
+            color: #475569;
             font-size: 14px;
         }
 
@@ -71,7 +71,7 @@
             align-items: center;
             gap: 6px;
             cursor: pointer;
-            color: #56625e;
+            color: #64748b;
             font-size: 14px;
             background: white;
             padding: 7px 10px;
@@ -85,7 +85,7 @@
         }
 
         .btn-compact {
-            background: #176b5a;
+            background: #1d4e78;
             color: white;
             border: none;
             padding: 11px 16px;
@@ -97,7 +97,7 @@
         }
 
         .btn-compact:hover {
-            background: #1b826b;
+            background: #0f766e;
             transform: translateY(-1px);
         }
 
@@ -106,26 +106,26 @@
             border-radius: 22px;
             box-shadow: 0 12px 35px rgba(0,0,0,0.08);
             overflow: hidden;
-            border: 1px solid #eff6f4;
+            border: 1px solid #f1f5f9;
         }
 
         .table-header {
             padding: 20px 24px;
-            border-bottom: 1px solid #eff6f4;
+            border-bottom: 1px solid #f1f5f9;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #f8fcfb;
+            background: #f8fafc;
         }
 
         .table-header h2 {
             margin: 0;
             font-size: 20px;
-            color: #18231f;
+            color: #27364a;
         }
 
         .table-header span {
-            color: #707d79;
+            color: #64748b;
             font-size: 14px;
         }
 
@@ -137,25 +137,25 @@
 
         th {
             background: #ffffff;
-            color: #707d79;
+            color: #64748b;
             text-align: left;
             padding: 16px;
             font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            border-bottom: 1px solid #eff6f4;
+            border-bottom: 1px solid #f1f5f9;
         }
 
         td {
             padding: 18px 16px;
-            border-bottom: 1px solid #eff6f4;
+            border-bottom: 1px solid #f1f5f9;
             vertical-align: top;
             line-height: 1.6;
-            color: #40504b;
+            color: #475569;
         }
 
         tr:hover {
-            background: #f9fdfc;
+            background: #fbfcfe;
         }
 
         .source-badge {
@@ -166,11 +166,11 @@
             font-weight: 700;
             text-transform: capitalize;
             background: #e6f5f1;
-            color: #1b7864;
+            color: #0f766e;
         }
 
         .answer-cell {
-            color: #18231f;
+            color: #27364a;
             font-style: normal;
         }
 
@@ -178,16 +178,16 @@
             margin: 24px;
             padding: 45px;
             border-radius: 18px;
-            background: linear-gradient(135deg, #f8fcfb, #edf8f4);
-            border: 1px dashed #c6e8de;
+            background: linear-gradient(135deg, #f8fafc, #edf7f6);
+            border: 1px dashed #c9e5e3;
             text-align: center;
-            color: #586762;
+            color: #64748b;
             font-size: 17px;
         }
 
         .no-data strong {
             display: block;
-            color: #176b5a;
+            color: #1d4e78;
             font-size: 22px;
             margin-bottom: 8px;
         }
@@ -380,7 +380,7 @@
     padding: 0.42rem 0.55rem;
     border: 1px solid #dbece7;
     border-radius: 7px;
-    background: #17342e;
+    background: #1f2937;
     color: #ffffff;
     box-shadow: 0 7px 20px rgba(26, 48, 41, 0.18);
     font-size: 0.72rem;
@@ -417,7 +417,7 @@
     position: sticky;
     top: 0;
     z-index: 3;
-    box-shadow: 0 1px 0 #eff6f4;
+    box-shadow: 0 1px 0 #f1f5f9;
 }
 
 .feed-entry {
@@ -429,11 +429,11 @@
 }
 
 tbody .feed-entry:nth-child(even):not(.is-new-highlight) td {
-    background: #fbfdfc;
+    background: #fbfcfe;
 }
 
 tbody .feed-entry:hover td {
-    background: #f4f8f6;
+    background: #f6f8fb;
 }
 
 .feed-entry.is-new-highlight {
@@ -441,11 +441,11 @@ tbody .feed-entry:hover td {
 }
 
 .feed-entry.is-new-highlight td {
-    background: #e8f5f1;
+    background: #eaf4f6;
 }
 
 .feed-entry.is-new-highlight td:first-child {
-    box-shadow: inset 4px 0 0 #1b826b;
+    box-shadow: inset 4px 0 0 #0f766e;
 }
 
 .feed-entry.is-unread td {
@@ -464,7 +464,7 @@ tbody .feed-entry:hover td {
     align-items: center;
     gap: 7px;
     min-height: 20px;
-    color: #697b77;
+    color: #64748b;
     font-size: 12px;
     font-weight: 600;
     white-space: nowrap;
@@ -477,14 +477,14 @@ tbody .feed-entry:hover td {
     min-height: 20px;
     padding: 2px 7px;
     border-radius: 999px;
-    background: #1b826b;
+    background: #0f766e;
     color: #ffffff;
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.04em;
     line-height: 1;
     text-transform: uppercase;
-    box-shadow: 0 3px 9px rgba(27, 130, 107, 0.24);
+    box-shadow: 0 3px 9px rgba(15, 118, 110, 0.24);
 }
 
 .new-entry-jump {
@@ -493,12 +493,12 @@ tbody .feed-entry:hover td {
     left: 50%;
     z-index: 8;
     transform: translateX(-50%);
-    border: 1px solid rgba(27, 130, 107, 0.35);
+    border: 1px solid rgba(15, 118, 110, 0.35);
     border-radius: 999px;
     padding: 9px 14px;
-    background: #176b5a;
+    background: #1d4e78;
     color: #ffffff;
-    box-shadow: 0 8px 22px rgba(23, 107, 90, 0.28);
+    box-shadow: 0 8px 22px rgba(29, 78, 120, 0.28);
     cursor: pointer;
     font-size: 13px;
     font-weight: 800;
@@ -508,8 +508,8 @@ tbody .feed-entry:hover td {
 
 .new-entry-jump:hover,
 .new-entry-jump:focus-visible {
-    background: #1b826b;
-    box-shadow: 0 10px 26px rgba(27, 130, 107, 0.34);
+    background: #0f766e;
+    box-shadow: 0 10px 26px rgba(15, 118, 110, 0.34);
     transform: translateX(-50%) translateY(-1px);
 }
 

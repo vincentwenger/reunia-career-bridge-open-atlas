@@ -1,0 +1,40 @@
+Application Builder startup persistence warning validation
+==========================================================
+
+Implemented behavior
+--------------------
+At Application Builder initialization, the app emits one WARNING log per Flask
+application process with the resolved persistence configuration:
+
+Application Builder persistence:
+- workflow backend: process memory
+- application backend: SQLite
+- database path: <resolved APPLICATIONS_DB_PATH>
+- safe only with one Gunicorn worker and Lightsail scale 1
+- records may be lost during container replacement
+
+Production path
+---------------
+The Docker image uses WORKDIR /app. The merged Réunia factory resolves the
+default Application Builder database to:
+
+/app/instance/career_bridge_applications.sqlite3
+
+The warning uses the actual resolved path, including environment overrides and
+:memory: during tests.
+
+Regression coverage
+-------------------
+- tests/contracts/test_application_builder_persistence_warning.py
+- tests/integration/test_application_builder.py
+- existing Lightsail scale/Gunicorn command contracts retained
+
+Validation result
+-----------------
+python -m unittest discover -s tests -p "test_*.py" -v
+
+60 tests completed
+47 passed
+13 skipped because optional runtime dependencies were unavailable
+0 failures
+0 errors

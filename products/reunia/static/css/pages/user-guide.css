@@ -1,11 +1,11 @@
 .guide-page {
-    --guide-blue: #1c806a;
-    --guide-blue-dark: #176b5a;
-    --guide-text: #1e3830;
-    --guide-muted: #697b77;
-    --guide-border: #dce9e5;
-    --guide-soft: #f7fbfa;
-    --guide-soft-blue: #effbf7;
+    --guide-blue: #0f766e;
+    --guide-blue-dark: #1d4e78;
+    --guide-text: #1f2937;
+    --guide-muted: #64748b;
+    --guide-border: #dce4ec;
+    --guide-soft: #f8fafc;
+    --guide-soft-blue: #eaf2f8;
 }
 
 .guide-main {
@@ -24,7 +24,7 @@
     border: 1px solid var(--guide-border);
     border-radius: 20px;
     background: #ffffff;
-    box-shadow: 0 10px 26px rgba(23, 107, 90, 0.07);
+    box-shadow: 0 10px 26px rgba(29, 78, 120, 0.07);
 }
 
 .guide-welcome {
@@ -122,11 +122,11 @@
 .guide-button-primary {
     color: #ffffff;
     background: linear-gradient(135deg, var(--guide-blue-dark), var(--guide-blue));
-    box-shadow: 0 8px 18px rgba(23, 107, 90, 0.18);
+    box-shadow: 0 8px 18px rgba(29, 78, 120, 0.18);
 }
 
 .guide-button-primary:hover {
-    box-shadow: 0 11px 23px rgba(23, 107, 90, 0.24);
+    box-shadow: 0 11px 23px rgba(29, 78, 120, 0.24);
 }
 
 .guide-button-full {
@@ -170,7 +170,7 @@
 }
 
 .guide-search > span {
-    color: #697b77;
+    color: #64748b;
     font-size: 20px;
 }
 
@@ -217,7 +217,7 @@
 
 .guide-sidebar-card {
     padding: 14px;
-    box-shadow: 0 8px 20px rgba(23, 107, 90, 0.05);
+    box-shadow: 0 8px 20px rgba(29, 78, 120, 0.05);
 }
 
 .guide-sidebar-label {
@@ -334,14 +334,14 @@
 .guide-label {
     padding: 5px 9px;
     border-radius: 999px;
-    color: #586762;
+    color: #64748b;
     background: #e8f3ef;
     font-size: 11px;
     font-weight: 800;
 }
 
 .guide-label-primary {
-    color: #176b5a;
+    color: #1d4e78;
     background: #e0f9f1;
 }
 
@@ -446,7 +446,7 @@
     overflow: hidden;
     border: 1px solid var(--guide-border);
     border-radius: 14px;
-    background: #fbfdfc;
+    background: #fbfcfe;
 }
 
 .guide-detail summary,
@@ -583,7 +583,7 @@
     border: 1px dashed #bbdad0;
     border-radius: 13px;
     color: #536579;
-    background: #f8fcfb;
+    background: #f8fafc;
     font-size: 12.5px;
     line-height: 1.55;
 }
@@ -676,8 +676,8 @@
     padding: 25px 27px;
     border: 0;
     color: #ffffff;
-    background: linear-gradient(135deg, #176b5a, #1c806a);
-    box-shadow: 0 14px 28px rgba(23, 107, 90, 0.18);
+    background: linear-gradient(135deg, #1d4e78, #1c806a);
+    box-shadow: 0 14px 28px rgba(29, 78, 120, 0.18);
 }
 
 .guide-support h2 {
@@ -704,7 +704,7 @@
 .guide-search button:focus-visible,
 .guide-detail summary:focus-visible,
 .guide-faq summary:focus-visible {
-    outline: 3px solid rgba(27, 130, 107, 0.28);
+    outline: 3px solid rgba(15, 118, 110, 0.28);
     outline-offset: 3px;
 }
 

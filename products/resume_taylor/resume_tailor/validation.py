@@ -4,6 +4,7 @@ import re
 from collections import Counter
 
 from .bullet_text import has_bullet_structure_artifacts
+from .grounding import validate_candidate_claim
 from .models import (
     ApprovedResume,
     AuditIssue,
@@ -125,6 +126,32 @@ def validate_proposal(
     )
     if summary_repetition is not None:
         issues.append(summary_repetition)
+
+    job_context = "\n".join(
+        [
+            analysis.target_title,
+            analysis.target_company,
+            *(requirement.requirement for requirement in analysis.requirements),
+            *(keyword for requirement in analysis.requirements for keyword in requirement.keywords),
+        ]
+    )
+    for finding in validate_candidate_claim(
+        proposal.professional_summary,
+        [profile.all_source_text()],
+        context_texts=[job_context],
+        allow_gap_context=True,
+    ):
+        issues.append(
+            AuditIssue(
+                severity="blocking",
+                section="Professional Summary",
+                issue=finding.message,
+                suggested_fix=(
+                    "Remove or rewrite the unsupported claim using only facts present in "
+                    "the Candidate Profile or candidate-confirmed evidence."
+                ),
+            )
+        )
 
     title_repetition = _repeated_word_issue(
         section="Target Title",
@@ -252,6 +279,34 @@ def validate_proposal(
             )
             if bullet_repetition is not None:
                 issues.append(bullet_repetition)
+        grounding_evidence = [source_bullets[bullet.source_bullet_id]]
+        evidence_note_normalized = normalize(bullet.evidence_note)
+        for evidence_item in profile.supplemental_evidence:
+            if normalize(evidence_item.id) in evidence_note_normalized:
+                grounding_evidence.append(evidence_item.statement)
+                grounding_evidence.extend(evidence_item.verified_skills)
+        for verified_skill in profile.all_verified_skills():
+            if normalize(verified_skill) in evidence_note_normalized:
+                grounding_evidence.append(verified_skill)
+        if bullet.include:
+            for finding in validate_candidate_claim(
+                bullet.proposed_text,
+                grounding_evidence,
+                require_overlap=True,
+            ):
+                issues.append(
+                    AuditIssue(
+                        severity="blocking",
+                        section="Experience",
+                        source_id=bullet.source_bullet_id,
+                        issue=finding.message,
+                        suggested_fix=(
+                            "Restore the source bullet wording or rewrite it using only the cited "
+                            "source bullet and explicitly referenced verified evidence."
+                        ),
+                    )
+                )
+
         source_numbers = numeric_tokens(source_bullets[bullet.source_bullet_id])
         confirmed_numbers = {
             token
@@ -957,6 +1012,24 @@ def deterministic_audit_facts(
         "evidence_decisions": len(evidence_ids),
         "job_requirements": len(requirement_ids),
     }
+
+
+def candidate_claim_grounding_issues(
+    profile: CandidateProfile,
+    analysis: JobAnalysis,
+    proposal: TailoringProposal,
+) -> list[AuditIssue]:
+    """Return only blocking findings about generated candidate claims.
+
+    This narrow view is used by export and downstream-output gates so a cached
+    document can never bypass the same evidence checks applied during review.
+    """
+    return [
+        issue
+        for issue in validate_proposal(profile, analysis, proposal)
+        if issue.severity == "blocking"
+        and issue.issue.startswith("Generated candidate claim")
+    ]
 
 
 def reconcile_audit_with_deterministic_rules(

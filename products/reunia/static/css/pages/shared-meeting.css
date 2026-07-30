@@ -1,17 +1,17 @@
 :root {
-    --shared-blue: #176b5a;
-    --shared-blue-light: #1b826b;
-    --shared-ink: #17342e;
-    --shared-muted: #667a75;
-    --shared-border: #e5f1ed;
+    --shared-blue: #1d4e78;
+    --shared-blue-light: #0f766e;
+    --shared-ink: #1f2937;
+    --shared-muted: #64748b;
+    --shared-border: #e2e8f0;
     --shared-surface: #ffffff;
 }
 
 .shared-meeting-body {
     min-height: 100vh;
     background:
-        radial-gradient(circle at 10% 0%, rgba(27, 130, 107, 0.11), transparent 30%),
-        linear-gradient(180deg, #f4f8f6 0%, #ffffff 60%);
+        radial-gradient(circle at 10% 0%, rgba(15, 118, 110, 0.11), transparent 30%),
+        linear-gradient(180deg, #f6f8fb 0%, #ffffff 60%);
 }
 
 .shared-meeting-page {
@@ -25,7 +25,7 @@
 .shared-unlock-card {
     border: 1px solid var(--shared-border);
     background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 20px 55px rgba(23, 107, 90, 0.09);
+    box-shadow: 0 20px 55px rgba(29, 78, 120, 0.09);
 }
 
 .shared-meeting-header {
@@ -57,7 +57,7 @@
     height: 38px;
     flex: 0 0 38px;
     border-radius: 11px;
-    box-shadow: 0 8px 20px rgba(23, 107, 90, 0.18);
+    box-shadow: 0 8px 20px rgba(29, 78, 120, 0.18);
     object-fit: contain;
 }
 
@@ -132,7 +132,7 @@
 }
 
 .shared-secondary-button {
-    border: 1px solid #cee5de;
+    border: 1px solid #d4e2e9;
     color: var(--shared-blue);
     background: #ffffff;
 }
@@ -143,7 +143,7 @@
 }
 
 .shared-secondary-button:hover {
-    background: #edf8f4;
+    background: #edf7f6;
 }
 
 .shared-content-card {
@@ -190,7 +190,7 @@
     border: 1px solid #edf6f3;
     border-radius: 13px;
     color: #344054;
-    background: #f8fcfb;
+    background: #f8fafc;
     line-height: 1.55;
 }
 
@@ -248,7 +248,7 @@
     padding: 17px;
     border: 1px solid #dff2ec;
     border-radius: 15px;
-    background: #f3faf7;
+    background: #f3f8f8;
 }
 
 .shared-score-grid span,
@@ -272,7 +272,7 @@
     margin: 18px 0;
     padding: 18px;
     border-radius: 15px;
-    background: #f8fcfb;
+    background: #f8fafc;
 }
 
 .shared-assessment h3 {
@@ -302,7 +302,7 @@
 
 .shared-table-wrap th {
     color: var(--shared-muted);
-    background: #f8fcfb;
+    background: #f8fafc;
     font-size: 12px;
     text-transform: uppercase;
 }
@@ -339,8 +339,8 @@
     margin: 22px 0 0;
     padding: 20px;
     border-radius: 14px;
-    color: #28493f;
-    background: #f8fbfa;
+    color: #334155;
+    background: #f8fafc;
     font-family: inherit;
     line-height: 1.65;
     white-space: pre-wrap;
@@ -357,9 +357,9 @@
     border: 1px solid #dcf4ec;
     border-radius: 20px;
     background:
-        radial-gradient(circle at 95% 0%, rgba(27, 130, 107, 0.13), transparent 42%),
+        radial-gradient(circle at 95% 0%, rgba(15, 118, 110, 0.13), transparent 42%),
         linear-gradient(135deg, #f8fefc 0%, #ffffff 72%);
-    box-shadow: 0 16px 40px rgba(23, 107, 90, 0.07);
+    box-shadow: 0 16px 40px rgba(29, 78, 120, 0.07);
 }
 
 .shared-product-cta-copy {
@@ -430,7 +430,7 @@
     height: 54px;
     margin: 0 auto 18px;
     border-radius: 16px;
-    box-shadow: 0 10px 24px rgba(23, 107, 90, 0.16);
+    box-shadow: 0 10px 24px rgba(29, 78, 120, 0.16);
     object-fit: contain;
 }
 
@@ -455,14 +455,14 @@
 .shared-unlock-card input {
     width: 100%;
     padding: 13px 14px;
-    border: 1px solid #d0e5df;
+    border: 1px solid #d6e2ea;
     border-radius: 12px;
     outline: none;
 }
 
 .shared-unlock-card input:focus {
     border-color: var(--shared-blue-light);
-    box-shadow: 0 0 0 4px rgba(27, 130, 107, 0.12);
+    box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
 }
 
 .shared-form-error {
@@ -544,9 +544,9 @@
 .shared-scorecard-evidence {
     margin: 0 0 18px;
     padding: 14px 16px;
-    color: #40514c;
-    background: #f0f8f5;
-    border: 1px solid #c6e8de;
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px solid #c9e5e3;
     border-radius: 14px;
     line-height: 1.6;
 }
@@ -559,14 +559,14 @@
 
 .shared-interview-criteria article {
     padding: 16px;
-    background: #f8fcfb;
-    border: 1px solid #e2f0eb;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 15px;
 }
 
 .shared-interview-criteria span {
     display: block;
-    color: #586762;
+    color: #64748b;
     font-size: 12px;
     font-weight: 800;
     text-transform: uppercase;
@@ -576,13 +576,13 @@
 .shared-interview-criteria strong {
     display: block;
     margin-top: 8px;
-    color: #176b5a;
+    color: #1d4e78;
     font-size: 24px;
 }
 
 .shared-interview-criteria p {
     margin: 8px 0 0;
-    color: #697b77;
+    color: #64748b;
     font-size: 13px;
     line-height: 1.55;
 }
@@ -590,7 +590,7 @@
 .shared-safety-note {
     margin-top: 18px;
     padding: 15px 17px;
-    color: #40514c;
+    color: #475569;
     background: #f2fdf9;
     border: 1px solid #c3f4e3;
     border-left: 5px solid #20a97b;
@@ -605,14 +605,14 @@
 
 .shared-answer-reviews > h3 {
     margin: 0 0 14px;
-    color: #14211e;
+    color: #1f2937;
 }
 
 .shared-answer-review {
     margin-top: 16px;
     padding: 18px;
     background: #fff;
-    border: 1px solid #e2f0eb;
+    border: 1px solid #e2e8f0;
     border-radius: 18px;
 }
 
@@ -624,7 +624,7 @@
 }
 
 .shared-answer-review-heading small {
-    color: #1b826b;
+    color: #0f766e;
     font-weight: 850;
     text-transform: uppercase;
     letter-spacing: .06em;
@@ -632,14 +632,14 @@
 
 .shared-answer-review-heading h4 {
     margin: 5px 0 0;
-    color: #14211e;
+    color: #1f2937;
     line-height: 1.45;
 }
 
 .shared-answer-review-heading > strong {
     flex: 0 0 auto;
     padding: 7px 10px;
-    color: #155f50;
+    color: #0d5f5a;
     background: #e6f5f1;
     border-radius: 999px;
     font-size: 13px;
@@ -654,15 +654,15 @@
 }
 
 .shared-answer-transcript {
-    background: #f8fcfb;
-    border: 1px solid #e2f0eb;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
 }
 
 .shared-answer-transcript p,
 .shared-sample-answer p,
 .shared-practice-action p {
     margin: 7px 0 0;
-    color: #586762;
+    color: #64748b;
     line-height: 1.65;
     white-space: pre-wrap;
 }
@@ -676,8 +676,8 @@
 
 .shared-answer-coaching-grid section {
     padding: 14px;
-    background: #f8fcfb;
-    border: 1px solid #e2f0eb;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 14px;
 }
 
@@ -685,14 +685,14 @@
 .shared-sample-answer h5,
 .shared-practice-action h5 {
     margin: 0;
-    color: #14211e;
+    color: #1f2937;
     font-size: 13px;
 }
 
 .shared-answer-coaching-grid ul {
     margin: 9px 0 0;
     padding-left: 19px;
-    color: #586762;
+    color: #64748b;
 }
 
 .shared-answer-coaching-grid li {

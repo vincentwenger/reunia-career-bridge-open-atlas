@@ -1,0 +1,283 @@
+{
+  "scenario_id": "limited_us_experience",
+  "label": "Candidate with limited U.S. experience",
+  "profile": {
+    "name": "Rafael Costa",
+    "contact": {
+      "location": "São Paulo, Brazil",
+      "phone": "+1 555 010 0000",
+      "email": "rafael.costa@example.test",
+      "linkedin_label": "LinkedIn",
+      "linkedin_url": "",
+      "github_label": "GitHub",
+      "github_url": ""
+    },
+    "current_summary": "Backend software engineer experienced in Python services, REST APIs, PostgreSQL, and AWS deployments for Brazilian financial technology products.",
+    "skills": {
+      "hard_skills": [
+        "Python",
+        "REST API development",
+        "SQL"
+      ],
+      "soft_skills": [
+        "Technical collaboration",
+        "Incident response"
+      ],
+      "tools_software": [
+        "PostgreSQL",
+        "AWS",
+        "Docker"
+      ],
+      "industry_knowledge": [
+        "Financial technology"
+      ],
+      "languages": [
+        "Portuguese",
+        "English"
+      ]
+    },
+    "education": [
+      {
+        "credential": "Bacharelado em Sistemas de Informação",
+        "institution": "Universidade de São Paulo",
+        "location": "São Paulo, Brazil",
+        "date": "2017",
+        "detail": "Information Systems degree."
+      }
+    ],
+    "experiences": [
+      {
+        "id": "EXP-SOFTWARE-1",
+        "employer": "Pagamentos Sul",
+        "location": "São Paulo, Brazil",
+        "dates": "2017–2026",
+        "title": "Analista de Sistemas Sênior",
+        "bullets": [
+          {
+            "id": "BRA-1",
+            "text": "Built Python REST APIs that processed payment events and stored transaction data in PostgreSQL."
+          },
+          {
+            "id": "BRA-2",
+            "text": "Deployed containerized backend services to AWS and supported production incident response."
+          },
+          {
+            "id": "BRA-3",
+            "text": "Partnered with product and compliance teams to translate financial requirements into tested software changes."
+          },
+          {
+            "id": "BRA-4",
+            "text": "Wrote automated tests for payment services and reviewed failures before production releases."
+          },
+          {
+            "id": "BRA-5",
+            "text": "Analyzed service logs and database queries to diagnose backend performance issues."
+          },
+          {
+            "id": "BRA-6",
+            "text": "Documented API behavior and deployment procedures for engineers supporting the platform."
+          }
+        ]
+      }
+    ],
+    "supplemental_evidence": []
+  },
+  "career_background": {
+    "countries_worked": [
+      "Brazil"
+    ],
+    "industries": [
+      "Financial technology"
+    ],
+    "roles": [
+      "Analista de Sistemas Sênior"
+    ],
+    "languages": [
+      "Portuguese",
+      "English"
+    ],
+    "target_country": "United States",
+    "target_role": "Backend Software Engineer",
+    "international_credentials": [
+      "Bacharelado em Sistemas de Informação"
+    ],
+    "professional_certifications": [],
+    "unfamiliar_job_titles": [
+      "Analista de Sistemas Sênior"
+    ],
+    "career_transitions": [],
+    "us_employment_experience": "Limited to remote collaboration with one U.S. product manager; no U.S. employer."
+  },
+  "job_description": "HealthData Systems is hiring a Backend Software Engineer.\n\nKey requirements:\n- Build Python REST APIs backed by PostgreSQL\n- Deploy containerized services on AWS\n- Understand U.S. healthcare data workflows\n\nCandidates should present only experience and qualifications they can verify.",
+  "job_analysis": {
+    "target_title": "Backend Software Engineer",
+    "target_company": "HealthData Systems",
+    "requirements": [
+      {
+        "id": "REQ-1",
+        "category": "technical_skill",
+        "priority": "critical",
+        "requirement": "Build Python REST APIs backed by PostgreSQL",
+        "keywords": [
+          "Python",
+          "REST APIs",
+          "PostgreSQL"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "category": "technical_skill",
+        "priority": "important",
+        "requirement": "Deploy containerized services on AWS",
+        "keywords": [
+          "containerized",
+          "AWS",
+          "deploy"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "category": "domain_knowledge",
+        "priority": "important",
+        "requirement": "Understand U.S. healthcare data workflows",
+        "keywords": [
+          "U.S. healthcare",
+          "data workflows"
+        ]
+      }
+    ],
+    "ignored_boilerplate": []
+  },
+  "proposal": {
+    "professional_summary": "Backend software engineer with verified experience building Python REST APIs, using PostgreSQL, and deploying containerized services on AWS. Has documented financial-technology delivery, incident response, and collaboration with product and compliance teams in Brazil. Brings strong technical alignment for a U.S. backend role while clearly identifying healthcare data workflows as an unsupported domain requirement that needs learning or evidence.",
+    "skills": {
+      "hard_skills": [
+        "Python",
+        "REST API development",
+        "SQL"
+      ],
+      "soft_skills": [
+        "Technical collaboration",
+        "Incident response"
+      ],
+      "tools_software": [
+        "PostgreSQL",
+        "AWS",
+        "Docker"
+      ],
+      "industry_knowledge": [
+        "Financial technology"
+      ]
+    },
+    "bullet_proposals": [
+      {
+        "source_bullet_id": "BRA-1",
+        "include": true,
+        "proposed_text": "Built Python REST APIs that processed payment events and stored transaction data in PostgreSQL.",
+        "matched_requirement_ids": [
+          "REQ-1"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "BRA-2",
+        "include": true,
+        "proposed_text": "Deployed containerized backend services to AWS and supported production incident response.",
+        "matched_requirement_ids": [
+          "REQ-2"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "BRA-3",
+        "include": true,
+        "proposed_text": "Partnered with product and compliance teams to translate financial requirements into tested software changes.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "BRA-4",
+        "include": true,
+        "proposed_text": "Wrote automated tests for payment services and reviewed failures before production releases.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "BRA-5",
+        "include": true,
+        "proposed_text": "Analyzed service logs and database queries to diagnose backend performance issues.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "BRA-6",
+        "include": true,
+        "proposed_text": "Documented API behavior and deployment procedures for engineers supporting the platform.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "requirement_id": "REQ-1",
+        "status": "supported",
+        "evidence_ids": [
+          "BRA-1"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-2",
+        "status": "supported",
+        "evidence_ids": [
+          "BRA-2"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-3",
+        "status": "unsupported",
+        "evidence_ids": [],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      }
+    ],
+    "unsupported_requirements": [
+      "Understand U.S. healthcare data workflows"
+    ],
+    "candidate_questions": [],
+    "career_translation_assessment": {
+      "summary": "",
+      "target_country": "",
+      "target_role": "",
+      "findings": []
+    }
+  },
+  "expectations": {
+    "expected_findings": [
+      {
+        "category": "credential_explanation",
+        "source_text": "Bacharelado em Sistemas de Informação",
+        "disposition": "confirmed_experience"
+      },
+      {
+        "category": "job_title_translation",
+        "source_text": "Analista de Sistemas Sênior",
+        "disposition": "reasonable_rephrasing"
+      },
+      {
+        "category": "unsupported_requirement",
+        "source_text": "Understand U.S. healthcare data workflows",
+        "disposition": "unsupported_claim"
+      }
+    ],
+    "expected_min_transferable_findings": 2,
+    "expected_hard_blockers": 0,
+    "forbidden_evidence_phrases": [
+      "Limited to remote collaboration with one U.S. product manager; no U.S. employer."
+    ],
+    "unicode_tokens": [
+      "São Paulo",
+      "Bacharelado"
+    ]
+  }
+}

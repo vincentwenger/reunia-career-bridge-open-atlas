@@ -37,9 +37,9 @@ _FAILURE_METRICS = {
 }
 _FAILURE_LABELS = {
     "recording_failed": "Recording failed",
-    "meeting_processing_failed": "Meeting processing failed",
+    "meeting_processing_failed": "Interview processing failed",
     "document_processing_failed": "Document processing failed",
-    "live_qa_failure": "Live Q&A failed",
+    "live_qa_failure": "Live Assistance failed",
     "ai_failure": "AI request failed",
 }
 
@@ -66,17 +66,17 @@ _ALLOWED_PRODUCT_METRICS = {
     "ai_failure",
 }
 _FEATURE_LABELS = {
-    "meeting_preparation": "Meeting Preparation",
-    "document_library": "Document Library",
-    "meeting_materials": "Meeting Materials",
-    "ai_context": "AI Context",
-    "knowledge_search": "Knowledge Search",
-    "browser_recorder": "Browser Recorder",
-    "desktop_client": "Desktop Client",
-    "live_qa": "Live Q&A",
-    "meeting_review": "Meeting Review",
+    "meeting_preparation": "Interview Preparation",
+    "document_library": "Career Evidence Library",
+    "meeting_materials": "Application Materials",
+    "ai_context": "AI Configuration",
+    "knowledge_search": "Career Evidence Search",
+    "browser_recorder": "Mock Interview",
+    "desktop_client": "Mock Interview Desktop Recorder",
+    "live_qa": "Live Assistance",
+    "meeting_review": "Interview Review",
     "action_center": "Career Action Plan",
-    "analytics": "Analytics",
+    "analytics": "Impact & Progress",
 }
 
 
@@ -935,13 +935,13 @@ class AdminAnalyticsService:
         source = str(item.get("source") or "").strip().casefold()
         metric = str(item.get("metric") or "").strip()
         if "browser" in source or metric in {"recording_failed", "meeting_processing_failed"}:
-            return "Browser Recorder"
+            return "Mock Interview"
         if "desktop" in source:
-            return "Desktop Client"
+            return "Mock Interview Desktop Recorder"
         if metric == "document_processing_failed":
             return "Document Library"
         if metric == "live_qa_failure":
-            return "Live Q&A"
+            return "Live Assistance"
         if metric == "ai_failure":
             return "AI Assistance"
         return "Other"
@@ -978,7 +978,7 @@ class AdminAnalyticsService:
         if metric == "document_processing_failed":
             return "Document ingestion or extraction did not complete; the stored telemetry does not identify a more specific cause."
         if metric == "live_qa_failure":
-            return "The Live Q&A request did not complete successfully; the stored telemetry does not identify a more specific cause."
+            return "The Live Assistance request did not complete successfully; the stored telemetry does not identify a more specific cause."
         if metric == "ai_failure":
             return "The AI request failed before a usable response was returned; the stored telemetry does not identify a more specific cause."
         return "The available telemetry does not identify a confirmed cause."
@@ -1132,7 +1132,7 @@ class AdminAnalyticsService:
             "request_id": str(item.get("request_id") or ""),
             "created_at": str(item.get("created_at") or ""),
             "status": str(item.get("status") or "new"),
-            "subject": str(item.get("subject") or "Browser Recorder error"),
+            "subject": str(item.get("subject") or "Mock Interview recorder error"),
             "message": str(item.get("message") or ""),
             "page_url": str(item.get("page_url") or ""),
         }
@@ -1253,7 +1253,7 @@ class AdminAnalyticsService:
             "meetings": meetings,
             "sources": sources,
             "live_qa_tracking_note": (
-                "Live Q&A lifetime totals are tracked from the deployment of the "
+                "Live Assistance lifetime totals are tracked from the deployment of the "
                 "admin usage update onward; older expired feed entries cannot be recovered."
             ),
             "desktop_tracking_note": (
@@ -1725,13 +1725,13 @@ class AdminAnalyticsService:
         saved = sum(1 for meetings in usage["meetings"].values() for m in meetings if self._date_value(m.get("timestamp")) >= period_start)
         actions = sum(1 for a in usage["actions"] if self._date_value(a.get("created_at")) >= period_start)
         stages = [
-            ("Recording started", event_counts["recording_started"]),
-            ("Recording completed", event_counts["recording_completed"]),
+            ("Mock interview started", event_counts["recording_started"]),
+            ("Mock interview completed", event_counts["recording_completed"]),
             ("Recording uploaded", event_counts["recording_uploaded"]),
-            ("Processing succeeded", event_counts["meeting_processing_succeeded"] or saved),
-            ("Meeting saved", saved),
-            ("Meeting Review opened", event_counts["meeting_review_opened"]),
-            ("Action created", actions or event_counts["action_created"]),
+            ("Interview processing succeeded", event_counts["meeting_processing_succeeded"] or saved),
+            ("Mock interview saved", saved),
+            ("Interview Review opened", event_counts["meeting_review_opened"]),
+            ("Career action created", actions or event_counts["action_created"]),
         ]
         result=[]
         previous=None
@@ -1758,9 +1758,9 @@ class AdminAnalyticsService:
 
     def _reliability_metrics(self, events):
         definitions=[
-            ("Meeting processing", {"meeting_processing_succeeded"}, {"meeting_processing_failed","recording_failed"}),
+            ("Interview processing", {"meeting_processing_succeeded"}, {"meeting_processing_failed","recording_failed"}),
             ("Document processing", {"document_processing_succeeded"}, {"document_processing_failed"}),
-            ("Live Q&A", {_LIVE_QA_METRIC}, {"live_qa_failure"}),
+            ("Live Assistance", {_LIVE_QA_METRIC}, {"live_qa_failure"}),
             ("AI requests", {"ai_request"}, {"ai_failure"}),
         ]
         rows=[]; total_success=total_failure=0
@@ -1905,7 +1905,7 @@ class AdminAnalyticsService:
         if reliability["failures"] and reliability["overall_success_rate"]<95: alerts.append({"severity":"warning","title":"Processing reliability is below 95%","detail":f"Overall measured success rate is {reliability['overall_success_rate']}%."})
         if support_health["unread_over_24_hours"]: alerts.append({"severity":"warning","title":"Unread support messages need attention","detail":f"{support_health['unread_over_24_hours']} message(s) have been unread for more than 24 hours."})
         inactive=sum(1 for r in user_rows if r.get("saved_meeting_count",0)==0 and r.get("created_at"))
-        if inactive: alerts.append({"severity":"info","title":"Registered users have not saved a meeting","detail":f"{inactive} account(s) may need onboarding help."})
+        if inactive: alerts.append({"severity":"info","title":"Registered users have not completed a mock interview","detail":f"{inactive} account(s) may need help reaching the mock interview workflow."})
         high_failures=[r for r in user_rows if self._integer(r.get("failure_count"))>=3]
         if high_failures:
             alerts.append({
@@ -2141,7 +2141,7 @@ class AdminAnalyticsService:
             "title": str(
                 item.get("meeting_name")
                 or item.get("prepared_meeting_title")
-                or "Unnamed Meeting"
+                or "Unnamed Mock Interview"
             ),
             "timestamp": str(item.get("timestamp") or ""),
         }

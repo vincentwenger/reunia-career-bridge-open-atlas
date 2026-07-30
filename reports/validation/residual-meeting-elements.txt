@@ -1,0 +1,31 @@
+Residual meeting-software element remediation
+=============================================
+
+Changes
+-------
+1. Candidate-facing navigation
+   - Removed the conditional Live Assistance menu item from all three synchronized navbar templates.
+   - Removed the navbar-only Live Assistance URL and active-state variables.
+   - Kept the restricted Live Assistance route, feature access controls, APIs, services, and legacy compatibility paths unchanged.
+
+2. Administrator-facing terminology
+   - Replaced visible Meeting Review / saved-meeting / meeting-funnel wording in Admin Analytics with Career Bridge terminology.
+   - Admin labels now use Mock Interview, Interview Review, Career Action Plan, Impact & Progress, and Live Assistance.
+   - Kept persisted metric names, API response keys, internal repository names, and legacy path detection unchanged for compatibility.
+   - Added French translations for the new administrator-facing wording.
+
+Regression protection
+---------------------
+- Expanded tests/contracts/test_three_module_navigation.py to verify that:
+  * Live Assistance cannot reappear in any candidate navbar copy.
+  * All navbar copies remain synchronized.
+  * Prepare and Practice contains Interview Preparation and Mock Interview only.
+  * Administrator-facing copy uses the career/interview terminology and excludes the identified legacy labels.
+
+Validation
+----------
+- Python compile checks: passed.
+- JavaScript syntax checks for admin-analytics.js and i18n.js: passed.
+- Three-module navigation contract: 7/7 passed.
+- Full unittest discovery: 38 tests run; all runnable tests passed; 12 skipped because Flask/runtime dependencies are unavailable in this execution environment.
+- Final integration checks: all static/regression/contract phases passed; full Flask runtime and Playwright phases were blocked by missing flask, redis, openai, and xlrd dependencies.

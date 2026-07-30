@@ -1,0 +1,34 @@
+Réunia Career Bridge — Lightsail deployment validation script
+Date: 2026-07-30
+
+Implemented
+-----------
+- Added scripts/deployment/validate_lightsail_deployment.py.
+- Added a Windows wrapper at scripts/deployment/validate_lightsail_deployment.bat.
+- Validates the live Lightsail service scale is exactly 1.
+- Rejects any live Lightsail container command override.
+- Validates the deployment package Docker image CMD uses exactly one Gunicorn
+  worker and four threads.
+- Requires /health to return HTTP 200, status=ok, and the expected non-secret
+  Application Builder storage limitations.
+- Signs in with a dedicated validation account, obtains the shared CSRF token,
+  creates a uniquely named Job Application, retrieves it from the deployed
+  Application Builder, and removes the smoke-test record afterward.
+- Verifies docs/deployment/lightsail.md contains the prominent warning that
+  redeploying or replacing the container can erase records.
+- Added dependency-free contract and mocked end-to-end tests.
+
+Validation performed
+--------------------
+Command: python -m unittest discover -s tests -t . -v
+Result: 74 tests completed; 60 passed; 14 skipped; 0 failed.
+
+The skipped tests require optional Flask, Redis, OpenAI, and/or XLRD runtime
+dependencies that were unavailable in the validation environment.
+
+Live AWS status
+---------------
+The validator was not run against the user's live AWS account or public URL in
+this offline environment. Run scripts/deployment/validate_lightsail_deployment.bat
+after deployment with CAREER_BRIDGE_BASE_URL, DEPLOYMENT_VALIDATION_EMAIL, and
+DEPLOYMENT_VALIDATION_PASSWORD configured.

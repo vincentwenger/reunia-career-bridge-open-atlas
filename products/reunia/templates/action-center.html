@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'macros/ui.html' import page_hero %}
+{% from 'macros/ui.html' import page_hero, workspace_state %}
 
 {% block title %}Réunia - Career Action Plan{% endblock %}
 
@@ -168,18 +168,39 @@
                 <tbody id="action-table-body"></tbody>
             </table>
 
-            <div class="action-loading-state" id="action-loading-state">
-                <span class="action-spinner" aria-hidden="true"></span>
-                <strong>Building your Career Action Plan</strong>
-                <p>Reviewing application dates, resume gaps, evidence findings, and interview scorecards.</p>
-            </div>
+            {{ workspace_state(
+                'action-loading-state',
+                'loading',
+                'Building your Career Action Plan',
+                'Reviewing application dates, resume gaps, evidence findings, and interview scorecards.',
+                hidden=false,
+                compact=true,
+                extra_class='action-loading-state'
+            ) }}
 
-            <div class="action-empty-state" id="action-empty-state" hidden>
-                <span aria-hidden="true">✓</span>
-                <strong id="action-empty-title">No actions found</strong>
-                <p id="action-empty-message">Try changing the filters or add a new application-specific action.</p>
-                <button type="button" id="empty-add-action-button">Add an action</button>
-            </div>
+            {{ workspace_state(
+                'action-empty-state',
+                'empty',
+                'No actions found',
+                'Try changing the filters or add a new application-specific action.',
+                hidden=true,
+                action_label='Add an action',
+                action_id='empty-add-action-button',
+                compact=true,
+                extra_class='action-empty-state'
+            ) }}
+
+            {{ workspace_state(
+                'action-error-state',
+                'error',
+                'Career actions could not be loaded',
+                'The application-specific plan is temporarily unavailable. Retry without losing your current filters.',
+                hidden=true,
+                action_label='Retry loading',
+                action_id='action-retry-button',
+                compact=true,
+                extra_class='action-error-state'
+            ) }}
         </div>
     </section>
 </div>
