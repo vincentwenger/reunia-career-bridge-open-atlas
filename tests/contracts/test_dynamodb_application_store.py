@@ -12,7 +12,6 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 RESUME_TAYLOR_ROOT = ROOT / "products" / "resume_taylor"
 DYNAMODB_STORAGE = RESUME_TAYLOR_ROOT / "resume_tailor" / "dynamodb_storage.py"
-APPLICATION_TRACKER = RESUME_TAYLOR_ROOT / "resume_tailor" / "application_tracker.py"
 
 
 class FakeDynamoTable:
@@ -125,7 +124,7 @@ class DynamoDBApplicationStoreTests(unittest.TestCase):
             clock=lambda: next(self.timestamps),
         )
 
-    def test_public_api_matches_sqlite_and_protocol(self) -> None:
+    def test_public_api_matches_protocol(self) -> None:
         def public_methods(path: Path, class_name: str) -> set[str]:
             tree = ast.parse(path.read_text(encoding="utf-8"))
             cls = next(
@@ -141,8 +140,11 @@ class DynamoDBApplicationStoreTests(unittest.TestCase):
             }
 
         dynamo_methods = public_methods(DYNAMODB_STORAGE, "DynamoDBApplicationStore")
-        sqlite_methods = public_methods(APPLICATION_TRACKER, "SQLiteApplicationStore")
-        self.assertEqual(dynamo_methods, sqlite_methods)
+        protocol_methods = public_methods(
+            RESUME_TAYLOR_ROOT / "resume_tailor" / "storage.py",
+            "ApplicationStore",
+        )
+        self.assertEqual(dynamo_methods, protocol_methods)
         self.assertIsInstance(self.store, self.protocol)
 
     def test_crud_builder_progress_snapshot_lookup_and_owner_isolation(self) -> None:

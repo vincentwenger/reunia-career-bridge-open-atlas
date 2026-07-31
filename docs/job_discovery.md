@@ -378,7 +378,6 @@ Promotion uses the latest Job Fit snapshot for `alignment_score`; Search Priorit
 
 Duplicate protection is owner-scoped and race-safe:
 
-- SQLite stores `source_job_id` and enforces a partial unique index on `(owner_id, source_job_id)` when the source ID is non-empty.
 - DynamoDB stores a conditional `SOURCE_JOB#<discovered_job_id>` link in the application table before writing the application item.
 - Repeated or overlapping conversion requests resolve to the existing workspace and update the discovery state with its `application_id`.
 

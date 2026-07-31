@@ -13,7 +13,7 @@ from job_discovery.models import (
     discovered_job_id,
 )
 from job_discovery.storage import InMemoryDiscoveryStore
-from products.resume_taylor.resume_tailor.application_tracker import SQLiteApplicationStore
+from tests.helpers.dynamodb_application_store import make_application_store
 
 
 def _source(owner_id: str = "owner-1") -> CompanySource:
@@ -54,7 +54,7 @@ class DiscoveredJobApplicationServiceTests(unittest.TestCase):
         self.discovery_store = InMemoryDiscoveryStore(
             clock=lambda: "2026-07-30T18:00:00+00:00"
         )
-        self.application_store = SQLiteApplicationStore(":memory:")
+        self.application_store = make_application_store()
         self.source = _source()
         self.job = self.discovery_store.sync_discovered_jobs(
             self.source,
@@ -79,9 +79,6 @@ class DiscoveredJobApplicationServiceTests(unittest.TestCase):
             self.discovery_store,
             self.application_store,
         )
-
-    def tearDown(self) -> None:
-        self.application_store._connection.close()
 
     def test_save_and_ignore_remain_discovery_specific(self) -> None:
         saved = self.service.save("owner-1", self.source.id, self.job.id)

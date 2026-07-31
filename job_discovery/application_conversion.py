@@ -86,7 +86,7 @@ class DiscoveredJobApplicationService:
                 source_job_id=job.id,
             )
         except Exception:
-            # SQLite's unique index and DynamoDB's conditional source-job link
+            # The application store's conditional source-job link
             # provide race-safe duplicate prevention. If another request won,
             # return the workspace it created instead of surfacing an error.
             existing = self.application_store.find_by_source_job(owner_id, job.id)

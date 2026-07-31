@@ -2265,6 +2265,31 @@
     margin-top: 18px;
 }
 
+.career-profile-intro-card {
+    border-color: #cfe6df;
+    background: linear-gradient(145deg, #ffffff, #f7fcfa);
+}
+
+.career-profile-section .form-field small {
+    color: var(--muted);
+    font-size: 0.73rem;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.career-profile-summary-card {
+    max-height: calc(100vh - 112px);
+    overflow-y: auto;
+}
+
+.career-profile-usage-note {
+    gap: 8px;
+}
+
+.career-profile-usage-note span {
+    display: block;
+}
+
 .search-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 320px;

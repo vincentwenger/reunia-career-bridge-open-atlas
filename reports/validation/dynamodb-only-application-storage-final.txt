@@ -1,0 +1,17 @@
+DynamoDB-only application storage validation
+
+Result: PASSED
+
+Implementation
+- Removed the legacy local application repository implementation.
+- Application storage now accepts only the DynamoDB backend.
+- Development, testing, and production configuration select DynamoDB for application records.
+- Removed local application database path initialization and related deployment settings.
+- The production demo override cannot downgrade application records away from DynamoDB.
+- Testing uses the production DynamoDB repository with an isolated in-memory table resource.
+
+Validation
+- Repository-wide legacy database reference scan: 0 matches.
+- Python compilation: passed.
+- unittest discovery: 296 tests passed; 20 dependency-related skips; 0 failures; 0 errors.
+- Scorecard-to-career-action integration runner: passed.

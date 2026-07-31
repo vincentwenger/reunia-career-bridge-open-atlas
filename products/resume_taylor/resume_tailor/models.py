@@ -160,21 +160,38 @@ CareerEvidenceDisposition = Literal[
 
 
 class NewcomerCareerProfile(StrictModel):
-    """Optional international-career context used for translation, never immigration screening."""
+    """Reusable career context used for translation and tailoring, never as claim evidence."""
 
+    professional_headline: str = ""
+    current_role: str = ""
+    years_experience: str = ""
+    current_location: str = ""
+    preferred_roles: list[str] = Field(default_factory=list)
+    core_skills: list[str] = Field(default_factory=list)
+    key_accomplishments: list[str] = Field(default_factory=list)
     countries_worked: list[str] = Field(default_factory=list)
     industries: list[str] = Field(default_factory=list)
     roles: list[str] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
     target_country: str = ""
+    target_country_experience: str = ""
     target_role: str = ""
     international_credentials: list[str] = Field(default_factory=list)
     professional_certifications: list[str] = Field(default_factory=list)
     unfamiliar_job_titles: list[str] = Field(default_factory=list)
     career_transitions: list[str] = Field(default_factory=list)
     us_employment_experience: str = ""
+    work_preferences: str = ""
+    relocation_preferences: str = ""
+    work_authorization: str = ""
+    career_goals: str = ""
+    constraints: str = ""
+    career_profile_fingerprint: str = ""
 
     @field_validator(
+        "preferred_roles",
+        "core_skills",
+        "key_accomplishments",
         "countries_worked",
         "industries",
         "roles",
@@ -197,7 +214,20 @@ class NewcomerCareerProfile(StrictModel):
         return normalized
 
     @field_validator(
-        "target_country", "target_role", "us_employment_experience"
+        "professional_headline",
+        "current_role",
+        "years_experience",
+        "current_location",
+        "target_country",
+        "target_country_experience",
+        "target_role",
+        "us_employment_experience",
+        "work_preferences",
+        "relocation_preferences",
+        "work_authorization",
+        "career_goals",
+        "constraints",
+        "career_profile_fingerprint",
     )
     @classmethod
     def normalize_text_values(cls, value: str) -> str:
@@ -206,17 +236,30 @@ class NewcomerCareerProfile(StrictModel):
     def has_context(self) -> bool:
         return any(
             (
+                self.professional_headline,
+                self.current_role,
+                self.years_experience,
+                self.current_location,
+                self.preferred_roles,
+                self.core_skills,
+                self.key_accomplishments,
                 self.countries_worked,
                 self.industries,
                 self.roles,
                 self.languages,
                 self.target_country,
+                self.target_country_experience,
                 self.target_role,
                 self.international_credentials,
                 self.professional_certifications,
                 self.unfamiliar_job_titles,
                 self.career_transitions,
                 self.us_employment_experience,
+                self.work_preferences,
+                self.relocation_preferences,
+                self.work_authorization,
+                self.career_goals,
+                self.constraints,
             )
         )
 

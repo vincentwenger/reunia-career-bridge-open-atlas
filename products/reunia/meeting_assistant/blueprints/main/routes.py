@@ -22,12 +22,19 @@ def _meaningful_career_profile(context: dict[str, Any]) -> bool:
     return any(
         str(context.get(key) or "").strip()
         for key in (
+            "professional_headline",
+            "current_role",
+            "preferred_roles",
+            "industries",
+            "core_skills",
+            "countries_worked",
+            "international_credentials",
+            "career_goals",
+            # Backward-compatible fields for profiles saved before migration.
             "role",
             "domain",
             "objective",
             "free_text",
-            "company",
-            "audience",
         )
     )
 

@@ -64,10 +64,10 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
         self.validate(app)
         self.assertEqual(app.logger.warnings, [])
 
-    def test_memory_sqlite_and_local_are_rejected_in_production(self) -> None:
+    def test_memory_and_local_backends_are_rejected_in_production(self) -> None:
         app = _app(
             {
-                "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "sqlite",
+                "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory",
                 "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "memory",
                 "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "local",
@@ -81,11 +81,24 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
             self.validate(app)
 
         message = str(raised.exception)
-        self.assertIn("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", message)
         self.assertIn("CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", message)
         self.assertIn("CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", message)
         self.assertIn("CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", message)
         self.assertIn("CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=true", message)
+
+    def test_application_backend_cannot_be_downgraded_by_demo_override(self) -> None:
+        app = _app(
+            {
+                "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "local",
+                "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory",
+                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "memory",
+                "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "local",
+                "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION": "true",
+            }
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "cannot be downgraded"):
+            self.validate(app)
 
     def test_missing_table_and_bucket_names_are_rejected(self) -> None:
         app = _app(
@@ -113,7 +126,7 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
     def test_explicit_demo_override_allows_ephemeral_backends_and_warns(self) -> None:
         app = _app(
             {
-                "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "sqlite",
+                "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory",
                 "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "memory",
                 "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "local",
@@ -130,7 +143,7 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
     def test_false_override_does_not_bypass_validation(self) -> None:
         app = _app(
             {
-                "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "sqlite",
+                "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory",
                 "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "memory",
                 "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "local",
@@ -255,7 +268,7 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
             and isinstance(statement.value.value, str)
         }
         self.assertEqual(assignments["CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND"], "memory")
-        self.assertEqual(assignments["CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND"], "sqlite")
+        self.assertEqual(assignments["CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND"], "dynamodb")
         self.assertEqual(assignments["CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND"], "local")
 
         source = APP_FACTORY.read_text(encoding="utf-8")

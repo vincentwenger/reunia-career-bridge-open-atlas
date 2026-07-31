@@ -658,7 +658,10 @@ class KnowledgeSearchService:
             if isinstance(assistant_context, dict):
                 context_text = _mapping_text(assistant_context)
                 if context_text:
-                    instructions.append("Reusable AI context:\n" + context_text)
+                    instructions.append(
+                        "Reusable Career Profile context (unverified; use only for personalization, "
+                        "never as evidence for a candidate claim):\n" + context_text
+                    )
         return "\n\n".join(instructions)
 
     @staticmethod

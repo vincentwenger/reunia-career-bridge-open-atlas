@@ -11,11 +11,11 @@
         {% for match in analysis.strongest_matches %}
           <li>
             <strong>{{ match.requirement }}</strong>
-            <span class="discovery-source-intro">Supported by Career Profile or Career Evidence Library:</span>
+            <span class="discovery-source-intro">Supported by resume evidence or Career Evidence Library:</span>
             <ul class="discovery-source-list">
               {% for reference in match.evidence %}
                 <li data-record-id="{{ reference.record_id }}" data-record-type="{{ reference.record_type }}">
-                  <a href="{{ request.script_root }}{% if reference.record_type == 'evidence_item' %}/career-evidence-library{% else %}/career-profile{% endif %}#record-{{ reference.record_id }}">{{ reference.label }}</a>
+                  <a href="{{ request.script_root }}{% if reference.surface == 'Career Evidence Library' %}/career-evidence-library#record-{{ reference.record_id }}{% else %}/applications/?tab=tailoring{% endif %}">{{ reference.label }}</a>
                   <span>Record {{ reference.record_id }} · “{{ reference.statement }}”</span>
                 </li>
               {% endfor %}
@@ -24,7 +24,7 @@
         {% endfor %}
       </ul>
     {% elif fit %}
-      <p class="discovery-evidence-warning">No strength is shown because the latest fit snapshot does not contain a traceable Career Profile or Evidence Library record.</p>
+      <p class="discovery-evidence-warning">No strength is shown because the latest fit snapshot does not contain a traceable resume or Evidence Library record.</p>
     {% else %}
       <p>The evidence-grounded fit assessment has not run yet.</p>
     {% endif %}
@@ -35,7 +35,7 @@
     {% if analysis.important_gaps %}
       <ul>
         {% for item in analysis.important_gaps %}
-          <li>{{ item }} — not verified in the Career Profile or Evidence Library.</li>
+          <li>{{ item }} — not supported by verified resume or Evidence Library evidence.</li>
         {% endfor %}
       </ul>
     {% else %}
@@ -51,7 +51,7 @@
 <section class="discovery-analysis-explanation">
   <h4>Why this matches</h4>
   {% if fit %}
-    <p><strong>{{ fit.recommendation }}</strong> with {{ fit.confidence|lower }} confidence. Job Fit compares structured requirements only with candidate-owned records.</p>
+    <p><strong>{{ fit.recommendation }}</strong> with {{ fit.confidence|lower }} confidence. Job Fit compares structured requirements only with traceable resume evidence and confirmed Career Evidence Library records.</p>
     <p><strong>Search Priority:</strong> {% if analysis.search_priority is not none %}{{ "%.0f"|format(analysis.search_priority) }}{% else %}not available{% endif %}. Preference Fit is {{ "%.0f"|format(analysis.preference_score) }} and posting freshness is {{ "%.0f"|format(analysis.freshness_score) }}.</p>
     {% if analysis.preference_components %}
       <ul>{% for component in analysis.preference_components %}<li>{{ component.name }}: {{ "%.0f"|format(component.score) }} — {{ component.explanation }}</li>{% endfor %}</ul>

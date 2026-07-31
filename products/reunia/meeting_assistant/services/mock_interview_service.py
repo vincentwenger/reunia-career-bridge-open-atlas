@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from career_bridge.profile_context import ReusableCareerProfile
 from botocore.exceptions import ClientError
 from flask import current_app
 from openai import OpenAI
@@ -208,6 +209,9 @@ class MockInterviewService:
                 company = str(getattr(application, "company", "") or "").strip()
                 role = str(getattr(application, "role", "") or "").strip()
                 status = str(getattr(application, "status", "") or "").strip()
+                interview_audience = str(
+                    getattr(application, "interview_audience", "") or ""
+                ).strip()
                 title = " at ".join(value for value in (role, company) if value)
                 if not title:
                     title = "Untitled application"
@@ -230,6 +234,7 @@ class MockInterviewService:
                         "company": company,
                         "role": role,
                         "status": status,
+                        "interview_audience": interview_audience,
                     }
                 )
 
@@ -886,6 +891,9 @@ class MockInterviewService:
 
         company = str(getattr(application, "company", "") or "").strip()
         role = str(getattr(application, "role", "") or "").strip()
+        interview_audience = str(
+            getattr(application, "interview_audience", "") or ""
+        ).strip()
         title = " at ".join(value for value in (role, company) if value)
         if not title:
             title = "Untitled application"
@@ -943,7 +951,8 @@ class MockInterviewService:
             "scheduled_at": str(
                 getattr(application, "upcoming_event_date", "") or ""
             ),
-            "participants": [],
+            "participants": [interview_audience] if interview_audience else [],
+            "interview_audience": interview_audience,
         }
         context = {
             "company": company,
@@ -951,6 +960,8 @@ class MockInterviewService:
             "job_description": str(
                 getattr(application, "job_description", "") or ""
             )[:40000],
+            "job_url": str(getattr(application, "job_url", "") or "")[:2000],
+            "interview_audience": interview_audience,
             "application_status": status,
             "application_notes": notes[:5000],
             "next_action": next_action[:1000],
@@ -1151,7 +1162,7 @@ Return only JSON:
   "rationale": "short explanation of why this question follows"
 }}
 
-Role and verified candidate context:
+Role context, reusable Career Profile context, and confirmed candidate evidence:
 {context}
 """.strip()
 
@@ -1557,6 +1568,9 @@ Role and verified candidate context:
         if not isinstance(verified_evidence, list):
             verified_evidence = []
 
+        reusable_profile = ReusableCareerProfile.from_mapping(
+            session.get("candidate_context") or {}
+        ).as_prompt_dict()
         compact = {
             "interview_type": str(session.get("interview_type_label") or "Mock Interview"),
             "custom_focus": str(session.get("custom_focus") or ""),
@@ -1566,13 +1580,17 @@ Role and verified candidate context:
                 "job_description": workspace_context.get("job_description"),
                 "application_status": workspace_context.get("application_status"),
                 "next_action": workspace_context.get("next_action"),
+                "interview_audience": workspace_context.get("interview_audience"),
             },
+            "reusable_career_profile_context": reusable_profile,
             "confirmed_candidate_evidence": verified_evidence[:80],
             "confirmed_evidence_source": workspace_context.get("verified_evidence_source"),
             "grounding_rule": (
                 "The current candidate answer and confirmed_candidate_evidence are the only "
-                "candidate-fact sources allowed in the sample improved answer. Role context "
-                "describes the opportunity and must never be presented as candidate experience."
+                "candidate-fact sources allowed in the sample improved answer. The reusable "
+                "Career Profile may guide topic selection and career-direction coaching, but it "
+                "is not verified evidence. Role context describes the opportunity and must never "
+                "be presented as candidate experience."
             ),
         }
         return _truncate_json(compact, 14000)
@@ -1586,6 +1604,9 @@ Role and verified candidate context:
         workspace_context: dict[str, Any],
         candidate_context: dict[str, Any],
     ) -> str:
+        candidate_profile = ReusableCareerProfile.from_mapping(
+            candidate_context
+        ).as_prompt_dict()
         compact = {
             "interview_type": _INTERVIEW_TYPES.get(interview_type, interview_type),
             "custom_focus": custom_focus,
@@ -1595,7 +1616,7 @@ Role and verified candidate context:
                 if workspace.get(key)
             },
             "role_and_application_context": workspace_context,
-            "verified_candidate_context": candidate_context,
+            "candidate_profile_context": candidate_profile,
         }
         return _truncate_json(compact, 14000)
 

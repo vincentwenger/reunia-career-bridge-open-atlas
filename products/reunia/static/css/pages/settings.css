@@ -332,6 +332,11 @@
             border-color: #c9e5e3;
         }
 
+        .scope-card.ai-coaching {
+            background: linear-gradient(135deg, #eef8ff, #ffffff);
+            border-color: #bfdbfe;
+        }
+
         .scope-card.live-qa {
             background: linear-gradient(135deg, #f5fdfb, #ffffff);
             border-color: #f1e5cd;

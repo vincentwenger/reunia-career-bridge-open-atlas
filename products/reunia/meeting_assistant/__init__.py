@@ -160,7 +160,17 @@ def _configuration_flag(value: object) -> bool:
 
 
 def _validate_career_bridge_production_storage(app: Flask) -> None:
-    """Reject ephemeral Application Builder persistence in production by default."""
+    """Require DynamoDB application records and durable production persistence."""
+
+    application_backend = str(
+        app.config.get("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND") or ""
+    ).strip().casefold()
+    if application_backend != "dynamodb":
+        raise RuntimeError(
+            "Unsafe Career Bridge production persistence configuration: "
+            "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND must be 'dynamodb'. "
+            "Application record storage cannot be downgraded by the demo override."
+        )
 
     required_backends = {
         "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
@@ -417,37 +427,10 @@ def register_application_builder(app: Flask, project_root: Path) -> None:
     )
     app.config.setdefault(
         "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND",
-        os.getenv("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "sqlite")
+        os.getenv("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "dynamodb")
         .strip()
         .lower(),
     )
-
-    application_backend = str(
-        app.config.get("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "sqlite")
-    ).strip().lower()
-    if (
-        application_backend == "sqlite"
-        and not str(app.config.get("APPLICATIONS_DB_PATH") or "").strip()
-    ):
-        configured_database_path = (
-            os.getenv("CAREER_BRIDGE_APPLICATIONS_DB")
-            or os.getenv("APPLICATIONS_DB_PATH")
-            or ""
-        ).strip()
-        if configured_database_path:
-            application_database_path = Path(configured_database_path)
-        elif app.testing:
-            application_database_path = Path(":memory:")
-        else:
-            application_database_path = (
-                repository_root
-                / "instance"
-                / "career_bridge_applications.sqlite3"
-            )
-
-        if str(application_database_path) != ":memory:":
-            application_database_path.parent.mkdir(parents=True, exist_ok=True)
-        app.config["APPLICATIONS_DB_PATH"] = str(application_database_path)
 
     init_application_builder(app)
     app.register_blueprint(application_builder_bp, url_prefix="/applications")

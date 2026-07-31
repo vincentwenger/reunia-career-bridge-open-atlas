@@ -97,7 +97,7 @@ class LightsailScaleEnforcementContractTests(unittest.TestCase):
         text = DEPLOYMENT_DOC.read_text(encoding="utf-8")
         self.assertIn("## Conditional deployment policy", text)
         self.assertIn("Durable DynamoDB/DynamoDB/S3", text)
-        self.assertIn("Demo memory/SQLite/local", text)
+        self.assertIn("Demo memory/DynamoDB/local", text)
         self.assertIn("exactly 1", text)
         self.assertIn("1 or greater", text)
         self.assertIn("Leave the Lightsail **Command** field empty", text)

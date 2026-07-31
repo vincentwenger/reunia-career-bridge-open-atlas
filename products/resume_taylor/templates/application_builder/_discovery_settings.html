@@ -93,6 +93,11 @@
 
     <div class="discovery-settings-panel">
       <h3>Search preferences</h3>
+      {% if reusable_career_profile and reusable_career_profile.has_context() %}
+        <p class="form-help"><strong>Career Profile connected:</strong> preferred roles, current or relocation locations, workplace preferences, industries, and skills supplied the initial defaults. Saved search preferences remain application-specific overrides. <a href="/career-profile">Review Career Profile</a></p>
+      {% else %}
+        <p class="form-help">Complete <a href="/career-profile">Career Profile</a> to seed role, location, workplace, industry, and skill preferences automatically.</p>
+      {% endif %}
       <form action="{{ url_for('application_builder.update_discovery_preferences') }}" method="post" class="stack-form discovery-preferences-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="discovery-target-titles">Desired job titles</label>

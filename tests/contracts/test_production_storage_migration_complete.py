@@ -1,7 +1,7 @@
 """Final production-persistence migration contract.
 
 This suite prevents the application from drifting back to process-local workflow
-state or SQLite application records in a normal production deployment.
+state or non-DynamoDB application records in a normal production deployment.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def _production_backend_defaults() -> dict[str, str]:
 
 
 class ProductionStorageMigrationCompleteTests(unittest.TestCase):
-    def test_normal_production_defaults_have_replaced_memory_sqlite_and_local(self) -> None:
+    def test_normal_production_defaults_are_durable(self) -> None:
         defaults = _production_backend_defaults()
         self.assertEqual(
             defaults["CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND"], "dynamodb"
@@ -76,10 +76,7 @@ class ProductionStorageMigrationCompleteTests(unittest.TestCase):
         self.assertIn("store: WorkflowStore", source)
         self.assertIn("application_store: ApplicationStore", source)
         self.assertNotIn("from resume_tailor.web_state import InMemoryWorkflowStore", source)
-        self.assertNotIn(
-            "from resume_tailor.application_tracker import SQLiteApplicationStore",
-            source,
-        )
+        self.assertNotIn("application_database_path", source)
 
     def test_application_records_use_dynamodb_metadata_and_s3_document_keys(self) -> None:
         source = DYNAMODB.read_text(encoding="utf-8")

@@ -52,14 +52,13 @@ class BaseConfig:
 
     AWS_REGION = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-west-2"))
 
-    # Career Bridge storage adapters. Development and testing may select local
-    # adapters explicitly; ProductionConfig overrides these defaults with the
-    # durable DynamoDB/DynamoDB/S3 combination.
+    # Career Bridge storage adapters. Application records always use DynamoDB;
+    # production also requires durable workflow and document storage.
     CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = os.getenv(
         "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "memory"
     ).strip().lower()
     CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = os.getenv(
-        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "sqlite"
+        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "dynamodb"
     ).strip().lower()
     CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND = os.getenv(
         "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", "memory"
@@ -669,7 +668,7 @@ class ProductionConfig(BaseConfig):
     REDIS_URL = os.getenv("REDIS_URL", "").strip()
 
     # Durable Career Bridge persistence is the production baseline. Local
-    # memory/SQLite/filesystem adapters remain available only when explicitly
+    # memory/filesystem adapters remain available only when explicitly
     # selected together with the narrow demo-storage override.
     CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = os.getenv(
         "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "dynamodb"
@@ -745,7 +744,7 @@ class ProductionConfig(BaseConfig):
 class TestingConfig(BaseConfig):
     TESTING = True
     CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = "memory"
-    CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = "sqlite"
+    CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = "dynamodb"
     CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND = "local"
     ANALYTICS_STORAGE_BACKEND = "memory"
     SESSION_COOKIE_SECURE = False

@@ -27,6 +27,7 @@
                 <span class="settings-mobile-label">Settings category <span class="settings-mobile-dirty" hidden>· Unsaved changes</span></span>
                 <select id="settings-category-select" class="form-control">
                     <option value="global-settings">General &amp; AI</option>
+                    <option value="ai-coaching-settings">AI Coaching Preferences</option>
                     {% if live_interview_assistance_enabled %}<option value="live-qa-settings">Live interview assistance</option>{% endif %}
                     <option value="meeting-review-settings">Interview review &amp; action plan</option>
                     <option value="privacy-sharing-settings">Privacy &amp; sharing</option>
@@ -45,6 +46,22 @@
                     <span class="scope-card-copy">
                         <span class="scope-card-title">General &amp; AI</span>
                         <span class="scope-card-description">Language and default AI performance</span>
+                    </span>
+                    <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
+                    <span class="scope-arrow" aria-hidden="true">›</span>
+                </button>
+
+                <button
+                    type="button"
+                    class="scope-card ai-coaching"
+                    data-settings-target="ai-coaching-settings"
+                    aria-controls="ai-coaching-settings"
+                    aria-pressed="false"
+                >
+                    <span class="scope-card-icon" aria-hidden="true">✨</span>
+                    <span class="scope-card-copy">
+                        <span class="scope-card-title">AI Coaching Preferences</span>
+                        <span class="scope-card-description">Answer style, response mode, and source-specific instructions</span>
                     </span>
                     <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
                     <span class="scope-arrow" aria-hidden="true">›</span>
@@ -172,6 +189,89 @@
                                     <p class="form-help">Interviewer prompts provide question context but are not scored as candidate performance.</p>
                                 </div>
                             </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="category-section" id="ai-coaching-settings" hidden>
+                        <div class="category-header ai-coaching">
+                            <div class="category-heading">
+                                <div class="category-icon">✨</div>
+                                <div>
+                                    <div class="category-eyebrow">AI preferences</div>
+                                    <h2>AI Coaching Preferences</h2>
+                                    <p>
+                                        Control how Réunia structures coaching and generated answers. These preferences are reusable
+                                        across Career Evidence Search, Mock Interview, and approved Live Interview Assistance features.
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="scope-badge">Reusable across applications</span>
+                        </div>
+
+                        <div class="category-body">
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">1</div>
+                                    <div>
+                                        <h3>Answer format</h3>
+                                        <p>Choose the default level of detail and whether answers should be ready to say or presented as coaching guidance.</p>
+                                    </div>
+                                </div>
+
+                                <div class="settings-box highlight-box">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="aiCoachingAnswerStyle">Preferred answer style</label>
+                                            <select id="aiCoachingAnswerStyle" name="aiCoachingAnswerStyle" class="form-control">
+                                                <option value="balanced" {% if not settings or settings.aiCoachingAnswerStyle == 'balanced' %}selected{% endif %}>Balanced</option>
+                                                <option value="concise" {% if settings and settings.aiCoachingAnswerStyle == 'concise' %}selected{% endif %}>Concise</option>
+                                                <option value="detailed" {% if settings and settings.aiCoachingAnswerStyle == 'detailed' %}selected{% endif %}>Detailed</option>
+                                                <option value="bullet_points" {% if settings and settings.aiCoachingAnswerStyle == 'bullet_points' %}selected{% endif %}>Bullet points</option>
+                                                <option value="step_by_step" {% if settings and settings.aiCoachingAnswerStyle == 'step_by_step' %}selected{% endif %}>Step by step</option>
+                                                <option value="action_oriented" {% if settings and settings.aiCoachingAnswerStyle == 'action_oriented' %}selected{% endif %}>Action oriented</option>
+                                                <option value="professional" {% if settings and settings.aiCoachingAnswerStyle == 'professional' %}selected{% endif %}>Professional</option>
+                                            </select>
+                                            <span class="form-help">Used as the default presentation style. Application facts and verified evidence still control the content.</span>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label" for="aiCoachingResponseMode">Response mode</label>
+                                            <select id="aiCoachingResponseMode" name="aiCoachingResponseMode" class="form-control">
+                                                <option value="ready_to_say" {% if not settings or settings.aiCoachingResponseMode == 'ready_to_say' %}selected{% endif %}>Ready-to-say answer</option>
+                                                <option value="concise_structured_action" {% if settings and settings.aiCoachingResponseMode == 'concise_structured_action' %}selected{% endif %}>Concise, structured, and action-oriented</option>
+                                                <option value="coaching" {% if settings and settings.aiCoachingResponseMode == 'coaching' %}selected{% endif %}>Coaching guidance</option>
+                                            </select>
+                                            <span class="form-help">Ready-to-say produces candidate wording; coaching mode explains how to build or improve the answer.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">2</div>
+                                    <div>
+                                        <h3>Source-specific instructions</h3>
+                                        <p>Add reusable guidance for spoken questions and clipboard text. Leave either field blank to use Réunia defaults.</p>
+                                    </div>
+                                </div>
+
+                                <div class="settings-box">
+                                    <div class="form-grid">
+                                        <div class="form-group full-span">
+                                            <label class="form-label" for="aiCoachingAudioInstructions">Audio response instructions</label>
+                                            <textarea id="aiCoachingAudioInstructions" name="aiCoachingAudioInstructions" class="form-control" rows="5" placeholder="Example: Keep spoken answers natural, under 90 seconds, and grounded in verified career evidence.">{{ settings.aiCoachingAudioInstructions if settings else '' }}</textarea>
+                                            <span class="form-help">Applied when Réunia generates coaching from microphone or speaker audio.</span>
+                                        </div>
+
+                                        <div class="form-group full-span">
+                                            <label class="form-label" for="aiCoachingClipboardInstructions">Clipboard response instructions</label>
+                                            <textarea id="aiCoachingClipboardInstructions" name="aiCoachingClipboardInstructions" class="form-control" rows="5" placeholder="Example: Answer pasted interview questions directly, then provide two evidence points I can choose from.">{{ settings.aiCoachingClipboardInstructions if settings else '' }}</textarea>
+                                            <span class="form-help">Applied when Réunia generates coaching from pasted or captured clipboard text.</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </section>

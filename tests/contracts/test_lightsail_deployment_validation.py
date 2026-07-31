@@ -222,7 +222,7 @@ class LightsailDeploymentValidationTests(unittest.TestCase):
                 timeout=1,
                 allow_demo_storage=True,
             )
-        self.assertEqual(payload["application_builder"]["durability"], "demo-only")
+        self.assertEqual(payload["application_builder"]["durability"], "mixed")
 
     def test_demo_storage_never_allows_lightsail_scale_greater_than_one(self) -> None:
         # The explicit demo-storage acknowledgement only relaxes the health
@@ -233,7 +233,7 @@ class LightsailDeploymentValidationTests(unittest.TestCase):
                 timeout=1,
                 allow_demo_storage=True,
             )
-        self.assertEqual(payload["application_builder"]["durability"], "demo-only")
+        self.assertEqual(payload["application_builder"]["durability"], "mixed")
         with self.assertRaisesRegex(validator.ValidationFailure, "expected 1"):
             validator._validate_scale({"scale": 2})
 

@@ -150,10 +150,11 @@ Hard constraints:
       question when the clarification could materially strengthen this application.
     - unsupported_claim must remain outside the resume and align with unsupported_requirements.
     - recommended_learning_or_future_action is advice for a genuine gap and must never appear as current experience.
-    Do not treat countries, languages, credentials, certifications, unfamiliar titles, transitions, or U.S. experience
-    entered in newcomer onboarding as claim evidence unless the Candidate Profile independently supports them.
+    Do not treat reusable-profile headlines, roles, year counts, skills, accomplishments, countries, languages,
+    credentials, certifications, unfamiliar titles, transitions, work authorization, or target-country experience as
+    claim evidence unless the uploaded or candidate-confirmed Candidate Profile independently supports them.
 
-NEWCOMER CAREER BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+REUSABLE CAREER PROFILE AND INTERNATIONAL BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
 {background_json}
 
 CANDIDATE PROFILE
@@ -211,7 +212,7 @@ finding. Report only the semantic finding.
 DETERMINISTIC RESULTS — SOURCE OF TRUTH
 {json.dumps(deterministic_facts, ensure_ascii=False, indent=2)}
 
-NEWCOMER CAREER BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+REUSABLE CAREER PROFILE AND INTERNATIONAL BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
 {background_json}
 
 CANDIDATE PROFILE
@@ -268,7 +269,7 @@ Rules:
   finding to confirmed_experience only when the updated profile contains a traceable CONF- evidence ID. A negative
   answer must remain an unsupported_claim or recommended_learning_or_future_action, never a resume claim.
 
-NEWCOMER CAREER BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+REUSABLE CAREER PROFILE AND INTERNATIONAL BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
 {background_json}
 
 CANDIDATE PROFILE WITH CONFIRMED EVIDENCE
@@ -321,7 +322,7 @@ Rules:
 - Preserve career_translation_assessment unless a supplied fix directly affects a finding. When it does, synchronize the
   disposition and evidence IDs, but never treat newcomer onboarding as evidence.
 
-NEWCOMER CAREER BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+REUSABLE CAREER PROFILE AND INTERNATIONAL BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
 {background_json}
 
 CANDIDATE PROFILE

@@ -92,7 +92,7 @@ SEARCH_PRIORITY_FORMULA = (
 
 @dataclass(frozen=True, slots=True)
 class CandidateJobProfile:
-    """Verified profile, evidence, preferences, and explicit eligibility facts."""
+    """Verified evidence, search preferences, and explicit eligibility facts."""
 
     target_titles: tuple[str, ...] = ()
     verified_skills: tuple[str, ...] = ()
@@ -246,11 +246,11 @@ class CandidateJobProfile:
         preferred_employment_types: tuple[str, ...] = (),
         **preference_overrides: Any,
     ) -> "CandidateJobProfile":
-        """Build discovery inputs from reusable Career Bridge records.
+        """Build discovery inputs without treating profile text as evidence.
 
-        Only candidate-confirmed or document-verified Evidence Library items
-        are admitted. Rejected and unverified statements cannot improve a fit
-        score.
+        Career Profile and Career Background values may guide stage-one search
+        preferences. Only candidate-confirmed or document-verified Career
+        Evidence Library items may support evidence-grounded Job Fit.
         """
 
         if background.candidate_profile_id != profile.id:
@@ -266,125 +266,31 @@ class CandidateJobProfile:
             if item.candidate_profile_id == profile.id
             and item.verification_status in verified_statuses
         )
-        verified_evidence = tuple(item.statement for item in verified_items)
-        background_evidence = tuple(
-            value
-            for value in (
-                background.professional_summary,
-                *(experience.summary for experience in background.experiences),
-                *(
-                    f"{education.credential} {education.field_of_study}".strip()
-                    for education in background.education
-                ),
+        references = tuple(
+            EvidenceReference(
+                record_id=item.id,
+                record_type="evidence_item",
+                field_name="statement",
+                label="Career Evidence Library · Verified evidence",
+                statement=item.statement,
+                verification_status=item.verification_status.value,
             )
-            if value
+            for item in verified_items
         )
 
-        references: list[EvidenceReference] = []
-        if profile.headline:
-            references.append(
-                EvidenceReference(
-                    record_id=profile.id,
-                    record_type="candidate_profile",
-                    field_name="headline",
-                    label="Career Profile · Headline",
-                    statement=profile.headline,
-                    verification_status="profile_record",
-                )
-            )
-        if background.professional_summary:
-            references.append(
-                EvidenceReference(
-                    record_id=background.id,
-                    record_type="career_background",
-                    field_name="professional_summary",
-                    label="Career Profile · Professional summary",
-                    statement=background.professional_summary,
-                    verification_status="profile_record",
-                )
-            )
-        for skill in background.skills:
-            references.append(
-                EvidenceReference(
-                    record_id=background.id,
-                    record_type="career_background",
-                    field_name=f"skill:{stable_text_key(skill)}",
-                    label="Career Profile · Skill",
-                    statement=skill,
-                    verification_status="profile_record",
-                )
-            )
-        for certification in background.certification_names:
-            references.append(
-                EvidenceReference(
-                    record_id=background.id,
-                    record_type="career_background",
-                    field_name=f"certification:{stable_text_key(certification)}",
-                    label="Career Profile · Certification",
-                    statement=certification,
-                    verification_status="profile_record",
-                )
-            )
-        for experience in background.experiences:
-            statement = " ".join(
-                value
-                for value in (
-                    f"{experience.title} at {experience.employer}",
-                    experience.summary,
-                )
-                if value
-            )
-            references.append(
-                EvidenceReference(
-                    record_id=experience.id,
-                    record_type="career_experience",
-                    field_name="summary",
-                    label=f"Career Profile · {experience.title} at {experience.employer}",
-                    statement=statement,
-                    verification_status="profile_record",
-                )
-            )
-        for education in background.education:
-            statement = " ".join(
-                value
-                for value in (
-                    education.credential,
-                    education.field_of_study,
-                    education.institution,
-                )
-                if value
-            )
-            references.append(
-                EvidenceReference(
-                    record_id=education.id,
-                    record_type="education_record",
-                    field_name="credential",
-                    label=f"Career Profile · {education.credential}",
-                    statement=statement,
-                    verification_status="profile_record",
-                )
-            )
-        for item in verified_items:
-            references.append(
-                EvidenceReference(
-                    record_id=item.id,
-                    record_type="evidence_item",
-                    field_name="statement",
-                    label="Career Evidence Library · Verified evidence",
-                    statement=item.statement,
-                    verification_status=item.verification_status.value,
-                )
-            )
+        overrides = dict(preference_overrides)
+        # Self-entered skills and certifications are useful discovery keywords,
+        # but they remain preference context and cannot improve Job Fit.
+        overrides.setdefault(
+            "preferred_keywords",
+            tuple(dict.fromkeys((*background.skills, *background.certification_names))),
+        )
 
         return cls(
             target_titles=profile.preferred_roles,
-            verified_skills=tuple(
-                dict.fromkeys((*background.skills, *background.certification_names))
-            ),
-            evidence_statements=tuple(
-                dict.fromkeys((*background_evidence, *verified_evidence))
-            ),
-            evidence_references=tuple(references),
+            verified_skills=(),
+            evidence_statements=tuple(item.statement for item in verified_items),
+            evidence_references=references,
             preferred_locations=(
                 preferred_locations
                 if preferred_locations is not None
@@ -392,8 +298,8 @@ class CandidateJobProfile:
             ),
             accepts_remote=accepts_remote,
             preferred_employment_types=preferred_employment_types,
-            licenses_certifications=tuple(background.certification_names),
-            **preference_overrides,
+            licenses_certifications=(),
+            **overrides,
         )
 
     @classmethod
@@ -430,7 +336,7 @@ class CandidateJobProfile:
             field_name: str,
             label: str,
             statement: str,
-            verification_status: str = "profile_record",
+            verification_status: str = "resume_source",
         ) -> None:
             text = " ".join(str(statement or "").split())
             if not text:
@@ -451,7 +357,7 @@ class CandidateJobProfile:
             record_id=profile_record_id,
             record_type="candidate_profile",
             field_name="current_summary",
-            label="Career Profile · Professional summary",
+            label="Resume source · Professional summary",
             statement=profile.current_summary,
         )
         for skill in profile.skills.all_non_language_skills():
@@ -459,7 +365,7 @@ class CandidateJobProfile:
                 record_id=profile_record_id,
                 record_type="candidate_profile",
                 field_name=f"skill:{stable_text_key(skill)}",
-                label="Career Profile · Verified skill",
+                label="Resume source · Skill",
                 statement=skill,
             )
         for language in profile.skills.languages:
@@ -467,7 +373,7 @@ class CandidateJobProfile:
                 record_id=profile_record_id,
                 record_type="candidate_profile",
                 field_name=f"language:{stable_text_key(language)}",
-                label="Career Profile · Language",
+                label="Resume source · Language",
                 statement=language,
             )
         for experience in profile.experiences:
@@ -475,7 +381,7 @@ class CandidateJobProfile:
                 record_id=experience.id,
                 record_type="career_experience",
                 field_name="role",
-                label=f"Career Profile · {experience.title} at {experience.employer}",
+                label=f"Resume source · {experience.title} at {experience.employer}",
                 statement=" ".join(
                     value
                     for value in (experience.title, experience.employer, experience.dates)
@@ -487,7 +393,7 @@ class CandidateJobProfile:
                     record_id=bullet.id,
                     record_type="evidence_item",
                     field_name="statement",
-                    label=f"Career Evidence · {experience.title} at {experience.employer}",
+                    label=f"Resume source · {experience.title} at {experience.employer}",
                     statement=bullet.text,
                     verification_status="resume_verified",
                 )
@@ -496,7 +402,7 @@ class CandidateJobProfile:
                 record_id=f"{profile_record_id}-education-{index}",
                 record_type="education_record",
                 field_name="credential",
-                label=f"Career Profile · {education.credential}",
+                label=f"Resume source · {education.credential}",
                 statement=" ".join(
                     value
                     for value in (
@@ -523,26 +429,37 @@ class CandidateJobProfile:
                 for value in (
                     target_title,
                     background.target_role,
+                    *background.preferred_roles,
                     *background.roles,
                     *background.unfamiliar_job_titles,
                 )
                 if str(value or "").strip()
             )
         )
-        certifications = tuple(
-            dict.fromkeys(
-                (*background.professional_certifications, *background.international_credentials)
-            )
-        )
+        # Reusable Career Profile credentials remain context only. A credential
+        # can affect evidence-grounded Job Fit only when it is present in the
+        # uploaded resume source or candidate-confirmed Evidence Library.
+        certifications: tuple[str, ...] = ()
         locations = (
             preferred_locations
             if preferred_locations is not None
-            else ((profile.contact.location,) if profile.contact.location else ())
+            else (
+                (profile.contact.location,)
+                if profile.contact.location
+                else (
+                    (background.current_location,)
+                    if background.current_location
+                    else ()
+                )
+            )
         )
         return cls(
             target_titles=target_titles,
+            # Profile-entered skills, accomplishments, and credentials may
+            # guide search preferences, but cannot improve evidence-grounded
+            # Job Fit without resume or evidence-library support.
             verified_skills=tuple(
-                dict.fromkeys((*profile.all_verified_skills(), *certifications))
+                dict.fromkeys(profile.all_verified_skills())
             ),
             evidence_statements=tuple(dict.fromkeys(statements)),
             evidence_references=tuple(references),
@@ -955,8 +872,8 @@ def match_discovery_requirements(
 
     Job-description text and extracted posting keywords are used solely to
     describe the requirement being tested. They are never treated as evidence.
-    Displayable strengths are emitted only when at least one concrete Career
-    Profile or Evidence Library record supports the status.
+    Displayable strengths are emitted only when at least one traceable resume
+    source or confirmed Evidence Library record supports the status.
     """
 
     verified_skill_keys = {

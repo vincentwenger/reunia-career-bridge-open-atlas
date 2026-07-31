@@ -1,9 +1,9 @@
 """Storage contracts and configuration-driven adapter selection.
 
 The Application Builder depends on these protocols rather than concrete storage
-classes. The current package provides serialized memory and DynamoDB workflow
-stores plus SQLite and DynamoDB application repositories. Additional adapters
-can be added without changing Flask routes.
+classes. The package provides serialized memory and DynamoDB workflow stores
+plus a DynamoDB application repository. Additional adapters can be added
+without changing Flask routes.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from .application_tracker import (
 from .web_state import WorkflowState
 
 WORKFLOW_STORAGE_BACKENDS = frozenset({"memory", "dynamodb"})
-APPLICATION_STORAGE_BACKENDS = frozenset({"sqlite", "dynamodb"})
+APPLICATION_STORAGE_BACKENDS = frozenset({"dynamodb"})
 SCRATCH_WORKFLOW_TTL_CONFIG_KEY = "CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS"
 APPLICATION_WORKFLOW_TTL_CONFIG_KEY = "CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS"
 LEGACY_WORKFLOW_TTL_CONFIG_KEY = "CAREER_BRIDGE_WORKFLOW_TTL_SECONDS"
@@ -246,6 +246,7 @@ class ApplicationStore(Protocol):
         company: str,
         role: str,
         job_url: str = "",
+        interview_audience: str = "",
         application_date: str = "",
         status: str = "draft",
         resume_version: str = "Not started",
@@ -291,6 +292,7 @@ class ApplicationStore(Protocol):
         upcoming_event_date: str = "",
         upcoming_event_type: str = "",
         job_description: str | None = None,
+        interview_audience: str | None = None,
     ) -> ApplicationRecord | None: ...
 
     def update_builder_progress(
@@ -358,7 +360,7 @@ def configured_application_backend(config: Mapping[str, Any]) -> str:
     return _configured_backend(
         config,
         key="CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND",
-        default="sqlite",
+        default="dynamodb",
         allowed=APPLICATION_STORAGE_BACKENDS,
     )
 
@@ -406,21 +408,10 @@ def create_application_store(
     """Create the application adapter selected by application configuration."""
 
     backend = configured_application_backend(config)
-    if backend == "sqlite":
-        from .application_tracker import SQLiteApplicationStore
-
-        database_path = str(config.get("APPLICATIONS_DB_PATH") or "").strip()
-        if not database_path:
-            raise StorageBackendConfigurationError(
-                "APPLICATIONS_DB_PATH is required when "
-                "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=sqlite."
-            )
-        return SQLiteApplicationStore(database_path)
-
     if document_store is None:
         from .object_storage import create_document_store
 
-        document_store = create_document_store(config, require_s3=True)
+        document_store = create_document_store(config, require_s3=False)
     factory = _dynamodb_factory("create_dynamodb_application_store", backend)
     store = factory(config=config, document_store=document_store)
     if not isinstance(store, ApplicationStore):

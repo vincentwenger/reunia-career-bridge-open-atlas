@@ -1,0 +1,21 @@
+AI Coaching Preferences settings migration
+==========================================
+
+Implemented
+- Added Settings -> AI Coaching Preferences.
+- Moved preferred answer style, response mode, audio response instructions,
+  and clipboard response instructions into user settings.
+- Existing values in legacy assistant_context records are used as migration
+  fallbacks until the user saves Settings.
+- Career Profile no longer renders, reads, or writes these preferences.
+- Older Career Profile clients cannot overwrite the Settings-owned values.
+- Existing Live Interview Assistance and Mock Interview services receive the
+  new settings through the compatibility context adapter.
+- Added English/French UI labels and validation.
+
+Validation
+- Python compile: passed.
+- JavaScript syntax checks: passed.
+- Jinja parsing for settings.html and knowledge.html: passed.
+- Runtime migration/separation test with an in-memory repository: passed.
+- Contract suite: 166 passed, 2 skipped.

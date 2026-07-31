@@ -1,0 +1,8 @@
+DynamoDB-only application storage migration
+
+- The local application repository implementation was removed.
+- Application storage accepts only the DynamoDB backend.
+- Development, testing, and production default to DynamoDB application records.
+- Flask tests use the production DynamoDB adapter with an isolated in-memory table resource.
+- Local database path configuration and startup path creation were removed.
+- The production demo override cannot downgrade application records away from DynamoDB.

@@ -44,9 +44,9 @@ PERSISTENT_STORAGE_STATUS = {
 }
 DEMO_STORAGE_STATUS = {
     "workflow_storage": "memory",
-    "application_storage": "sqlite",
+    "application_storage": "dynamodb",
     "document_storage": "local",
-    "durability": "demo-only",
+    "durability": "mixed",
     "multi_worker_safe": False,
     "multi_node_safe": False,
 }
@@ -460,7 +460,7 @@ def _validate_health(
         return payload
     if storage_status == DEMO_STORAGE_STATUS:
         raise ValidationFailure(
-            "Health endpoint reports demo-only Career Bridge storage. Production "
+            "Health endpoint reports mixed-durability Career Bridge storage. Production "
             "validation requires DynamoDB/S3 unless --allow-demo-storage is supplied."
         )
     raise ValidationFailure(
@@ -690,7 +690,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION"
         ),
         help=(
-            "Accept demo-only memory/SQLite/local storage. This should be used only "
+            "Accept demo workflow-memory/DynamoDB/local-document storage. Use this only "
             "with the explicit production demo override."
         ),
     )
@@ -740,7 +740,7 @@ def main(argv: Iterable[str] | None = None) -> int:
             allow_demo_storage=args.allow_demo_storage,
         )
         durability = health["application_builder"]["durability"]
-        demo_storage = durability == "demo-only"
+        demo_storage = health["application_builder"] == DEMO_STORAGE_STATUS
         print(
             "PASS  /health returned 200, status=ok, and approved storage "
             f"configuration ({durability})."

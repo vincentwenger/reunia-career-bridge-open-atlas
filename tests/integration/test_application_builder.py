@@ -164,9 +164,9 @@ class ApplicationBuilderIntegrationTests(unittest.TestCase):
                 "services": ["reunia", "application-builder"],
                 "application_builder": {
                     "workflow_storage": "memory",
-                    "application_storage": "sqlite",
+                    "application_storage": "dynamodb",
                     "document_storage": "local",
-                    "durability": "demo-only",
+                    "durability": "mixed",
                     "multi_worker_safe": False,
                     "multi_node_safe": False,
                 },
@@ -178,18 +178,11 @@ class ApplicationBuilderIntegrationTests(unittest.TestCase):
             create_application("testing")
 
         warning = "\n".join(captured.output)
-        self.assertIn("Application Builder persistence:", warning)
-        self.assertIn("- workflow backend: process memory", warning)
-        self.assertIn("- application backend: SQLite", warning)
-        self.assertIn("- database path: :memory:", warning)
-        self.assertIn(
-            "- safe only with one Gunicorn worker and Lightsail scale 1",
-            warning,
-        )
-        self.assertIn(
-            "- records may be lost during container replacement",
-            warning,
-        )
+        self.assertIn("Application Builder storage configured", warning)
+        self.assertIn("workflow=memory", warning)
+        self.assertIn("applications=dynamodb", warning)
+        self.assertIn("documents=local", warning)
+        self.assertIn("not fully durable", warning)
 
     def test_builder_stores_are_initialized_once_per_app(self) -> None:
         workflow_store = self.app.extensions["career_bridge_workflow_store"]

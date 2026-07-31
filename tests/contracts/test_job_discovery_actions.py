@@ -54,6 +54,13 @@ APPLICATION_TRACKER = (
     / "resume_tailor"
     / "application_tracker.py"
 )
+DYNAMODB_STORAGE = (
+    ROOT
+    / "products"
+    / "resume_taylor"
+    / "resume_tailor"
+    / "dynamodb_storage.py"
+)
 
 
 class JobDiscoveryActionContractTests(unittest.TestCase):
@@ -184,9 +191,9 @@ class JobDiscoveryActionContractTests(unittest.TestCase):
             and isinstance(node.target, ast.Name)
         }
         self.assertIn("source_job_id", annotated_names)
-        source = APPLICATION_TRACKER.read_text(encoding="utf-8")
-        self.assertIn("applications_owner_source_job_idx", source)
-        self.assertIn("WHERE source_job_id <> ''", source)
+        source = DYNAMODB_STORAGE.read_text(encoding="utf-8")
+        self.assertIn('return f"{_SOURCE_JOB_PREFIX}{source_job_id}"', source)
+        self.assertIn('ConditionExpression="attribute_not_exists(#storage_key)"', source)
 
 
 if __name__ == "__main__":

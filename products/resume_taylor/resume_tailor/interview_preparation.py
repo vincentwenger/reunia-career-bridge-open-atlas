@@ -162,16 +162,28 @@ def build_interview_preparation_prompt(
     job_description: str,
     evidence: VerifiedEvidenceBundle,
     resume_findings: ResumeFindingsSnapshot,
+    interview_audience: str = "",
+    career_profile_context: dict[str, str] | None = None,
 ) -> str:
+    profile_json = json.dumps(
+        career_profile_context or {}, ensure_ascii=False, indent=2, sort_keys=True
+    )
     return f"""Build the interview preparation workspace below.
 
 APPLICATION
 Company: {company.strip() or 'Not specified'}
 Target role: {role.strip() or 'Not specified'}
+Interview audience: {interview_audience.strip() or 'Not specified'}
 
 TARGET JOB DESCRIPTION
 ---
 {normalize_job_description(job_description)}
+---
+
+REUSABLE CAREER PROFILE — CONTEXT ONLY
+Use this to choose relevant topics, explain international background, respect career goals and constraints, and tailor questions to the candidate's direction. It is not verified evidence. Never turn an accomplishment, skill, credential, title, year count, or work-authorization statement from this section into a candidate claim unless a VERIFIED CANDIDATE EVIDENCE ID supports it.
+---
+{profile_json}
 ---
 
 VERIFIED CANDIDATE EVIDENCE
@@ -371,11 +383,18 @@ def build_verified_evidence_bundle(
 
 
 def job_description_fingerprint(
-    job_description: str, *, company: str = "", role: str = ""
+    job_description: str,
+    *,
+    company: str = "",
+    role: str = "",
+    interview_audience: str = "",
+    career_profile_fingerprint: str = "",
 ) -> str:
     payload = {
         "company": " ".join(company.split()),
         "role": " ".join(role.split()),
+        "interview_audience": " ".join(interview_audience.split()),
+        "career_profile_fingerprint": str(career_profile_fingerprint or "").strip(),
         "job_description": normalize_job_description(job_description),
     }
     return hashlib.sha256(

@@ -24,7 +24,7 @@
     <div>
       <span class="eyebrow">Application-specific workspace</span>
       <h2 id="interview-application-title">Choose the job application</h2>
-      <p>Each workspace stays attached to one company, role, job description, and verified evidence set.</p>
+      <p>Each workspace stays attached to one company, target role, job posting, interview audience, and verified evidence set.</p>
     </div>
   </div>
 
@@ -57,6 +57,18 @@
 </section>
 
 {% if selected_application %}
+<section class="card interview-application-context" aria-label="Selected application interview context">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">Application interview context</span>
+      <h2>{{ selected_application.role }} at {{ selected_application.company }}</h2>
+      <p><strong>Interview audience:</strong> {{ selected_application.interview_audience or 'Not specified yet' }}</p>
+      {% if selected_application.job_url %}<p><a href="{{ selected_application.job_url }}" target="_blank" rel="noopener noreferrer">Open saved job posting</a></p>{% endif %}
+    </div>
+    <a class="button secondary" href="{{ url_for('application_builder.index', tab='applications') }}#application-{{ selected_application.id }}">Edit application context</a>
+  </div>
+</section>
+
 <section class="interview-readiness-grid" aria-label="Preparation inputs">
   <article class="card interview-readiness-card {{ 'is-ready' if selected_application.job_description else 'is-missing' }}">
     <span class="interview-readiness-icon" aria-hidden="true">{{ '✓' if selected_application.job_description else '!' }}</span>
@@ -64,6 +76,15 @@
       <span>Target job description</span>
       <strong>{{ 'Ready' if selected_application.job_description else 'Required' }}</strong>
       <p>{% if selected_application.job_description %}{{ selected_application.job_description|length }} characters saved for this role.{% else %}Add the posting in the application dashboard or Career and Job Setup.{% endif %}</p>
+    </div>
+  </article>
+
+  <article class="card interview-readiness-card {{ 'is-ready' if reusable_career_profile else 'is-neutral' }}">
+    <span class="interview-readiness-icon" aria-hidden="true">{{ '✓' if reusable_career_profile else '○' }}</span>
+    <div>
+      <span>Reusable Career Profile</span>
+      <strong>{{ reusable_career_profile|length }} field{% if reusable_career_profile|length != 1 %}s{% endif %} connected</strong>
+      <p>{% if reusable_career_profile %}Guides role focus, international-background explanations, goals, and constraints. It does not replace verified evidence.{% else %}Complete Career Profile to personalize preparation across applications.{% endif %}</p>
     </div>
   </article>
 
@@ -91,7 +112,7 @@
     <div>
       <span>Preparation workspace</span>
       <strong>{% if preparation_is_stale %}Update recommended{% elif preparation %}Generated{% else %}Not generated{% endif %}</strong>
-      <p>{% if preparation_is_stale %}The job description, verified evidence, or connected resume findings changed after this workspace was generated.{% elif preparation_record %}Last generated {{ preparation_record.updated_at }}.{% else %}Generate the first evidence-backed workspace for this application.{% endif %}</p>
+      <p>{% if preparation_is_stale %}The job description, Career Profile, verified evidence, or connected resume findings changed after this workspace was generated.{% elif preparation_record %}Last generated {{ preparation_record.updated_at }}.{% else %}Generate the first evidence-backed workspace for this application.{% endif %}</p>
     </div>
   </article>
 </section>
@@ -100,7 +121,7 @@
   <div class="interview-generation-copy">
     <span class="eyebrow">Evidence protection</span>
     <h2 id="interview-generate-title">Generate preparation for {{ selected_application.role }}</h2>
-    <p>Candidate claims are restricted to verified evidence. The workspace also directly uses the saved resume evidence matrix, evidence-review warnings, Career Translation Assessment, report weaknesses, alignment changes, and excluded or questioned claims.</p>
+    <p>Candidate claims are restricted to verified evidence. The workspace also uses the reusable Career Profile for focus and career context, plus the saved resume evidence matrix, evidence-review warnings, Career Translation Assessment, report weaknesses, alignment changes, and excluded or questioned claims.</p>
     <ul class="interview-protection-list">
       <li>No unsupported experience or credentials</li>
       <li>No immigration or visa questions</li>
@@ -141,7 +162,7 @@
     <div>
       <span class="eyebrow">{{ selected_application.company }} · {{ selected_application.role }}</span>
       <h2 id="interview-workspace-title">Interview preparation workspace</h2>
-      <p>Generated from the saved job description, {{ preparation_record.evidence_source_label if preparation_record else evidence.source_label }}, and the application’s structured resume findings.</p>
+      <p>Generated from the saved job description, reusable Career Profile context, {{ preparation_record.evidence_source_label if preparation_record else evidence.source_label }}, and the application’s structured resume findings.</p>
     </div>
     {% if preparation_is_stale %}<span class="interview-stale-badge">Inputs changed · regenerate</span>{% endif %}
   </header>

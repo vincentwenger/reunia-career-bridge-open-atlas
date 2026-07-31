@@ -110,7 +110,7 @@ class JobDiscoveryEvidenceProvenanceTests(unittest.TestCase):
             verification_status=EvidenceVerificationStatus.UNVERIFIED,
         )
 
-    def test_displayed_strengths_reference_actual_verified_records(self) -> None:
+    def test_displayed_strengths_use_only_confirmed_evidence_records(self) -> None:
         profile = CandidateJobProfile.from_career_records(
             self.profile_record,
             self.background,
@@ -120,25 +120,20 @@ class JobDiscoveryEvidenceProvenanceTests(unittest.TestCase):
         ranked = assess_analyzed_job(discovered_job(), profile, analysis())
         matches = {item.requirement_id: item for item in ranked.fit_snapshot.evidence_matches}
 
-        self.assertIn("sql", matches)
+        self.assertNotIn("sql", matches)
         self.assertIn("regulatory", matches)
         self.assertNotIn("snowflake", matches)
         self.assertNotIn("kubernetes", matches)
         self.assertIn("Direct Snowflake experience", ranked.fit_snapshot.unsupported_requirements)
         self.assertIn("Kubernetes", ranked.fit_snapshot.unsupported_requirements)
 
-        allowed_record_ids = {
-            self.profile_record.id,
-            self.background.id,
-            "experience-1",
-            self.verified_item.id,
-        }
+        allowed_record_ids = {self.verified_item.id}
         for match in matches.values():
             self.assertTrue(match.evidence)
             for reference in match.evidence:
                 self.assertIn(reference.record_id, allowed_record_ids)
                 self.assertNotEqual("evidence-unverified", reference.record_id)
-                self.assertIn(reference.surface, {"Career Profile", "Career Evidence Library"})
+                self.assertEqual("Career Evidence Library", reference.surface)
 
     def test_job_description_keyword_alone_cannot_create_strength(self) -> None:
         empty_profile = CandidateJobProfile()
@@ -252,4 +247,5 @@ class ResumeWorkflowDiscoveryProfileTests(unittest.TestCase):
         self.assertIn("experience-1", record_ids)
         self.assertIn("Senior Data Platform Engineer", discovery_profile.target_titles)
         self.assertIn("SQL", discovery_profile.verified_skills)
-        self.assertIn("AWS Certification", discovery_profile.licenses_certifications)
+        self.assertNotIn("AWS Certification", discovery_profile.licenses_certifications)
+        self.assertFalse(any("AWS Certification" in item.statement for item in discovery_profile.evidence_references))

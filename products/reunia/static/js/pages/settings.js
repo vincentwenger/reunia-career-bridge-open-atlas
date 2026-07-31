@@ -19,6 +19,10 @@ document.addEventListener('DOMContentLoaded', function () {
             title: 'General & AI',
             description: 'Set your application language and the default AI performance level used across Réunia.'
         },
+        'ai-coaching-settings': {
+            title: 'AI Coaching Preferences',
+            description: 'Choose the default answer style, response mode, and reusable audio or clipboard instructions.'
+        },
         'live-qa-settings': {
             title: 'Live interview assistance',
             description: 'Choose approved input sources, feed update frequency, and temporary history retention.'
@@ -267,6 +271,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const documentRetentionDays = parseInt(document.getElementById('documentRetentionDays').value, 10);
         const shareDefaultExpirationDays = parseInt(document.getElementById('shareDefaultExpirationDays').value, 10);
         const meetingSummaryDetail = document.getElementById('meetingSummaryDetail').value;
+        const coachingAnswerStyle = document.getElementById('aiCoachingAnswerStyle')?.value || 'balanced';
+        const coachingResponseMode = document.getElementById('aiCoachingResponseMode')?.value || 'ready_to_say';
 
         if (retentionHoursInput && (isNaN(retentionHoursValue) || retentionHoursValue < 1 || retentionHoursValue > 24)) {
             showToast('error', 'Message expiration must be between 1 and 24 hours.');
@@ -279,6 +285,20 @@ document.addEventListener('DOMContentLoaded', function () {
             showToast('error', 'Please select a valid answer update frequency.');
             showSettingsScope('live-qa-settings');
             updateFrequencyInput.focus();
+            return;
+        }
+
+        if (!['balanced', 'concise', 'detailed', 'bullet_points', 'step_by_step', 'action_oriented', 'professional'].includes(coachingAnswerStyle)) {
+            showToast('error', translate('Please select a valid answer style.'));
+            showSettingsScope('ai-coaching-settings');
+            document.getElementById('aiCoachingAnswerStyle')?.focus();
+            return;
+        }
+
+        if (!['ready_to_say', 'concise_structured_action', 'coaching'].includes(coachingResponseMode)) {
+            showToast('error', translate('Please select a valid response mode.'));
+            showSettingsScope('ai-coaching-settings');
+            document.getElementById('aiCoachingResponseMode')?.focus();
             return;
         }
 
@@ -320,7 +340,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const settingsData = {
             language: languageValue,
-            aiModelPreset: document.getElementById('aiModelPreset').value,
+            aiCoachingAnswerStyle: coachingAnswerStyle,
+            aiCoachingResponseMode: coachingResponseMode,
+            aiCoachingAudioInstructions: document.getElementById('aiCoachingAudioInstructions')?.value.trim() || '',
+            aiCoachingClipboardInstructions: document.getElementById('aiCoachingClipboardInstructions')?.value.trim() || '',
             scorecard_source: scorecardSourceValue,
             meetingRetentionDays,
             documentRetentionDays,
@@ -332,6 +355,10 @@ document.addEventListener('DOMContentLoaded', function () {
             meetingExtractActionItems: document.getElementById('meetingExtractActionItems').checked,
             meetingGenerateScorecard: document.getElementById('meetingGenerateScorecard').checked
         };
+        const aiModelPresetInput = document.getElementById('aiModelPreset');
+        if (aiModelPresetInput) {
+            settingsData.aiModelPreset = aiModelPresetInput.value;
+        }
         if (retentionHoursInput) {
             settingsData.retentionHours = retentionHoursValue;
             settingsData.liveQaAnswerUpdateFrequency = answerUpdateFrequency;

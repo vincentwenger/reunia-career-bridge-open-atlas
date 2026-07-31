@@ -2,7 +2,7 @@
 
 The imported Resume Taylor product remains the delivery adapter. These definitions
 keep its six-step workflow and multi-application dashboard aligned with the shared
-``JobApplication`` aggregate without making the core depend on Flask or SQLite.
+``JobApplication`` aggregate without making the core depend on Flask or a storage adapter.
 """
 
 from __future__ import annotations

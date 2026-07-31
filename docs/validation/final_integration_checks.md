@@ -34,7 +34,7 @@ It then calls the production `build_interview_preparation_prompt(...)`, parses t
 
 ### Interview scorecard to Career Action Plan
 
-The test executes the production `ActionService`, `InMemoryActionRepository`, `SQLiteApplicationStore`, and shared grounding validator. It verifies that:
+The test executes the production `ActionService`, `InMemoryActionRepository`, `DynamoDBApplicationStore`, and shared grounding validator. It verifies that:
 
 - A weak answer creates an application-linked review action.
 - An overall score below 70 creates another application-linked mock-interview action.

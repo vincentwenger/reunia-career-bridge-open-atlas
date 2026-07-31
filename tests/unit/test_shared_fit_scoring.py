@@ -302,7 +302,8 @@ class SharedFitScoringTests(unittest.TestCase):
         )
 
         self.assertEqual(("Platform Engineer",), profile.target_titles)
-        self.assertIn("Python", profile.verified_skills)
+        self.assertNotIn("Python", profile.verified_skills)
+        self.assertIn("Python", profile.preferred_keywords)
         self.assertIn("Delivered regulatory reporting systems", profile.evidence_statements)
         self.assertNotIn("Invented Kubernetes leadership", profile.evidence_statements)
         self.assertEqual(("Portland, OR",), profile.preferred_locations)

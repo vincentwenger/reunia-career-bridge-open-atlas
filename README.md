@@ -28,19 +28,25 @@ See [`docs/job_discovery.md`](docs/job_discovery.md) for configuration and adapt
 ## Application Builder storage boundary
 
 Application Builder routes depend on the `WorkflowStore` and `ApplicationStore`
-protocols in `products/resume_taylor/resume_tailor/storage.py`. Adapter selection
-is controlled by:
+protocols in `products/resume_taylor/resume_tailor/storage.py`. Application
+records always use the production `DynamoDBApplicationStore`; there is no local
+database application adapter or local database fallback.
+
+```text
+CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=dynamodb
+CAREER_BRIDGE_APPLICATIONS_TABLE_NAME=career-bridge-applications
+```
+
+Workflow state may use process memory for isolated development or DynamoDB for
+durable shared execution:
 
 ```text
 CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND=memory|dynamodb
-CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=sqlite|dynamodb
+CAREER_BRIDGE_WORKFLOWS_TABLE_NAME=career-bridge-workflows
 ```
 
-The workflow adapter supports process memory or a versioned DynamoDB repository.
-Both adapters serialize and detach state on load/save, so routes cannot rely on
-shared mutable Python references. Application records can use SQLite or the
-production DynamoDB repository. Document bytes and large JSON snapshots use a
-separate `CareerBridgeObjectStore` selected with:
+Document bytes and large JSON snapshots use a separate
+`CareerBridgeObjectStore`:
 
 ```text
 CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND=local|s3
@@ -48,60 +54,23 @@ CAREER_BRIDGE_DOCUMENTS_BUCKET=career-bridge-documents
 CAREER_BRIDGE_DOCUMENTS_PREFIX=career-bridge
 ```
 
-DynamoDB application storage requires `CAREER_BRIDGE_APPLICATIONS_TABLE_NAME`.
-DynamoDB workflow storage requires `CAREER_BRIDGE_WORKFLOWS_TABLE_NAME`. Either
-DynamoDB adapter requires S3 document storage, and startup fails rather than
-falling back to SQLite, memory, or ephemeral local files when configuration is
-incomplete.
-
-When `APP_ENV=production`, `ProductionConfig` selects DynamoDB/DynamoDB/S3 as
-the baseline and Réunia requires the complete durable combination:
-
-```text
-CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=dynamodb
-CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND=dynamodb
-CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND=dynamodb
-CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND=s3
-CAREER_BRIDGE_APPLICATIONS_TABLE_NAME=...
-CAREER_BRIDGE_WORKFLOWS_TABLE_NAME=...
-CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME=...
-CAREER_BRIDGE_DOCUMENTS_BUCKET=...
-```
-
-The in-memory workflow and SQLite application repositories are therefore not
-production defaults and are never selected in a normal production startup. They
-remain only as development/testing adapters and for the narrow, explicit
-`CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=true` override. That override
-does not relax any other Réunia production checks and emits a prominent warning
-that the deployment is demo-only, single-worker/single-node, and vulnerable to
-container-replacement data loss.
+Production requires the complete DynamoDB/DynamoDB/S3 combination and explicit
+resource names. Startup fails when the application backend is anything other
+than DynamoDB. The demo override may relax workflow or document durability, but
+it cannot downgrade application records away from DynamoDB.
 
 The application table uses `owner_id` (String) as its partition key and
 `storage_key` (String) as its sort key. Applications created from discovery also
 write `SOURCE_JOB#<discovered_job_id>` as a conditional owner-scoped link, which
-prevents duplicate workspaces for the same result. DynamoDB retains searchable metadata,
-S3 object keys, fingerprints, and filenames. Uploaded source resumes, final DOCX
-and PDF resumes, resume findings, interview-preparation snapshots, and impact
-snapshot details are stored outside DynamoDB. Existing legacy inline DynamoDB
-items remain readable so they can be migrated safely.
+prevents duplicate workspaces for the same result. DynamoDB retains searchable
+metadata, object-storage keys, fingerprints, and filenames. Uploaded source
+resumes, final DOCX and PDF resumes, resume findings, interview-preparation
+snapshots, and impact snapshot details are stored outside DynamoDB.
 
-The workflow table uses `workflow_id` (String) as its partition key. The value is
-a SHA-256 digest of the browser workflow key, so owner/session identifiers are
-not stored directly. Scratch workflows receive a sliding DynamoDB TTL through
-`expires_at`; application-linked workflows omit `expires_at` and are retained by
-default until explicit deletion. The configurable scratch TTL is
-`CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS` (eight hours by default), while
-`CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS=0` means retained. DynamoDB
-retains `workflow_type`, `retention_policy`, `version`, `fingerprint`,
-`state_json_key`, `updated_at`, and `updated_by_request`; canonical serialized
-workflow state is stored in S3. Every mutation must supply the version loaded at
-request start and the current Réunia request ID. DynamoDB conditionally matches
-that version, increments it, and records the request ID in the same atomic
-update. An overlapping browser request receives a recoverable HTTP 409 response
-and must reload the latest state.
-Scratch workflow JSON uses the separate S3 prefix
-`career-bridge/workflow-state/scratch/` so a lifecycle rule can clean objects
-left behind when DynamoDB TTL deletes their metadata.
+The workflow table uses `workflow_id` (String) as its partition key. Scratch
+workflows receive a sliding DynamoDB TTL through `expires_at`; application-linked
+workflows are retained by default until explicit deletion. Every mutation uses
+optimistic concurrency and records the Réunia request ID.
 
 ## Run the tests
 

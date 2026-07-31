@@ -59,11 +59,11 @@ def _load_runtime_modules():
         InMemoryActionRepository,
     )
     from meeting_assistant.services.action_service import ActionService  # noqa: PLC0415
-    from products.resume_taylor.resume_tailor.application_tracker import (  # noqa: PLC0415
-        SQLiteApplicationStore,
+    from tests.helpers.dynamodb_application_store import (  # noqa: PLC0415
+        make_application_store,
     )
 
-    return ActionService, InMemoryActionRepository, SQLiteApplicationStore
+    return ActionService, InMemoryActionRepository, make_application_store
 
 
 class _TranscriptService:
@@ -81,12 +81,12 @@ class _EmptyWorkflowStore:
 
 
 def main() -> int:
-    ActionService, InMemoryActionRepository, SQLiteApplicationStore = (
+    ActionService, InMemoryActionRepository, make_application_store = (
         _load_runtime_modules()
     )
 
     owner_id = "scorecard-action-integration-user"
-    application_store = SQLiteApplicationStore(":memory:")
+    application_store = make_application_store()
     application = application_store.create(
         owner_id,
         company="Northwest Systems",

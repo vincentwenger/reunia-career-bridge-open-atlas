@@ -41,16 +41,32 @@
     data-materials-endpoint="{{ request.script_root }}/api/career/application-materials"
     data-context-storage-scope="{{ assistant_context_storage_scope | default(session.get('user_id') or 'default') }}"
     data-context-enabled="{{ 'true' if assistant_context_enabled | default(true) else 'false' }}"
+    data-profile-professional-headline="{{ assistant_context_professional_headline | default('') | e }}"
+    data-profile-current-role="{{ assistant_context_current_role | default('') | e }}"
+    data-profile-years-experience="{{ assistant_context_years_experience | default('') | e }}"
+    data-profile-current-location="{{ assistant_context_current_location | default('') | e }}"
+    data-profile-preferred-roles="{{ assistant_context_preferred_roles | default('') | e }}"
+    data-profile-industries="{{ assistant_context_industries | default('') | e }}"
+    data-profile-core-skills="{{ assistant_context_core_skills | default('') | e }}"
+    data-profile-key-accomplishments="{{ assistant_context_key_accomplishments | default('') | e }}"
+    data-profile-countries-worked="{{ assistant_context_countries_worked | default('') | e }}"
+    data-profile-languages="{{ assistant_context_languages | default('') | e }}"
+    data-profile-target-country="{{ assistant_context_target_country | default('') | e }}"
+    data-profile-target-country-experience="{{ assistant_context_target_country_experience | default('') | e }}"
+    data-profile-international-credentials="{{ assistant_context_international_credentials | default('') | e }}"
+    data-profile-certifications="{{ assistant_context_certifications | default('') | e }}"
+    data-profile-titles-needing-translation="{{ assistant_context_titles_needing_translation | default('') | e }}"
+    data-profile-career-transition="{{ assistant_context_career_transition | default('') | e }}"
+    data-profile-work-preferences="{{ assistant_context_work_preferences | default('') | e }}"
+    data-profile-relocation-preferences="{{ assistant_context_relocation_preferences | default('') | e }}"
+    data-profile-work-authorization="{{ assistant_context_work_authorization | default('') | e }}"
+    data-profile-career-goals="{{ assistant_context_career_goals | default('') | e }}"
+    data-profile-constraints="{{ assistant_context_constraints | default('') | e }}"
     data-context-company="{{ assistant_context_company | default('') | e }}"
     data-context-reference-link="{{ assistant_context_reference_link | default('') | e }}"
     data-context-role="{{ assistant_context_role | default('') | e }}"
     data-context-type="{{ assistant_context_type | default('') | e }}"
     data-context-domain="{{ assistant_context_domain | default('') | e }}"
-    data-context-audience="{{ assistant_context_audience | default('') | e }}"
-    data-context-answer-style="{{ assistant_context_answer_style | default('') | e }}"
-    data-context-response-mode="{{ assistant_context_response_mode | default('ready_to_say') | e }}"
-    data-context-audio-response-instructions="{{ assistant_context_audio_response_instructions | default('') | e }}"
-    data-context-clipboard-response-instructions="{{ assistant_context_clipboard_response_instructions | default('') | e }}"
     data-context-objective="{{ assistant_context_objective | default('') | e }}"
     data-context-free-text="{{ assistant_context_free_text | default('') | e }}"
 >
@@ -136,7 +152,7 @@
             <span class="preparation-subnav-icon" aria-hidden="true">✦</span>
             <span>
                 <strong>Career Profile</strong>
-                <small>Reusable and application-specific guidance</small>
+                <small>Reusable professional and international background</small>
             </span>
         </a>
         <a href="{{ request.script_root }}/interview-preparation" class="preparation-subnav-link {% if preparation_view == 'search' %}active{% endif %}" {% if preparation_view == 'search' %}aria-current="page"{% endif %}>
@@ -458,231 +474,185 @@
     {% if preparation_view == 'context' %}
     <section class="preparation-view context-workspace" id="ai-context-view" aria-labelledby="aiContextTitle">
         <form id="assistantContextForm">
-            <div class="context-layout">
+            <div class="context-layout career-profile-layout">
                 <main class="context-main-column">
-                    <div class="context-scope-divider"><span>Applies across applications</span></div>
-
-                    <section class="workspace-card" aria-labelledby="aiContextTitle">
+                    <section class="workspace-card career-profile-intro-card" aria-labelledby="aiContextTitle">
                         <div class="workspace-card-header context-card-heading">
                             <div>
-                                <h2 id="aiContextTitle">Your default context</h2>
-                                <p>These details are reused across applications unless application-specific guidance overrides them.</p>
+                                <p class="section-eyebrow">Reusable career foundation</p>
+                                <h2 id="aiContextTitle">Your professional profile</h2>
+                                <p>Enter information that stays true across job applications. Target companies, job postings, interviewers, and application-specific instructions belong in the Application Workspace.</p>
                             </div>
                             <label class="context-enabled">
                                 <input type="checkbox" id="useAssistantContext" name="use_context" value="true" {% if assistant_context_enabled | default(true) %}checked{% endif %}>
-                                <span>Use context in AI requests</span>
+                                <span>Use this profile in Career Bridge AI features</span>
                             </label>
                         </div>
+                    </section>
 
+                    <section class="workspace-card career-profile-section" aria-labelledby="professionalIdentityTitle">
+                        <div class="workspace-card-header">
+                            <div>
+                                <h2 id="professionalIdentityTitle">Professional identity</h2>
+                                <p>Used to understand your level, professional direction, and the roles and industries that fit your background.</p>
+                            </div>
+                        </div>
+                        <div class="form-grid context-form-grid">
+                            <label class="form-field context-full-width-field">
+                                <span>Professional headline</span>
+                                <input type="text" id="profileProfessionalHeadline" name="professional_headline" value="{{ assistant_context_professional_headline | default('') }}" placeholder="Example: Software engineering leader specializing in financial regulatory platforms">
+                                <small>A short reusable description of your professional identity.</small>
+                            </label>
+                            <label class="form-field">
+                                <span>Current or most recent role</span>
+                                <input type="text" id="profileCurrentRole" name="current_role" value="{{ assistant_context_current_role | default('') }}" placeholder="Example: Lead Software Engineer" autocomplete="organization-title">
+                                <small>Helps Career Bridge understand your current career level.</small>
+                            </label>
+                            <label class="form-field">
+                                <span>Years of professional experience</span>
+                                <input type="text" id="profileYearsExperience" name="years_experience" value="{{ assistant_context_years_experience | default('') }}" placeholder="Example: 15 years">
+                                <small>Use an approximate value when your experience spans several fields.</small>
+                            </label>
+                            <label class="form-field">
+                                <span>Current location</span>
+                                <input type="text" id="profileCurrentLocation" name="current_location" value="{{ assistant_context_current_location | default('') }}" placeholder="Example: Portland, Oregon, United States" autocomplete="address-level2">
+                                <small>Supports location and relocation decisions without tying the profile to one job.</small>
+                            </label>
+                            <label class="form-field">
+                                <span>Industries</span>
+                                <textarea id="profileIndustries" name="industries" rows="3" placeholder="Example: Banking, financial technology, regulatory reporting">{{ assistant_context_industries | default('') }}</textarea>
+                                <small>List industries where you have experience or credible domain knowledge.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Preferred roles</span>
+                                <textarea class="context-expanded-textarea" id="profilePreferredRoles" name="preferred_roles" rows="3" placeholder="Example: Lead Software Engineer, Data Platform Engineer, IT Audit Manager">{{ assistant_context_preferred_roles | default('') }}</textarea>
+                                <small>Used later for job discovery, fit ranking, career translation, and interview preparation.</small>
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="workspace-card career-profile-section" aria-labelledby="skillsEvidenceTitle">
+                        <div class="workspace-card-header">
+                            <div>
+                                <h2 id="skillsEvidenceTitle">Skills and career evidence</h2>
+                                <p>Capture reusable strengths. Detailed proof, documents, and source records should still be stored in the Career Evidence Library.</p>
+                            </div>
+                        </div>
+                        <div class="form-grid context-form-grid">
+                            <label class="form-field context-full-width-field">
+                                <span>Core skills, tools, and domain knowledge</span>
+                                <textarea id="profileCoreSkills" name="core_skills" rows="5" placeholder="Example: SQL, Python, Oracle, AWS, regulatory reporting, IT controls, technical leadership">{{ assistant_context_core_skills | default('') }}</textarea>
+                                <small>Include only skills you can support through your experience, resume, or evidence.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Key accomplishments</span>
+                                <textarea id="profileKeyAccomplishments" name="key_accomplishments" rows="6" placeholder="Add reusable achievements, one per line. Include scope or results when they are verified.">{{ assistant_context_key_accomplishments | default('') }}</textarea>
+                                <small>Used to identify relevant evidence for resumes and interviews; it is not treated as verified unless supported by your records.</small>
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="workspace-card career-profile-section" aria-labelledby="internationalBackgroundTitle">
+                        <div class="workspace-card-header">
+                            <div>
+                                <h2 id="internationalBackgroundTitle">International career background</h2>
+                                <p>Used by Career Translation to explain unfamiliar titles, credentials, terminology, and experience across countries.</p>
+                            </div>
+                        </div>
                         <div class="form-grid context-form-grid">
                             <label class="form-field">
-                                <span>Company or organization</span>
-                                <input type="text" id="contextCompany" name="context_company" value="{{ assistant_context_company | default('') }}" placeholder="Example: Blue Unicorn Industries" autocomplete="organization">
+                                <span>Countries where you have worked</span>
+                                <textarea id="profileCountriesWorked" name="countries_worked" rows="3" placeholder="Example: France, Luxembourg, Singapore, United States">{{ assistant_context_countries_worked | default('') }}</textarea>
                             </label>
                             <label class="form-field">
-                                <span>Role or position</span>
-                                <input type="text" id="contextRole" name="context_role" value="{{ assistant_context_role | default('') }}" placeholder="Example: Chemical Engineer" autocomplete="organization-title">
+                                <span>Professional languages</span>
+                                <textarea id="profileLanguages" name="languages" rows="3" placeholder="Example: French — native; English — professional fluency">{{ assistant_context_languages | default('') }}</textarea>
                             </label>
                             <label class="form-field">
-                                <span>Career activity type</span>
-                                <select id="contextType" name="context_type">
-                                    <option value="">Select a type</option>
-                                    <option value="interview" {% if assistant_context_type | default('') == 'interview' %}selected{% endif %}>Interview preparation</option>
-                                    <option value="meeting" {% if assistant_context_type | default('') == 'meeting' %}selected{% endif %}>Job application</option>
-                                    <option value="sales" {% if assistant_context_type | default('') == 'sales' %}selected{% endif %}>Sales conversation</option>
-                                    <option value="presentation" {% if assistant_context_type | default('') == 'presentation' %}selected{% endif %}>Career presentation</option>
-                                    <option value="project" {% if assistant_context_type | default('') == 'project' %}selected{% endif %}>Project discussion</option>
-                                    <option value="research" {% if assistant_context_type | default('') == 'research' %}selected{% endif %}>Research</option>
-                                    <option value="support" {% if assistant_context_type | default('') == 'support' %}selected{% endif %}>Customer support</option>
-                                    <option value="other" {% if assistant_context_type | default('') == 'other' %}selected{% endif %}>Other</option>
+                                <span>Target country or job market</span>
+                                <input type="text" id="profileTargetCountry" name="target_country" value="{{ assistant_context_target_country | default('') }}" placeholder="Example: United States">
+                                <small>The market where your background needs to be understood and translated.</small>
+                            </label>
+                            <label class="form-field">
+                                <span>Experience in the target country</span>
+                                <textarea id="profileTargetCountryExperience" name="target_country_experience" rows="3" placeholder="Example: 8 years in U.S. financial technology; limited local experience; no local experience yet">{{ assistant_context_target_country_experience | default('') }}</textarea>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>International education and credentials</span>
+                                <textarea id="profileInternationalCredentials" name="international_credentials" rows="4" placeholder="List degrees, institutions, professional credentials, and the country where each was earned.">{{ assistant_context_international_credentials | default('') }}</textarea>
+                                <small>Career Translation can identify credentials that may need a local explanation or equivalent.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Certifications</span>
+                                <textarea id="profileCertifications" name="certifications" rows="3" placeholder="Example: UC Berkeley Professional Certificate in Machine Learning and AI">{{ assistant_context_certifications | default('') }}</textarea>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Job titles or terminology that may need translation</span>
+                                <textarea id="profileTitlesNeedingTranslation" name="titles_needing_translation" rows="4" placeholder="Example: Titles, qualifications, systems, regulations, or regional terms employers may not recognize.">{{ assistant_context_titles_needing_translation | default('') }}</textarea>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Career transition context</span>
+                                <textarea id="profileCareerTransition" name="career_transition" rows="4" placeholder="Explain any career change, employment gap, return to work, or transition between countries that should be interpreted carefully.">{{ assistant_context_career_transition | default('') }}</textarea>
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="workspace-card career-profile-section" aria-labelledby="preferencesConstraintsTitle">
+                        <div class="workspace-card-header">
+                            <div>
+                                <h2 id="preferencesConstraintsTitle">Career preferences and constraints</h2>
+                                <p>Used to avoid recommendations that do not fit your practical circumstances or longer-term direction.</p>
+                            </div>
+                        </div>
+                        <div class="form-grid context-form-grid">
+                            <label class="form-field">
+                                <span>Work arrangement preferences</span>
+                                <select id="profileWorkPreferences" name="work_preferences">
+                                    <option value="" {% if not assistant_context_work_preferences | default('') %}selected{% endif %}>No general preference</option>
+                                    <option value="remote" {% if assistant_context_work_preferences | default('') == 'remote' %}selected{% endif %}>Remote</option>
+                                    <option value="hybrid" {% if assistant_context_work_preferences | default('') == 'hybrid' %}selected{% endif %}>Hybrid</option>
+                                    <option value="onsite" {% if assistant_context_work_preferences | default('') == 'onsite' %}selected{% endif %}>Onsite</option>
+                                    <option value="flexible" {% if assistant_context_work_preferences | default('') == 'flexible' %}selected{% endif %}>Flexible</option>
                                 </select>
                             </label>
                             <label class="form-field">
-                                <span>Industry or domain</span>
-                                <input type="text" id="contextDomain" name="context_domain" value="{{ assistant_context_domain | default('') }}" placeholder="Example: Aerospace, banking, healthcare">
+                                <span>Relocation preferences</span>
+                                <textarea id="profileRelocationPreferences" name="relocation_preferences" rows="3" placeholder="Example: Open to Texas, Ohio, or North Carolina; otherwise prefer the Pacific Northwest">{{ assistant_context_relocation_preferences | default('') }}</textarea>
                             </label>
                             <label class="form-field context-full-width-field">
-                                <span>Default audience</span>
-                                <textarea class="context-expanded-textarea" id="contextPreferred roles and audiences" name="context_audience" rows="3" placeholder="Example: Hiring manager and engineering panel">{{ assistant_context_audience | default('') }}</textarea>
+                                <span>Work authorization or sponsorship context</span>
+                                <textarea id="profileWorkAuthorization" name="work_authorization" rows="3" placeholder="Add only information you are comfortable reusing across applications.">{{ assistant_context_work_authorization | default('') }}</textarea>
                             </label>
-                        </div>
-
-
-                        <label class="form-field">
-                            <span>Reference Link</span>
-                            <input type="url" id="contextReferenceLink" name="context_reference_link" value="{{ assistant_context_reference_link | default('') }}" placeholder="Example: https://company.com/job-posting-or-reference-page" inputmode="url" autocomplete="url">
-                        </label>
-
-                        <label class="form-field">
-                            <span>Primary objective</span>
-                            <textarea class="context-expanded-textarea" id="contextObjective" name="context_objective" rows="3" placeholder="What should the AI generally help you accomplish?">{{ assistant_context_objective | default('') }}</textarea>
-                        </label>
-                        <label class="form-field">
-                            <span>Additional reusable context</span>
-                            <textarea id="contextFreeText" name="context_free_text" rows="6" placeholder="Add background, terminology, constraints, preferences, or instructions that are useful across applications.">{{ assistant_context_free_text | default('') }}</textarea>
-                        </label>
-                    </section>
-
-                    <section class="workspace-card response-preferences-card" aria-labelledby="responsePreferencesTitle">
-                        <div class="workspace-card-header response-preferences-header">
-                            <div>
-                                <h2 id="responsePreferencesTitle">Response preferences <span class="context-optional-label">Optional</span></h2>
-                                <p>Interview preparation uses concise, evidence-backed guidance by default. Customize these reusable preferences only when you want a different coaching style.</p>
-                            </div>
-                            <button
-                                class="response-preferences-toggle"
-                                type="button"
-                                id="responsePreferencesToggle"
-                                aria-expanded="false"
-                                aria-controls="responsePreferencesPanel"
-                            >
-                                <span class="response-preferences-toggle-copy">
-                                    <strong>Current preferences</strong>
-                                    <span id="responsePreferencesSummary">Balanced answers · Ready-to-say</span>
-                                </span>
-                                <span class="response-preferences-toggle-action">Customize</span>
-                                <span class="response-preferences-toggle-icon" aria-hidden="true">⌄</span>
-                            </button>
-                        </div>
-
-                        <div class="response-preferences-panel" id="responsePreferencesPanel" hidden>
-                            <div class="form-grid context-form-grid">
-                                <div class="context-response-options">
-                                    <label class="form-field">
-                                        <span>Preferred answer style</span>
-                                        <select id="contextAnswerStyle" name="context_answer_style">
-                                            <option value="">Balanced (default)</option>
-                                            <option value="concise" {% if assistant_context_answer_style | default('') == 'concise' %}selected{% endif %}>Concise</option>
-                                            <option value="detailed" {% if assistant_context_answer_style | default('') == 'detailed' %}selected{% endif %}>Detailed</option>
-                                            <option value="bullet_points" {% if assistant_context_answer_style | default('') == 'bullet_points' %}selected{% endif %}>Bullet points</option>
-                                            <option value="step_by_step" {% if assistant_context_answer_style | default('') == 'step_by_step' %}selected{% endif %}>Step by step</option>
-                                            <option value="action_oriented" {% if assistant_context_answer_style | default('') == 'action_oriented' %}selected{% endif %}>Action oriented</option>
-                                            <option value="professional" {% if assistant_context_answer_style | default('') == 'professional' %}selected{% endif %}>Professional</option>
-                                        </select>
-                                    </label>
-                                    <label class="form-field">
-                                        <span>Response mode</span>
-                                        <select id="contextResponseMode" name="context_response_mode">
-                                            <option value="ready_to_say" {% if assistant_context_response_mode | default('ready_to_say') == 'ready_to_say' %}selected{% endif %}>Ready-to-say answer (default)</option>
-                                            <option value="concise_structured_action" {% if assistant_context_response_mode | default('ready_to_say') == 'concise_structured_action' %}selected{% endif %}>Concise, structured, and action-oriented</option>
-                                            <option value="coaching" {% if assistant_context_response_mode | default('ready_to_say') == 'coaching' %}selected{% endif %}>Coaching guidance</option>
-                                        </select>
-                                        <small>Choose whether preparation produces a draft answer in your voice or coaching about how to answer.</small>
-                                    </label>
-                                </div>
-
-                                <div class="context-response-options">
-                                    <label class="form-field">
-                                        <span>Audio response instructions</span>
-                                        <textarea id="contextAudioResponseInstructions" name="context_audio_response_instructions" rows="4" placeholder="Example: Keep the answer conversational, use first-person language, and limit it to about 60 seconds.">{{ assistant_context_audio_response_instructions | default('') }}</textarea>
-                                        <small>Optional instructions applied when preparing or reviewing spoken interview answers.</small>
-                                    </label>
-                                    <label class="form-field">
-                                        <span>Clipboard response instructions</span>
-                                        <textarea id="contextClipboardResponseInstructions" name="context_clipboard_response_instructions" rows="4" placeholder="Example: Respond only using plain text, Python code, or SQL code. Do not include introductory text or concluding commentary.">{{ assistant_context_clipboard_response_instructions | default('') }}</textarea>
-                                        <small>Optional instructions applied when analyzing pasted job descriptions, recruiter messages, or interview questions.</small>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <div class="context-scope-divider context-scope-divider-meeting"><span>Applies only to this application</span></div>
-
-                    <section class="workspace-card meeting-context-card" aria-labelledby="meetingSpecificContextTitle">
-                        <div class="workspace-card-header meeting-override-header">
-                            <div>
-                                <h2 id="meetingSpecificContextTitle">Instructions for this application <span class="context-optional-label">Optional</span></h2>
-                                <p>Your default context and response preferences will continue to apply. Add only what is different for this application.</p>
-                            </div>
-                            <div class="meeting-override-controls">
-                                <label class="form-field compact-meeting-select">
-                                    <span>Upcoming interview</span>
-                                    <select id="contextMeetingSelect" data-upcoming-meeting-select>
-                                        <option value="">No upcoming interview selected</option>
-                                    </select>
-                                </label>
-                                <button
-                                    class="meeting-override-toggle"
-                                    type="button"
-                                    id="meetingOverrideToggle"
-                                    aria-expanded="false"
-                                    aria-controls="meetingOverridePanel"
-                                >
-                                    <span class="meeting-override-toggle-label">Add application-specific context</span>
-                                    <span class="meeting-override-toggle-icon" aria-hidden="true">＋</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="meeting-override-panel" id="meetingOverridePanel" hidden>
-                            <div class="form-grid context-form-grid">
-                                <label class="form-field">
-                                    <span>Interview objective</span>
-                                    <input type="text" id="meetingContextObjective" placeholder="What outcome should this application or interview achieve?">
-                                </label>
-                                <label class="form-field">
-                                    <span>Interviewer, recruiter, or audience</span>
-                                    <input type="text" id="meetingContextParticipants" placeholder="Interviewers, recruiters, hiring managers, or decision makers">
-                                </label>
-                            </div>
-
-                            <div class="meeting-instructions-disclosure">
-                                <button
-                                    class="meeting-instructions-toggle"
-                                    type="button"
-                                    id="meetingInstructionsToggle"
-                                    aria-expanded="false"
-                                    aria-controls="meetingInstructionsPanel"
-                                >
-                                    <span>
-                                        <strong>Application and interview constraints</strong>
-                                        <small>Optional · priorities, sensitivities, terminology, or temporary response changes</small>
-                                    </span>
-                                    <span class="meeting-instructions-toggle-icon" aria-hidden="true">＋</span>
-                                </button>
-
-                                <div class="meeting-instructions-panel" id="meetingInstructionsPanel" hidden>
-                                    <div class="meeting-instructions-heading">
-                                        <div>
-                                            <strong>Application and interview constraints</strong>
-                                            <small>Use one open-ended field instead of configuring separate priority, constraint, and instruction inputs.</small>
-                                        </div>
-                                        <button class="text-button" type="button" id="clearMeetingInstructions" hidden>Clear</button>
-                                    </div>
-                                    <textarea
-                                        id="meetingContextSpecialInstructions"
-                                        rows="6"
-                                        placeholder="Example: Prioritize pricing objections, keep answers concise, and avoid discussing the upcoming reorganization."
-                                    ></textarea>
-                                    <div class="meeting-instruction-suggestions" aria-label="Suggested instructions">
-                                        <button type="button" data-meeting-instruction="Focus on the role requirements and likely concerns.">Focus on role requirements</button>
-                                        <button type="button" data-meeting-instruction="Keep answers concise and ready to say aloud.">Keep answers concise</button>
-                                        <button type="button" data-meeting-instruction="Highlight evidence gaps and concrete next steps.">Highlight evidence gaps</button>
-                                        <button type="button" data-meeting-instruction="Avoid unsupported, confidential, or sensitive claims.">Protect sensitive topics</button>
-                                    </div>
-                                    <p class="meeting-instructions-note">Your normal Interview Response Preferences still apply unless you add an application-specific exception here.</p>
-                                </div>
-                            </div>
+                            <label class="form-field context-full-width-field">
+                                <span>Career goals</span>
+                                <textarea id="profileCareerGoals" name="career_goals" rows="4" placeholder="What roles, responsibilities, industries, or progression are you working toward?">{{ assistant_context_career_goals | default('') }}</textarea>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Other constraints or considerations</span>
+                                <textarea id="profileConstraints" name="constraints" rows="4" placeholder="Example: travel limits, schedule constraints, industries to avoid, confidentiality considerations, or accessibility needs">{{ assistant_context_constraints | default('') }}</textarea>
+                            </label>
                         </div>
                     </section>
                 </main>
 
-                <aside class="context-preview-card" aria-labelledby="effectiveContextTitle">
+                <aside class="context-preview-card career-profile-summary-card" aria-labelledby="effectiveContextTitle">
                     <div class="context-preview-header">
                         <span class="context-preview-icon" aria-hidden="true">✦</span>
                         <div>
-                            <p class="section-eyebrow">Career foundation</p>
-                            <h2 id="effectiveContextTitle">Effective Career Profile</h2>
+                            <p class="section-eyebrow">Reusable profile</p>
+                            <h2 id="effectiveContextTitle">Profile summary</h2>
                         </div>
                     </div>
-                    <p class="context-preview-description">This preview combines your reusable defaults, response preferences, and the selected application’s overrides.</p>
-                    <div class="context-preview-status" id="effectiveContextStatus">Context is enabled</div>
+                    <p class="context-preview-description">Review what Career Bridge will reuse across applications. Blank fields are simply ignored.</p>
+                    <div class="context-preview-status" id="effectiveContextStatus">Profile is enabled</div>
                     <div class="context-preview-chips" id="effectiveContextChips"></div>
                     <dl class="context-preview-list" id="effectiveContextPreview"></dl>
-                    <div class="context-priority-note">
-                        <strong>How Career Bridge uses this</strong>
-                        <span>Reusable context and Interview Response Preferences guide every application. Application-specific context is attached only to the selected application and takes priority when it provides a different value.</span>
+                    <div class="context-priority-note career-profile-usage-note">
+                        <strong>How this profile is intended to be used</strong>
+                        <span><b>Job Discovery:</b> preferred roles, industries, location, and work preferences.</span>
+                        <span><b>Career Translation:</b> countries, credentials, unfamiliar titles, languages, and transition context.</span>
+                        <span><b>Resume and interviews:</b> professional identity, skills, accomplishments, goals, and constraints.</span>
+                        <span>Target company, job posting, recruiter, and interview-specific details remain application-specific.</span>
                     </div>
                     <button class="btn btn-primary context-save-button" type="submit" id="saveContextButton" disabled aria-disabled="true">Save Career Profile</button>
                 </aside>

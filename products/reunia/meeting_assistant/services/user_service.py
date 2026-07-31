@@ -12,6 +12,69 @@ from meeting_assistant.repositories.user_repository import UserRepository
 from meeting_assistant.utils.exceptions import DatabaseError, ResourceNotFoundError, ValidationError
 
 
+_AI_COACHING_ANSWER_STYLE_ALIASES = {
+    "": "balanced",
+    "balanced": "balanced",
+    "default": "balanced",
+    "concise": "concise",
+    "brief": "concise",
+    "detailed": "detailed",
+    "bullet points": "bullet_points",
+    "bullet point": "bullet_points",
+    "bullets": "bullet_points",
+    "step by step": "step_by_step",
+    "action oriented": "action_oriented",
+    "professional": "professional",
+}
+_AI_COACHING_RESPONSE_MODE_ALIASES = {
+    "": "ready_to_say",
+    "ready to say": "ready_to_say",
+    "readytosay": "ready_to_say",
+    "direct": "ready_to_say",
+    "direct answer": "ready_to_say",
+    "concise structured action": "concise_structured_action",
+    "concise structured action oriented": "concise_structured_action",
+    "structured action": "concise_structured_action",
+    "coaching": "coaching",
+    "coaching guidance": "coaching",
+    "guidance": "coaching",
+}
+_AI_COACHING_CONTEXT_FIELDS = {
+    "answer_style",
+    "response_mode",
+    "audio_response_instructions",
+    "clipboard_response_instructions",
+}
+
+
+def _normalized_preference_token(value: Any) -> str:
+    return " ".join(
+        str(value or "").strip().lower().replace("_", " ").replace("-", " ").split()
+    )
+
+
+def _normalize_ai_coaching_answer_style(value: Any, *, strict: bool = False) -> str:
+    normalized = _AI_COACHING_ANSWER_STYLE_ALIASES.get(_normalized_preference_token(value))
+    if normalized is not None:
+        return normalized
+    if strict:
+        raise ValueError(
+            "Answer style must be balanced, concise, detailed, bullet points, step by step, action oriented, or professional."
+        )
+    return "balanced"
+
+
+def _normalize_ai_coaching_response_mode(value: Any, *, strict: bool = False) -> str:
+    normalized = _AI_COACHING_RESPONSE_MODE_ALIASES.get(_normalized_preference_token(value))
+    if normalized is not None:
+        return normalized
+    if strict:
+        raise ValueError(
+            "Response mode must be ready-to-say, concise structured action, or coaching."
+        )
+    return "ready_to_say"
+
+
 _AI_MODEL_PRESET_ALIASES = {
     "fast": "fast",
     "fast model": "fast",
@@ -301,6 +364,10 @@ def default_user_settings() -> dict[str, Any]:
         "aiMicrophone": False,
         "scorecard_source": "all",
         "language": "en",
+        "aiCoachingAnswerStyle": "balanced",
+        "aiCoachingResponseMode": "ready_to_say",
+        "aiCoachingAudioInstructions": "",
+        "aiCoachingClipboardInstructions": "",
         "meetingRetentionDays": 7,
         "documentRetentionDays": 7,
         "shareDefaultExpirationDays": 30,
@@ -316,16 +383,36 @@ def default_user_settings() -> dict[str, Any]:
 def default_assistant_context() -> dict[str, Any]:
     return {
         "enabled": True,
+        # Reusable Career Profile fields.
+        "professional_headline": "",
+        "current_role": "",
+        "years_experience": "",
+        "current_location": "",
+        "preferred_roles": "",
+        "industries": "",
+        "core_skills": "",
+        "key_accomplishments": "",
+        "countries_worked": "",
+        "languages": "",
+        "target_country": "",
+        "target_country_experience": "",
+        "international_credentials": "",
+        "certifications": "",
+        "titles_needing_translation": "",
+        "career_transition": "",
+        "work_preferences": "",
+        "relocation_preferences": "",
+        "work_authorization": "",
+        "career_goals": "",
+        "constraints": "",
+        # Legacy AI-context fields are retained for backward compatibility and
+        # preserved when the new Career Profile form is saved.
         "company": "",
         "reference_link": "",
         "role": "",
         "type": "",
         "domain": "",
         "audience": "",
-        "answer_style": "",
-        "response_mode": "ready_to_say",
-        "audio_response_instructions": "",
-        "clipboard_response_instructions": "",
         "objective": "",
         "free_text": "",
     }
@@ -333,6 +420,39 @@ def default_assistant_context() -> dict[str, Any]:
 
 _ASSISTANT_CONTEXT_ALIASES = {
     "enabled": ("enabled", "use_context"),
+    "professional_headline": ("professional_headline", "profile_professional_headline"),
+    "current_role": ("current_role", "profile_current_role"),
+    "years_experience": ("years_experience", "profile_years_experience"),
+    "current_location": ("current_location", "profile_current_location"),
+    "preferred_roles": ("preferred_roles", "profile_preferred_roles"),
+    "industries": ("industries", "profile_industries"),
+    "core_skills": ("core_skills", "profile_core_skills"),
+    "key_accomplishments": ("key_accomplishments", "profile_key_accomplishments"),
+    "countries_worked": ("countries_worked", "profile_countries_worked"),
+    "languages": ("languages", "profile_languages"),
+    "target_country": ("target_country", "profile_target_country"),
+    "target_country_experience": (
+        "target_country_experience",
+        "profile_target_country_experience",
+    ),
+    "international_credentials": (
+        "international_credentials",
+        "profile_international_credentials",
+    ),
+    "certifications": ("certifications", "profile_certifications"),
+    "titles_needing_translation": (
+        "titles_needing_translation",
+        "profile_titles_needing_translation",
+    ),
+    "career_transition": ("career_transition", "profile_career_transition"),
+    "work_preferences": ("work_preferences", "profile_work_preferences"),
+    "relocation_preferences": (
+        "relocation_preferences",
+        "profile_relocation_preferences",
+    ),
+    "work_authorization": ("work_authorization", "profile_work_authorization"),
+    "career_goals": ("career_goals", "profile_career_goals"),
+    "constraints": ("constraints", "profile_constraints"),
     "company": ("company", "context_company", "assistant_context_company"),
     "reference_link": (
         "reference_link",
@@ -383,11 +503,26 @@ class UserService:
         stored = user.get("settings", {})
         defaults = default_user_settings()
         defaults.update({key: value for key, value in stored.items() if value is not None})
+
+        # Migrate the four former Career Profile response preferences without
+        # changing the stored profile. They are persisted under Settings the next
+        # time the user saves AI Coaching Preferences.
+        legacy_context = _normalize_assistant_context(user.get("assistant_context", {}))
+        legacy_preference_fallbacks = {
+            "aiCoachingAnswerStyle": legacy_context.get("answer_style", ""),
+            "aiCoachingResponseMode": legacy_context.get("response_mode", ""),
+            "aiCoachingAudioInstructions": legacy_context.get("audio_response_instructions", ""),
+            "aiCoachingClipboardInstructions": legacy_context.get("clipboard_response_instructions", ""),
+        }
+        for setting_key, legacy_value in legacy_preference_fallbacks.items():
+            if setting_key not in stored and legacy_value not in (None, ""):
+                defaults[setting_key] = legacy_value
+
         # Transcription language is configured locally by the desktop client.
         defaults.pop("whisperLanguage", None)
         defaults.pop("whisper_language", None)
 
-        # Reusable assistant context is stored in Meeting Preparation → AI Context.
+        # Legacy meeting-context settings are no longer exposed in Career Profile.
         defaults.pop("chatGPTRole", None)
         defaults.pop("chatGPT_role", None)
         defaults.pop("chatGPTCompany", None)
@@ -395,7 +530,7 @@ class UserService:
         defaults.pop("chatGPTLink", None)
         defaults.pop("chatGPT_link", None)
 
-        # Live Q&A prompts are generated automatically from Meeting Preparation → AI Context.
+        # Legacy prompt settings are superseded by Settings → AI Coaching Preferences.
         defaults.pop("chatGPTPromptAudio", None)
         defaults.pop("chatGPT_prompt_audio", None)
         defaults.pop("chatGPTPromptClipboard", None)
@@ -437,6 +572,18 @@ class UserService:
             default="microphone",
         )
         defaults["language"] = normalize_language(defaults.get("language"), default="en")
+        defaults["aiCoachingAnswerStyle"] = _normalize_ai_coaching_answer_style(
+            defaults.get("aiCoachingAnswerStyle")
+        )
+        defaults["aiCoachingResponseMode"] = _normalize_ai_coaching_response_mode(
+            defaults.get("aiCoachingResponseMode")
+        )
+        defaults["aiCoachingAudioInstructions"] = str(
+            defaults.get("aiCoachingAudioInstructions") or ""
+        ).strip()
+        defaults["aiCoachingClipboardInstructions"] = str(
+            defaults.get("aiCoachingClipboardInstructions") or ""
+        ).strip()
         defaults["meetingRetentionDays"] = _normalized_day_option(
             defaults.get("meetingRetentionDays"),
             _DATA_RETENTION_DAY_OPTIONS,
@@ -469,12 +616,25 @@ class UserService:
 
         return defaults
 
+    def get_ai_coaching_preferences(self, user_id: str) -> dict[str, str]:
+        settings = self.get_settings(user_id)
+        return {
+            "answer_style": settings["aiCoachingAnswerStyle"],
+            "response_mode": settings["aiCoachingResponseMode"],
+            "audio_response_instructions": settings["aiCoachingAudioInstructions"],
+            "clipboard_response_instructions": settings["aiCoachingClipboardInstructions"],
+        }
+
     def get_assistant_context(self, user_id: str) -> dict[str, Any]:
         user = self.get_user(user_id) or {}
         stored = user.get("assistant_context", {})
         if not isinstance(stored, dict):
             stored = {}
-        return _normalize_assistant_context(stored)
+        context = _normalize_assistant_context(stored)
+        # Keep existing AI services compatible while the source of these values is
+        # now Settings → AI Coaching Preferences rather than Career Profile.
+        context.update(self.get_ai_coaching_preferences(user_id))
+        return context
 
     def update_assistant_context(
         self,
@@ -484,9 +644,14 @@ class UserService:
         if not isinstance(data, dict):
             raise ValidationError("Assistant context must be a JSON object.")
 
-        current = self.get_assistant_context(user_id)
+        user = self.get_user(user_id) or {}
+        current = _normalize_assistant_context(user.get("assistant_context", {}))
 
         for destination, source_names in _ASSISTANT_CONTEXT_ALIASES.items():
+            # Response preferences are now owned by Settings and cannot be changed
+            # through the Career Profile endpoint, including by older clients.
+            if destination in _AI_COACHING_CONTEXT_FIELDS:
+                continue
             for source_name in source_names:
                 if source_name in data:
                     current[destination] = data[source_name]
@@ -712,7 +877,15 @@ class UserService:
             "meetingGenerateScorecard": "meetingGenerateScorecard",
             "language": "language",
             "appLanguage": "language",
-            "locale": "language"
+            "locale": "language",
+            "aiCoachingAnswerStyle": "aiCoachingAnswerStyle",
+            "answer_style": "aiCoachingAnswerStyle",
+            "aiCoachingResponseMode": "aiCoachingResponseMode",
+            "response_mode": "aiCoachingResponseMode",
+            "aiCoachingAudioInstructions": "aiCoachingAudioInstructions",
+            "audio_response_instructions": "aiCoachingAudioInstructions",
+            "aiCoachingClipboardInstructions": "aiCoachingClipboardInstructions",
+            "clipboard_response_instructions": "aiCoachingClipboardInstructions",
         }
 
         model_selection = None
@@ -761,6 +934,22 @@ class UserService:
             raise ValidationError(
                 "scorecard_source must identify the microphone, speaker, or all audio sources."
             ) from exc
+
+        try:
+            current["aiCoachingAnswerStyle"] = _normalize_ai_coaching_answer_style(
+                current.get("aiCoachingAnswerStyle"), strict=True
+            )
+            current["aiCoachingResponseMode"] = _normalize_ai_coaching_response_mode(
+                current.get("aiCoachingResponseMode"), strict=True
+            )
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+        current["aiCoachingAudioInstructions"] = str(
+            current.get("aiCoachingAudioInstructions") or ""
+        ).strip()[:4000]
+        current["aiCoachingClipboardInstructions"] = str(
+            current.get("aiCoachingClipboardInstructions") or ""
+        ).strip()[:4000]
 
         requested_language = str(current.get("language", "en") or "").strip().lower().replace("_", "-")
         if not (requested_language.startswith("en") or requested_language.startswith("fr")):
@@ -863,29 +1052,29 @@ def _normalize_assistant_context(value: Any) -> dict[str, Any]:
             continue
         normalized[key] = str(normalized.get(key) or "").strip()
 
-    response_mode = (
-        normalized.get("response_mode", "")
-        .lower()
-        .replace("-", "_")
-        .replace(" ", "_")
-    )
-    response_mode_aliases = {
-        "ready_to_say": "ready_to_say",
-        "readytosay": "ready_to_say",
-        "direct": "ready_to_say",
-        "direct_answer": "ready_to_say",
-        "concise_structured_action": "concise_structured_action",
-        "concise_structured_action_oriented": "concise_structured_action",
-        "concise_structured_and_action_oriented": "concise_structured_action",
-        "structured_action": "concise_structured_action",
-        "coaching": "coaching",
-        "coaching_guidance": "coaching",
-        "guidance": "coaching",
-    }
-    normalized["response_mode"] = response_mode_aliases.get(
-        response_mode,
-        "ready_to_say",
-    )
+    # Make previously saved reusable values visible in the new form without
+    # treating old application-specific company or audience values as profile data.
+    if not normalized.get("current_role"):
+        normalized["current_role"] = normalized.get("role", "")
+    if not normalized.get("industries"):
+        normalized["industries"] = normalized.get("domain", "")
+    if not normalized.get("career_goals"):
+        normalized["career_goals"] = normalized.get("objective", "")
+
+    # Keep older services useful while they are migrated to the explicit Career
+    # Profile field names. Application-specific company and job values are never
+    # inferred here.
+    if not normalized.get("role"):
+        normalized["role"] = normalized.get("current_role") or normalized.get("preferred_roles", "")
+    if not normalized.get("domain"):
+        normalized["domain"] = normalized.get("industries", "")
+    if not normalized.get("objective"):
+        normalized["objective"] = normalized.get("career_goals", "")
+
+    if "response_mode" in normalized:
+        normalized["response_mode"] = _normalize_ai_coaching_response_mode(
+            normalized.get("response_mode")
+        )
 
     return normalized
 

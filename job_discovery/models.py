@@ -506,7 +506,7 @@ class DiscoveryJobState:
 
 @dataclass(frozen=True, slots=True)
 class EvidenceReference:
-    """Traceable Career Profile or Evidence Library record used for a match."""
+    """Traceable resume or confirmed Evidence Library record used for a match."""
 
     record_id: str
     record_type: str
@@ -530,11 +530,12 @@ class EvidenceReference:
 
     @property
     def surface(self) -> str:
-        return (
-            "Career Evidence Library"
-            if self.record_type == "evidence_item"
-            else "Career Profile"
-        )
+        status = self.verification_status.casefold()
+        if status in {"resume_source", "resume_verified"}:
+            return "Resume source"
+        if self.record_type == "evidence_item":
+            return "Career Evidence Library"
+        return "Career Profile context"
 
 
 @dataclass(frozen=True, slots=True)

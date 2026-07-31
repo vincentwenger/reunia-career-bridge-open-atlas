@@ -28,9 +28,11 @@ from flask import (
     session,
     url_for,
     jsonify,
+    has_app_context,
 )
 from werkzeug.local import LocalProxy
 
+from career_bridge.profile_context import ReusableCareerProfile
 from job_discovery.application_conversion import DiscoveredJobApplicationService
 from job_discovery.models import (
     CompanySource,
@@ -76,6 +78,7 @@ from job_discovery.storage import (
 from resume_tailor.ai import ResumeAI, ResumeAIError
 from resume_tailor.application_tracker import (
     APPLICATION_STATUS_OPTIONS,
+    INTERVIEW_AUDIENCE_SUGGESTIONS,
     RESUME_VERSION_OPTIONS,
     UPCOMING_EVENT_TYPE_OPTIONS,
     build_application_metrics,
@@ -358,31 +361,140 @@ def parse_comma_list(value: str) -> list[str]:
     return items
 
 
+def _load_reusable_career_profile(owner_id: str) -> ReusableCareerProfile:
+    """Load the account-level Career Profile without coupling its schema to a workflow."""
+
+    try:
+        from meeting_assistant.services.user_service import UserService
+
+        return ReusableCareerProfile.from_mapping(
+            UserService().get_assistant_context(str(owner_id or "").strip())
+        )
+    except Exception:
+        # Application Builder can be embedded in isolated tests without the
+        # Réunia user repository. In that case the resume remains authoritative.
+        if has_app_context():
+            current_app.logger.exception("Could not load reusable Career Profile")
+        return ReusableCareerProfile()
+
+
+def _merge_unique(existing: list[str], defaults: tuple[str, ...]) -> list[str]:
+    values: list[str] = []
+    seen: set[str] = set()
+    for raw in (*existing, *defaults):
+        item = " ".join(str(raw or "").split())
+        key = item.casefold()
+        if item and key not in seen:
+            values.append(item)
+            seen.add(key)
+    return values
+
+
+def _career_background_with_profile(
+    background: NewcomerCareerProfile,
+    profile: ReusableCareerProfile,
+    *,
+    target_role: str = "",
+) -> NewcomerCareerProfile:
+    """Apply reusable profile defaults while preserving application-specific edits."""
+
+    payload = profile.newcomer_payload(target_role=target_role)
+    updated = background.model_copy(deep=True)
+    for field in (
+        "professional_headline",
+        "current_role",
+        "years_experience",
+        "current_location",
+        "target_country_experience",
+        "work_preferences",
+        "relocation_preferences",
+        "work_authorization",
+        "career_goals",
+        "constraints",
+        "career_profile_fingerprint",
+    ):
+        # These fields are account-level and are not edited in the application
+        # workflow, so the latest saved Career Profile remains authoritative.
+        setattr(updated, field, payload.get(field, ""))
+
+    for field in (
+        "preferred_roles",
+        "core_skills",
+        "key_accomplishments",
+        "countries_worked",
+        "industries",
+        "roles",
+        "languages",
+        "international_credentials",
+        "professional_certifications",
+        "unfamiliar_job_titles",
+        "career_transitions",
+    ):
+        setattr(
+            updated,
+            field,
+            _merge_unique(list(getattr(updated, field)), tuple(payload.get(field) or ())),
+        )
+
+    if not updated.target_country:
+        updated.target_country = str(payload.get("target_country") or "")
+    if target_role:
+        updated.target_role = normalize_target_title(target_role)
+    elif not updated.target_role:
+        updated.target_role = str(payload.get("target_role") or "")
+    if not updated.us_employment_experience:
+        updated.us_employment_experience = str(
+            payload.get("us_employment_experience") or ""
+        )
+    return updated
+
+
+
+def _effective_career_background(state: WorkflowState) -> NewcomerCareerProfile:
+    """Return request-time profile context without persisting it into the application."""
+
+    reusable = (
+        getattr(g, "reusable_career_profile", ReusableCareerProfile())
+        if has_app_context()
+        else ReusableCareerProfile()
+    )
+    return _career_background_with_profile(
+        state.career_background,
+        reusable,
+        target_role=state.target_title,
+    )
+
 def career_background_from_form(
     form: Any,
     *,
     target_role: str,
+    base: NewcomerCareerProfile | None = None,
 ) -> NewcomerCareerProfile:
-    """Build optional newcomer context without collecting immigration data."""
-    return NewcomerCareerProfile(
-        countries_worked=parse_comma_list(form.get("countries_worked", "")),
-        industries=parse_comma_list(form.get("career_industries", "")),
-        roles=parse_comma_list(form.get("career_roles", "")),
-        languages=parse_comma_list(form.get("career_languages", "")),
-        target_country=form.get("target_country", ""),
-        target_role=target_role,
-        international_credentials=parse_comma_list(
-            form.get("international_credentials", "")
-        ),
-        professional_certifications=parse_comma_list(
-            form.get("professional_certifications", "")
-        ),
-        unfamiliar_job_titles=parse_comma_list(
-            form.get("unfamiliar_job_titles", "")
-        ),
-        career_transitions=parse_comma_list(form.get("career_transitions", "")),
-        us_employment_experience=form.get("us_employment_experience", ""),
+    """Update application-specific translation context and retain profile defaults."""
+
+    current = (base or NewcomerCareerProfile()).model_copy(deep=True)
+    current.countries_worked = parse_comma_list(form.get("countries_worked", ""))
+    current.industries = parse_comma_list(form.get("career_industries", ""))
+    current.roles = parse_comma_list(form.get("career_roles", ""))
+    current.languages = parse_comma_list(form.get("career_languages", ""))
+    current.target_country = " ".join(str(form.get("target_country", "")).split())
+    current.target_role = normalize_target_title(target_role)
+    current.international_credentials = parse_comma_list(
+        form.get("international_credentials", "")
     )
+    current.professional_certifications = parse_comma_list(
+        form.get("professional_certifications", "")
+    )
+    current.unfamiliar_job_titles = parse_comma_list(
+        form.get("unfamiliar_job_titles", "")
+    )
+    current.career_transitions = parse_comma_list(
+        form.get("career_transitions", "")
+    )
+    current.us_employment_experience = " ".join(
+        str(form.get("us_employment_experience", "")).split()
+    )
+    return current
 
 
 def reasoning_effort_label(effort: str | None) -> str:
@@ -532,7 +644,7 @@ def capture_workflow_step_snapshot(
             if stage == "final"
             else state.target_title
         ),
-        career_background=state.career_background.model_copy(deep=True),
+        career_background=_effective_career_background(state),
         proposal=proposal.model_copy(deep=True) if proposal is not None else None,
         profile=(profile or state.confirmed_profile or state.source_profile).model_copy(
             deep=True
@@ -666,7 +778,7 @@ def input_fingerprint(state: WorkflowState, models: ActiveModels) -> str:
         {
             "job_description": normalize_job_description(state.job_description),
             "target_title": normalize_target_title(state.target_title),
-            "career_background": state.career_background.model_dump(mode="json"),
+            "career_background": _effective_career_background(state).model_dump(mode="json"),
             "analysis_tailoring_model": models.analysis_tailoring_model,
             "analysis_tailoring_reasoning_effort": models.analysis_tailoring_reasoning_effort,
         }
@@ -2155,20 +2267,11 @@ def application_builder_storage_status() -> dict[str, Any]:
         and application_backend == "dynamodb"
         and document_backend == "s3"
     )
-    default_demo_storage = (
-        workflow_backend == "memory" and application_backend == "sqlite"
-    )
     return {
         "workflow_storage": workflow_backend,
         "application_storage": application_backend,
         "document_storage": document_backend,
-        "durability": (
-            "persistent"
-            if fully_persistent
-            else "demo-only"
-            if default_demo_storage
-            else "mixed"
-        ),
+        "durability": "persistent" if fully_persistent else "mixed",
         "multi_worker_safe": fully_persistent,
         "multi_node_safe": fully_persistent,
     }
@@ -2178,7 +2281,7 @@ def init_application_builder(app: Flask) -> None:
     """Initialize configured Application Builder stores on the Réunia app."""
 
     app.config.setdefault("CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "memory")
-    app.config.setdefault("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "sqlite")
+    app.config.setdefault("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "dynamodb")
     app.config.setdefault("CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", "local")
     app.config.setdefault("CAREER_BRIDGE_DOCUMENTS_PREFIX", "career-bridge")
     workflow_backend = configured_workflow_backend(app.config)
@@ -2195,10 +2298,7 @@ def init_application_builder(app: Flask) -> None:
     if app.extensions.get("career_bridge_document_store") is None:
         app.extensions["career_bridge_document_store"] = create_document_store(
             app.config,
-            require_s3=(
-                workflow_backend == "dynamodb"
-                or application_backend == "dynamodb"
-            ),
+            require_s3=(workflow_backend == "dynamodb"),
         )
 
     if app.extensions.get("career_bridge_workflow_store") is None:
@@ -2208,17 +2308,18 @@ def init_application_builder(app: Flask) -> None:
             document_store=app.extensions["career_bridge_document_store"],
         )
 
-    application_database_path = str(
-        app.config.get("APPLICATIONS_DB_PATH") or ""
-    ).strip()
-    if application_backend == "sqlite" and not application_database_path:
-        if app.config.get("TESTING"):
-            application_database_path = ":memory:"
-        else:
-            application_database_path = str(
-                Path(app.instance_path) / "career_bridge_applications.sqlite3"
-            )
-        app.config["APPLICATIONS_DB_PATH"] = application_database_path
+    if app.config.get("TESTING") and app.config.get(
+        "CAREER_BRIDGE_APPLICATIONS_TABLE_RESOURCE"
+    ) is None:
+        from resume_tailor.testing_dynamodb import InMemoryApplicationTable
+
+        app.config["CAREER_BRIDGE_APPLICATIONS_TABLE_RESOURCE"] = (
+            InMemoryApplicationTable()
+        )
+        app.config.setdefault(
+            "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME",
+            "test-career-bridge-applications",
+        )
 
     if app.extensions.get("career_bridge_application_store") is None:
         app.extensions["career_bridge_application_store"] = (
@@ -2235,25 +2336,20 @@ def init_application_builder(app: Flask) -> None:
 
     warning_key = "career_bridge_application_builder_persistence_warning_logged"
     if not app.extensions.get(warning_key):
-        if workflow_backend == "memory" and application_backend == "sqlite":
-            app.logger.warning(
-                "Application Builder persistence:\n"
-                "- workflow backend: process memory\n"
-                "- application backend: SQLite\n"
-                "- document backend: local filesystem\n"
-                "- database path: %s\n"
-                "- safe only with one Gunicorn worker and Lightsail scale 1\n"
-                "- records may be lost during container replacement",
-                application_database_path,
-            )
-        else:
-            app.logger.info(
-                "Application Builder storage configured: workflow=%s, "
-                "applications=%s, documents=%s",
-                workflow_backend,
-                application_backend,
-                document_backend,
-            )
+        fully_persistent = (
+            workflow_backend == "dynamodb"
+            and application_backend == "dynamodb"
+            and document_backend == "s3"
+        )
+        log = app.logger.info if fully_persistent else app.logger.warning
+        log(
+            "Application Builder storage configured: workflow=%s, "
+            "applications=%s, documents=%s%s",
+            workflow_backend,
+            application_backend,
+            document_backend,
+            "" if fully_persistent else "; workflow or document storage is not fully durable",
+        )
         app.extensions[warning_key] = True
 
 
@@ -2387,6 +2483,8 @@ def _register_application_builder_routes() -> None:
                 )
             if not g.workflow_state.job_description and application.job_description:
                 g.workflow_state.job_description = application.job_description
+
+        g.reusable_career_profile = _load_reusable_career_profile(owner_id)
         return None
 
     @application_builder_bp.after_request
@@ -2452,6 +2550,9 @@ def _register_application_builder_routes() -> None:
             "is_admin_session": bool(session.get("is_admin")),
             "can_manage_job_catalog": _current_user_can_manage_job_catalog(),
             "active_application": getattr(g, "active_application", None),
+            "reusable_career_profile": getattr(
+                g, "reusable_career_profile", ReusableCareerProfile()
+            ),
         }
 
     def state() -> WorkflowState:
@@ -2476,6 +2577,7 @@ def _register_application_builder_routes() -> None:
         current.career_background = career_background_from_form(
             request.form,
             target_role=current.target_title,
+            base=current.career_background,
         )
 
     def _split_discovery_values(raw: str) -> tuple[str, ...]:
@@ -2558,12 +2660,37 @@ def _register_application_builder_routes() -> None:
         stored = discovery_store.get_search_preferences(owner_id)
         if stored is not None:
             return stored
+
         source_profile = current.confirmed_profile or current.source_profile
-        default_locations = (source_profile.contact.location,) if source_profile.contact.location else ()
+        reusable = _load_reusable_career_profile(owner_id)
+        target_titles = tuple(
+            dict.fromkeys(
+                value
+                for value in (
+                    current.target_title,
+                    *reusable.target_titles,
+                )
+                if value
+            )
+        )
+        locations = tuple(
+            dict.fromkeys(
+                value
+                for value in (
+                    *reusable.preferred_locations,
+                    source_profile.contact.location,
+                )
+                if value
+            )
+        )
         return DiscoverySearchPreferences(
             owner_id=owner_id,
-            target_titles=(current.target_title,) if current.target_title else (),
-            preferred_locations=default_locations,
+            target_titles=target_titles,
+            preferred_locations=locations,
+            accepted_workplace_types=reusable.accepted_workplace_types,
+            preferred_keywords=tuple(
+                dict.fromkeys((*reusable.industry_values, *reusable.skill_values))
+            ),
         )
 
     def _discovery_candidate_profile(
@@ -2576,14 +2703,17 @@ def _register_application_builder_routes() -> None:
         source_profile = current.confirmed_profile or current.source_profile
         base = CandidateJobProfile.from_resume_workflow(
             source_profile,
-            current.career_background,
+            _effective_career_background(current),
             target_title=current.target_title,
         )
         accepted_workplaces = tuple(preferences.accepted_workplace_types)
+        reusable = _load_reusable_career_profile(resolved_owner)
         return replace(
             base,
-            target_titles=preferences.target_titles,
-            preferred_locations=preferences.preferred_locations,
+            target_titles=preferences.target_titles or base.target_titles,
+            preferred_locations=(
+                preferences.preferred_locations or base.preferred_locations
+            ),
             accepts_remote=(
                 not accepted_workplaces
                 or WorkplaceType.REMOTE in accepted_workplaces
@@ -2602,6 +2732,9 @@ def _register_application_builder_routes() -> None:
             require_employment_type_match=(
                 preferences.require_employment_type_match
             ),
+            requires_sponsorship=reusable.requires_sponsorship,
+            work_authorized=reusable.work_authorized,
+            eligibility_profile_complete=bool(reusable.work_authorization),
         )
 
     def _discovery_checked_label(raw: str) -> str:
@@ -3434,6 +3567,7 @@ def _register_application_builder_routes() -> None:
                 application_status_options=APPLICATION_STATUS_OPTIONS,
                 resume_version_options=RESUME_VERSION_OPTIONS,
                 upcoming_event_type_options=UPCOMING_EVENT_TYPE_OPTIONS,
+                interview_audience_suggestions=INTERVIEW_AUDIENCE_SUGGESTIONS,
                 resume_style_options=style_options,
                 resume_style_labels={
                     option["key"]: f'{option["label"]} — {option["audience"]}'
@@ -3848,7 +3982,7 @@ def _register_application_builder_routes() -> None:
             preliminary_application_fit=preliminary_fit,
             application_fit=application_fit,
             career_translation_assessment=career_translation_assessment,
-            career_background=current.career_background,
+            career_background=_effective_career_background(current),
             selected_workflow_stage=selected_workflow_stage,
             selected_workflow_panel=selected_workflow_panel,
             edit_setup_snapshot=edit_setup_snapshot,
@@ -4163,7 +4297,7 @@ def _register_application_builder_routes() -> None:
                     ).create_proposal(
                         current.source_profile,
                         analysis,
-                        current.career_background,
+                        _effective_career_background(current),
                     )
                 )
                 evidence_source = repair_missing_bullet_proposals(
@@ -4174,7 +4308,7 @@ def _register_application_builder_routes() -> None:
                     current.source_profile,
                     analysis,
                     evidence_source,
-                    current.career_background,
+                    _effective_career_background(current),
                 )
                 current.initial_evidence_proposal = evidence_source.model_copy(
                     deep=True
@@ -4214,7 +4348,7 @@ def _register_application_builder_routes() -> None:
                     existing_evidence.model_copy(deep=True)
                     if existing_evidence is not None
                     else ai.create_proposal(
-                        current.source_profile, analysis, current.career_background
+                        current.source_profile, analysis, _effective_career_background(current)
                     )
                 )
                 proposal = repair_missing_bullet_proposals(
@@ -4225,7 +4359,7 @@ def _register_application_builder_routes() -> None:
                     current.source_profile,
                     analysis,
                     proposal,
-                    current.career_background,
+                    _effective_career_background(current),
                 )
                 current.analysis = analysis
                 current.analysis_input_fingerprint = current_input
@@ -4317,7 +4451,7 @@ def _register_application_builder_routes() -> None:
                 ).create_proposal(
                     current.source_profile,
                     analysis,
-                    current.career_background,
+                    _effective_career_background(current),
                 )
             )
             evidence_source = repair_missing_bullet_proposals(
@@ -4328,7 +4462,7 @@ def _register_application_builder_routes() -> None:
                 current.source_profile,
                 analysis,
                 evidence_source,
-                current.career_background,
+                _effective_career_background(current),
             )
             current.initial_evidence_proposal = evidence_source.model_copy(
                 deep=True
@@ -4559,7 +4693,7 @@ def _register_application_builder_routes() -> None:
                         current.analysis,
                         proposal_for_refinement,
                         answers,
-                        current.career_background,
+                        _effective_career_background(current),
                     )
                 except ResumeAIError as exc:
                     # Do not send the candidate back through the same completed
@@ -4591,7 +4725,7 @@ def _register_application_builder_routes() -> None:
                     confirmed_profile,
                     current.analysis,
                     refined,
-                    current.career_background,
+                    _effective_career_background(current),
                     allow_candidate_questions=(
                         current.confirmation_follow_up_round
                         < MAX_TARGETED_FOLLOW_UP_ROUNDS
@@ -4665,7 +4799,7 @@ def _register_application_builder_routes() -> None:
                     confirmed_profile,
                     current.analysis,
                     refined,
-                    current.career_background,
+                    _effective_career_background(current),
                 )
                 current.provisional_proposal = refined.model_copy(deep=True)
                 current.confirmation_complete = False
@@ -4687,7 +4821,7 @@ def _register_application_builder_routes() -> None:
                     confirmed_profile,
                     current.analysis,
                     refined,
-                    current.career_background,
+                    _effective_career_background(current),
                 )
                 current.provisional_proposal = refined.model_copy(deep=True)
                 current.draft_proposal = refined.model_copy(deep=True)
@@ -5106,7 +5240,7 @@ def _register_application_builder_routes() -> None:
                         current.analysis,
                         optimized,
                         report_issues,
-                        current.career_background,
+                        _effective_career_background(current),
                     )
                 except ResumeAIError as exc:
                     optimization_warnings.append(str(exc))
@@ -5116,7 +5250,7 @@ def _register_application_builder_routes() -> None:
                         profile,
                         current.analysis,
                         candidate,
-                        current.career_background,
+                        _effective_career_background(current),
                     )
                     candidate, _ = apply_all_until_valid(
                         profile, current.analysis, candidate
@@ -5606,6 +5740,7 @@ def _register_application_builder_routes() -> None:
         preparation_load_error = ""
         resume_findings = None
         resume_findings_fingerprint_value = ""
+        reusable_profile = _load_reusable_career_profile(_application_owner_id())
 
         if application is not None:
             workflow_state = _workflow_state_for_application(application.id)
@@ -5647,6 +5782,8 @@ def _register_application_builder_routes() -> None:
                         application.job_description,
                         company=application.company,
                         role=application.role,
+                        interview_audience=application.interview_audience,
+                        career_profile_fingerprint=reusable_profile.fingerprint,
                     )
                     or preparation_record.evidence_fingerprint != evidence.fingerprint
                     or preparation_record.resume_findings_fingerprint
@@ -5666,6 +5803,7 @@ def _register_application_builder_routes() -> None:
             evidence=evidence,
             evidence_lookup=evidence_lookup,
             resume_findings=resume_findings,
+            reusable_career_profile=reusable_profile.as_prompt_dict(),
         )
 
     @application_builder_bp.post("/interview-preparation/generate")
@@ -5707,6 +5845,7 @@ def _register_application_builder_routes() -> None:
         resume_findings_fingerprint_value = _persist_resume_findings(
             application.id, resume_findings
         )
+        reusable_profile = _load_reusable_career_profile(_application_owner_id())
 
         try:
             models = resolve_models(workflow_state)
@@ -5717,9 +5856,11 @@ def _register_application_builder_routes() -> None:
             preparation = ai.create_interview_preparation(
                 company=application.company,
                 role=application.role,
+                interview_audience=application.interview_audience,
                 job_description=application.job_description,
                 evidence=evidence,
                 resume_findings=resume_findings,
+                career_profile_context=reusable_profile.as_prompt_dict(),
             )
             preparation = restrict_workspace_to_evidence(
                 preparation,
@@ -5735,6 +5876,8 @@ def _register_application_builder_routes() -> None:
                     application.job_description,
                     company=application.company,
                     role=application.role,
+                    interview_audience=application.interview_audience,
+                    career_profile_fingerprint=reusable_profile.fingerprint,
                 ),
                 evidence_fingerprint=evidence.fingerprint,
                 evidence_source_label=evidence.source_label,
@@ -6310,6 +6453,7 @@ def _register_application_builder_routes() -> None:
             company=company,
             role=role,
             job_url=request.form.get("job_url", ""),
+            interview_audience=request.form.get("interview_audience", ""),
             application_date=normalize_iso_date(request.form.get("application_date")),
             status=normalize_application_status(request.form.get("status")),
             resume_version=request.form.get("resume_version", "Not started"),
@@ -6358,6 +6502,7 @@ def _register_application_builder_routes() -> None:
             upcoming_event_date=request.form.get("upcoming_event_date", ""),
             upcoming_event_type=request.form.get("upcoming_event_type", ""),
             job_description=request.form.get("job_description"),
+            interview_audience=request.form.get("interview_audience", ""),
         )
         if updated is None:
             abort(404)

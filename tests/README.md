@@ -41,7 +41,7 @@ python tests/validators/validate_no_invented_experience.py
 ## Storage migration and backend contracts
 
 The storage migration suite runs the same ApplicationStore behavior contract
-against SQLite and DynamoDB, and the same WorkflowStore behavior contract
+against the DynamoDB application repository, and the same WorkflowStore behavior contract
 against memory and DynamoDB:
 
 ```bash

@@ -1,7 +1,7 @@
 """Shared storage contracts and production-migration durability tests.
 
-The same behavioral suites run against both implementations of each storage
-port. Additional tests exercise cross-instance durability, legacy inline-item
+The behavioral suites exercise the DynamoDB application repository and both
+workflow implementations. Additional tests exercise cross-instance durability, legacy inline-item
 migration, S3 externalization, owner isolation, cascade cleanup, and optimistic
 concurrency without contacting live AWS resources.
 """
@@ -11,7 +11,6 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
-import tempfile
 import unittest
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
@@ -353,19 +352,6 @@ class ApplicationStoreContractMixin:
         )
         self.assertIsNone(self.store.get_impact_snapshot("owner-a", first.id))
         self.assertFalse(self.store.delete("owner-a", first.id))
-
-
-class SQLiteApplicationStoreContractTests(
-    ApplicationStoreContractMixin, unittest.TestCase
-):
-    def setUp(self) -> None:
-        from resume_tailor.application_tracker import SQLiteApplicationStore
-
-        self.temporary_directory = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temporary_directory.cleanup)
-        self.store = SQLiteApplicationStore(
-            Path(self.temporary_directory.name) / "applications.sqlite3"
-        )
 
 
 class DynamoDBApplicationStoreContractTests(

@@ -11,7 +11,6 @@ ROOT = Path(__file__).resolve().parents[2]
 RESUME_TAYLOR_ROOT = ROOT / "products" / "resume_taylor"
 STORAGE_MODULE = RESUME_TAYLOR_ROOT / "resume_tailor" / "storage.py"
 WEB_STATE = RESUME_TAYLOR_ROOT / "resume_tailor" / "web_state.py"
-APPLICATION_TRACKER = RESUME_TAYLOR_ROOT / "resume_tailor" / "application_tracker.py"
 BUILDER_APP = RESUME_TAYLOR_ROOT / "app.py"
 CONFIG = ROOT / "products" / "reunia" / "meeting_assistant" / "config.py"
 
@@ -33,7 +32,7 @@ class ApplicationBuilderStorageInterfaceTests(unittest.TestCase):
             {"new_id", "load", "get", "save", "reset", "peek", "delete"},
         )
 
-    def test_application_protocol_matches_sqlite_public_methods(self) -> None:
+    def test_application_protocol_matches_dynamodb_public_methods(self) -> None:
         def public_methods(path: Path, class_name: str) -> set[str]:
             tree = ast.parse(path.read_text(encoding="utf-8"))
             cls = next(
@@ -49,7 +48,10 @@ class ApplicationBuilderStorageInterfaceTests(unittest.TestCase):
 
         self.assertEqual(
             public_methods(STORAGE_MODULE, "ApplicationStore"),
-            public_methods(APPLICATION_TRACKER, "SQLiteApplicationStore"),
+            public_methods(
+                RESUME_TAYLOR_ROOT / "resume_tailor" / "dynamodb_storage.py",
+                "DynamoDBApplicationStore",
+            ),
         )
 
     def test_in_memory_store_implements_explicit_save(self) -> None:
@@ -68,7 +70,7 @@ class ApplicationBuilderStorageInterfaceTests(unittest.TestCase):
         self.assertIn("create_application_store(", builder)
         self.assertIn("document_store=app.extensions", builder)
         self.assertNotIn("store: InMemoryWorkflowStore", builder)
-        self.assertNotIn("application_store: SQLiteApplicationStore", builder)
+        self.assertNotIn("application_store: DynamoDBApplicationStore", builder)
 
     def test_blueprint_commits_mutable_workflow_state_through_save(self) -> None:
         builder = BUILDER_APP.read_text(encoding="utf-8")
@@ -96,7 +98,7 @@ class ApplicationBuilderStorageInterfaceTests(unittest.TestCase):
         self.assertIn("CAREER_BRIDGE_DOCUMENTS_BUCKET", config)
         self.assertIn("CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION", config)
         self.assertIn('"memory"', config)
-        self.assertIn('"sqlite"', config)
+        self.assertIn('"dynamodb"', config)
 
     def test_default_factories_return_protocol_compatible_adapters(self) -> None:
         sys.path.insert(0, str(RESUME_TAYLOR_ROOT))
@@ -112,11 +114,29 @@ class ApplicationBuilderStorageInterfaceTests(unittest.TestCase):
                 {"CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory"},
                 lambda: object(),  # construction does not inspect the state yet
             )
+            from resume_tailor.testing_dynamodb import InMemoryApplicationTable
+
+            class FakeObjectStore:
+                def __init__(self):
+                    self.items = {}
+
+                def put(self, object_key, content, content_type, *, metadata=None):
+                    del content_type, metadata
+                    self.items[object_key] = bytes(content)
+
+                def get(self, object_key):
+                    return self.items[object_key]
+
+                def delete(self, object_key):
+                    self.items.pop(object_key, None)
+
             applications = create_application_store(
                 {
-                    "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "sqlite",
-                    "APPLICATIONS_DB_PATH": ":memory:",
-                }
+                    "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
+                    "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME": "test-applications",
+                    "CAREER_BRIDGE_APPLICATIONS_TABLE_RESOURCE": InMemoryApplicationTable(),
+                },
+                document_store=FakeObjectStore(),
             )
             self.assertIsInstance(workflow, WorkflowStore)
             self.assertIsInstance(applications, ApplicationStore)
@@ -133,7 +153,6 @@ class ApplicationBuilderStorageInterfaceTests(unittest.TestCase):
                 progressed.original_resume_key,
                 "career-bridge/users/hash/original.pdf",
             )
-            applications._connection.close()
         finally:
             if sys.path and sys.path[0] == str(RESUME_TAYLOR_ROOT):
                 sys.path.pop(0)

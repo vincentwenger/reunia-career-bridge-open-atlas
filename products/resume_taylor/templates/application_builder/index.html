@@ -149,7 +149,7 @@
 
           {% if section.name == 'Evidence & Gaps' and report.evidence %}
             <h4>Detailed evidence matrix</h4>
-            <p>The evidence matrix verifies whether each job requirement is supported by the Candidate Profile and whether it is represented in the resume being scored. Unsupported requirements remain visible as gaps instead of being converted into resume claims.</p>
+            <p>The evidence matrix verifies whether each job requirement is supported by the source resume or candidate-confirmed evidence and whether it is represented in the resume being scored. Unsupported requirements remain visible as gaps instead of being converted into resume claims.</p>
             <div class="metric-grid metric-grid-4">
               <div class="metric-card compact"><span>Supported</span><strong>{{ report.evidence.summary.supported }}</strong></div>
               <div class="metric-card compact"><span>Partially supported</span><strong>{{ report.evidence.summary.partial }}</strong></div>
@@ -1153,7 +1153,7 @@
       <div>
         <span class="eyebrow">Hackathon journey · Step 2 of 10</span>
         <h2 id="resume-import-title">Upload an international resume</h2>
-        <p>Career Bridge converts the source resume into a structured Candidate Profile while preserving international titles, credentials, employers, dates, and wording as evidence.</p>
+        <p>Career Bridge converts the source resume into a structured resume-evidence record while preserving international titles, credentials, employers, dates, and wording as source evidence.</p>
       </div>
       <span class="resume-import-status {{ 'is-ready' if state.profile_upload_name else 'is-pending' }}">
         {{ 'Resume imported' if state.profile_upload_name else 'Resume needed' }}
@@ -1259,13 +1259,19 @@
         <section class="newcomer-onboarding" aria-labelledby="newcomer-onboarding-title">
           <div class="newcomer-onboarding-heading">
             <div>
-              <span class="eyebrow">Optional newcomer profile</span>
+              <span class="eyebrow">Connected Career Profile</span>
               <h3 id="newcomer-onboarding-title">International career background</h3>
-              <p>Help Career Bridge translate experience across countries, industries, and hiring conventions before it rewrites the resume.</p>
+              <p>Career Bridge starts with your reusable Career Profile, then lets this application add job-specific translation context without turning profile notes into verified resume claims.</p>
             </div>
             <span class="privacy-badge">No visa or immigration questions</span>
           </div>
           <div class="alert alert-info compact-alert newcomer-privacy-note">Only provide career information useful to job matching and resume translation. Immigration status, visa details, nationality, and other unnecessary sensitive data are not requested.</div>
+          {% if reusable_career_profile and reusable_career_profile.has_context() %}
+          <div class="alert alert-success compact-alert career-profile-connected-note">
+            <strong>Career Profile connected.</strong> Roles, industries, skills, international credentials, title-translation context, goals, and constraints are available to Career Translation and Resume Workflow. Uploaded resume evidence remains authoritative for candidate claims.
+            <a href="/career-profile">Review Career Profile</a>
+          </div>
+          {% endif %}
           <div class="field-grid two newcomer-field-grid">
             <div>
               <label for="countries-worked">Countries where you worked</label>

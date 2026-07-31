@@ -1490,16 +1490,33 @@
     function seedContextFromTemplate() {
         return {
             enabled: root.dataset.contextEnabled !== 'false',
+            professional_headline: root.dataset.profileProfessionalHeadline || '',
+            current_role: root.dataset.profileCurrentRole || '',
+            years_experience: root.dataset.profileYearsExperience || '',
+            current_location: root.dataset.profileCurrentLocation || '',
+            preferred_roles: root.dataset.profilePreferredRoles || '',
+            industries: root.dataset.profileIndustries || '',
+            core_skills: root.dataset.profileCoreSkills || '',
+            key_accomplishments: root.dataset.profileKeyAccomplishments || '',
+            countries_worked: root.dataset.profileCountriesWorked || '',
+            languages: root.dataset.profileLanguages || '',
+            target_country: root.dataset.profileTargetCountry || '',
+            target_country_experience: root.dataset.profileTargetCountryExperience || '',
+            international_credentials: root.dataset.profileInternationalCredentials || '',
+            certifications: root.dataset.profileCertifications || '',
+            titles_needing_translation: root.dataset.profileTitlesNeedingTranslation || '',
+            career_transition: root.dataset.profileCareerTransition || '',
+            work_preferences: root.dataset.profileWorkPreferences || '',
+            relocation_preferences: root.dataset.profileRelocationPreferences || '',
+            work_authorization: root.dataset.profileWorkAuthorization || '',
+            career_goals: root.dataset.profileCareerGoals || '',
+            constraints: root.dataset.profileConstraints || '',
+            // Legacy values are retained while older consumers are migrated.
             company: root.dataset.contextCompany || '',
             reference_link: root.dataset.contextReferenceLink || '',
             role: root.dataset.contextRole || '',
             type: root.dataset.contextType || '',
             domain: root.dataset.contextDomain || '',
-            audience: root.dataset.contextAudience || '',
-            answer_style: root.dataset.contextAnswerStyle || '',
-            response_mode: root.dataset.contextResponseMode || 'ready_to_say',
-            audio_response_instructions: root.dataset.contextAudioResponseInstructions || '',
-            clipboard_response_instructions: root.dataset.contextClipboardResponseInstructions || '',
             objective: root.dataset.contextObjective || '',
             free_text: root.dataset.contextFreeText || ''
         };
@@ -1508,16 +1525,32 @@
     function normalizeContext(raw = {}) {
         return {
             enabled: raw.enabled ?? raw.use_context ?? true,
+            professional_headline: raw.professional_headline ?? raw.profile_professional_headline ?? '',
+            current_role: raw.current_role ?? raw.profile_current_role ?? raw.role ?? raw.context_role ?? '',
+            years_experience: raw.years_experience ?? raw.profile_years_experience ?? '',
+            current_location: raw.current_location ?? raw.profile_current_location ?? '',
+            preferred_roles: raw.preferred_roles ?? raw.profile_preferred_roles ?? '',
+            industries: raw.industries ?? raw.profile_industries ?? raw.domain ?? raw.context_domain ?? '',
+            core_skills: raw.core_skills ?? raw.profile_core_skills ?? '',
+            key_accomplishments: raw.key_accomplishments ?? raw.profile_key_accomplishments ?? '',
+            countries_worked: raw.countries_worked ?? raw.profile_countries_worked ?? '',
+            languages: raw.languages ?? raw.profile_languages ?? '',
+            target_country: raw.target_country ?? raw.profile_target_country ?? '',
+            target_country_experience: raw.target_country_experience ?? raw.profile_target_country_experience ?? '',
+            international_credentials: raw.international_credentials ?? raw.profile_international_credentials ?? '',
+            certifications: raw.certifications ?? raw.profile_certifications ?? '',
+            titles_needing_translation: raw.titles_needing_translation ?? raw.profile_titles_needing_translation ?? '',
+            career_transition: raw.career_transition ?? raw.profile_career_transition ?? '',
+            work_preferences: raw.work_preferences ?? raw.profile_work_preferences ?? '',
+            relocation_preferences: raw.relocation_preferences ?? raw.profile_relocation_preferences ?? '',
+            work_authorization: raw.work_authorization ?? raw.profile_work_authorization ?? '',
+            career_goals: raw.career_goals ?? raw.profile_career_goals ?? raw.objective ?? raw.context_objective ?? '',
+            constraints: raw.constraints ?? raw.profile_constraints ?? '',
             company: raw.company ?? raw.context_company ?? raw.assistant_context_company ?? '',
             reference_link: raw.reference_link ?? raw.context_reference_link ?? raw.assistant_context_reference_link ?? '',
             role: raw.role ?? raw.context_role ?? raw.assistant_context_role ?? '',
             type: raw.type ?? raw.context_type ?? raw.assistant_context_type ?? '',
             domain: raw.domain ?? raw.context_domain ?? raw.assistant_context_domain ?? '',
-            audience: raw.audience ?? raw.context_audience ?? raw.assistant_context_audience ?? '',
-            answer_style: raw.answer_style ?? raw.context_answer_style ?? raw.assistant_context_answer_style ?? '',
-            response_mode: raw.response_mode ?? raw.context_response_mode ?? raw.assistant_context_response_mode ?? 'ready_to_say',
-            audio_response_instructions: raw.audio_response_instructions ?? raw.context_audio_response_instructions ?? raw.assistant_context_audio_response_instructions ?? '',
-            clipboard_response_instructions: raw.clipboard_response_instructions ?? raw.context_clipboard_response_instructions ?? raw.assistant_context_clipboard_response_instructions ?? '',
             objective: raw.objective ?? raw.context_objective ?? raw.assistant_context_objective ?? '',
             free_text: raw.free_text ?? raw.context_free_text ?? raw.assistant_context_free_text ?? ''
         };
@@ -1528,34 +1561,82 @@
         return {
             ...value,
             use_context: value.enabled,
+            profile_professional_headline: value.professional_headline,
+            profile_current_role: value.current_role,
+            profile_years_experience: value.years_experience,
+            profile_current_location: value.current_location,
+            profile_preferred_roles: value.preferred_roles,
+            profile_industries: value.industries,
+            profile_core_skills: value.core_skills,
+            profile_key_accomplishments: value.key_accomplishments,
+            profile_countries_worked: value.countries_worked,
+            profile_languages: value.languages,
+            profile_target_country: value.target_country,
+            profile_target_country_experience: value.target_country_experience,
+            profile_international_credentials: value.international_credentials,
+            profile_certifications: value.certifications,
+            profile_titles_needing_translation: value.titles_needing_translation,
+            profile_career_transition: value.career_transition,
+            profile_work_preferences: value.work_preferences,
+            profile_relocation_preferences: value.relocation_preferences,
+            profile_work_authorization: value.work_authorization,
+            profile_career_goals: value.career_goals,
+            profile_constraints: value.constraints,
             context_company: value.company,
             context_reference_link: value.reference_link,
-            context_role: value.role,
+            context_role: value.current_role || value.preferred_roles || value.role,
             context_type: value.type,
-            context_domain: value.domain,
-            context_audience: value.audience,
-            context_answer_style: value.answer_style,
-            context_response_mode: value.response_mode,
-            context_audio_response_instructions: value.audio_response_instructions,
-            context_clipboard_response_instructions: value.clipboard_response_instructions,
-            context_objective: value.objective,
+            context_domain: value.industries || value.domain,
+            context_objective: value.career_goals || value.objective,
             context_free_text: value.free_text
         };
+    }
+
+    function profileContextForAI(context) {
+        const value = normalizeContext(context || {});
+        const keys = [
+            'professional_headline', 'current_role', 'years_experience',
+            'current_location', 'preferred_roles', 'industries', 'core_skills',
+            'key_accomplishments', 'countries_worked', 'languages',
+            'target_country', 'target_country_experience',
+            'international_credentials', 'certifications',
+            'titles_needing_translation', 'career_transition',
+            'work_preferences', 'relocation_preferences', 'work_authorization',
+            'career_goals', 'constraints'
+        ];
+        return Object.fromEntries(
+            keys
+                .map(key => [key, value[key]])
+                .filter(([, fieldValue]) => String(fieldValue || '').trim())
+        );
     }
 
     function hasContextDetails(context) {
         const value = normalizeContext(context || {});
         return Boolean(
-            value.company ||
-            value.reference_link ||
+            value.professional_headline ||
+            value.current_role ||
+            value.years_experience ||
+            value.current_location ||
+            value.preferred_roles ||
+            value.industries ||
+            value.core_skills ||
+            value.key_accomplishments ||
+            value.countries_worked ||
+            value.languages ||
+            value.target_country ||
+            value.target_country_experience ||
+            value.international_credentials ||
+            value.certifications ||
+            value.titles_needing_translation ||
+            value.career_transition ||
+            value.work_preferences ||
+            value.relocation_preferences ||
+            value.work_authorization ||
+            value.career_goals ||
+            value.constraints ||
             value.role ||
-            value.type ||
             value.domain ||
-            value.audience ||
-            value.answer_style ||
-            value.response_mode !== 'ready_to_say' ||
-            value.audio_response_instructions ||
-            value.clipboard_response_instructions ||
             value.objective ||
             value.free_text
         );
@@ -1564,38 +1645,58 @@
     function readDefaultContextForm() {
         const enabled = document.getElementById('useAssistantContext');
         if (!enabled) return state.context || seedContextFromTemplate();
+        const existing = normalizeContext(state.context || seedContextFromTemplate());
         return normalizeContext({
+            ...existing,
             enabled: enabled.checked,
-            company: document.getElementById('contextCompany')?.value.trim() || '',
-            reference_link: document.getElementById('contextReferenceLink')?.value.trim() || '',
-            role: document.getElementById('contextRole')?.value.trim() || '',
-            type: document.getElementById('contextType')?.value || '',
-            domain: document.getElementById('contextDomain')?.value.trim() || '',
-            audience: document.getElementById('contextAudience')?.value.trim() || '',
-            answer_style: document.getElementById('contextAnswerStyle')?.value || '',
-            response_mode: document.getElementById('contextResponseMode')?.value || 'ready_to_say',
-            audio_response_instructions: document.getElementById('contextAudioResponseInstructions')?.value.trim() || '',
-            clipboard_response_instructions: document.getElementById('contextClipboardResponseInstructions')?.value.trim() || '',
-            objective: document.getElementById('contextObjective')?.value.trim() || '',
-            free_text: document.getElementById('contextFreeText')?.value.trim() || ''
+            professional_headline: document.getElementById('profileProfessionalHeadline')?.value.trim() || '',
+            current_role: document.getElementById('profileCurrentRole')?.value.trim() || '',
+            years_experience: document.getElementById('profileYearsExperience')?.value.trim() || '',
+            current_location: document.getElementById('profileCurrentLocation')?.value.trim() || '',
+            preferred_roles: document.getElementById('profilePreferredRoles')?.value.trim() || '',
+            industries: document.getElementById('profileIndustries')?.value.trim() || '',
+            core_skills: document.getElementById('profileCoreSkills')?.value.trim() || '',
+            key_accomplishments: document.getElementById('profileKeyAccomplishments')?.value.trim() || '',
+            countries_worked: document.getElementById('profileCountriesWorked')?.value.trim() || '',
+            languages: document.getElementById('profileLanguages')?.value.trim() || '',
+            target_country: document.getElementById('profileTargetCountry')?.value.trim() || '',
+            target_country_experience: document.getElementById('profileTargetCountryExperience')?.value.trim() || '',
+            international_credentials: document.getElementById('profileInternationalCredentials')?.value.trim() || '',
+            certifications: document.getElementById('profileCertifications')?.value.trim() || '',
+            titles_needing_translation: document.getElementById('profileTitlesNeedingTranslation')?.value.trim() || '',
+            career_transition: document.getElementById('profileCareerTransition')?.value.trim() || '',
+            work_preferences: document.getElementById('profileWorkPreferences')?.value || '',
+            relocation_preferences: document.getElementById('profileRelocationPreferences')?.value.trim() || '',
+            work_authorization: document.getElementById('profileWorkAuthorization')?.value.trim() || '',
+            career_goals: document.getElementById('profileCareerGoals')?.value.trim() || '',
+            constraints: document.getElementById('profileConstraints')?.value.trim() || ''
         });
     }
 
     function writeDefaultContextForm(context) {
         const map = {
             useAssistantContext: context.enabled !== false,
-            contextCompany: context.company || '',
-            contextReferenceLink: context.reference_link || '',
-            contextRole: context.role || '',
-            contextType: context.type || '',
-            contextDomain: context.domain || '',
-            contextAudience: context.audience || '',
-            contextAnswerStyle: context.answer_style || '',
-            contextResponseMode: context.response_mode || 'ready_to_say',
-            contextAudioResponseInstructions: context.audio_response_instructions || '',
-            contextClipboardResponseInstructions: context.clipboard_response_instructions || '',
-            contextObjective: context.objective || '',
-            contextFreeText: context.free_text || ''
+            profileProfessionalHeadline: context.professional_headline || '',
+            profileCurrentRole: context.current_role || '',
+            profileYearsExperience: context.years_experience || '',
+            profileCurrentLocation: context.current_location || '',
+            profilePreferredRoles: context.preferred_roles || '',
+            profileIndustries: context.industries || '',
+            profileCoreSkills: context.core_skills || '',
+            profileKeyAccomplishments: context.key_accomplishments || '',
+            profileCountriesWorked: context.countries_worked || '',
+            profileLanguages: context.languages || '',
+            profileTargetCountry: context.target_country || '',
+            profileTargetCountryExperience: context.target_country_experience || '',
+            profileInternationalCredentials: context.international_credentials || '',
+            profileCertifications: context.certifications || '',
+            profileTitlesNeedingTranslation: context.titles_needing_translation || '',
+            profileCareerTransition: context.career_transition || '',
+            profileWorkPreferences: context.work_preferences || '',
+            profileRelocationPreferences: context.relocation_preferences || '',
+            profileWorkAuthorization: context.work_authorization || '',
+            profileCareerGoals: context.career_goals || '',
+            profileConstraints: context.constraints || ''
         };
         Object.entries(map).forEach(([id, value]) => {
             const element = document.getElementById(id);
@@ -1655,55 +1756,6 @@
             participants: document.getElementById('meetingContextParticipants')?.value.trim() || '',
             special_instructions: document.getElementById('meetingContextSpecialInstructions')?.value.trim() || ''
         });
-    }
-
-    function responseAnswerStyleLabel(value) {
-        const labels = {
-            concise: 'Concise answers',
-            detailed: 'Detailed answers',
-            bullet_points: 'Bullet-point answers',
-            step_by_step: 'Step-by-step answers',
-            action_oriented: 'Action-oriented answers',
-            professional: 'Professional answers'
-        };
-        return labels[value] || 'Balanced answers';
-    }
-
-    function responseModeLabel(value, {compact = false} = {}) {
-        const labels = {
-            concise_structured_action: 'Concise, structured, and action-oriented',
-            coaching: 'Coaching guidance'
-        };
-        return labels[value] || (compact ? 'Ready-to-say' : 'Ready-to-say answer');
-    }
-
-    function updateResponsePreferencesSummary() {
-        const summary = document.getElementById('responsePreferencesSummary');
-        if (!summary) return;
-        const context = readDefaultContextForm();
-        const parts = [
-            responseAnswerStyleLabel(context.answer_style),
-            responseModeLabel(context.response_mode, {compact: true})
-        ];
-        if (context.audio_response_instructions) parts.push('Custom audio instructions');
-        if (context.clipboard_response_instructions) parts.push('Custom clipboard instructions');
-        summary.textContent = parts.join(' · ');
-    }
-
-    function setResponsePreferencesExpanded(expanded, {focus = false} = {}) {
-        const toggle = document.getElementById('responsePreferencesToggle');
-        const panel = document.getElementById('responsePreferencesPanel');
-        if (!toggle || !panel) return;
-        const open = Boolean(expanded);
-        toggle.setAttribute('aria-expanded', String(open));
-        panel.hidden = !open;
-
-        const action = toggle.querySelector('.response-preferences-toggle-action');
-        if (action) action.textContent = open ? 'Hide' : 'Customize';
-
-        if (focus && open) {
-            window.requestAnimationFrame(() => document.getElementById('contextAnswerStyle')?.focus());
-        }
     }
 
     function setMeetingOverrideExpanded(expanded, {focus = false} = {}) {
@@ -1813,16 +1865,20 @@
     }
 
     function updateEffectiveContextPreview() {
-        const defaultContext = readDefaultContextForm();
-        const meetingContext = readMeetingContextForm();
+        const profile = readDefaultContextForm();
         const preview = document.getElementById('effectiveContextPreview');
         const chips = document.getElementById('effectiveContextChips');
         const status = document.getElementById('effectiveContextStatus');
         if (!preview || !chips || !status) return;
 
-        status.textContent = defaultContext.enabled ? 'Context is enabled' : 'Context is paused';
-        status.classList.toggle('is-paused', !defaultContext.enabled);
-        const chipValues = [defaultContext.company, defaultContext.role, defaultContext.type, defaultContext.domain].filter(Boolean);
+        status.textContent = profile.enabled ? 'Profile is enabled' : 'Profile is paused';
+        status.classList.toggle('is-paused', !profile.enabled);
+        const chipValues = [
+            profile.current_role,
+            profile.target_country,
+            profile.work_preferences,
+            profile.years_experience
+        ].filter(Boolean);
         chips.replaceChildren(...chipValues.map(value => {
             const chip = document.createElement('span');
             chip.textContent = value;
@@ -1830,23 +1886,29 @@
         }));
 
         const rows = [
-            ['Organization', defaultContext.company],
-            ['Reference Link', defaultContext.reference_link],
-            ['Role', defaultContext.role],
-            ['Audience', meetingContext.participants || defaultContext.audience],
-            ['Objective', meetingContext.objective || defaultContext.objective],
-            ['Answer style', defaultContext.answer_style],
-            ['Response mode', responseModeLabel(defaultContext.response_mode)],
-            ['Audio response instructions', defaultContext.audio_response_instructions],
-            ['Clipboard response instructions', defaultContext.clipboard_response_instructions],
-            ['Reusable instructions', defaultContext.free_text],
-            ['Special instructions for this application', meetingContext.special_instructions]
+            ['Professional headline', profile.professional_headline],
+            ['Current role', profile.current_role],
+            ['Preferred roles', profile.preferred_roles],
+            ['Industries', profile.industries],
+            ['Core skills', profile.core_skills],
+            ['Key accomplishments', profile.key_accomplishments],
+            ['Countries worked', profile.countries_worked],
+            ['Languages', profile.languages],
+            ['Target country', profile.target_country],
+            ['International credentials', profile.international_credentials],
+            ['Titles needing translation', profile.titles_needing_translation],
+            ['Career transition', profile.career_transition],
+            ['Location', profile.current_location],
+            ['Work preference', profile.work_preferences],
+            ['Relocation', profile.relocation_preferences],
+            ['Career goals', profile.career_goals],
+            ['Constraints', profile.constraints]
         ].filter(([, value]) => String(value || '').trim());
         preview.replaceChildren();
         if (!rows.length) {
             const empty = document.createElement('div');
             empty.className = 'context-preview-empty';
-            empty.textContent = 'Add context details to see the effective AI guidance.';
+            empty.textContent = 'Add professional or international-background details to build your reusable profile.';
             preview.appendChild(empty);
             return;
         }
@@ -1938,11 +2000,6 @@
         const meetingId = event.currentTarget.value || '';
         await setActiveMeeting(meetingId);
         await loadMeetingContextForSelection(meetingId);
-    });
-
-    document.getElementById('responsePreferencesToggle')?.addEventListener('click', event => {
-        const expanded = event.currentTarget.getAttribute('aria-expanded') === 'true';
-        setResponsePreferencesExpanded(!expanded, {focus: !expanded});
     });
 
     document.getElementById('meetingOverrideToggle')?.addEventListener('click', event => {
@@ -2156,7 +2213,7 @@
                 content_type: document.getElementById('knowledgeSearchContentType')?.value || 'all'
             },
             use_context: state.context?.enabled !== false,
-            assistant_context: state.context?.enabled !== false ? serializeContext(state.context || {}) : null,
+            assistant_context: state.context?.enabled !== false ? profileContextForAI(state.context || {}) : null,
             meeting_context: meetingContext
         };
 

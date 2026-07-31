@@ -41,7 +41,7 @@
     <div>
       <span class="eyebrow">New target role</span>
       <h2>Create a job application</h2>
-      <p>Create the application first so every resume version, interview session, and action remains attached to the correct company and role.</p>
+      <p>Create the application first so the company, target job, posting link, interview audience, resume versions, interview sessions, and actions remain attached to the correct opportunity.</p>
     </div>
   </div>
   <details {% if not applications %}open{% endif %}>
@@ -50,7 +50,7 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field-grid two">
         <div><label for="new-company">Company</label><input id="new-company" name="company" type="text" required></div>
-        <div><label for="new-role">Job title</label><input id="new-role" name="role" type="text" required></div>
+        <div><label for="new-role">Target job title</label><input id="new-role" name="role" type="text" required></div>
         <div>
           <label for="new-status">Application status</label>
           <select id="new-status" name="status">
@@ -58,6 +58,11 @@
           </select>
         </div>
         <div><label for="new-application-date">Application date</label><input id="new-application-date" name="application_date" type="date"></div>
+        <div>
+          <label for="new-interview-audience">Interview audience</label>
+          <input id="new-interview-audience" name="interview_audience" type="text" list="interview-audience-suggestions" maxlength="200" autocomplete="off" aria-describedby="new-interview-audience-help" placeholder="Hiring manager, technical panel, recruiter…">
+          <small id="new-interview-audience-help">Saved only on this Job Application and used to tailor Interview Preparation and Mock Interview.</small>
+        </div>
         <div><label for="new-next-action">Next action</label><input id="new-next-action" name="next_action" type="text" placeholder="Defaults to the current builder step"></div>
         <div><label for="new-readiness">Interview readiness</label><input id="new-readiness" name="interview_readiness" type="number" min="0" max="100" step="1" placeholder="Not assessed yet"></div>
         <div>
@@ -68,6 +73,9 @@
         </div>
         <div><label for="new-upcoming-date">Upcoming date</label><input id="new-upcoming-date" name="upcoming_event_date" type="date"></div>
       </div>
+      <datalist id="interview-audience-suggestions">
+        {% for suggestion in interview_audience_suggestions %}<option value="{{ suggestion }}"></option>{% endfor %}
+      </datalist>
       <label for="new-job-url">Job posting link</label>
       <input id="new-job-url" name="job_url" type="url" placeholder="https://…">
       <label for="new-job-description">Target job description</label>
@@ -109,7 +117,8 @@
 
           <dl class="application-dashboard-fields">
             <div><dt>Company</dt><dd>{{ application.company }}</dd></div>
-            <div><dt>Job title</dt><dd>{{ application.role }}</dd></div>
+            <div><dt>Target job</dt><dd>{{ application.role }}</dd></div>
+            <div><dt>Interview audience</dt><dd>{{ application.interview_audience or 'Not specified' }}</dd></div>
             <div><dt>Application status</dt><dd>{{ application.status_label }}</dd></div>
             <div><dt>Resume version</dt><dd>{{ application.resume_version }}</dd></div>
             <div><dt>Interview readiness</dt><dd>{{ application.interview_readiness_label }}</dd></div>
@@ -133,7 +142,11 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="field-grid two">
                 <div><label for="company-{{ application.id }}">Company</label><input id="company-{{ application.id }}" name="company" type="text" value="{{ application.company }}" required></div>
-                <div><label for="role-{{ application.id }}">Job title</label><input id="role-{{ application.id }}" name="role" type="text" value="{{ application.role }}" required></div>
+                <div><label for="role-{{ application.id }}">Target job title</label><input id="role-{{ application.id }}" name="role" type="text" value="{{ application.role }}" required></div>
+                <div>
+                  <label for="interview-audience-{{ application.id }}">Interview audience</label>
+                  <input id="interview-audience-{{ application.id }}" name="interview_audience" type="text" list="interview-audience-suggestions" maxlength="200" autocomplete="off" value="{{ application.interview_audience }}" placeholder="Hiring manager, technical panel, recruiter…">
+                </div>
                 <div>
                   <label for="status-{{ application.id }}">Application status</label>
                   <select id="status-{{ application.id }}" name="status">

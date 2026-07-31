@@ -46,6 +46,7 @@ from .application_tracker import (
     normalize_application_builder_step,
     normalize_application_status,
     normalize_iso_date,
+    normalize_interview_audience,
     normalize_job_url,
     normalize_optional_score,
 )
@@ -710,6 +711,7 @@ class DynamoDBApplicationStore:
             company=str(item.get("company") or ""),
             role=str(item.get("role") or ""),
             job_url=str(item.get("job_url") or ""),
+            interview_audience=str(item.get("interview_audience") or ""),
             application_date=str(item.get("application_date") or ""),
             status=normalize_application_status(str(item.get("status") or "")),
             resume_version=str(item.get("resume_version") or "Not started"),
@@ -757,6 +759,7 @@ class DynamoDBApplicationStore:
             "role": record.role,
             "role_key": record.role.casefold(),
             "job_url": record.job_url,
+            "interview_audience": record.interview_audience,
             "application_date": record.application_date,
             "status": record.status,
             "resume_version": record.resume_version,
@@ -790,7 +793,7 @@ class DynamoDBApplicationStore:
             self._application_record(item)
             for item in self._query_prefix(owner_id, _APPLICATION_PREFIX)
         ]
-        # Stable sorts reproduce SQLite's status/event/updated ordering.
+        # Stable sorts preserve the status/event/updated ordering contract.
         records.sort(key=lambda item: item.updated_at, reverse=True)
         records.sort(key=lambda item: item.upcoming_event_date or "9999-12-31")
         records.sort(key=lambda item: _STATUS_ORDER.get(item.status, 8))
@@ -1038,6 +1041,7 @@ class DynamoDBApplicationStore:
         company: str,
         role: str,
         job_url: str = "",
+        interview_audience: str = "",
         application_date: str = "",
         status: str = "draft",
         resume_version: str = "Not started",
@@ -1102,6 +1106,7 @@ class DynamoDBApplicationStore:
             company=company.strip() or "Company not specified",
             role=role.strip() or "Role not specified",
             job_url=normalize_job_url(job_url),
+            interview_audience=normalize_interview_audience(interview_audience),
             application_date=normalize_iso_date(application_date),
             status=normalized_status,
             resume_version=resume_version.strip() or "Not started",
@@ -1198,6 +1203,7 @@ class DynamoDBApplicationStore:
         upcoming_event_date: str = "",
         upcoming_event_type: str = "",
         job_description: str | None = None,
+        interview_audience: str | None = None,
     ) -> ApplicationRecord | None:
         current = self.get(owner_id, application_id, include_resume_bytes=False)
         if current is None:
@@ -1215,6 +1221,11 @@ class DynamoDBApplicationStore:
                 "company": company.strip() or "Company not specified",
                 "role": role.strip() or "Role not specified",
                 "job_url": normalize_job_url(job_url),
+                "interview_audience": (
+                    current.interview_audience
+                    if interview_audience is None
+                    else normalize_interview_audience(interview_audience)
+                ),
                 "application_date": normalize_iso_date(application_date),
                 "status": normalized_status,
                 "screening_received": screening,
@@ -1494,7 +1505,7 @@ class DynamoDBApplicationStore:
         )
         if not response.get("Attributes"):
             return False
-        # DynamoDB has no foreign keys, so explicitly mirror SQLite's ON DELETE
+        # DynamoDB has no foreign keys, so explicitly cascade deletion of
         # CASCADE behavior for linked artifact records. S3 deletions create delete
         # markers when bucket versioning is enabled, allowing operator recovery.
         for storage_key in (
@@ -1532,4 +1543,8 @@ def create_dynamodb_application_store(
 ) -> DynamoDBApplicationStore:
     """Factory loaded by ``resume_tailor.storage.create_application_store``."""
 
-    return DynamoDBApplicationStore(config, document_store=document_store)
+    return DynamoDBApplicationStore(
+        config,
+        table=config.get("CAREER_BRIDGE_APPLICATIONS_TABLE_RESOURCE"),
+        document_store=document_store,
+    )

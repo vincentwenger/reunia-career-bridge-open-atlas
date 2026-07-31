@@ -12,10 +12,11 @@ The Application Builder uses the direct `/applications/` route and no Nginx side
 ## Data-loss warning
 
 > **WARNING: Redeploying or replacing the Lightsail container can erase Application Builder records.**
-> This warning applies when the explicit demo override permits SQLite, process
-> memory, or local document storage in production. Those backends use
-> ephemeral container-node storage. Durable DynamoDB/S3 production storage is required by
-> default and should be used whenever retention matters.
+> This warning applies when the explicit demo override permits process-memory
+> workflow state or local document storage in production. Those parts rely on
+> ephemeral container-node storage, while application records remain in DynamoDB.
+> Durable DynamoDB/S3 production storage is required by default and should be
+> used whenever retention matters.
 
 
 ## Build and run locally
@@ -61,7 +62,7 @@ Operational policy:
 | Storage mode | Lightsail scale | Gunicorn workers |
 |---|---:|---:|
 | Durable DynamoDB/DynamoDB/S3 | 1 or greater | 1 or greater |
-| Demo memory/SQLite/local | exactly 1 | exactly 1 |
+| Demo memory/DynamoDB/local | exactly 1 | exactly 1 |
 
 Leaving the Lightsail **Command** field empty remains recommended in both modes
 so the deployed, reviewed image controls the complete startup command.
@@ -71,9 +72,8 @@ Application Builder additionally reads `OPENAI_API_KEY` and these storage settin
 
 ```text
 CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND=memory|dynamodb
-CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=sqlite|dynamodb
+CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=dynamodb
 CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND=memory|dynamodb
-CAREER_BRIDGE_APPLICATIONS_DB=/app/instance/career_bridge_applications.sqlite3
 CAREER_BRIDGE_APPLICATIONS_TABLE_NAME=career-bridge-applications
 CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME=career-bridge-job-discovery
 CAREER_BRIDGE_WORKFLOWS_TABLE_NAME=career-bridge-workflows
@@ -87,13 +87,12 @@ CAREER_BRIDGE_DOCUMENTS_KMS_KEY_ID=
 CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=false
 ```
 
-Development and testing retain the local `memory`, `sqlite`, and `local`
-adapters. `ProductionConfig` defaults to `dynamodb`, `dynamodb`, and `s3`; a
-normal production process therefore never initializes the in-memory workflow or
-SQLite application repository. Selecting local adapters in production requires
-the explicit demo override. Storage is selected through `WorkflowStore`,
-`ApplicationStore`, and `CareerBridgeObjectStore` protocols rather than concrete
-route-level types.
+Development and testing may retain process-memory workflow state and local
+document objects, but application records always use DynamoDB.
+`ProductionConfig` defaults to `dynamodb`, `dynamodb`, and `s3`. Selecting
+non-durable workflow or document adapters in production requires the explicit
+demo override. Storage is selected through `WorkflowStore`, `ApplicationStore`,
+and `CareerBridgeObjectStore` protocols rather than route-level types.
 
 For durable application records and documents, configure all of the following:
 
@@ -111,9 +110,9 @@ CAREER_BRIDGE_DOCUMENTS_PREFIX=career-bridge
 AWS_REGION=us-west-2
 ```
 
-The package deliberately does not fall back to SQLite, process memory, or local
-container files when DynamoDB is selected. A missing table name, missing S3
-bucket, or non-S3 document backend stops startup with a configuration error.
+The package deliberately does not fall back to a local application database. A
+missing application table name stops startup. In production, a missing workflow
+table, S3 bucket, or non-S3 document backend also stops startup.
 
 ### Production startup gate
 
@@ -132,7 +131,7 @@ CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME=<explicit table name>
 CAREER_BRIDGE_DOCUMENTS_BUCKET=<explicit bucket name>
 ```
 
-Production startup fails when any backend is `sqlite`, `memory`, or `local`, or
+Production startup fails when application storage is not `dynamodb`, or when workflow/document storage is non-durable without the explicit override, or
 when any required table/bucket name is blank. This check runs inside Réunia's
 existing production validator and is independent of the Application Builder
 factory, so an unsafe process cannot start far enough to serve traffic.
@@ -243,7 +242,7 @@ IMPACT#<application_id>
 The application task role or Lightsail AWS credentials require these actions on
 the table: `dynamodb:GetItem`, `dynamodb:PutItem`, `dynamodb:DeleteItem`, and
 `dynamodb:Query`. Application deletion explicitly removes the three linked
-artifact items to mirror SQLite foreign-key cascade behavior. Application,
+artifact items to implement explicit cascade cleanup. Application,
 resume-findings, interview-preparation, and impact items never receive an
 `expires_at` attribute and are not subject to DynamoDB TTL.
 
@@ -301,8 +300,9 @@ not place credentials in object metadata or object keys.
 
 ## Conditional deployment policy
 
-The explicit demo configuration (`memory` + `sqlite` + `local`) remains
-process-local and ephemeral. Only that configuration requires the complete
+The explicit demo configuration (`memory` + `dynamodb` + `local`) keeps
+workflow state and documents process-local or container-local. Only that
+configuration requires the complete
 single-process deployment invariant:
 
 ```text
@@ -318,22 +318,11 @@ The Docker image already supplies the safe startup command:
 gunicorn --bind 0.0.0.0:8000 --workers 1 --threads 4 ... app:app
 ```
 
-When demo storage is active, Réunia emits a prominent startup warning with the
-active Application Builder persistence configuration. It reads:
-
-```text
-Application Builder persistence:
-- workflow backend: process memory
-- application backend: SQLite
-- document backend: local filesystem
-- database path: /app/instance/career_bridge_applications.sqlite3
-- safe only with one Gunicorn worker and Lightsail scale 1
-- records may be lost during container replacement
-```
-
-The path is resolved from `APPLICATIONS_DB_PATH` /
-`CAREER_BRIDGE_APPLICATIONS_DB`, so the log reports the actual configured path
-when an override is used. The warning is emitted once per application process.
+When storage is not fully durable, Réunia emits a startup warning that reports
+all configured storage backends. A demo configuration reports workflow memory,
+DynamoDB applications, and local documents, followed by a note that workflow or
+document storage is not fully durable. The message is emitted once per
+application process.
 
 Do not enter a custom command in the Lightsail container configuration while the
 service uses the demo storage defaults. In particular, a command containing
@@ -407,8 +396,8 @@ The defaults are region `us-west-2` and service name
 configured AWS CLI identity with permission to call
 `lightsail:GetContainerServices`.
 
-Interview Preparation records use the configured `ApplicationStore`: DynamoDB in
-normal production and SQLite only in local/demo mode. They include a snapshot of
+Interview Preparation records always use the DynamoDB `ApplicationStore`. They
+include a snapshot of
 the exact verified evidence used for generation. A workspace is marked for
 regeneration when the company, target role, job description, or verified
 evidence changes. Generation requires either completed candidate evidence

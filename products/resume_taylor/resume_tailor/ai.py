@@ -415,15 +415,19 @@ class ResumeAI:
         job_description: str,
         evidence: VerifiedEvidenceBundle,
         resume_findings: ResumeFindingsSnapshot,
+        interview_audience: str = "",
+        career_profile_context: dict[str, str] | None = None,
     ) -> InterviewPreparationWorkspace:
         workspace = self._parse(
             INTERVIEW_PREPARATION_SYSTEM,
             build_interview_preparation_prompt(
                 company=company,
                 role=role,
+                interview_audience=interview_audience,
                 job_description=job_description,
                 evidence=evidence,
                 resume_findings=resume_findings,
+                career_profile_context=career_profile_context,
             ),
             InterviewPreparationWorkspace,
             operation="create_interview_preparation",
