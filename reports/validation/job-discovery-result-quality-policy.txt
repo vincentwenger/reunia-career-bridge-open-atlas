@@ -1,0 +1,19 @@
+Job Discovery result-quality policy validation
+==============================================
+
+Implemented:
+- Recommended: Strong/Good recommendations, minimum Job Fit 60 by default, High/Medium confidence by default.
+- Possible matches: qualifying Stretch opportunities.
+- Low matches: "Low match — Probably not worth your time" results separated from Recommended.
+- Low-confidence and sub-threshold results hidden by default but available by broadening filters.
+- Filters: minimum Job Fit, confidence, recommendation tier.
+- Sorts: recommended order, Job Fit, confidence, newest posting.
+- Recommended order: recommendation tier, Job Fit, confidence, Preference Fit, freshness.
+- Materialized DynamoDB index version bumped and keyed by filter/sort state.
+- Compact index records store recommendation tier, confidence tier, and visibility category.
+
+Validation:
+- Job Discovery tests: 103 passed, 1 skipped because optional runtime dependencies are unavailable.
+- Python compilation: passed.
+- Jinja parsing: passed.
+- Full repository: 241 passed and 17 skipped; one unrelated Mock Interview test module could not import because Flask is not installed in the validation environment.

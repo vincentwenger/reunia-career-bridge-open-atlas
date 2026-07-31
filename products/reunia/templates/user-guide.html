@@ -50,7 +50,8 @@
                     <span class="guide-sidebar-label">On this page</span>
                     <nav id="guideSectionNav">
                         <a class="is-active" href="#quick-start">Quick start</a>
-                        <a href="#profile-application">Build Your Application</a>
+                        <a href="#career-foundation">Career Foundation</a>
+                        <a href="#build-application">Build Your Application</a>
                         <a href="#prepare-practice">Prepare and Practice</a>
                         <a href="#review-improve">Improve and Take Action</a>
                         <a href="#settings-account">Settings &amp; account</a>
@@ -63,8 +64,8 @@
                 <section class="guide-section" id="quick-start" data-guide-section aria-labelledby="guide-quick-start-title">
                     <header class="guide-section-heading">
                         <span class="guide-eyebrow">The connected workflow</span>
-                        <h2 id="guide-quick-start-title">Use Career Bridge in three stages</h2>
-                        <p>The job application is the central workspace. Preparation, practice, review, and follow-up all remain connected to it.</p>
+                        <h2 id="guide-quick-start-title">Complete your foundation, then use three application stages</h2>
+                        <p>Career Foundation is reusable setup. Each job application then moves through Build, Prepare and Practice, and Improve and Take Action.</p>
                     </header>
 
                     <div class="guide-steps">
@@ -98,11 +99,11 @@
                     </div>
                 </section>
 
-                <section class="guide-section" id="profile-application" data-guide-section aria-labelledby="profile-application-title">
+                <section class="guide-section" id="career-foundation" data-guide-section aria-labelledby="career-foundation-title">
                     <header class="guide-section-heading">
-                        <span class="guide-eyebrow">Reusable context plus target-role context</span>
-                        <h2 id="profile-application-title">Build Your Application</h2>
-                        <p>Keep reusable candidate information separate from application-specific materials.</p>
+                        <span class="guide-eyebrow">Reusable candidate context</span>
+                        <h2 id="career-foundation-title">Career Foundation</h2>
+                        <p>Set up and maintain information that can support many applications without entering it again for each role.</p>
                     </header>
 
                     <div class="guide-feature-grid guide-feature-grid-two">
@@ -111,26 +112,53 @@
                             <div><h3>Career Profile</h3><p>Store professional background, accomplishments, preferences, constraints, and reusable answer guidance.</p><a href="{{ request.script_root }}/career-profile">Open Career Profile →</a></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">◫</div>
-                            <div><h3>Application Workspace</h3><p>Create one workspace for each target position so resume work, interview preparation, practice, and follow-up do not become mixed.</p><a href="{{ request.script_root }}/applications/">Open Application Builder →</a></div>
-                        </article>
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">📄</div>
-                            <div><h3>Application Materials</h3><p>Store the source resume, target job description, company notes, recruiter messages, and application-only files.</p><a href="{{ request.script_root }}/application-materials">Manage Application Materials →</a></div>
+                            <div class="guide-feature-icon" aria-hidden="true">↔</div>
+                            <div><h3>Career Translation</h3><p>Explain international titles, credentials, terminology, and transferable skills while preserving the original evidence.</p><a href="{{ request.script_root }}/applications/career-translation">Open Career Translation →</a></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">▦</div>
                             <div><h3>Career Evidence Library</h3><p>Upload verified projects, achievements, metrics, work samples, and experience that can support multiple applications.</p><a href="{{ request.script_root }}/career-evidence-library">Open Career Evidence Library →</a></div>
                         </article>
                     </div>
+                </section>
+
+                <section class="guide-section" id="build-application" data-guide-section aria-labelledby="build-application-title">
+                    <header class="guide-section-heading">
+                        <span class="guide-eyebrow">One target role at a time</span>
+                        <h2 id="build-application-title">Build Your Application</h2>
+                        <p>Keep every target job, tailored resume, report, and supporting document inside its own application workspace.</p>
+                    </header>
+
+                    <div class="guide-feature-grid guide-feature-grid-two">
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">⌕</div>
+                            <div><h3>Job Discovery</h3><p>Browse the shared job catalog, apply your personal filters, and rank postings against the reusable Career Foundation.</p><a href="{{ request.script_root }}/applications/job-discovery">Open Job Discovery →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">◫</div>
+                            <div><h3>Job Applications</h3><p>Create one workspace for each target position so resume work, interview preparation, practice, and follow-up do not become mixed.</p><a href="{{ request.script_root }}/applications/?tab=applications">Open Job Applications →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">📄</div>
+                            <div><h3>Resume Workflow</h3><p>Create and improve a tailored resume using the selected job description and only verified candidate evidence.</p><a href="{{ request.script_root }}/applications/?tab=tailoring">Open Resume Workflow →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">▥</div>
+                            <div><h3>Resume Reports</h3><p>Review fit, quality, evidence, and revision results for the selected application and resume version.</p><a href="{{ request.script_root }}/applications/?tab=reports">Open Resume Reports →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">▤</div>
+                            <div><h3>Application Materials</h3><p>Store the job posting, source resume, company notes, recruiter messages, and other application-only files.</p><a href="{{ request.script_root }}/application-materials">Manage Application Materials →</a></div>
+                        </article>
+                    </div>
 
                     <details class="guide-detail" data-guide-search-item>
                         <summary>How to build one application workspace</summary>
                         <ol>
-                            <li>Open <strong>Application Builder</strong> and create the target position.</li>
+                            <li>Complete or update the reusable <strong>Career Foundation</strong>.</li>
+                            <li>Create or select the target role in <strong>Job Applications</strong>.</li>
                             <li>Add the job posting, source resume, company notes, and recruiter messages.</li>
-                            <li>Select verified examples from the <strong>Career Evidence Library</strong>.</li>
-                            <li>Add application-specific objectives or constraints in <strong>Career Profile</strong>.</li>
+                            <li>Use <strong>Resume Workflow</strong> and <strong>Resume Reports</strong> for that selected application.</li>
                             <li>Save the workspace before starting interview preparation.</li>
                         </ol>
                     </details>

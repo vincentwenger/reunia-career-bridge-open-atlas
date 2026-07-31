@@ -1,0 +1,37 @@
+Job Discovery separate score validation
+=======================================
+
+Implemented behavior
+--------------------
+1. Job Fit remains the shared evidence-grounded score produced by
+   career_bridge.domain.fit_scoring from supported, partial, and unsupported
+   requirements.
+2. Desired title, location, workplace type, employment type, salary, and
+   posting age do not alter Job Fit.
+3. Preference Fit is calculated separately from configured search preferences:
+   title 30%, location 25%, workplace 20%, employment type 10%, and salary 15%
+   when published.
+4. Posting Freshness is calculated separately from posted_at, falling back to
+   first_seen_at.
+5. Search Priority is calculated transparently as:
+   70% Job Fit + 20% Preference Fit + 10% Posting Freshness.
+6. RankedJob exposes fit_score, preference_score, freshness_score,
+   search_priority, priority_formula, and the Stage 1 preference component
+   breakdown. Ranked lists sort by search_priority.
+7. JobFitSnapshot persists only evidence-fit data. Search Priority is computed
+   at ranking time because freshness changes over time.
+8. CandidateJobProfile.evidence_fingerprint excludes search preferences, so a
+   preference-only change reuses the existing fit snapshot and recomputes the
+   preference and priority values locally.
+9. AI-derived requirements that only describe compensation, work location,
+   workplace arrangement, relocation, or employment type are removed before
+   evidence scoring. Work authorization, citizenship, clearance, and required
+   professional licenses remain eligible hard blockers.
+
+Validation
+----------
+- 174 tests executed
+- 158 passed
+- 16 skipped for pre-existing optional runtime dependencies
+- 0 failures
+- 0 errors

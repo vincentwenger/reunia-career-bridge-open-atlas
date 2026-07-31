@@ -190,6 +190,7 @@ def handle_login():
     session["email"] = user.get("email", user["user_id"])
     session["full_name"] = user.get("full_name", "")
     session["is_admin"] = is_admin_identity(user["user_id"], user)
+    session["groups"] = list(user.get("groups") or user.get("access_groups") or ())
     session["live_interview_assistance_enabled"] = bool(
         live_interview_assistance_access(user["user_id"], user)["enabled"]
     )
@@ -247,6 +248,7 @@ def handle_signup():
     session["email"] = user.get("email", user["user_id"])
     session["full_name"] = user.get("full_name", "")
     session["is_admin"] = is_admin_identity(user["user_id"], user)
+    session["groups"] = list(user.get("groups") or user.get("access_groups") or ())
     session["live_interview_assistance_enabled"] = bool(
         live_interview_assistance_access(user["user_id"], user)["enabled"]
     )

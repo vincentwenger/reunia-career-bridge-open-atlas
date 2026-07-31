@@ -226,6 +226,10 @@ class ApplicationStore(Protocol):
         model_name: str,
     ) -> InterviewPreparationRecord: ...
 
+    def find_by_source_job(
+        self, owner_id: str, source_job_id: str
+    ) -> ApplicationRecord | None: ...
+
     def find_snapshot(
         self,
         owner_id: str,
@@ -264,6 +268,7 @@ class ApplicationStore(Protocol):
         resume_fingerprint: str = "",
         resume_pdf_filename: str = "",
         resume_pdf_bytes: bytes | None = None,
+        source_job_id: str = "",
     ) -> ApplicationRecord: ...
 
     def update(

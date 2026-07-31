@@ -1,0 +1,29 @@
+Job discovery safeguard validation
+=================================
+
+Implemented safeguards
+----------------------
+PASS  Exact allowed-domain checks for fixed ATS APIs and configured generic host
+PASS  Credentialed, localhost, private/reserved IP literal, cross-domain redirect,
+      and non-public DNS destination blocking in the production urllib client
+PASS  HTTP timeout bounds (1-30 seconds)
+PASS  JSON/HTML response-size bounds with Content-Length and streamed-byte checks
+PASS  Redirect limit (default 3, maximum 5) with target revalidation
+PASS  External HTML converted to bounded plain text; executable/hidden tags discarded
+PASS  Generic robots checks cannot be disabled; public-source policy enforced
+PASS  Per-company/source request rate limiting
+PASS  SHA-256 job-description fingerprints
+PASS  Deterministic canonical URL normalization
+PASS  Deduplication by source identity, canonical URL, and content fingerprint
+PASS  Missing-scan persistence and deactivation after 3 consecutive misses by default
+PASS  Reappearing postings reactivate and reset missed_scan_count
+PASS  MVP automatic employer submission remains disabled; only explicit workspace creation
+
+Automated validation
+--------------------
+Command: python -m unittest discover -s tests -p 'test*.py'
+Tests executed: 205
+Passed: 189
+Skipped: 16 optional-runtime tests
+Failures: 0
+Errors: 0

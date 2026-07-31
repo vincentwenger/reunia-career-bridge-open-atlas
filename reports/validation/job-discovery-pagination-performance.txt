@@ -1,0 +1,20 @@
+Job Discovery pagination and initial-load performance validation
+===============================================================
+
+Implemented:
+- Dedicated results and configuration views.
+- Server-side result classification and page slicing.
+- Recommended, Awaiting assessment, Saved, and Ignored tabs.
+- Default 10 results per page; selectable 10, 20, or 50.
+- Compact result cards with summary scores and actions.
+- Owner-scoped lazy analysis endpoint for evidence-heavy details.
+- Analysis loaded only when View analysis is opened.
+- Result tab/page/page-size preserved across refresh, save, and ignore actions.
+- Legacy show_ignored query compatibility retained.
+
+Validation:
+- 93 Job Discovery tests passed.
+- 1 Flask integration test skipped because runtime dependencies were unavailable.
+- Python compileall passed.
+- Jinja parsing passed for all Job Discovery templates.
+- JavaScript syntax validation passed with node --check.

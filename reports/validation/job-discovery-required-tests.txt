@@ -1,0 +1,50 @@
+Job Discovery Required Test Validation
+======================================
+Date: 2026-07-30
+
+Result
+------
+- 216 tests executed
+- 199 passed
+- 17 skipped because optional Flask/OpenAI/Redis/xlrd/browser runtime dependencies are unavailable
+- 0 failures
+- 0 errors
+
+Required discovery coverage
+---------------------------
+PASS  Shared JobSource connector contract against Greenhouse, Lever, Ashby, and fixture-based generic JSON-LD pages.
+PASS  Cross-format normalization of title, company, employment type, workplace type, HTML/plain text, canonical URL, and description fingerprints.
+PASS  Duplicate postings merge by source/external ID, canonical URL, and content fingerprint.
+PASS  Changed descriptions create a new analysis and fit snapshot.
+PASS  Unchanged description/profile combinations reuse the cached fit assessment.
+PASS  Hard eligibility blockers stop a posting before AI ranking.
+PASS  Unsupported candidate experience cannot become a provenance-bearing strength.
+PASS  Owner-scoped stores prevent one user from reading another user's sources or jobs.
+PASS  Repeated discovered-job conversion creates or returns exactly one Application Workspace.
+ADDED Discovery state survives creation of a second Flask application instance; the test is dependency-aware and was skipped in this validation environment because optional runtime packages are missing.
+PASS  DynamoDB source/job/state/analysis/fit persistence across separate repository instances.
+PASS  DynamoDB CompanySource updates use a revision condition and reject stale writes with DiscoveryOptimisticLockError.
+PASS  Failed and robots-blocked company sources are isolated and do not fail successful sources in the same scan.
+
+New fixtures
+------------
+- tests/fixtures/job_discovery/greenhouse.json
+- tests/fixtures/job_discovery/lever.json
+- tests/fixtures/job_discovery/ashby.json
+- tests/fixtures/job_discovery/robots.txt
+- tests/fixtures/job_discovery/generic_index.html
+- tests/fixtures/job_discovery/generic_job.html
+
+Primary new/updated test files
+------------------------------
+- tests/unit/test_job_discovery_connector_contract.py
+- tests/regression/test_job_discovery_required_behaviors.py
+- tests/integration/test_job_discovery_flask_persistence.py
+- tests/contracts/test_job_discovery_dynamodb.py
+
+Implementation support added for the tests
+------------------------------------------
+- JobSource is runtime-checkable for uniform connector-contract validation.
+- CompanySource has a non-negative revision field.
+- In-memory, JSON, and DynamoDB source writes return the stored revision.
+- DynamoDB uses conditional writes for source creation/update and raises DiscoveryOptimisticLockError on stale updates.

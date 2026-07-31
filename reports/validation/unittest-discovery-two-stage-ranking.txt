@@ -1,0 +1,8 @@
+s....................................................................................s.......s.........../opt/pyvenv/lib/python3.13/site-packages/pydantic/type_adapter.py:441: ResourceWarning: unclosed database in <sqlite3.Connection object at 0x7f98bc5e58a0>
+  return self.validator.validate_python(
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+...............sssssssss..ss.............ss......................
+----------------------------------------------------------------------
+Ran 170 tests in 1.398s
+
+OK (skipped=16)

@@ -17,14 +17,16 @@ Dedicated table:
 - Sort key: storage_key (String)
 - SOURCE#<source_id>
 - JOB#<source_id>#<job_id>
-- FIT#<job_id>#<profile_fingerprint>
+- ANALYSIS#<job_id>#<description_fingerprint>
+- FIT#<job_id>#<profile_fingerprint>#<description_fingerprint>
 
 Lifecycle behavior:
 - Stable job id from owner/source/external id.
 - first_seen_at is preserved across refreshes.
 - last_seen_at advances only when a posting is returned by the source.
 - Missing postings are retained and marked active=false.
-- Fit snapshots are profile-fingerprint-specific.
+- Structured analyses are description-fingerprint-specific.
+- Fit snapshots are profile- and description-fingerprint-specific.
 - Queries are owner-scoped and use key-prefix queries rather than scans.
 
 Runtime wiring:

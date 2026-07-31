@@ -1,0 +1,3 @@
+User-agent: ReuniaJobBot
+Allow: /jobs
+Disallow: /private

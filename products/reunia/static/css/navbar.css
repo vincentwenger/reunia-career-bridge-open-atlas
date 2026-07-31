@@ -1141,20 +1141,6 @@
     line-height: 1.35;
 }
 
-.nav-new-badge {
-    display: inline-flex;
-    margin-left: 5px;
-    padding: 1px 5px;
-    border-radius: 999px;
-    color: #067647;
-    background: #dcfae6;
-    font-size: 9px;
-    font-style: normal;
-    font-weight: 900;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    vertical-align: middle;
-}
 
 @media (max-width: 1540px) and (min-width: 1341px) {
     .nav-group-trigger .nav-link-icon {

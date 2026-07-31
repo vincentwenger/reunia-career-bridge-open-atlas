@@ -242,6 +242,53 @@
 .home-section-heading h2 { margin: 5px 0 0; color: var(--home-ink); font-size: 25px; }
 .home-section-heading p { max-width: 430px; margin: 0; color: var(--home-muted); font-size: 12.5px; text-align: right; }
 
+.home-foundation-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 18px;
+    padding: 18px 20px;
+    border: 1px solid #cfe3dd;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #f4faf8, #f7fafc);
+}
+.home-foundation-copy { min-width: 0; }
+.home-foundation-copy h3 {
+    margin: 3px 0 0;
+    color: var(--home-ink);
+    font-size: 20px;
+}
+.home-foundation-copy p {
+    max-width: 690px;
+    margin: 5px 0 0;
+    color: var(--home-muted);
+    font-size: 11.5px;
+    line-height: 1.5;
+}
+.home-foundation-tools {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+.home-foundation-tools a {
+    padding: 7px 10px;
+    border: 1px solid #cfe3dd;
+    border-radius: 999px;
+    background: #fff;
+    color: #315f56;
+    font-size: 10.5px;
+    font-weight: 800;
+    transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+.home-foundation-tools a:hover {
+    transform: translateY(-1px);
+    border-color: #8fcdb9;
+    background: #f2fbf8;
+}
+
 .home-module-journey {
     display: grid;
     gap: 18px;
@@ -481,6 +528,8 @@
     .home-section-heading { align-items: flex-start; flex-direction: column; gap: 7px; }
     .home-section-heading p { text-align: left; }
     .home-mvp-journey { padding: 20px; }
+    .home-foundation-card { align-items: flex-start; flex-direction: column; gap: 14px; padding: 17px; }
+    .home-foundation-tools { justify-content: flex-start; }
     .home-journey-grid { grid-template-columns: 1fr; }
     .home-module-card { padding: 17px; }
     .home-module-header { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
@@ -495,6 +544,7 @@
     .home-primary-action,
     .home-journey-grid a,
     .home-module-tools a,
+    .home-foundation-tools a,
     .home-progress-track span { transition: none; }
 }
 

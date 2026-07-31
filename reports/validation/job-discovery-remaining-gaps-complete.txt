@@ -1,0 +1,54 @@
+Réunia Career Bridge — Job Discovery remaining gaps completion
+Date: 2026-07-30
+
+Implemented
+===========
+1. Dedicated navigation and page
+   - Added Build Your Application → Job Discovery → Job Applications ordering.
+   - Added /applications/job-discovery as a dedicated discovery workspace.
+   - Removed discovery settings/results from the Job Applications dashboard.
+   - Added a clear Job Discovery entry card from Job Applications.
+
+2. Positive keyword preferences
+   - Added preferred_keywords as a transparent Preference Fit component.
+   - Added required_keywords as a mandatory Stage 1 filter before AI analysis.
+   - Neither field is included in the evidence fingerprint or Job Fit calculation.
+   - Posting keywords cannot become candidate strengths or evidence.
+
+3. User-managed external schedules
+   - Added DiscoveryScanSchedule with manual, daily, and weekly cadence.
+   - Added local hour, weekday, IANA time zone, last_run_at, and updated_at.
+   - Added owner-scoped persistence under PREFERENCES#SCHEDULE.
+   - Added a CSRF-protected schedule form on the Job Discovery page.
+   - Added due-time evaluation to the external runner.
+   - Lambda respects saved schedules by default; CLI supports --scheduled.
+   - No scheduler, timer, thread, or Gunicorn/Flask lifecycle hook was added.
+
+4. Persistence and compatibility
+   - In-memory, JSON, and DynamoDB stores implement the same schedule contract.
+   - Existing records without keyword or schedule fields remain readable through defaults.
+   - The DynamoDB primary key remains owner_id + storage_key; no GSI is required.
+
+Validation
+==========
+- Repository unit/contract/integration/regression suite: 231 tests run
+- Passed: 214
+- Skipped: 17 optional runtime/browser tests
+- Failures: 0
+- Errors: 0
+- Additional final-integration checks passed for:
+  * resume findings → interview preparation
+  * interview scorecards → career actions
+  * six international candidate profiles
+  * no-invented-experience safeguards
+  * Application Builder AI cost controls
+  * loading/empty/error state contracts
+  * three-module navigation contracts
+- Python compileall: passed
+- Resume Taylor Jinja parsing: 14 templates parsed successfully
+
+Environment limitation
+======================
+The second-Flask-instance and Playwright/browser journeys remain dependency-aware
+but were skipped because this execution image does not include the package's full
+Flask/Redis/OpenAI/xlrd deployment runtime. Their source tests remain in the package.

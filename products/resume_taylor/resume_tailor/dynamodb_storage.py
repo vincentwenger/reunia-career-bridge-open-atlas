@@ -16,6 +16,7 @@ partition.  The layout keeps every read tenant-scoped and avoids table scans:
 * ``RESUME_FINDINGS#<application_id>``
 * ``INTERVIEW_PREPARATION#<application_id>``
 * ``IMPACT#<application_id>``
+* ``SOURCE_JOB#<discovered_job_id>`` (duplicate-prevention link)
 
 Document bytes and serialized report payloads are stored in private S3 object
 storage. DynamoDB contains only searchable metadata, fingerprints, and S3 object
@@ -77,15 +78,17 @@ _APPLICATION_PREFIX = "APP#"
 _RESUME_FINDINGS_PREFIX = "RESUME_FINDINGS#"
 _INTERVIEW_PREPARATION_PREFIX = "INTERVIEW_PREPARATION#"
 _IMPACT_PREFIX = "IMPACT#"
+_SOURCE_JOB_PREFIX = "SOURCE_JOB#"
 
 _STATUS_ORDER = {
     "interviewing": 0,
     "screening": 1,
     "ready_to_apply": 2,
     "preparing": 3,
-    "draft": 4,
-    "applied": 5,
-    "offered": 6,
+    "considering": 4,
+    "draft": 5,
+    "applied": 6,
+    "offered": 7,
 }
 _VALID_UPCOMING_EVENT_TYPES = {
     "",
@@ -101,6 +104,10 @@ def _now() -> str:
 
 def _application_key(application_id: str) -> str:
     return f"{_APPLICATION_PREFIX}{application_id}"
+
+
+def _source_job_key(source_job_id: str) -> str:
+    return f"{_SOURCE_JOB_PREFIX}{source_job_id}"
 
 
 def _resume_findings_key(application_id: str) -> str:
@@ -733,6 +740,7 @@ class DynamoDBApplicationStore:
             resume_pdf_key=str(item.get("resume_pdf_key") or ""),
             resume_pdf_filename=str(item.get("resume_pdf_filename") or ""),
             original_resume_key=str(item.get("original_resume_key") or ""),
+            source_job_id=str(item.get("source_job_id") or ""),
         )
 
     @staticmethod
@@ -773,6 +781,7 @@ class DynamoDBApplicationStore:
             "resume_pdf_key": record.resume_pdf_key,
             "resume_pdf_filename": record.resume_pdf_filename,
             "original_resume_key": record.original_resume_key,
+            "source_job_id": record.source_job_id,
             "resume_fingerprint": record.resume_fingerprint,
         }
 
@@ -784,7 +793,7 @@ class DynamoDBApplicationStore:
         # Stable sorts reproduce SQLite's status/event/updated ordering.
         records.sort(key=lambda item: item.updated_at, reverse=True)
         records.sort(key=lambda item: item.upcoming_event_date or "9999-12-31")
-        records.sort(key=lambda item: _STATUS_ORDER.get(item.status, 7))
+        records.sort(key=lambda item: _STATUS_ORDER.get(item.status, 8))
         return records
 
     def get(
@@ -980,6 +989,27 @@ class DynamoDBApplicationStore:
             raise RuntimeError("Interview preparation was not saved.")
         return saved
 
+    def find_by_source_job(
+        self, owner_id: str, source_job_id: str
+    ) -> ApplicationRecord | None:
+        normalized = str(source_job_id or "").strip()
+        if not normalized:
+            return None
+        link = self._get_item(owner_id, _source_job_key(normalized))
+        if link is not None:
+            application_id = str(link.get("application_id") or "")
+            if application_id:
+                return self.get(owner_id, application_id, include_resume_bytes=False)
+        # Migration fallback for application items written before source links.
+        return next(
+            (
+                record
+                for record in self.list_for_owner(owner_id)
+                if record.source_job_id == normalized
+            ),
+            None,
+        )
+
     def find_snapshot(
         self,
         owner_id: str,
@@ -1030,6 +1060,7 @@ class DynamoDBApplicationStore:
         resume_fingerprint: str = "",
         resume_pdf_filename: str = "",
         resume_pdf_bytes: bytes | None = None,
+        source_job_id: str = "",
     ) -> ApplicationRecord:
         normalized_status = normalize_application_status(status)
         inferred_screening, inferred_interview, inferred_offer = infer_outcomes(
@@ -1110,14 +1141,34 @@ class DynamoDBApplicationStore:
             resume_docx_key=resume_docx_key,
             resume_pdf_key=resume_pdf_key,
             resume_pdf_filename=normalized_pdf_filename,
+            source_job_id=str(source_job_id or "").strip(),
         )
+        source_link_created = False
         try:
+            if record.source_job_id:
+                self._put_item(
+                    {
+                        "owner_id": owner_id,
+                        "storage_key": _source_job_key(record.source_job_id),
+                        "entity_type": "application_source_job_link",
+                        "source_job_id": record.source_job_id,
+                        "application_id": record.id,
+                        "created_at": now,
+                    },
+                    ConditionExpression="attribute_not_exists(#storage_key)",
+                    ExpressionAttributeNames={"#storage_key": "storage_key"},
+                )
+                source_link_created = True
             self._put_item(
                 self._application_item(record),
                 ConditionExpression="attribute_not_exists(#storage_key)",
                 ExpressionAttributeNames={"#storage_key": "storage_key"},
             )
         except Exception:
+            if source_link_created:
+                self._table().delete_item(
+                    Key=self._key(owner_id, _source_job_key(record.source_job_id))
+                )
             self._delete_object_keys(
                 {
                     "resume_docx_key": resume_docx_key,
@@ -1452,6 +1503,11 @@ class DynamoDBApplicationStore:
             _impact_key(application_id),
         ):
             self._table().delete_item(Key=self._key(owner_id, storage_key))
+        source_job_id = str(application_item.get("source_job_id") or "")
+        if source_job_id:
+            self._table().delete_item(
+                Key=self._key(owner_id, _source_job_key(source_job_id))
+            )
         self._delete_object_keys(application_item, *artifact_items)
         return True
 def create_dynamodb_workflow_store(

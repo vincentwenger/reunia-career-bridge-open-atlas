@@ -1,0 +1,21 @@
+Shared fit scoring refactor
+===========================
+
+- Central scoring policy: career_bridge/domain/fit_scoring.py
+- Shared input contract: Mapping[requirement_id, supported|partial|unsupported]
+- Resume Workflow adapter: products/resume_taylor/resume_tailor/application_fit.py
+- Job Discovery adapter: job_discovery/ranking.py
+- Resume Workflow continues deriving statuses from TailoringProposal evidence,
+  supplemental evidence, and candidate confirmation answers.
+- Job Discovery derives statuses directly from verified skills and Evidence
+  Library statements without generating a TailoringProposal.
+- Both features now share weighting, critical-requirement caps, hard-blocker
+  detection, recommendation thresholds, confidence logic, and score ranges.
+
+Validation
+----------
+- 166 tests executed
+- 150 passed
+- 16 skipped for pre-existing optional runtime dependencies
+- 0 failures
+- 0 errors

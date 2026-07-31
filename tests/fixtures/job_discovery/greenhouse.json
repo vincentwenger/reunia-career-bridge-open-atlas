@@ -1,0 +1,17 @@
+{
+  "jobs": [
+    {
+      "id": 101,
+      "title": "Senior Data Platform Engineer",
+      "absolute_url": "https://boards.greenhouse.io/examplebank/jobs/101?utm_source=fixture",
+      "location": {"name": "Portland, OR (Hybrid)"},
+      "content": "<p>Build <strong>regulated data platforms</strong> with SQL.</p><script>ignore()</script>",
+      "updated_at": "2026-07-29T10:00:00Z",
+      "departments": [{"name": "Technology"}],
+      "metadata": [
+        {"name": "Employment Type", "value": "FULL_TIME"},
+        {"name": "Skills", "value": "SQL, Python"}
+      ]
+    }
+  ]
+}

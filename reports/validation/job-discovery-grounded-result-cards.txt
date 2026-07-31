@@ -1,0 +1,26 @@
+Job Discovery grounded result-card validation
+
+Implemented:
+- Added EvidenceReference records with record_id, record_type, field_name, label, statement, and verification status.
+- Added RequirementEvidenceMatch records embedded in JobFitSnapshot.
+- CandidateJobProfile.from_career_records creates references for actual Candidate Profile, Career Background, experience, education, skill, certification, and verified Evidence Library records.
+- Unverified Evidence Library items are excluded before matching.
+- Posting text and extracted job keywords are never admitted as candidate evidence.
+- Broad requirements use conservative combined-record coverage; one isolated keyword cannot fully support a multi-part requirement.
+- Result cards render only provenance-bearing evidence_matches as strengths.
+- Raw supported_requirements are not rendered as strengths.
+- Older snapshots without provenance show a warning rather than an inferred claim.
+- Important gaps are labeled as not verified in the Career Profile or Evidence Library.
+- Record IDs and record types are exposed in the card and link back to the relevant Career Profile or Career Evidence Library surface.
+- Posted age, Job Fit, recommendation, confidence, View posting, Save, Ignore, and Create/Open Application Workspace remain visible.
+- JSON and DynamoDB storage round-trip nested provenance records.
+
+Validation command:
+python -m unittest discover -v
+
+Final regression result:
+- 187 tests executed
+- 171 passed
+- 16 skipped for pre-existing optional runtime dependencies
+- 0 failures
+- 0 errors

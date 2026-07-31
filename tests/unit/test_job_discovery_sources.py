@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from job_discovery.models import CompanySource, JobSourceType, WorkplaceType
 from job_discovery.sources.ashby import AshbyJobSource
@@ -11,6 +11,7 @@ from job_discovery.sources.base import DEFAULT_USER_AGENT, HttpResponse
 from job_discovery.sources.generic_jsonld import GenericJsonLdJobSource, HostRateLimiter
 from job_discovery.sources.greenhouse import GreenhouseJobSource
 from job_discovery.sources.lever import LeverJobSource
+from job_discovery.sources.workday import WorkdayJobSource, parse_workday_careers_url
 from job_discovery.storage import InMemoryTTLCache
 
 
@@ -20,6 +21,8 @@ class StubHttpClient:
 
     def __post_init__(self) -> None:
         self.calls: list[str] = []
+        self.post_calls: list[tuple[str, bytes]] = []
+        self.request_options: list[dict[str, object]] = []
 
     def get(
         self,
@@ -28,8 +31,40 @@ class StubHttpClient:
         headers: Mapping[str, str] | None = None,
         timeout: float = 10.0,
         max_bytes: int | None = None,
+        max_redirects: int = 3,
+        allowed_domains: Sequence[str] = (),
     ) -> HttpResponse:
         self.calls.append(url)
+        self.request_options.append({
+            "timeout": timeout,
+            "max_bytes": max_bytes,
+            "max_redirects": max_redirects,
+            "allowed_domains": tuple(allowed_domains),
+        })
+        response = self.responses[url]
+        if max_bytes is not None and len(response.body) > max_bytes:
+            raise AssertionError("stub response exceeds max_bytes")
+        return response
+
+    def post(
+        self,
+        url: str,
+        *,
+        body: bytes,
+        headers: Mapping[str, str] | None = None,
+        timeout: float = 10.0,
+        max_bytes: int | None = None,
+        max_redirects: int = 3,
+        allowed_domains: Sequence[str] = (),
+    ) -> HttpResponse:
+        self.calls.append(url)
+        self.post_calls.append((url, body))
+        self.request_options.append({
+            "timeout": timeout,
+            "max_bytes": max_bytes,
+            "max_redirects": max_redirects,
+            "allowed_domains": tuple(allowed_domains),
+        })
         response = self.responses[url]
         if max_bytes is not None and len(response.body) > max_bytes:
             raise AssertionError("stub response exceeds max_bytes")
@@ -165,6 +200,202 @@ class AshbySourceTests(unittest.TestCase):
         self.assertEqual(["listed"], [job.external_id for job in jobs])
         self.assertEqual(WorkplaceType.REMOTE, jobs[0].workplace_type)
         self.assertEqual("$160k-$200k", jobs[0].salary_summary)
+
+
+class WorkdaySourceTests(unittest.TestCase):
+    def test_parses_intel_board_url_and_maps_public_jobs(self) -> None:
+        board_url = "https://intel.wd1.myworkdayjobs.com/en-US/External/page/search"
+        listing_url = "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs"
+        external_path = "/job/US-Oregon-Hillsboro/Data-Engineer_JR0299999"
+        detail_url = (
+            "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External"
+            + external_path
+        )
+        http = StubHttpClient(
+            {
+                listing_url: response(
+                    listing_url,
+                    {
+                        "total": 1,
+                        "jobPostings": [
+                            {
+                                "title": "Data Engineer",
+                                "externalPath": external_path,
+                                "locationsText": "US, Oregon, Hillsboro",
+                                "postedOn": "Posted 2 Days Ago",
+                                "bulletFields": ["JR0299999"],
+                            }
+                        ],
+                    },
+                ),
+                detail_url: response(
+                    detail_url,
+                    {
+                        "jobPostingInfo": {
+                            "title": "Data Engineer",
+                            "jobReqId": "JR0299999",
+                            "jobPostingId": "Data-Engineer_JR0299999",
+                            "jobDescription": "<p>Build governed data platforms with Python and SQL.</p>",
+                            "location": "US, Oregon, Hillsboro",
+                            "additionalLocations": ["US, California, Folsom"],
+                            "timeType": "Full time",
+                            "remoteType": "Hybrid",
+                            "startDate": "2026-07-28",
+                            "canApply": True,
+                        },
+                        "hiringOrganization": "Intel Corporation",
+                    },
+                ),
+            }
+        )
+        source = CompanySource(
+            id="intel-workday",
+            owner_id="owner-1",
+            company_name="Intel",
+            careers_url=board_url,
+            source_type=JobSourceType.WORKDAY,
+            source_identifier="",
+            filters={"min_request_interval_seconds": 0},
+        )
+
+        jobs = WorkdayJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(1, len(jobs))
+        job = jobs[0]
+        self.assertEqual("JR0299999", job.external_job_id)
+        self.assertEqual("Data Engineer", job.title)
+        self.assertEqual("hybrid", job.workplace_type.value)
+        self.assertEqual("Full-time", job.employment_type)
+        self.assertIn("Python and SQL", job.description)
+        self.assertEqual(2, len(job.locations))
+        self.assertEqual(
+            "https://intel.wd1.myworkdayjobs.com/en-US/External/job/US-Oregon-Hillsboro/Data-Engineer_JR0299999",
+            job.canonical_url,
+        )
+        self.assertEqual("intel", job.metadata["workday_tenant"])
+        self.assertEqual("External", job.metadata["workday_site"])
+        posted_payload = json.loads(http.post_calls[0][1].decode("utf-8"))
+        self.assertEqual(
+            {"appliedFacets": {}, "limit": 20, "offset": 0, "searchText": ""},
+            posted_payload,
+        )
+
+    def test_paginates_and_stops_at_total(self) -> None:
+        board_url = "https://example.wd5.myworkdayjobs.com/en-US/Careers"
+        listing_url = "https://example.wd5.myworkdayjobs.com/wday/cxs/example/Careers/jobs"
+        first_path = "/job/Portland/Engineer_REQ-1"
+        second_path = "/job/Seattle/Engineer_REQ-2"
+        responses = {
+            listing_url: response(
+                listing_url,
+                {
+                    "total": 2,
+                    "jobPostings": [
+                        {"title": "Engineer 1", "externalPath": first_path},
+                        {"title": "Engineer 2", "externalPath": second_path},
+                    ],
+                },
+            ),
+            "https://example.wd5.myworkdayjobs.com/wday/cxs/example/Careers" + first_path: response(
+                "https://example.wd5.myworkdayjobs.com/wday/cxs/example/Careers" + first_path,
+                {"jobPostingInfo": {"title": "Engineer 1", "jobReqId": "REQ-1", "location": "Portland", "canApply": True}},
+            ),
+            "https://example.wd5.myworkdayjobs.com/wday/cxs/example/Careers" + second_path: response(
+                "https://example.wd5.myworkdayjobs.com/wday/cxs/example/Careers" + second_path,
+                {"jobPostingInfo": {"title": "Engineer 2", "jobReqId": "REQ-2", "location": "Seattle", "canApply": True}},
+            ),
+        }
+        http = StubHttpClient(responses)
+        source = CompanySource(
+            id="example-workday",
+            owner_id="owner-1",
+            company_name="Example",
+            careers_url=board_url,
+            source_type=JobSourceType.WORKDAY,
+            source_identifier="Careers",
+            filters={"page_size": 2, "min_request_interval_seconds": 0},
+        )
+
+        jobs = WorkdayJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(2, len(jobs))
+        self.assertEqual(1, len(http.post_calls))
+
+
+    def test_interactive_detail_limit_keeps_listing_only_jobs(self) -> None:
+        board_url = "https://intel.wd1.myworkdayjobs.com/en-US/External"
+        listing_url = "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs"
+        paths = [
+            "/job/Hillsboro/Engineer-1_JR1",
+            "/job/Folsom/Engineer-2_JR2",
+            "/job/Phoenix/Engineer-3_JR3",
+        ]
+        first_detail_url = (
+            "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External" + paths[0]
+        )
+        http = StubHttpClient(
+            {
+                listing_url: response(
+                    listing_url,
+                    {
+                        "total": 3,
+                        "jobPostings": [
+                            {
+                                "title": f"Engineer {index}",
+                                "externalPath": path,
+                                "locationsText": "US, Oregon, Hillsboro",
+                                "postedOn": "Posted Today",
+                                "bulletFields": [f"JR{index}"],
+                            }
+                            for index, path in enumerate(paths, start=1)
+                        ],
+                    },
+                ),
+                first_detail_url: response(
+                    first_detail_url,
+                    {
+                        "jobPostingInfo": {
+                            "title": "Engineer 1",
+                            "jobReqId": "JR1",
+                            "jobDescription": "Full detail description",
+                            "location": "US, Oregon, Hillsboro",
+                            "canApply": True,
+                        }
+                    },
+                ),
+            }
+        )
+        source = CompanySource(
+            id="intel-workday-budgeted",
+            owner_id="owner-1",
+            company_name="Intel",
+            careers_url=board_url,
+            source_type=JobSourceType.WORKDAY,
+            source_identifier="External",
+            filters={
+                "detail_fetch_limit": 1,
+                "min_request_interval_seconds": 0,
+            },
+        )
+
+        jobs = WorkdayJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(3, len(jobs))
+        self.assertEqual("complete", jobs[0].metadata["detail_status"])
+        self.assertEqual("deferred", jobs[1].metadata["detail_status"])
+        self.assertIn("Engineer 2", jobs[1].description)
+        self.assertEqual(1, len(http.calls) - len(http.post_calls))
+
+    def test_parser_accepts_public_board_and_cxs_urls(self) -> None:
+        board = parse_workday_careers_url(
+            "https://intel.wd1.myworkdayjobs.com/en-US/External/page/jobs"
+        )
+        endpoint = parse_workday_careers_url(
+            "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs"
+        )
+
+        self.assertEqual(("intel", "External", "en-US"), (board.tenant, board.site, board.locale))
+        self.assertEqual(("intel", "External"), (endpoint.tenant, endpoint.site))
 
 
 class GenericJsonLdSourceTests(unittest.TestCase):

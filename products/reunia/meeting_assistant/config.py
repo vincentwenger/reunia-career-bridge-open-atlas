@@ -374,6 +374,23 @@ class BaseConfig:
         for value in os.getenv("LIVE_INTERVIEW_ASSISTANCE_USER_IDS", "").split(",")
         if value.strip()
     )
+
+    # The public job catalog is centrally curated. Administrators always have
+    # management access; optional groups or individual accounts may also add
+    # sources, configure the shared schedule, and run manual refreshes.
+    JOB_CATALOG_MANAGER_GROUPS = tuple(
+        value.strip().lower()
+        for value in os.getenv(
+            "JOB_CATALOG_MANAGER_GROUPS",
+            "job_curators,career_coaches",
+        ).split(",")
+        if value.strip()
+    )
+    JOB_CATALOG_MANAGER_USER_IDS = tuple(
+        value.strip().lower()
+        for value in os.getenv("JOB_CATALOG_MANAGER_USER_IDS", "").split(",")
+        if value.strip()
+    )
     ANALYTICS_TABLE_NAME = os.getenv("ANALYTICS_TABLE_NAME", "").strip()
     ANALYTICS_STORAGE_BACKEND = os.getenv(
         "ANALYTICS_STORAGE_BACKEND",

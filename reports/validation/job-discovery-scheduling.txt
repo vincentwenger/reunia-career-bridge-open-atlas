@@ -1,0 +1,23 @@
+Job Discovery shared catalog refresh and external scheduling validation
+======================================================================
+
+Implemented:
+- CSRF-protected **Refresh jobs for everyone** action visible only to catalog managers.
+- Server-side access checks protect source CRUD, schedule changes, and manual refresh routes.
+- CompanySource records and the refresh schedule use the built-in shared catalog owner.
+- Administrators can be supplemented by JOB_CATALOG_MANAGER_USER_IDS and JOB_CATALOG_MANAGER_GROUPS.
+- One central scan collects public postings without using an individual candidate profile.
+- Collected postings are available to every user while private filters, fit snapshots, saved/ignored state, and Application Workspaces remain owner-scoped.
+- User-specific View analysis assesses the stored posting without fetching a source again.
+- No Flask/Gunicorn scheduler, background thread, or startup timer was added.
+- ExternalJobDiscoveryRunner provides a bounded one-shot process entry point.
+- AWS Lambda handler: job_discovery.scheduling.lambda_handler.
+- Scheduled container / cron command: python -m job_discovery.scheduling --scheduled.
+- When JOB_DISCOVERY_OWNER_IDS is omitted, the external runner scans the built-in shared catalog owner.
+- External short-lived processes reject in-memory discovery storage.
+
+Validation performed 2026-07-31:
+- Python compilation: passed.
+- Jinja template parsing: passed.
+- Focused Job Discovery/access-control suite: 46 passed.
+- Full repository suite: 278 tests executed; 260 passed, 17 skipped, and one unchanged environment-only import error because Flask is not installed in this execution environment.

@@ -1,0 +1,244 @@
+<section class="card discovery-results" id="job-discovery-results" aria-labelledby="job-discovery-title">
+  <div class="section-heading discovery-results-heading">
+    <div>
+      <span class="eyebrow">Public job discovery</span>
+      <h2 id="job-discovery-title">Job opportunities</h2>
+      <p>Recommended jobs prioritize credible fit. Public company postings collected recently are reused across users, while your fit scores, saved jobs, and applications remain private.</p>
+    </div>
+    <div class="discovery-result-controls">
+      {% if can_manage_job_catalog %}
+      <form action="{{ url_for('application_builder.refresh_discovered_jobs') }}" method="post" class="loading-form discovery-refresh-form" data-loading-title="Refreshing shared jobs…" data-loading-message="Scanning the centrally managed company sources and publishing collected postings to every user.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="result_tab" value="{{ discovery_result_tab }}">
+        <input type="hidden" name="page" value="1">
+        <input type="hidden" name="per_page" value="{{ discovery_pagination.per_page }}">
+        <input type="hidden" name="min_fit" value="{{ discovery_filters.minimum_fit }}">
+        <input type="hidden" name="confidence" value="{{ discovery_filters.confidence_query }}">
+        <input type="hidden" name="recommendation" value="{{ discovery_filters.recommendation_filter }}">
+        <input type="hidden" name="sort" value="{{ discovery_filters.sort_mode }}">
+        <button class="button primary" type="submit">Refresh jobs for everyone</button>
+      </form>
+      {% endif %}
+      <span class="discovery-refresh-status">{{ enabled_discovery_source_count }} shared source{% if enabled_discovery_source_count != 1 %}s{% endif %} · {{ discovery_checked_label }}{% if not can_manage_job_catalog %} · managed by administrators and job curators{% endif %}</span>
+    </div>
+  </div>
+
+  <nav class="discovery-result-tabs" aria-label="Job result categories">
+    {% for tab_value, tab_label in discovery_result_tabs %}
+      {% set tab_count = discovery_result_summary[tab_value ~ '_count'] %}
+      <a
+        class="discovery-result-tab{% if discovery_result_tab == tab_value %} is-active{% endif %}"
+        href="{{ url_for('application_builder.job_discovery_workspace', result_tab=tab_value, page=1, per_page=discovery_pagination.per_page, min_fit=discovery_filters.minimum_fit, confidence=discovery_filters.confidence_query, recommendation=discovery_filters.recommendation_filter, sort=discovery_filters.sort_mode) }}#job-discovery-results"
+        {% if discovery_result_tab == tab_value %}aria-current="page"{% endif %}
+      >
+        <span>{{ tab_label }}</span>
+        <strong>{{ tab_count }}</strong>
+      </a>
+    {% endfor %}
+  </nav>
+
+  <form method="get" action="{{ url_for('application_builder.job_discovery_workspace') }}#job-discovery-results" class="discovery-ranking-filters">
+    <input type="hidden" name="result_tab" value="{{ discovery_result_tab }}">
+    <input type="hidden" name="page" value="1">
+    <input type="hidden" name="per_page" value="{{ discovery_pagination.per_page }}">
+    <label>
+      <span>Minimum Job Fit</span>
+      <select name="min_fit">
+        {% for score in discovery_minimum_fit_options %}
+          <option value="{{ score }}" {% if discovery_filters.minimum_fit == score %}selected{% endif %}>{{ score }}{% if score == 60 %} — recommended{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>Confidence</span>
+      <select name="confidence">
+        {% for option_value, option_label in discovery_confidence_options %}
+          <option value="{{ option_value }}" {% if discovery_filters.confidence_query == option_value %}selected{% endif %}>{{ option_label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>Recommendation</span>
+      <select name="recommendation">
+        {% for option_value, option_label in discovery_recommendation_options %}
+          <option value="{{ option_value }}" {% if discovery_filters.recommendation_filter == option_value %}selected{% endif %}>{{ option_label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>Sort by</span>
+      <select name="sort">
+        {% for option_value, option_label in discovery_sort_options %}
+          <option value="{{ option_value }}" {% if discovery_filters.sort_mode == option_value %}selected{% endif %}>{{ option_label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="button secondary" type="submit">Apply filters</button>
+  </form>
+
+  <div class="discovery-results-toolbar">
+    <div class="discovery-result-summary" aria-label="Discovery result summary">
+      <span>{{ discovery_result_summary.filtered_count }} hidden by mandatory preferences</span>
+      <span>{{ discovery_result_summary.quality_filtered_count }} hidden by result-quality filters</span>
+      <span>{{ discovery_result_summary.age_filtered_count }} hidden by posting age</span>
+    </div>
+    <form method="get" action="{{ url_for('application_builder.job_discovery_workspace') }}" class="discovery-page-size-form">
+      <input type="hidden" name="result_tab" value="{{ discovery_result_tab }}">
+      <input type="hidden" name="min_fit" value="{{ discovery_filters.minimum_fit }}">
+      <input type="hidden" name="confidence" value="{{ discovery_filters.confidence_query }}">
+      <input type="hidden" name="recommendation" value="{{ discovery_filters.recommendation_filter }}">
+      <input type="hidden" name="sort" value="{{ discovery_filters.sort_mode }}">
+      <label for="discovery-per-page">Results per page</label>
+      <select id="discovery-per-page" name="per_page" onchange="this.form.submit()">
+        {% for page_size in discovery_page_sizes %}
+          <option value="{{ page_size }}" {% if discovery_pagination.per_page == page_size %}selected{% endif %}>{{ page_size }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
+
+  {% if discovery_cards %}
+    <p class="discovery-page-summary">
+      Showing {{ discovery_pagination.start }}–{{ discovery_pagination.end }} of {{ discovery_pagination.total }} {{ discovery_result_tab|replace('_', ' ') }} job{% if discovery_pagination.total != 1 %}s{% endif %}.
+    </p>
+    <div class="discovery-card-list">
+      {% for card in discovery_cards %}
+        {% set job = card.job %}
+        {% set fit = card.fit %}
+        <article class="discovery-job-card compact{% if card.disposition == discovery_dispositions.IGNORED %} is-ignored{% endif %}" id="discovered-job-{{ job.id }}">
+          <header class="discovery-job-header">
+            <div class="discovery-job-heading-copy">
+              <div class="discovery-badges">
+                {% if card.result_group == 'recommended' %}<span class="application-status status-considering">Recommended</span>{% endif %}
+                {% if card.result_group == 'possible' %}<span class="application-status status-preparing">Possible match</span>{% endif %}
+                {% if card.result_group == 'low_match' %}<span class="application-status status-archived">Low match</span>{% endif %}
+                {% if card.disposition == discovery_dispositions.SAVED %}<span class="application-status status-preparing">Saved</span>{% endif %}
+                {% if card.disposition == discovery_dispositions.IGNORED %}<span class="application-status status-archived">Ignored</span>{% endif %}
+                {% if card.application %}<span class="application-status status-considering">Workspace created</span>{% endif %}
+                {% if card.result_group == 'pending' %}<span class="application-status status-draft">Awaiting assessment</span>{% endif %}
+                {% if not job.active %}<span class="application-status status-archived">Posting inactive</span>{% endif %}
+              </div>
+              <h3>{{ job.title }}</h3>
+              <p>{{ job.company }}{% if job.location %} · {{ job.location }}{% endif %}{% if job.workplace_type.value != 'unspecified' %} · {{ job.workplace_type.value|title }}{% endif %}</p>
+              <p class="discovery-posted-age">{{ card.posted_label }}</p>
+            </div>
+            <div class="discovery-compact-scores" aria-label="Job ranking summary">
+              <div><span>Job Fit</span><strong>{% if fit %}{{ "%.0f"|format(fit.fit_score) }}{% else %}—{% endif %}</strong></div>
+              <div><span>Preference</span><strong>{{ "%.0f"|format(card.preference_score) }}</strong></div>
+              <div><span>Priority</span><strong>{% if card.search_priority is not none %}{{ "%.0f"|format(card.search_priority) }}{% else %}—{% endif %}</strong></div>
+            </div>
+          </header>
+
+          <div class="discovery-compact-recommendation">
+            <span>Recommendation</span>
+            <strong>{% if fit %}{{ fit.recommendation }}{% else %}Not analyzed yet{% endif %}</strong>
+            {% if fit %}<small>{{ fit.confidence }} confidence</small>{% endif %}
+          </div>
+
+          <details
+            class="discovery-analysis-loader"
+            data-discovery-analysis-url="{{ url_for('application_builder.discovered_job_analysis', source_id=job.source_id, job_id=job.id) }}"
+          >
+            <summary>View analysis</summary>
+            <div class="discovery-analysis-content" data-discovery-analysis-content aria-live="polite">
+              <p class="discovery-analysis-placeholder">Open this panel to load strengths, gaps, and evidence references.</p>
+            </div>
+          </details>
+
+          <footer class="discovery-job-actions">
+            <a class="button secondary" href="{{ job.canonical_url }}" target="_blank" rel="noopener noreferrer">View posting</a>
+            {% if card.application %}
+              <a class="button primary" href="{{ url_for('application_builder.open_application_builder', application_id=card.application.id) }}">Open Application Workspace</a>
+            {% else %}
+              <form action="{{ url_for('application_builder.create_application_from_discovered_job', source_id=job.source_id, job_id=job.id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="button primary" type="submit">Create Application Workspace</button>
+              </form>
+            {% endif %}
+            {% if card.disposition != discovery_dispositions.SAVED and not card.application %}
+              <form action="{{ url_for('application_builder.save_discovered_job', source_id=job.source_id, job_id=job.id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="result_tab" value="{{ discovery_result_tab }}">
+                <input type="hidden" name="page" value="{{ discovery_pagination.page }}">
+                <input type="hidden" name="per_page" value="{{ discovery_pagination.per_page }}">
+                <input type="hidden" name="min_fit" value="{{ discovery_filters.minimum_fit }}">
+                <input type="hidden" name="confidence" value="{{ discovery_filters.confidence_query }}">
+                <input type="hidden" name="recommendation" value="{{ discovery_filters.recommendation_filter }}">
+                <input type="hidden" name="sort" value="{{ discovery_filters.sort_mode }}">
+                <button class="button secondary" type="submit">Save</button>
+              </form>
+            {% endif %}
+            {% if card.disposition != discovery_dispositions.IGNORED and not card.application %}
+              <form action="{{ url_for('application_builder.ignore_discovered_job', source_id=job.source_id, job_id=job.id) }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="result_tab" value="{{ discovery_result_tab }}">
+                <input type="hidden" name="page" value="{{ discovery_pagination.page }}">
+                <input type="hidden" name="per_page" value="{{ discovery_pagination.per_page }}">
+                <input type="hidden" name="min_fit" value="{{ discovery_filters.minimum_fit }}">
+                <input type="hidden" name="confidence" value="{{ discovery_filters.confidence_query }}">
+                <input type="hidden" name="recommendation" value="{{ discovery_filters.recommendation_filter }}">
+                <input type="hidden" name="sort" value="{{ discovery_filters.sort_mode }}">
+                <button class="button text" type="submit">Ignore</button>
+              </form>
+            {% endif %}
+          </footer>
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if discovery_pagination.total_pages > 1 %}
+      <nav class="discovery-pagination" aria-label="Job results pages">
+        {% if discovery_pagination.has_previous %}
+          <a class="button secondary" href="{{ url_for('application_builder.job_discovery_workspace', result_tab=discovery_result_tab, page=discovery_pagination.previous_page, per_page=discovery_pagination.per_page, min_fit=discovery_filters.minimum_fit, confidence=discovery_filters.confidence_query, recommendation=discovery_filters.recommendation_filter, sort=discovery_filters.sort_mode) }}#job-discovery-results">← Previous</a>
+        {% else %}
+          <span class="button secondary is-disabled" aria-disabled="true">← Previous</span>
+        {% endif %}
+
+        <div class="discovery-page-links">
+          {% for page_number in range(1, discovery_pagination.total_pages + 1) %}
+            {% if page_number == 1 or page_number == discovery_pagination.total_pages or (page_number >= discovery_pagination.page - 2 and page_number <= discovery_pagination.page + 2) %}
+              <a class="discovery-page-link{% if page_number == discovery_pagination.page %} is-active{% endif %}" href="{{ url_for('application_builder.job_discovery_workspace', result_tab=discovery_result_tab, page=page_number, per_page=discovery_pagination.per_page, min_fit=discovery_filters.minimum_fit, confidence=discovery_filters.confidence_query, recommendation=discovery_filters.recommendation_filter, sort=discovery_filters.sort_mode) }}#job-discovery-results" {% if page_number == discovery_pagination.page %}aria-current="page"{% endif %}>{{ page_number }}</a>
+            {% elif page_number == 2 and discovery_pagination.page > 4 %}
+              <span class="discovery-page-ellipsis" aria-hidden="true">…</span>
+            {% elif page_number == discovery_pagination.total_pages - 1 and discovery_pagination.page < discovery_pagination.total_pages - 3 %}
+              <span class="discovery-page-ellipsis" aria-hidden="true">…</span>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        {% if discovery_pagination.has_next %}
+          <a class="button secondary" href="{{ url_for('application_builder.job_discovery_workspace', result_tab=discovery_result_tab, page=discovery_pagination.next_page, per_page=discovery_pagination.per_page, min_fit=discovery_filters.minimum_fit, confidence=discovery_filters.confidence_query, recommendation=discovery_filters.recommendation_filter, sort=discovery_filters.sort_mode) }}#job-discovery-results">Next →</a>
+        {% else %}
+          <span class="button secondary is-disabled" aria-disabled="true">Next →</span>
+        {% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state">
+      {% if discovery_result_tab == 'recommended' %}
+        <h3>No recommended jobs meet these filters</h3>
+        <p>Recommended requires a Strong or Good recommendation, the selected minimum Job Fit, and one of the selected confidence levels.</p>
+      {% elif discovery_result_tab == 'possible' %}
+        <h3>No possible matches meet these filters</h3>
+        <p>Possible matches contain viable Stretch opportunities that meet the selected fit and confidence controls.</p>
+      {% elif discovery_result_tab == 'pending' %}
+        <h3>No jobs are awaiting assessment</h3>
+        <p>All eligible collected jobs have either been assessed or moved to another result category.</p>
+      {% elif discovery_result_tab == 'low_match' %}
+        <h3>No low-match jobs</h3>
+        <p>Jobs assessed as probably not worth your time appear here instead of distracting from Recommended results.</p>
+      {% elif discovery_result_tab == 'saved' %}
+        <h3>No saved jobs yet</h3>
+        <p>Save promising opportunities or create an Application Workspace to keep them here.</p>
+      {% else %}
+        <h3>No ignored jobs</h3>
+        <p>Jobs you choose to ignore will appear here and can be restored later.</p>
+      {% endif %}
+      {% if not discovery_source_count and can_manage_job_catalog %}
+        <a class="button primary" href="{{ url_for('application_builder.job_discovery_workspace', view='settings') }}">Add a company source</a>
+      {% elif not discovery_source_count %}
+        <p>The shared catalog has not been configured yet. An administrator or job curator must add the first company source.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>

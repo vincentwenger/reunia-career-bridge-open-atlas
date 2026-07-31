@@ -3,11 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import threading
-import time
 from dataclasses import dataclass
 from html.parser import HTMLParser
-from typing import Any, Callable, Iterable
+from typing import Any, Iterable
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 from ..models import (
@@ -31,12 +29,20 @@ from ..normalization import (
 )
 from ..storage import CacheStore, InMemoryTTLCache
 from .base import (
+    DEFAULT_HTML_MAX_BYTES,
+    CompanyRateLimiter,
     HttpClient,
     ROBOTS_PRODUCT_TOKEN,
     RobotsDeniedError,
     SourceFetchError,
     UrllibHttpClient,
+    company_rate_limit_key,
+    source_min_request_interval,
+    source_redirect_limit,
+    source_response_limit,
     source_timeout,
+    validate_fetch_url,
+    validate_source_policy,
 )
 
 
@@ -50,7 +56,7 @@ class GenericJsonLdJobSource:
     """Bounded JSON-LD crawler for configured public career pages.
 
     It honors robots.txt before each page request, identifies itself with a
-    descriptive user agent, applies per-host rate limiting and timeouts, and
+    descriptive user agent, applies per-company rate limiting and timeouts, and
     caches both robots policies and fetched page bodies.
     """
 
@@ -59,43 +65,49 @@ class GenericJsonLdJobSource:
         http_client: HttpClient | None = None,
         *,
         cache: CacheStore | None = None,
-        rate_limiter: "HostRateLimiter | None" = None,
+        rate_limiter: CompanyRateLimiter | None = None,
     ) -> None:
         self.http = http_client or UrllibHttpClient()
         self.cache = cache or InMemoryTTLCache()
-        self.rate_limiter = rate_limiter or HostRateLimiter()
+        self.rate_limiter = rate_limiter or CompanyRateLimiter()
 
     def fetch_jobs(self, source: CompanySource) -> list[DiscoveredJob]:
-        if source.source_type is not JobSourceType.GENERIC_JSONLD:
-            raise ValueError("GenericJsonLdJobSource requires a generic_jsonld CompanySource")
-        max_pages = _bounded_int(source.options.get("max_pages"), default=10, minimum=1, maximum=100)
+        validate_source_policy(source, expected_type=JobSourceType.GENERIC_JSONLD)
+        max_pages = _bounded_int(source.options.get("max_pages"), default=10, minimum=1, maximum=25)
         cache_seconds = _bounded_int(
             source.options.get("cache_seconds"),
             default=DEFAULT_CACHE_SECONDS,
             minimum=0,
             maximum=24 * 60 * 60,
         )
-        min_interval = _bounded_float(
-            source.options.get("min_request_interval_seconds"),
-            default=1.0,
-            minimum=0.0,
-            maximum=60.0,
-        )
+        min_interval = source_min_request_interval(source, default=1.0)
         follow_links = bool(source.options.get("follow_job_links", True))
         timeout = source_timeout(source)
 
         start = canonicalize_url(source.careers_url)
-        start_host = urlsplit(start).netloc.casefold()
+        start_host = urlsplit(start).hostname.casefold() if urlsplit(start).hostname else ""
+        allowed_domains = (start_host,)
+        validate_fetch_url(start, allowed_domains=allowed_domains)
+        company_key = company_rate_limit_key(source)
+        max_bytes = source_response_limit(source, default=DEFAULT_HTML_MAX_BYTES)
+        max_redirects = source_redirect_limit(source)
         queue = [start]
         visited: set[str] = set()
         jobs: list[DiscoveredJob] = []
 
         while queue and len(visited) < max_pages:
             url = queue.pop(0)
-            if url in visited or urlsplit(url).netloc.casefold() != start_host:
+            if url in visited or (urlsplit(url).hostname or "").casefold() != start_host:
                 continue
             visited.add(url)
-            if not self._allowed(url, timeout=timeout, min_interval=min_interval):
+            if not self._allowed(
+                url,
+                timeout=timeout,
+                min_interval=min_interval,
+                company_key=company_key,
+                allowed_domains=allowed_domains,
+                max_redirects=max_redirects,
+            ):
                 if url == start:
                     raise RobotsDeniedError(f"robots.txt disallows crawling {url}")
                 continue
@@ -104,6 +116,10 @@ class GenericJsonLdJobSource:
                 timeout=timeout,
                 cache_seconds=cache_seconds,
                 min_interval=min_interval,
+                company_key=company_key,
+                allowed_domains=allowed_domains,
+                max_bytes=max_bytes,
+                max_redirects=max_redirects,
             )
             parser = _JsonLdHtmlParser()
             parser.feed(page)
@@ -125,25 +141,45 @@ class GenericJsonLdJobSource:
         timeout: float,
         cache_seconds: int,
         min_interval: float,
+        company_key: str,
+        allowed_domains: tuple[str, ...],
+        max_bytes: int,
+        max_redirects: int,
     ) -> str:
         key = f"page:{url}"
         cached = self.cache.get(key)
         if isinstance(cached, str):
             return cached
-        self.rate_limiter.wait(urlsplit(url).netloc.casefold(), min_interval)
+        validate_fetch_url(url, allowed_domains=allowed_domains)
+        self.rate_limiter.wait(company_key, min_interval)
         response = self.http.get(
             url,
             headers={"Accept": "text/html, application/xhtml+xml"},
             timeout=timeout,
-            max_bytes=5 * 1024 * 1024,
+            max_bytes=max_bytes,
+            max_redirects=max_redirects,
+            allowed_domains=allowed_domains,
         )
+        validate_fetch_url(response.url, allowed_domains=allowed_domains)
         if response.status < 200 or response.status >= 300:
             raise SourceFetchError(f"GET {url} returned HTTP {response.status}")
+        content_type = response.headers.get("content-type", "").casefold()
+        if content_type and not any(value in content_type for value in ("text/html", "application/xhtml+xml")):
+            raise SourceFetchError(f"GET {url} did not return HTML")
         page = response.text()
         self.cache.set(key, page, cache_seconds)
         return page
 
-    def _allowed(self, url: str, *, timeout: float, min_interval: float) -> bool:
+    def _allowed(
+        self,
+        url: str,
+        *,
+        timeout: float,
+        min_interval: float,
+        company_key: str,
+        allowed_domains: tuple[str, ...],
+        max_redirects: int,
+    ) -> bool:
         parsed = urlsplit(url)
         robots_url = urlunsplit((parsed.scheme, parsed.netloc, "/robots.txt", "", ""))
         cache_key = f"robots:{robots_url}"
@@ -151,13 +187,17 @@ class GenericJsonLdJobSource:
         if isinstance(policy, _RobotsPolicy):
             return policy.allowed(url)
         try:
-            self.rate_limiter.wait(parsed.netloc.casefold(), min_interval)
+            validate_fetch_url(robots_url, allowed_domains=allowed_domains)
+            self.rate_limiter.wait(company_key, min_interval)
             response = self.http.get(
                 robots_url,
                 headers={"Accept": "text/plain"},
                 timeout=timeout,
                 max_bytes=ROBOTS_MAX_BYTES,
+                max_redirects=max_redirects,
+                allowed_domains=allowed_domains,
             )
+            validate_fetch_url(response.url, allowed_domains=allowed_domains)
         except SourceFetchError:
             policy = _RobotsPolicy.disallow_all()
         else:
@@ -171,24 +211,8 @@ class GenericJsonLdJobSource:
         return policy.allowed(url)
 
 
-class HostRateLimiter:
-    def __init__(self, *, clock: Callable[[], float] = time.monotonic, sleeper=time.sleep) -> None:
-        self.clock = clock
-        self.sleeper = sleeper
-        self._last_request: dict[str, float] = {}
-        self._lock = threading.RLock()
-
-    def wait(self, host: str, minimum_interval_seconds: float) -> None:
-        interval = max(0.0, float(minimum_interval_seconds))
-        with self._lock:
-            now = self.clock()
-            last = self._last_request.get(host)
-            if last is not None:
-                delay = interval - (now - last)
-                if delay > 0:
-                    self.sleeper(delay)
-                    now = self.clock()
-            self._last_request[host] = now
+# Backward-compatible name retained for existing callers/tests.
+HostRateLimiter = CompanyRateLimiter
 
 
 @dataclass(frozen=True, slots=True)
@@ -333,11 +357,11 @@ def _walk_json(value: Any) -> Iterable[dict[str, Any]]:
 
 
 def _job_from_jsonld(item: dict[str, Any], *, source: CompanySource, page_url: str) -> DiscoveredJob | None:
-    title = normalize_whitespace(item.get("title"))
+    title = html_to_text(item.get("title"))
     if not title:
         return None
     organization = item.get("hiringOrganization") or {}
-    company = normalize_whitespace(organization.get("name") if isinstance(organization, dict) else organization)
+    company = html_to_text(organization.get("name") if isinstance(organization, dict) else organization)
     company = company or source.company_name
     job_url = canonicalize_url(item.get("url") or page_url)
     identifier = item.get("identifier")
@@ -378,10 +402,10 @@ def _job_from_jsonld(item: dict[str, Any], *, source: CompanySource, page_url: s
         salary_interval=interval,
         valid_through=normalize_iso_timestamp(parse_datetime(item.get("validThrough"))),
         metadata={
-            "industry": item.get("industry"),
+            "industry": html_to_text(item.get("industry")),
             "qualifications": html_to_text(item.get("qualifications")),
-            "education_requirements": item.get("educationRequirements"),
-            "experience_requirements": item.get("experienceRequirements"),
+            "education_requirements": html_to_text(item.get("educationRequirements")),
+            "experience_requirements": html_to_text(item.get("experienceRequirements")),
         },
     )
 
@@ -449,7 +473,7 @@ def _jsonld_salary(value: Any) -> tuple[float | None, float | None, str, str, st
 def _same_host_job_link(base_url: str, href: str, host: str) -> str | None:
     joined = canonicalize_url(urljoin(base_url, href))
     parsed = urlsplit(joined)
-    if parsed.scheme not in {"http", "https"} or parsed.netloc.casefold() != host:
+    if parsed.scheme not in {"http", "https"} or (parsed.hostname or "").casefold() != host:
         return None
     if not _JOB_LINK_HINT.search(parsed.path + "?" + parsed.query):
         return None

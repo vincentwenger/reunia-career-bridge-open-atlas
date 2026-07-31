@@ -10,9 +10,19 @@
     const workspaceSelect = document.getElementById('applicationWorkspaceSelect');
     const workspaceHelp = document.getElementById('applicationWorkspaceHelp');
     const questionCountSelect = document.getElementById('questionCountSelect');
+    const questionCountField = document.getElementById('questionCountField');
     const readQuestionsAloud = document.getElementById('readQuestionsAloud');
     const customFocusField = document.getElementById('customFocusField');
     const customFocusInput = document.getElementById('customFocusInput');
+    const savedQuestionSetPanel = document.getElementById('savedQuestionSetPanel');
+    const savedQuestionSetSelect = document.getElementById('savedQuestionSetSelect');
+    const savedQuestionSetName = document.getElementById('savedQuestionSetName');
+    const savedQuestionSetQuestions = document.getElementById('savedQuestionSetQuestions');
+    const savedQuestionCount = document.getElementById('savedQuestionCount');
+    const savedQuestionSetStatus = document.getElementById('savedQuestionSetStatus');
+    const newQuestionSetButton = document.getElementById('newQuestionSetButton');
+    const deleteQuestionSetButton = document.getElementById('deleteQuestionSetButton');
+    const saveQuestionSetButton = document.getElementById('saveQuestionSetButton');
     const startInterviewButton = document.getElementById('startMockInterviewButton');
     const endInterviewButton = document.getElementById('endInterviewButton');
     const repeatQuestionButton = document.getElementById('repeatQuestionButton');
@@ -49,6 +59,8 @@
     const historyCount = document.getElementById('mockHistoryCount');
     const historyList = document.getElementById('mockHistoryList');
     const completeMessage = document.getElementById('mockCompleteMessage');
+    const historyNoteTitle = document.getElementById('mockHistoryNoteTitle');
+    const historyNoteText = document.getElementById('mockHistoryNoteText');
 
     const storageScope = encodeURIComponent(page.dataset.storageScope || 'default');
     const ACTIVE_SESSION_KEY = `careerBridge.activeMockInterview.v2.${storageScope}`;
@@ -67,11 +79,25 @@
     let lastAnswerFilename = 'mock-interview-answer.webm';
     let lastAnswerDurationSeconds = null;
     let phase = 'ready';
+    let savedQuestionSets = [];
 
     document.querySelectorAll('input[name="interviewType"]').forEach(function (input) {
         input.addEventListener('change', updateCustomFocusVisibility);
     });
     startInterviewButton.addEventListener('click', startInterview);
+    savedQuestionSetSelect?.addEventListener('change', selectSavedQuestionSet);
+    savedQuestionSetQuestions?.addEventListener('input', updateSavedQuestionCount);
+    newQuestionSetButton?.addEventListener('click', beginNewQuestionSet);
+    saveQuestionSetButton?.addEventListener('click', async function () {
+        try {
+            await saveQuestionSet();
+        } catch (error) {
+            savedQuestionSetStatus.dataset.state = 'error';
+            savedQuestionSetStatus.textContent = error.message;
+            AppUI.showToast(error.message, {type: 'error'});
+        }
+    });
+    deleteQuestionSetButton?.addEventListener('click', deleteQuestionSet);
     startAnswerButton.addEventListener('click', startAnswerRecording);
     finishAnswerButton.addEventListener('click', finishAnswerRecording);
     retryAnswerButton.addEventListener('click', retryLastAnswer);
@@ -93,7 +119,7 @@
     initialize();
 
     async function initialize() {
-        await loadApplicationWorkspaces();
+        await Promise.all([loadApplicationWorkspaces(), loadSavedQuestionSets()]);
         await resumeActiveSession();
         ensureBrowserSupport();
     }
@@ -127,6 +153,154 @@
                 : 'No job application is available yet. You can still practice, or create one in Application Builder.';
         } catch (error) {
             workspaceHelp.textContent = 'Job applications are temporarily unavailable. You can still practice without linking one.';
+        }
+    }
+
+    async function loadSavedQuestionSets(preferredId) {
+        if (!savedQuestionSetSelect) return;
+        try {
+            const response = await fetch(AppUI.appUrl('/api/career/mock-interviews/question-sets'), {
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'},
+                cache: 'no-store'
+            });
+            const payload = await readJson(response);
+            if (!response.ok) throw apiError(payload, 'Saved question lists could not be loaded.');
+            savedQuestionSets = Array.isArray(payload.question_sets) ? payload.question_sets : [];
+            savedQuestionSetSelect.replaceChildren(new Option('Create a new question list', ''));
+            savedQuestionSets.forEach(function (item) {
+                const count = Array.isArray(item.questions) ? item.questions.length : 0;
+                savedQuestionSetSelect.add(new Option(`${item.name} · ${count} ${count === 1 ? 'question' : 'questions'}`, item.id));
+            });
+            const selectedId = preferredId || savedQuestionSetSelect.value;
+            if (selectedId && savedQuestionSets.some((item) => item.id === selectedId)) {
+                savedQuestionSetSelect.value = selectedId;
+                selectSavedQuestionSet();
+            } else if (savedQuestionSets.length) {
+                savedQuestionSetSelect.value = savedQuestionSets[0].id;
+                selectSavedQuestionSet();
+            } else {
+                beginNewQuestionSet();
+            }
+        } catch (error) {
+            savedQuestionSetStatus.textContent = error.message;
+            savedQuestionSetStatus.dataset.state = 'error';
+        }
+    }
+
+    function selectSavedQuestionSet() {
+        const selected = savedQuestionSets.find((item) => item.id === savedQuestionSetSelect.value);
+        if (!selected) {
+            beginNewQuestionSet();
+            return;
+        }
+        savedQuestionSetName.value = selected.name || '';
+        savedQuestionSetQuestions.value = Array.isArray(selected.questions) ? selected.questions.join('\n') : '';
+        deleteQuestionSetButton.disabled = false;
+        savedQuestionSetStatus.dataset.state = 'ready';
+        savedQuestionSetStatus.textContent = 'This list is saved to your account. Edit it and save again to update it.';
+        updateSavedQuestionCount();
+    }
+
+    function beginNewQuestionSet() {
+        if (!savedQuestionSetSelect) return;
+        savedQuestionSetSelect.value = '';
+        savedQuestionSetName.value = '';
+        savedQuestionSetQuestions.value = '';
+        deleteQuestionSetButton.disabled = true;
+        savedQuestionSetStatus.dataset.state = 'ready';
+        savedQuestionSetStatus.textContent = 'Create a named list so you can practice these questions again later.';
+        updateSavedQuestionCount();
+        if (!savedQuestionSetPanel.hidden) savedQuestionSetName.focus();
+    }
+
+    function parsedSavedQuestions() {
+        return String(savedQuestionSetQuestions.value || '')
+            .split(/\r?\n/)
+            .map((question) => question.trim())
+            .filter(Boolean);
+    }
+
+    function updateSavedQuestionCount() {
+        if (!savedQuestionCount) return;
+        const count = parsedSavedQuestions().length;
+        savedQuestionCount.textContent = `${count} ${count === 1 ? 'question' : 'questions'}`;
+        savedQuestionCount.dataset.state = count > 20 ? 'error' : 'ready';
+    }
+
+    async function saveQuestionSet(options) {
+        const silent = Boolean(options?.silent);
+        const name = savedQuestionSetName.value.trim();
+        const questions = parsedSavedQuestions();
+        if (!name) {
+            savedQuestionSetName.focus();
+            throw new Error('Give the question list a name.');
+        }
+        if (!questions.length) {
+            savedQuestionSetQuestions.focus();
+            throw new Error('Add at least one interview question.');
+        }
+        if (questions.length > 20) {
+            savedQuestionSetQuestions.focus();
+            throw new Error('A saved list can contain at most 20 questions.');
+        }
+        saveQuestionSetButton.disabled = true;
+        savedQuestionSetStatus.dataset.state = 'saving';
+        savedQuestionSetStatus.textContent = 'Saving question list…';
+        try {
+            const response = await fetch(AppUI.appUrl('/api/career/mock-interviews/question-sets'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    id: savedQuestionSetSelect.value || '',
+                    name: name,
+                    questions: questions
+                })
+            });
+            const payload = await readJson(response);
+            if (!response.ok) throw apiError(payload, 'The question list could not be saved.');
+            const saved = payload.question_set || {};
+            await loadSavedQuestionSets(saved.id);
+            savedQuestionSetStatus.dataset.state = 'saved';
+            savedQuestionSetStatus.textContent = 'Question list saved. You can reuse it in any future practice session.';
+            if (!silent) AppUI.showToast('Interview question list saved.', {type: 'success'});
+            return saved;
+        } catch (error) {
+            savedQuestionSetStatus.dataset.state = 'error';
+            savedQuestionSetStatus.textContent = error.message;
+            throw error;
+        } finally {
+            saveQuestionSetButton.disabled = false;
+        }
+    }
+
+    async function deleteQuestionSet() {
+        const questionSetId = savedQuestionSetSelect.value;
+        if (!questionSetId) return;
+        const selected = savedQuestionSets.find((item) => item.id === questionSetId);
+        const confirmed = await AppUI.confirm({
+            title: 'Delete this question list?',
+            message: `“${selected?.name || 'This list'}” will be removed from your saved practice library. Completed interview reviews will not be affected.`,
+            confirmLabel: 'Delete List',
+            cancelLabel: 'Keep List',
+            danger: true
+        });
+        if (!confirmed) return;
+        deleteQuestionSetButton.disabled = true;
+        try {
+            const response = await fetch(AppUI.appUrl(`/api/career/mock-interviews/question-sets/${encodeURIComponent(questionSetId)}`), {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'}
+            });
+            const payload = await readJson(response);
+            if (!response.ok) throw apiError(payload, 'The question list could not be deleted.');
+            await loadSavedQuestionSets();
+            AppUI.showToast('Interview question list deleted.', {type: 'info'});
+        } catch (error) {
+            deleteQuestionSetButton.disabled = false;
+            AppUI.showToast(error.message, {type: 'error'});
         }
     }
 
@@ -168,8 +342,13 @@
 
     function updateCustomFocusVisibility() {
         const selected = selectedInterviewType();
+        const usesSavedQuestions = selected === 'saved_questions';
         customFocusField.hidden = selected !== 'custom';
         customFocusInput.required = selected === 'custom';
+        savedQuestionSetPanel.hidden = !usesSavedQuestions;
+        questionCountField.hidden = usesSavedQuestions;
+        questionCountSelect.disabled = usesSavedQuestions;
+        if (usesSavedQuestions) updateSavedQuestionCount();
     }
 
     function selectedInterviewType() {
@@ -182,6 +361,15 @@
             customFocusInput.focus();
             AppUI.showToast('Describe what the custom practice session should focus on.', {type: 'error'});
             return;
+        }
+        let savedQuestionSet = null;
+        if (selectedInterviewType() === 'saved_questions') {
+            try {
+                savedQuestionSet = await saveQuestionSet({silent: true});
+            } catch (error) {
+                AppUI.showToast(error.message, {type: 'error'});
+                return;
+            }
         }
         if (readActiveSessionId()) {
             const confirmed = await AppUI.confirm({
@@ -208,6 +396,7 @@
                     interview_type: selectedInterviewType(),
                     question_count: Number(questionCountSelect.value),
                     custom_focus: customFocusInput.value.trim(),
+                    question_set_id: savedQuestionSet?.id || '',
                     language: window.AppI18n?.language || document.documentElement.lang || 'en'
                 })
             });
@@ -249,6 +438,11 @@
         progressFill.style.width = `${Math.max(0, Math.min(100, ((number - 1) / Math.max(1, total)) * 100))}%`;
         questionHeading.textContent = session.current_question || 'Preparing the next question…';
         questionContext.textContent = questionTypeDescription(session.current_question_type, session.current_question_rationale);
+        const usesSavedQuestions = session.question_mode === 'saved_question_set';
+        historyNoteTitle.textContent = usesSavedQuestions ? 'Your questions, in order' : 'Adaptive by design';
+        historyNoteText.textContent = usesSavedQuestions
+            ? 'Réunia evaluates each answer while preserving the exact order of your saved question list.'
+            : 'Each follow-up is based on what you actually said—not a fixed question list.';
         renderHistory(session.answers || []);
     }
 
@@ -257,7 +451,8 @@
             opening: 'Opening question selected for this interview format.',
             challenge: 'This question challenges a vague or unsupported part of your previous answer.',
             follow_up: 'This follow-up deepens the evidence or reasoning in your previous answer.',
-            new_topic: 'The interviewer is moving to another important competency.'
+            new_topic: 'The interviewer is moving to another important competency.',
+            saved_question: 'This question comes from your saved interview question list.'
         };
         return String(rationale || labels[type] || 'The next question adapts to your previous answer.');
     }
@@ -358,7 +553,9 @@
         evaluationPanel.hidden = true;
         errorPanel.hidden = true;
         processingTitle.textContent = 'Transcribing your answer';
-        processingMessage.textContent = 'Réunia is evaluating the content and preparing an adaptive follow-up.';
+        processingMessage.textContent = currentSession?.question_mode === 'saved_question_set'
+            ? 'Réunia is evaluating the content and preparing the next question from your saved list.'
+            : 'Réunia is evaluating the content and preparing an adaptive follow-up.';
         startAnswerButton.hidden = true;
         finishAnswerButton.hidden = true;
 

@@ -1,0 +1,24 @@
+Job Discovery first-release user-readiness validation
+Date: 2026-07-30
+
+1. User-managed company list: PASS
+   - Add, edit, enable/disable, and remove owner-scoped sources.
+2. Greenhouse, Lever, and Ashby connectors: PASS
+3. Manual career-page URL with JSON-LD fallback: PASS
+4. User-managed location, workplace, employment, salary, title, and excluded-term filters: PASS
+5. Two-stage ranking: PASS
+6. Top 20 evidence-grounded results: PASS
+   - New results ordered by Search Priority.
+   - Saved/application-created jobs pinned outside the Top 20 quota.
+7. Save, ignore, and create-application actions: PASS
+8. Manual refresh: PASS
+9. DynamoDB persistence: PASS
+   - Search preferences stored at PREFERENCES#SEARCH under owner_id.
+10. No automatic application submission: PASS
+
+Validation commands:
+- python -m compileall -q job_discovery products/resume_taylor/app.py tests
+- pytest -q
+
+Result: 205 passed, 17 skipped, 113 subtests passed; 0 failures.
+Skipped tests require optional runtime/browser dependencies unavailable in this environment.

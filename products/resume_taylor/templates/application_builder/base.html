@@ -35,13 +35,16 @@
       <header class="page-hero application-builder-hero">
         <div class="page-hero-layout">
           <div class="page-hero-copy">
-            <p class="application-builder-hero-eyebrow">{% if active_tab == 'interview_preparation' %}Interview Preparation{% elif active_tab == 'configuration' %}Account settings{% elif career_translation_focus %}Career Translation{% else %}Application Builder{% endif %}</p>
+            <p class="application-builder-hero-eyebrow">{% if active_tab == 'interview_preparation' %}Interview Preparation{% elif active_tab == 'discovery' %}Job Discovery{% elif active_tab == 'configuration' %}Account settings{% elif career_translation_focus %}Career Translation{% else %}Application Builder{% endif %}</p>
             {% if active_tab == 'interview_preparation' %}
               <h1>Interview Preparation</h1>
               <p>Prepare for one specific application using its target job description and evidence verified in the resume workflow.</p>
             {% elif career_translation_focus %}
               <h1>Career Translation</h1>
               <p>Describe international experience and review how titles, credentials, terminology, and transferable skills should be presented in the target market.</p>
+            {% elif active_tab == 'discovery' %}
+              <h1>Job Discovery</h1>
+              <p>Browse centrally collected postings, rank opportunities against verified evidence, and create application workspaces deliberately.</p>
             {% elif active_tab == 'reports' %}
               <h1>Resume Reports</h1>
               <p>Review the Initial, Job-Aligned, and Final Resume evidence and quality reports for the selected application.</p>
@@ -58,7 +61,11 @@
           </div>
 
           <div class="page-hero-actions application-builder-hero-actions">
-            {% if active_tab == 'applications' %}
+            {% if active_tab == 'discovery' %}
+              <a class="application-builder-hero-button application-builder-hero-button-secondary" href="{{ url_for('application_builder.index', tab='applications') }}">
+                <span aria-hidden="true">→</span> Job Applications
+              </a>
+            {% elif active_tab == 'applications' %}
               <a class="application-builder-hero-button application-builder-hero-button-primary" href="#new-application">
                 <span aria-hidden="true">＋</span> Create job application
               </a>
@@ -81,6 +88,10 @@
 
       {% if active_tab not in ['interview_preparation', 'configuration'] %}
       <nav class="application-builder-subnav" aria-label="Application Builder sections">
+        <a class="application-builder-subnav-link {{ 'active' if active_tab == 'discovery' else '' }}" href="{{ url_for('application_builder.job_discovery_workspace') }}" {% if active_tab == 'discovery' %}aria-current="page"{% endif %}>
+          <span class="application-builder-subnav-icon" aria-hidden="true">⌕</span>
+          <span><strong>Job Discovery</strong><small>Sources, preferences and Top 20</small></span>
+        </a>
         <a class="application-builder-subnav-link {{ 'active' if active_tab == 'applications' else '' }}" href="{{ url_for('application_builder.index', tab='applications') }}" {% if active_tab == 'applications' %}aria-current="page"{% endif %}>
           <span class="application-builder-subnav-icon" aria-hidden="true">▦</span>
           <span><strong>Job Applications</strong><small>Pipeline and target roles</small></span>
@@ -96,7 +107,7 @@
       </nav>
       {% endif %}
 
-      {% if active_application and active_tab not in ['applications', 'configuration'] %}
+      {% if active_application and active_tab not in ['discovery', 'applications', 'configuration'] %}
         <section class="active-application-banner" aria-label="Selected job application">
           <div><span>Selected application</span><strong>{{ active_application.company }} · {{ active_application.role }}</strong></div>
           <div><span>Status</span><strong>{{ active_application.status_label }}</strong></div>

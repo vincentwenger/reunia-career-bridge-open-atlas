@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 from botocore.exceptions import ClientError
 from flask import current_app
@@ -223,6 +224,59 @@ _SCORECARD_SOURCE_ALIASES = {
 _DATA_RETENTION_DAY_OPTIONS = {0, 7, 30, 90, 365}
 _SHARE_EXPIRATION_DAY_OPTIONS = {0, 7, 30, 90}
 _MEETING_SUMMARY_DETAIL_OPTIONS = {"brief", "standard", "detailed"}
+
+
+_MOCK_INTERVIEW_QUESTION_SET_FIELD = "mock_interview_question_sets"
+_MAX_MOCK_INTERVIEW_QUESTION_SETS = 20
+_MAX_MOCK_INTERVIEW_QUESTIONS = 20
+_MAX_MOCK_INTERVIEW_QUESTION_LENGTH = 500
+_MAX_MOCK_INTERVIEW_SET_NAME_LENGTH = 120
+
+
+def _normalize_mock_interview_question_sets(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for item in value[:_MAX_MOCK_INTERVIEW_QUESTION_SETS]:
+        if not isinstance(item, dict):
+            continue
+        set_id = str(item.get("id") or "").strip()
+        name = " ".join(str(item.get("name") or "").split())[
+            :_MAX_MOCK_INTERVIEW_SET_NAME_LENGTH
+        ]
+        questions_raw = item.get("questions")
+        if (
+            not set_id
+            or set_id in seen_ids
+            or not name
+            or not isinstance(questions_raw, list)
+        ):
+            continue
+        questions: list[str] = []
+        for question in questions_raw[:_MAX_MOCK_INTERVIEW_QUESTIONS]:
+            text = " ".join(str(question or "").split())[
+                :_MAX_MOCK_INTERVIEW_QUESTION_LENGTH
+            ]
+            if text:
+                questions.append(text)
+        if not questions:
+            continue
+        seen_ids.add(set_id)
+        normalized.append(
+            {
+                "id": set_id,
+                "name": name,
+                "questions": questions,
+                "created_at": str(item.get("created_at") or ""),
+                "updated_at": str(item.get("updated_at") or ""),
+            }
+        )
+    normalized.sort(
+        key=lambda item: str(item.get("updated_at") or ""),
+        reverse=True,
+    )
+    return normalized
 
 
 def default_user_settings() -> dict[str, Any]:
@@ -459,6 +513,128 @@ class UserService:
             raise DatabaseError("Failed to update assistant context.") from exc
 
         return normalized
+
+    def list_mock_interview_question_sets(self, user_id: str) -> list[dict[str, Any]]:
+        user = self.get_user(user_id) or {}
+        return _normalize_mock_interview_question_sets(
+            user.get(_MOCK_INTERVIEW_QUESTION_SET_FIELD)
+        )
+
+    def get_mock_interview_question_set(
+        self,
+        user_id: str,
+        question_set_id: str,
+    ) -> dict[str, Any]:
+        normalized_id = str(question_set_id or "").strip()
+        for item in self.list_mock_interview_question_sets(user_id):
+            if item["id"] == normalized_id:
+                return item
+        raise ResourceNotFoundError("Saved interview question list not found.")
+
+    def save_mock_interview_question_set(
+        self,
+        user_id: str,
+        data: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not isinstance(data, dict):
+            raise ValidationError("Question list must be a JSON object.")
+
+        name = " ".join(str(data.get("name") or "").split())
+        if not name:
+            raise ValidationError("Give the question list a name.")
+        if len(name) > _MAX_MOCK_INTERVIEW_SET_NAME_LENGTH:
+            raise ValidationError(
+                f"Question list name must contain {_MAX_MOCK_INTERVIEW_SET_NAME_LENGTH} characters or fewer."
+            )
+
+        raw_questions = data.get("questions")
+        if not isinstance(raw_questions, list):
+            raise ValidationError("Questions must be provided as a list.")
+        questions: list[str] = []
+        for raw_question in raw_questions:
+            question = " ".join(str(raw_question or "").split())
+            if not question:
+                continue
+            if len(question) > _MAX_MOCK_INTERVIEW_QUESTION_LENGTH:
+                raise ValidationError(
+                    f"Each question must contain {_MAX_MOCK_INTERVIEW_QUESTION_LENGTH} characters or fewer."
+                )
+            questions.append(question)
+        if not questions:
+            raise ValidationError("Add at least one interview question.")
+        if len(questions) > _MAX_MOCK_INTERVIEW_QUESTIONS:
+            raise ValidationError(
+                f"A saved list can contain at most {_MAX_MOCK_INTERVIEW_QUESTIONS} questions."
+            )
+
+        question_sets = self.list_mock_interview_question_sets(user_id)
+        requested_id = str(data.get("id") or "").strip()
+        now = datetime.now(timezone.utc).isoformat()
+        existing_index = next(
+            (
+                index
+                for index, item in enumerate(question_sets)
+                if item["id"] == requested_id
+            ),
+            None,
+        )
+        if requested_id and existing_index is None:
+            raise ResourceNotFoundError("Saved interview question list not found.")
+
+        if existing_index is None:
+            if len(question_sets) >= _MAX_MOCK_INTERVIEW_QUESTION_SETS:
+                raise ValidationError(
+                    f"You can save at most {_MAX_MOCK_INTERVIEW_QUESTION_SETS} interview question lists."
+                )
+            saved = {
+                "id": f"questions-{uuid4().hex}",
+                "name": name,
+                "questions": questions,
+                "created_at": now,
+                "updated_at": now,
+            }
+            question_sets.insert(0, saved)
+        else:
+            existing = question_sets.pop(existing_index)
+            saved = {
+                **existing,
+                "name": name,
+                "questions": questions,
+                "updated_at": now,
+            }
+            question_sets.insert(0, saved)
+
+        try:
+            self.repository.update_fields(
+                user_id,
+                {_MOCK_INTERVIEW_QUESTION_SET_FIELD: question_sets},
+            )
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+                raise ResourceNotFoundError("User not found.") from exc
+            raise DatabaseError("Failed to save the interview question list.") from exc
+        return saved
+
+    def delete_mock_interview_question_set(
+        self,
+        user_id: str,
+        question_set_id: str,
+    ) -> dict[str, Any]:
+        normalized_id = str(question_set_id or "").strip()
+        question_sets = self.list_mock_interview_question_sets(user_id)
+        retained = [item for item in question_sets if item["id"] != normalized_id]
+        if len(retained) == len(question_sets):
+            raise ResourceNotFoundError("Saved interview question list not found.")
+        try:
+            self.repository.update_fields(
+                user_id,
+                {_MOCK_INTERVIEW_QUESTION_SET_FIELD: retained},
+            )
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+                raise ResourceNotFoundError("User not found.") from exc
+            raise DatabaseError("Failed to delete the interview question list.") from exc
+        return {"status": "deleted", "id": normalized_id}
 
     def update_profile(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(data, dict) or not data:

@@ -572,7 +572,13 @@ class AdminAnalyticsService:
         cache = current_app.extensions.get("admin_analytics_cache")
         cache_key = f"dashboard:{days}"
         if self._cacheable and cache is not None:
-            cached = cache.get(cache_key)
+            try:
+                cached = cache.get(cache_key)
+            except Exception:
+                current_app.logger.exception(
+                    "Could not read the Admin Analytics cache; loading live data"
+                )
+                cached = None
             if isinstance(cached, dict):
                 return cached
 
@@ -583,13 +589,32 @@ class AdminAnalyticsService:
         previous_period_end = (period_start_date - timedelta(days=1)).isoformat()
         previous_period_start = (period_start_date - timedelta(days=days)).isoformat()
 
-        all_activity = self.analytics_repository.list_activity()
+        core_sources = {
+            "activity": True,
+            "users": True,
+        }
+        try:
+            all_activity = self.analytics_repository.list_activity()
+        except Exception:
+            current_app.logger.exception(
+                "Could not load visitor and session activity for Admin Analytics"
+            )
+            all_activity = []
+            core_sources["activity"] = False
         period_activity = [
             item for item in all_activity
             if str(item.get("activity_date") or "") >= period_start
         ]
-        users = self._load_registered_users()
+        try:
+            users = self._load_registered_users()
+        except Exception:
+            current_app.logger.exception(
+                "Could not load registered users for Admin Analytics"
+            )
+            users = []
+            core_sources["users"] = False
         usage = self._load_usage_snapshot()
+        usage["sources"].update(core_sources)
         all_events = usage["events"]
         period_events = [
             item for item in all_events
@@ -764,17 +789,37 @@ class AdminAnalyticsService:
             "alerts": alerts,
             "users": user_rows,
         }
-        if self._cacheable and cache is not None:
-            cache.set(
-                cache_key,
-                result,
-                int(current_app.config.get("ADMIN_ANALYTICS_CACHE_SECONDS", 60)),
-            )
+        # Do not cache a dashboard assembled without either core source. A
+        # temporary DynamoDB or IAM failure should recover immediately after
+        # the underlying service or permission is fixed instead of remaining
+        # hidden behind the normal dashboard cache interval.
+        core_sources_available = all(core_sources.values())
+        if self._cacheable and cache is not None and core_sources_available:
+            try:
+                cache.set(
+                    cache_key,
+                    result,
+                    int(current_app.config.get("ADMIN_ANALYTICS_CACHE_SECONDS", 60)),
+                )
+            except Exception:
+                # Caching is an optimization. A Redis interruption must not
+                # turn a successfully assembled dashboard into an HTTP 500.
+                current_app.logger.exception(
+                    "Could not write the Admin Analytics cache"
+                )
         return result
 
     def incident_details(self) -> dict[str, Any]:
         """Return all recorded product failures as administrator-safe incidents."""
-        users = self._load_registered_users()
+        users_available = True
+        try:
+            users = self._load_registered_users()
+        except Exception:
+            current_app.logger.exception(
+                "Could not load registered users for Admin Analytics incidents"
+            )
+            users = []
+            users_available = False
         user_lookup: dict[str, dict[str, Any]] = {}
         for user in users:
             user_id = str(user.get("user_id") or user.get("email") or "").strip()
@@ -881,6 +926,7 @@ class AdminAnalyticsService:
             }),
             "events_available": events_available,
             "support_reports_available": support_available,
+            "users_available": users_available,
             "filters": {
                 "features": sorted(feature_values, key=str.casefold),
                 "error_types": sorted(error_type_values, key=str.casefold),
@@ -1009,7 +1055,15 @@ class AdminAnalyticsService:
             threshold = 3
         threshold = max(1, min(threshold, 50))
 
-        users = self._load_registered_users()
+        users_available = True
+        try:
+            users = self._load_registered_users()
+        except Exception:
+            current_app.logger.exception(
+                "Could not load registered users for repeated-failure analytics"
+            )
+            users = []
+            users_available = False
         user_lookup: dict[str, dict[str, Any]] = {}
         for user in users:
             user_id = str(user.get("user_id") or user.get("email") or "").strip()
@@ -1099,6 +1153,7 @@ class AdminAnalyticsService:
             "total_failure_count": sum(self._integer(item.get("failure_count")) for item in rows),
             "events_available": events_available,
             "support_reports_available": support_available,
+            "users_available": users_available,
             "users": rows,
         }
 

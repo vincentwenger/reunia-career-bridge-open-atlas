@@ -20,7 +20,7 @@
 >
     {{ page_hero(
         'Adaptive Mock Interview',
-        'Practice with an AI interviewer that listens to each answer, evaluates the evidence, and asks a relevant follow-up before generating a complete interview review.'
+        'Practice with adaptive AI questions or a reusable list of your own questions. Réunia listens to each answer, evaluates the evidence, and generates a complete interview review.'
     ) }}
 
     {% if guided_flow %}
@@ -43,7 +43,7 @@
             <div>
                 <span class="mock-eyebrow">New practice session</span>
                 <h2 id="mock-setup-title">Configure your interview</h2>
-                <p>The interviewer will use the selected format, target job application, and your verified career context when available.</p>
+                <p>Choose an adaptive format or practice an exact saved question list. The interviewer can also use the target job application and your verified career context when available.</p>
             </div>
             <span class="mock-status-badge" id="mockStatusBadge" data-state="ready"><i aria-hidden="true"></i><span id="mockStatusText">Ready</span></span>
         </div>
@@ -84,10 +84,14 @@
                         <input type="radio" name="interviewType" value="custom">
                         <span><strong>Custom practice session</strong><small>Choose a specific topic, concern, or interview style</small></span>
                     </label>
+                    <label class="mock-type-option">
+                        <input type="radio" name="interviewType" value="saved_questions">
+                        <span><strong>My saved questions</strong><small>Create an exact question list, save it, and practice it again later</small></span>
+                    </label>
                 </div>
             </fieldset>
 
-            <label class="mock-field" for="questionCountSelect">
+            <label class="mock-field" id="questionCountField" for="questionCountSelect">
                 <span>Number of questions</span>
                 <select id="questionCountSelect">
                     <option value="3">3 · Quick practice</option>
@@ -107,6 +111,42 @@
                 <span>Custom interview focus</span>
                 <textarea id="customFocusInput" rows="3" maxlength="1000" placeholder="Example: Challenge my answers about changing industries, leadership without direct authority, and limited cloud architecture experience."></textarea>
             </label>
+
+            <section class="mock-question-set-panel mock-field-wide" id="savedQuestionSetPanel" hidden aria-labelledby="saved-question-set-title">
+                <div class="mock-question-set-heading">
+                    <div>
+                        <span class="mock-eyebrow">Reusable practice library</span>
+                        <h3 id="saved-question-set-title">Build your own interview question list</h3>
+                        <p>Enter one question per line. Réunia saves the list to your account and asks the questions in the exact order shown.</p>
+                    </div>
+                    <span class="mock-question-count" id="savedQuestionCount">0 questions</span>
+                </div>
+
+                <div class="mock-question-set-grid">
+                    <label class="mock-field" for="savedQuestionSetSelect">
+                        <span>Saved question list</span>
+                        <select id="savedQuestionSetSelect">
+                            <option value="">Create a new question list</option>
+                        </select>
+                    </label>
+                    <label class="mock-field" for="savedQuestionSetName">
+                        <span>List name</span>
+                        <input id="savedQuestionSetName" type="text" maxlength="120" placeholder="Example: First Tech technical interview">
+                    </label>
+                    <label class="mock-field mock-field-wide" for="savedQuestionSetQuestions">
+                        <span>Your interview questions</span>
+                        <textarea id="savedQuestionSetQuestions" rows="8" maxlength="10000" placeholder="Tell me about yourself.&#10;Why are you interested in this role?&#10;Describe a technical tradeoff you made.&#10;What questions do you have for us?"></textarea>
+                        <small>1–20 questions. Put each question on its own line.</small>
+                    </label>
+                </div>
+
+                <div class="mock-question-set-actions">
+                    <button class="mock-button mock-button-secondary" id="newQuestionSetButton" type="button">New list</button>
+                    <button class="mock-button mock-button-secondary" id="deleteQuestionSetButton" type="button" disabled>Delete list</button>
+                    <button class="mock-button mock-button-primary" id="saveQuestionSetButton" type="button">Save question list</button>
+                </div>
+                <p class="mock-question-set-status" id="savedQuestionSetStatus" aria-live="polite">Your saved lists will be available whenever you return.</p>
+            </section>
         </div>
 
         <div class="mock-setup-actions">
@@ -225,8 +265,8 @@
                 </li>
             </ol>
             <div class="mock-history-note">
-                <strong>Adaptive by design</strong>
-                <p>Each follow-up is based on what you actually said—not a fixed question list.</p>
+                <strong id="mockHistoryNoteTitle">Adaptive by design</strong>
+                <p id="mockHistoryNoteText">Each follow-up is based on what you actually said—not a fixed question list.</p>
             </div>
         </aside>
     </div>

@@ -25,6 +25,17 @@
   </div>
 </section>
 
+<section class="card discovery-entry-card" aria-labelledby="application-discovery-title">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">Find your next target role</span>
+      <h2 id="application-discovery-title">Job Discovery</h2>
+      <p>Browse the shared job catalog, apply your personal search preferences, and review the Top 20 evidence-grounded opportunities before creating an application workspace.</p>
+    </div>
+    <a class="button primary" href="{{ url_for('application_builder.job_discovery_workspace') }}">Open Job Discovery</a>
+  </div>
+</section>
+
 <section class="card application-add-card" id="new-application">
   <div class="section-heading">
     <div>
@@ -107,6 +118,7 @@
           </dl>
 
           {% if application.job_url %}<p class="application-job-link"><a href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer">Open saved job posting</a></p>{% endif %}
+          {% if application.source_job_id %}<p class="application-source-note">Created from Job Discovery</p>{% endif %}
           {% if application.notes %}<p class="application-notes">{{ application.notes }}</p>{% endif %}
 
           <footer class="application-card-actions application-dashboard-actions">

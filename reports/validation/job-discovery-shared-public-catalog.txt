@@ -1,0 +1,23 @@
+Shared Public Job Catalog Validation
+====================================
+
+Implemented:
+- Canonical public source identity across users and owner-specific source IDs.
+- Shared normalized posting catalog in memory, JSON, and DynamoDB stores.
+- Workday locale URL variants map to one tenant/site catalog.
+- Source-specific freshness windows: 6h Greenhouse/Lever/Ashby, 12h Workday, 24h JSON-LD.
+- Conditional DynamoDB refresh locks with expiry and token-checked release.
+- Cached fallback when another refresh is running and stale fallback on temporary source failure.
+- Owner-specific materialization preserving private fit, confidence, recommendation, saved/ignored state, and application workspaces.
+- No-network hydration when another user opens Job Discovery.
+- Partial browser Workday scans do not deactivate unseen shared postings.
+- Full scheduled scans upgrade partial catalogs and retain conservative missed-scan deactivation.
+- Empty successful catalogs are cached to avoid repeated scans.
+
+Validation:
+- 111 Job Discovery tests passed; 1 optional runtime-dependent test skipped.
+- 265 tests outside the unavailable Flask-dependent Mock Interview module passed; 17 skipped.
+- 215 Python files compiled.
+- 49 Jinja templates parsed.
+
+No DynamoDB table recreation, migration, or GSI is required.

@@ -347,6 +347,31 @@ class DynamoDBApplicationStoreTests(unittest.TestCase):
         )
         self.assertIsNone(self.store.get_impact_snapshot("owner-1", application.id))
 
+    def test_source_job_link_supports_duplicate_safe_lookup_and_cleanup(self) -> None:
+        created = self.store.create(
+            "owner-1",
+            company="Example Bank",
+            role="Engineer",
+            source_job_id="discovered-job-1",
+        )
+        self.assertEqual(
+            created.id,
+            self.store.find_by_source_job("owner-1", "discovered-job-1").id,
+        )
+        self.assertIn(
+            ("owner-1", "SOURCE_JOB#discovered-job-1"),
+            self.table.items,
+        )
+        self.assertIsNone(
+            self.store.find_by_source_job("owner-2", "discovered-job-1")
+        )
+
+        self.assertTrue(self.store.delete("owner-1", created.id))
+        self.assertNotIn(
+            ("owner-1", "SOURCE_JOB#discovered-job-1"),
+            self.table.items,
+        )
+
     def test_large_documents_and_reports_do_not_approach_dynamodb_item_limit(self) -> None:
         large_resume = b"R" * (450 * 1024)
         large_report = "{" + '"report":"' + ("x" * (450 * 1024)) + '"}'

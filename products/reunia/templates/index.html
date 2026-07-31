@@ -107,6 +107,19 @@
             <p id="home-journey-context">Each module carries verified evidence forward into the next stage.</p>
         </div>
 
+        <aside class="home-foundation-card" aria-labelledby="home-foundation-title">
+            <div class="home-foundation-copy">
+                <span class="home-module-eyebrow">One-time or occasional setup</span>
+                <h3 id="home-foundation-title">Career Foundation</h3>
+                <p>Maintain reusable background, translated career context, and verified evidence once, then draw from it across every job application.</p>
+            </div>
+            <nav class="home-foundation-tools" aria-label="Career Foundation tools">
+                <a href="{{ request.script_root }}/career-profile">Career Profile</a>
+                <a href="{{ request.script_root }}/applications/career-translation">Career Translation</a>
+                <a href="{{ request.script_root }}/career-evidence-library">Career Evidence Library</a>
+            </nav>
+        </aside>
+
         <div class="home-module-journey" id="home-journey-grid">
             <section class="home-module-card home-module-build" aria-labelledby="home-module-build-title">
                 <header class="home-module-header">
@@ -114,14 +127,12 @@
                     <div class="home-module-copy">
                         <span class="home-module-eyebrow">Module one</span>
                         <h3 id="home-module-build-title">Build Your Application</h3>
-                        <p>Translate international experience, verify the evidence, and produce a credible role-specific application.</p>
+                        <p>Select a target job and produce application-specific resumes, reports, and supporting materials from the reusable Career Foundation.</p>
                     </div>
                     <span class="home-module-step-count">Steps 1–6</span>
                 </header>
                 <nav class="home-module-tools" aria-label="Build Your Application tools">
-                    <a href="{{ request.script_root }}/career-profile">Career Profile</a>
-                    <a href="{{ request.script_root }}/applications/career-translation">Career Translation</a>
-                    <a href="{{ request.script_root }}/career-evidence-library">Career Evidence Library</a>
+                    <a href="{{ request.script_root }}/applications/job-discovery">Job Discovery</a>
                     <a href="{{ request.script_root }}/applications/?tab=applications">Job Applications</a>
                     <a href="{{ request.script_root }}/applications/?tab=tailoring">Resume Workflow</a>
                     <a href="{{ request.script_root }}/applications/?tab=reports">Resume Reports</a>

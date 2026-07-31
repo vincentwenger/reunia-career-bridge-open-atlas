@@ -1,0 +1,23 @@
+{
+  "jobs": [
+    {
+      "id": "ashby-101",
+      "title": "Senior Data Platform Engineer",
+      "location": "Portland, OR",
+      "workplaceType": "Hybrid",
+      "isRemote": false,
+      "isListed": true,
+      "jobUrl": "https://jobs.ashbyhq.com/examplebank/ashby-101?utm_medium=fixture",
+      "applyUrl": "https://jobs.ashbyhq.com/examplebank/ashby-101/application",
+      "descriptionPlain": "Build regulated data platforms with SQL.",
+      "publishedAt": "2026-07-29T10:00:00Z",
+      "employmentType": "FullTime",
+      "department": "Technology",
+      "team": "Data Platform",
+      "compensation": {
+        "scrapeableCompensationSalarySummary": "$150k-$190k",
+        "compensationTiers": []
+      }
+    }
+  ]
+}

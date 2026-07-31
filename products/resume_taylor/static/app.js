@@ -575,3 +575,31 @@ document.querySelectorAll('a[href^="#"]').forEach((link) => {
 });
 window.addEventListener('hashchange', revealHashTarget);
 revealHashTarget();
+
+// Load evidence-heavy Job Discovery analysis only when the user asks for it.
+document.querySelectorAll('[data-discovery-analysis-url]').forEach((details) => {
+  details.addEventListener('toggle', async () => {
+    if (!details.open || details.dataset.analysisLoaded === 'true' || details.dataset.analysisLoading === 'true') return;
+    const target = details.querySelector('[data-discovery-analysis-content]');
+    const url = details.dataset.discoveryAnalysisUrl;
+    if (!target || !url) return;
+
+    details.dataset.analysisLoading = 'true';
+    target.innerHTML = '<p class="discovery-analysis-loading">Loading evidence-grounded analysis…</p>';
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { Accept: 'text/html' },
+      });
+      if (!response.ok) throw new Error(`Analysis request failed (${response.status}).`);
+      target.innerHTML = await response.text();
+      details.dataset.analysisLoaded = 'true';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Analysis could not be loaded.';
+      target.innerHTML = `<p class="discovery-analysis-error">${message}</p>`;
+    } finally {
+      details.dataset.analysisLoading = 'false';
+    }
+  });
+});

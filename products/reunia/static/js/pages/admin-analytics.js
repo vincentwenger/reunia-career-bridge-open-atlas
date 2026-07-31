@@ -305,6 +305,8 @@
         renderComparison('admin-active-time-trend', data.comparisons?.registered_active_seconds);
 
         const sourceLabels = {
+            activity: 'visitor and session activity',
+            users: 'registered users',
             documents: 'Career Evidence Library',
             meetings: 'saved mock interviews',
             live_qa_answers: 'Live Assistance answers',
@@ -1082,6 +1084,7 @@
             incidentSourcesAvailable = {
                 events: data.events_available !== false,
                 support: data.support_reports_available !== false,
+                users: data.users_available !== false,
             };
             document.getElementById('admin-incident-total').textContent = formatNumber.format(data.incident_count || incidents.length);
             document.getElementById('admin-incident-users').textContent = formatNumber.format(data.affected_user_count || 0);
@@ -1097,6 +1100,7 @@
             const unavailable = [];
             if (!incidentSourcesAvailable.events) unavailable.push('failure events');
             if (!incidentSourcesAvailable.support) unavailable.push('support reports');
+            if (!incidentSourcesAvailable.users) unavailable.push('registered-user details');
             incidentsStatus.hidden = unavailable.length === 0;
             incidentsStatus.textContent = unavailable.length ? `Some incident details are unavailable: ${unavailable.join(', ')}.` : '';
         } catch (error) {

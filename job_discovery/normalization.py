@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import html
+import ipaddress
+import posixpath
 import re
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from typing import Any, Iterable
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit, urlunsplit
 
 from .models import WorkplaceType
 
@@ -16,26 +18,58 @@ _TRACKING_KEYS = {"fbclid", "gclid", "gh_src", "lever-source"}
 
 
 class _TextExtractor(HTMLParser):
+    _BLOCKED_TAGS = {"script", "style", "noscript", "template", "iframe", "object", "svg"}
+    _SEPARATOR_TAGS = {"br", "p", "div", "li", "tr", "td", "th", "section", "article", "h1", "h2", "h3", "h4", "h5", "h6"}
+
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
+        self._blocked_depth = 0
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        name = tag.casefold()
+        if name in self._BLOCKED_TAGS:
+            self._blocked_depth += 1
+        elif self._blocked_depth == 0 and name in self._SEPARATOR_TAGS:
+            self.parts.append(" ")
+
+    def handle_startendtag(self, tag: str, attrs) -> None:
+        if self._blocked_depth == 0 and tag.casefold() in self._SEPARATOR_TAGS:
+            self.parts.append(" ")
+
+    def handle_endtag(self, tag: str) -> None:
+        name = tag.casefold()
+        if name in self._BLOCKED_TAGS and self._blocked_depth:
+            self._blocked_depth -= 1
+        elif self._blocked_depth == 0 and name in self._SEPARATOR_TAGS:
+            self.parts.append(" ")
 
     def handle_data(self, data: str) -> None:
-        self.parts.append(data)
+        if self._blocked_depth == 0:
+            self.parts.append(data)
 
 
 def normalize_whitespace(value: Any) -> str:
-    return _WHITESPACE.sub(" ", html.unescape(str(value or ""))).strip()
+    text = html.unescape(str(value or ""))
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", text)
+    return _WHITESPACE.sub(" ", text).strip()
 
 
-def html_to_text(value: Any) -> str:
+def html_to_text(value: Any, *, max_chars: int = 500_000) -> str:
+    """Convert untrusted HTML fragments to bounded plain text.
+
+    Script/style/template-like content is discarded rather than rendered or
+    persisted. The result contains no markup and is safe to place in normal
+    escaped templates or send to the analysis pipeline as plain text.
+    """
     parser = _TextExtractor()
     try:
         parser.feed(str(value or ""))
         parser.close()
+        text = normalize_whitespace(" ".join(parser.parts))
     except Exception:
-        return normalize_whitespace(value)
-    return normalize_whitespace(" ".join(parser.parts))
+        text = normalize_whitespace(value)
+    return text[: max(0, int(max_chars))]
 
 
 def normalize_string_list(value: Any) -> tuple[str, ...]:
@@ -52,7 +86,7 @@ def normalize_string_list(value: Any) -> tuple[str, ...]:
     for item in parts:
         if isinstance(item, dict):
             item = item.get("name") or item.get("value") or item.get("location") or ""
-        text = normalize_whitespace(item)
+        text = html_to_text(item)
         key = text.casefold()
         if text and key not in seen:
             seen.add(key)
@@ -102,7 +136,7 @@ def parse_number(value: Any) -> float | None:
 
 
 def normalize_employment_type(value: Any) -> str:
-    text = normalize_whitespace(value)
+    text = html_to_text(value)
     key = re.sub(r"[^a-z]", "", text.casefold())
     mapping = {
         "fulltime": "Full-time",
@@ -120,7 +154,7 @@ def normalize_employment_type(value: Any) -> str:
 
 
 def normalize_workplace_type(value: Any, *, location: str = "", is_remote: Any = None) -> WorkplaceType:
-    text = normalize_whitespace(value).casefold()
+    text = html_to_text(value).casefold()
     if bool(is_remote) or "remote" in text or "telecommute" in text:
         return WorkplaceType.REMOTE
     if "hybrid" in text:
@@ -136,19 +170,50 @@ def normalize_workplace_type(value: Any, *, location: str = "", is_remote: Any =
 
 
 def canonicalize_url(value: str) -> str:
+    """Return a stable public http(s) URL without tracking parameters/fragments."""
     parsed = urlsplit(str(value or "").strip())
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return str(value or "").strip()
-    query = []
+    scheme = parsed.scheme.casefold()
+    if scheme not in {"http", "https"} or not parsed.hostname:
+        return ""
+    if parsed.username is not None or parsed.password is not None:
+        return ""
+    try:
+        host = parsed.hostname.rstrip(".").casefold().encode("idna").decode("ascii")
+    except UnicodeError:
+        return ""
+    if host in {"localhost", "localhost.localdomain"} or host.endswith(".localhost"):
+        return ""
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        if not address.is_global:
+            return ""
+        if address.version == 6:
+            host = f"[{host}]"
+    port = parsed.port
+    if port and not ((scheme == "http" and port == 80) or (scheme == "https" and port == 443)):
+        netloc = f"{host}:{port}"
+    else:
+        netloc = host
+    decoded_path = unquote(parsed.path or "/")
+    normalized_path = posixpath.normpath(decoded_path)
+    if decoded_path.startswith("/") and not normalized_path.startswith("/"):
+        normalized_path = "/" + normalized_path
+    if normalized_path in {"", "."}:
+        normalized_path = "/"
+    path = quote(normalized_path, safe="/%:@!$&'()*+,;=-._~")
+    if path != "/":
+        path = path.rstrip("/")
+    query: list[tuple[str, str]] = []
     for key, item in parse_qsl(parsed.query, keep_blank_values=True):
         low = key.casefold()
         if low in _TRACKING_KEYS or any(low.startswith(prefix) for prefix in _TRACKING_PREFIXES):
             continue
         query.append((key, item))
-    path = parsed.path or "/"
-    if path != "/":
-        path = path.rstrip("/")
-    return urlunsplit((parsed.scheme.casefold(), parsed.netloc.casefold(), path, urlencode(query), ""))
+    query.sort(key=lambda pair: (pair[0].casefold(), pair[1]))
+    return urlunsplit((scheme, netloc, path, urlencode(query, doseq=True), ""))
 
 
 def stable_text_key(value: Any) -> str:
@@ -162,7 +227,7 @@ def format_salary_text(
     interval: str = "",
     summary: str = "",
 ) -> str:
-    explicit = normalize_whitespace(summary)
+    explicit = html_to_text(summary)
     if explicit:
         return explicit
     if minimum is None and maximum is None:

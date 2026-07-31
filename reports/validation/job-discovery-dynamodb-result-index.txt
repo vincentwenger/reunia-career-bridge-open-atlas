@@ -1,0 +1,20 @@
+Job Discovery DynamoDB result-index validation
+===============================================
+
+Implemented:
+- Owner-scoped materialized result-index summary records.
+- Compact pre-ranked result records by profile, preferences, category, and ordinal.
+- Revision-token invalidation after source, posting, state, fit, or preference changes.
+- Direct DynamoDB BETWEEN queries for only the requested 10/20/50 result records.
+- Full job descriptions and evidence excluded from compact result items.
+- Cached pages hydrate only visible linked Application Workspaces instead of listing all applications.
+- On-demand canonical job/fit reads remain available for View analysis and workspace creation.
+- Old materialized result indexes are removed when a replacement index is committed.
+- In-memory, JSON-file, and DynamoDB store contracts implement the same index API.
+- No GSI, DynamoDB table recreation, or migration is required.
+
+Validation:
+- 97 Job Discovery tests passed; 1 Flask runtime-dependent integration test skipped.
+- Python compileall passed.
+- Full repository suite: 252 tests executed; the sole loader error is the pre-existing
+  Mock Interview test dependency issue because Flask is unavailable in this environment.

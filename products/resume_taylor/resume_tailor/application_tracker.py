@@ -98,6 +98,7 @@ class ApplicationRecord:
     resume_pdf_key: str = ""
     resume_pdf_filename: str = ""
     original_resume_key: str = ""
+    source_job_id: str = ""
 
     @property
     def status_label(self) -> str:
@@ -363,7 +364,8 @@ class SQLiteApplicationStore:
                     resume_filename TEXT NOT NULL DEFAULT '',
                     resume_bytes BLOB,
                     resume_fingerprint TEXT NOT NULL DEFAULT '',
-                    original_resume_key TEXT NOT NULL DEFAULT ''
+                    original_resume_key TEXT NOT NULL DEFAULT '',
+                    source_job_id TEXT NOT NULL DEFAULT ''
                 );
                 CREATE INDEX IF NOT EXISTS applications_owner_updated_idx
                     ON applications(owner_id, updated_at DESC);
@@ -429,12 +431,18 @@ class SQLiteApplicationStore:
                 "job_description": "TEXT NOT NULL DEFAULT ''",
                 "workflow_step": "TEXT NOT NULL DEFAULT 'setup'",
                 "original_resume_key": "TEXT NOT NULL DEFAULT ''",
+                "source_job_id": "TEXT NOT NULL DEFAULT ''",
             }
             for column, definition in migrations.items():
                 if column not in existing:
                     self._connection.execute(
                         f"ALTER TABLE applications ADD COLUMN {column} {definition}"
                     )
+            self._connection.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS applications_owner_source_job_idx "
+                "ON applications(owner_id, source_job_id) WHERE source_job_id <> ''"
+            )
+
             preparation_columns = {
                 row["name"]
                 for row in self._connection.execute(
@@ -497,6 +505,7 @@ class SQLiteApplicationStore:
             original_resume_key=(
                 row["original_resume_key"] if "original_resume_key" in keys else ""
             ),
+            source_job_id=(row["source_job_id"] if "source_job_id" in keys else ""),
         )
 
     def list_for_owner(self, owner_id: str) -> list[ApplicationRecord]:
@@ -511,10 +520,11 @@ class SQLiteApplicationStore:
                         WHEN 'screening' THEN 1
                         WHEN 'ready_to_apply' THEN 2
                         WHEN 'preparing' THEN 3
-                        WHEN 'draft' THEN 4
-                        WHEN 'applied' THEN 5
-                        WHEN 'offered' THEN 6
-                        ELSE 7
+                        WHEN 'considering' THEN 4
+                        WHEN 'draft' THEN 5
+                        WHEN 'applied' THEN 6
+                        WHEN 'offered' THEN 7
+                        ELSE 8
                     END,
                     COALESCE(NULLIF(upcoming_event_date, ''), '9999-12-31'),
                     updated_at DESC
@@ -694,6 +704,19 @@ class SQLiteApplicationStore:
             raise RuntimeError("Interview preparation was not saved.")
         return saved
 
+    def find_by_source_job(
+        self, owner_id: str, source_job_id: str
+    ) -> ApplicationRecord | None:
+        normalized = str(source_job_id or "").strip()
+        if not normalized:
+            return None
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT * FROM applications WHERE owner_id = ? AND source_job_id = ? LIMIT 1",
+                (owner_id, normalized),
+            ).fetchone()
+        return self._row_to_record(row) if row else None
+
     def find_snapshot(
         self,
         owner_id: str,
@@ -745,6 +768,7 @@ class SQLiteApplicationStore:
         resume_fingerprint: str = "",
         resume_pdf_filename: str = "",
         resume_pdf_bytes: bytes | None = None,
+        source_job_id: str = "",
     ) -> ApplicationRecord:
         del resume_pdf_filename, resume_pdf_bytes
         normalized_status = normalize_application_status(status)
@@ -779,6 +803,7 @@ class SQLiteApplicationStore:
             resume_filename.strip(),
             resume_bytes,
             resume_fingerprint,
+            str(source_job_id or "").strip(),
         )
         with self._lock, self._connection:
             self._connection.execute(
@@ -790,8 +815,8 @@ class SQLiteApplicationStore:
                     offer_received, notes, next_action, next_follow_up_date,
                     upcoming_event_date, upcoming_event_type, job_description,
                     workflow_step, created_at, updated_at, resume_filename,
-                    resume_bytes, resume_fingerprint
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    resume_bytes, resume_fingerprint, source_job_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 values,
             )

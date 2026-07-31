@@ -61,3 +61,18 @@ The test suite includes dependency-free contracts for
 AWS scale/command logic, Docker CMD parsing, health contract, authenticated
 create/retrieve smoke workflow, cleanup behavior, and required documentation
 warning without contacting AWS or a live deployment.
+
+## Job discovery contracts
+
+The discovery tests exercise a shared connector contract against all four initial adapters, fixture normalization, deduplication, two-stage cache invalidation, hard eligibility blockers, grounded strengths, owner isolation, owner-scoped search-preference persistence, user-facing source-management contracts, server-side result tabs, pagination, and lazy analysis contracts, idempotent application conversion, cross-instance persistence, DynamoDB optimistic source updates, and per-source failure isolation.
+
+```bash
+python -m unittest -v \
+  tests.unit.test_job_discovery_connector_contract \
+  tests.regression.test_job_discovery_required_behaviors \
+  tests.contracts.test_job_discovery_dynamodb \
+  tests.unit.test_job_discovery_application_conversion \
+  tests.integration.test_job_discovery_flask_persistence
+```
+
+The Flask cross-instance test is dependency-aware and runs when the complete Flask/Application Builder runtime is installed.

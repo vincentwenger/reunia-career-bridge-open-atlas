@@ -1,0 +1,36 @@
+Saved Mock Interview Question Lists — Validation
+Date: 2026-07-30
+
+Implemented
+- Added “My saved questions” as an Adaptive Mock Interview format.
+- Added account-level create, load, update, and delete APIs for question lists.
+- Stores up to 20 named lists per user, with 1–20 questions per list.
+- Stores lists on the authenticated user record through UserRepository, which uses the configured DynamoDB users table.
+- Automatically saves the current list before starting practice.
+- Copies the selected questions into the mock-interview session so later list edits or deletion cannot change an active or completed session.
+- Asks questions in the exact saved order while retaining transcription, answer evaluation, scorecard, transcript, and Interview Review generation.
+- Added English/French interface labels and Help & Support guidance.
+
+Validation completed
+PASS Python syntax compilation:
+- user_service.py
+- mock_interview_service.py
+- recorder/routes.py
+- test_mock_interview_saved_questions.py
+
+PASS JavaScript syntax:
+- meeting-recorder.js
+- i18n.js
+
+PASS template structure:
+- No duplicate HTML IDs.
+- Question-list controls are present.
+
+PASS static feature contract:
+- CRUD routes present.
+- Persistent user-record field present.
+- Fixed-order next-question assignment present.
+- Runtime unit tests included.
+
+Runtime test note
+The current packaging environment does not include Flask/Werkzeug, so the new Flask-backed unit test could not be executed here. It is included for the project’s normal dependency-installed test environment.

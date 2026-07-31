@@ -8,6 +8,7 @@ from meeting_assistant.blueprints.recorder import recorder_bp
 from meeting_assistant.services.browser_recorder_job_service import BrowserRecorderJobService
 from meeting_assistant.services.browser_recorder_live_service import BrowserRecorderLiveService
 from meeting_assistant.services.mock_interview_service import MockInterviewService
+from meeting_assistant.services.user_service import UserService
 from meeting_assistant.utils.authentication import api_auth_required, login_required
 from meeting_assistant.utils.exceptions import ApplicationError
 from meeting_assistant.utils.feature_access import (
@@ -54,6 +55,40 @@ def list_mock_interview_applications():
             "applications": applications,
             "active_application_context_id": preferred_id,
         }
+    )
+
+
+@recorder_bp.get("/api/career/mock-interviews/question-sets")
+@api_auth_required
+def list_mock_interview_question_sets():
+    return jsonify(
+        {
+            "question_sets": UserService().list_mock_interview_question_sets(
+                g.current_user_id
+            )
+        }
+    )
+
+
+@recorder_bp.post("/api/career/mock-interviews/question-sets")
+@api_auth_required
+def save_mock_interview_question_set():
+    payload = request.get_json(silent=True) or {}
+    saved = UserService().save_mock_interview_question_set(
+        g.current_user_id,
+        payload,
+    )
+    return jsonify({"question_set": saved}), 201
+
+
+@recorder_bp.delete("/api/career/mock-interviews/question-sets/<question_set_id>")
+@api_auth_required
+def delete_mock_interview_question_set(question_set_id: str):
+    return jsonify(
+        UserService().delete_mock_interview_question_set(
+            g.current_user_id,
+            question_set_id,
+        )
     )
 
 

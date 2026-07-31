@@ -21,25 +21,52 @@ from ..normalization import (
     parse_datetime,
     parse_number,
 )
-from .base import HttpClient, UrllibHttpClient, fetch_json, source_timeout
+from .base import (
+    DEFAULT_JSON_MAX_BYTES,
+    CompanyRateLimiter,
+    HttpClient,
+    UrllibHttpClient,
+    company_rate_limit_key,
+    fetch_json,
+    source_min_request_interval,
+    source_redirect_limit,
+    source_response_limit,
+    source_timeout,
+    validate_source_policy,
+)
 
 
 class LeverJobSource:
-    def __init__(self, http_client: HttpClient | None = None) -> None:
+    def __init__(
+        self,
+        http_client: HttpClient | None = None,
+        *,
+        rate_limiter: CompanyRateLimiter | None = None,
+    ) -> None:
         self.http = http_client or UrllibHttpClient()
+        self.rate_limiter = rate_limiter or CompanyRateLimiter()
 
     def fetch_jobs(self, source: CompanySource) -> list[DiscoveredJob]:
-        if source.source_type is not JobSourceType.LEVER:
-            raise ValueError("LeverJobSource requires a lever CompanySource")
+        validate_source_policy(source, expected_type=JobSourceType.LEVER)
         host = "api.eu.lever.co" if str(source.filters.get("region", "")).casefold() == "eu" else "api.lever.co"
         site = quote(source.source_identifier, safe="")
         url = f"https://{host}/v0/postings/{site}?mode=json"
-        payload = fetch_json(self.http, url, timeout=source_timeout(source))
+        self.rate_limiter.wait(
+            company_rate_limit_key(source), source_min_request_interval(source)
+        )
+        payload = fetch_json(
+            self.http,
+            url,
+            timeout=source_timeout(source),
+            max_bytes=source_response_limit(source, default=DEFAULT_JSON_MAX_BYTES),
+            max_redirects=source_redirect_limit(source),
+            allowed_domains=(host,),
+        )
         jobs: list[DiscoveredJob] = []
         seen_at = utc_now_iso()
         for item in payload if isinstance(payload, list) else []:
             categories = item.get("categories") or {}
-            location = normalize_whitespace(categories.get("location"))
+            location = html_to_text(categories.get("location"))
             locations = normalize_string_list(categories.get("allLocations") or location)
             description_parts = [item.get("descriptionPlain") or item.get("description")]
             for block in item.get("lists") or []:
@@ -49,8 +76,8 @@ class LeverJobSource:
             salary = item.get("salaryRange") or {}
             minimum = parse_number(salary.get("min"))
             maximum = parse_number(salary.get("max"))
-            currency = normalize_whitespace(salary.get("currency"))
-            interval = normalize_whitespace(salary.get("interval"))
+            currency = html_to_text(salary.get("currency"))
+            interval = html_to_text(salary.get("interval"))
             summary = html_to_text(item.get("salaryDescriptionPlain") or item.get("salaryDescription"))
             canonical_url = canonicalize_url(item.get("hostedUrl") or "")
             if not canonical_url:
@@ -63,7 +90,7 @@ class LeverJobSource:
                     source_id=source.id,
                     external_job_id=external_job_id,
                     company=source.company_name,
-                    title=normalize_whitespace(item.get("text")),
+                    title=html_to_text(item.get("text")),
                     location=location,
                     locations=locations,
                     workplace_type=normalize_workplace_type(item.get("workplaceType"), location=location),
@@ -76,13 +103,13 @@ class LeverJobSource:
                     first_seen_at=seen_at,
                     last_seen_at=seen_at,
                     source_type=source.source_type,
-                    department=normalize_whitespace(categories.get("department")),
-                    team=normalize_whitespace(categories.get("team")),
+                    department=html_to_text(categories.get("department")),
+                    team=html_to_text(categories.get("team")),
                     salary_min=minimum,
                     salary_max=maximum,
                     salary_currency=currency,
                     salary_interval=interval,
-                    metadata={"country": item.get("country"), "state": item.get("state")},
+                    metadata={"country": html_to_text(item.get("country")), "state": html_to_text(item.get("state"))},
                 )
             )
         return jobs

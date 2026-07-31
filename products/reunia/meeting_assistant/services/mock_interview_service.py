@@ -36,6 +36,7 @@ _INTERVIEW_TYPES = {
     "technical": "Technical interview",
     "final": "Final interview",
     "custom": "Custom practice session",
+    "saved_questions": "My saved questions",
 }
 
 _DEFAULT_OPENINGS = {
@@ -45,6 +46,7 @@ _DEFAULT_OPENINGS = {
     "technical": "Describe the most relevant technical problem you have solved and the decisions you made.",
     "final": "Why are you the right person for this role, and what would you aim to accomplish first?",
     "custom": "What would you like the interviewer to understand first about your fit for this opportunity?",
+    "saved_questions": "Please begin with the first question from your saved interview list.",
 }
 
 _WORD_RE = re.compile(r"\b[\w’'’-]+\b", re.UNICODE)
@@ -262,12 +264,31 @@ class MockInterviewService:
         if interview_type not in _INTERVIEW_TYPES:
             raise ValidationError("Choose a supported interview type.")
 
-        try:
-            question_count = int(payload.get("question_count") or 5)
-        except (TypeError, ValueError) as exc:
-            raise ValidationError("Question count must be a number.") from exc
-        if question_count < 3 or question_count > 12:
-            raise ValidationError("Choose between 3 and 12 interview questions.")
+        question_set: dict[str, Any] = {}
+        saved_questions: list[str] = []
+        question_set_id = str(payload.get("question_set_id") or "").strip()
+        if interview_type == "saved_questions":
+            if not question_set_id:
+                raise ValidationError("Choose or save an interview question list first.")
+            question_set = self.user_service.get_mock_interview_question_set(
+                user_id,
+                question_set_id,
+            )
+            saved_questions = [
+                str(question or "").strip()
+                for question in question_set.get("questions") or []
+                if str(question or "").strip()
+            ]
+            if not saved_questions:
+                raise ValidationError("The saved interview question list is empty.")
+            question_count = len(saved_questions)
+        else:
+            try:
+                question_count = int(payload.get("question_count") or 5)
+            except (TypeError, ValueError) as exc:
+                raise ValidationError("Question count must be a number.") from exc
+            if question_count < 3 or question_count > 12:
+                raise ValidationError("Choose between 3 and 12 interview questions.")
 
         custom_focus = str(payload.get("custom_focus") or "").strip()[:1000]
         if interview_type == "custom" and not custom_focus:
@@ -280,17 +301,26 @@ class MockInterviewService:
         candidate_context = self.user_service.get_assistant_context(user_id)
 
         session_id = f"mock-{uuid4().hex}"
-        opening = self._generate_opening_question(
-            user_id=user_id,
-            interview_type=interview_type,
-            question_count=question_count,
-            custom_focus=custom_focus,
-            workspace=workspace,
-            workspace_context=workspace_context,
-            candidate_context=candidate_context,
-            language=language,
-            model=str(settings.get("aiModel") or current_app.config["DEFAULT_AI_MODEL"]),
-        )
+        if saved_questions:
+            opening = {
+                "question": saved_questions[0],
+                "rationale": "First question from your saved interview question list.",
+            }
+            interview_type_label = f"My questions — {question_set['name']}"
+        else:
+            opening = self._generate_opening_question(
+                user_id=user_id,
+                interview_type=interview_type,
+                question_count=question_count,
+                custom_focus=custom_focus,
+                workspace=workspace,
+                workspace_context=workspace_context,
+                candidate_context=candidate_context,
+                language=language,
+                model=str(settings.get("aiModel") or current_app.config["DEFAULT_AI_MODEL"]),
+            )
+            interview_type_label = _INTERVIEW_TYPES[interview_type]
+
         now = _utc_now()
         session = {
             "job_id": session_id,
@@ -299,7 +329,11 @@ class MockInterviewService:
             "user_id": user_id,
             "status": "active",
             "interview_type": interview_type,
-            "interview_type_label": _INTERVIEW_TYPES[interview_type],
+            "interview_type_label": interview_type_label,
+            "question_mode": "saved_question_set" if saved_questions else "adaptive",
+            "question_set_id": question_set_id,
+            "question_set_name": str(question_set.get("name") or ""),
+            "saved_questions": saved_questions,
             "question_count": question_count,
             "custom_focus": custom_focus,
             "language": language,
@@ -308,7 +342,7 @@ class MockInterviewService:
             "workspace_context": workspace_context,
             "candidate_context": candidate_context,
             "current_question": opening["question"],
-            "current_question_type": "opening",
+            "current_question_type": "saved_question" if saved_questions else "opening",
             "current_question_rationale": opening.get("rationale", ""),
             "answers": [],
             "created_at": now,
@@ -330,6 +364,7 @@ class MockInterviewService:
                 "interview_type": interview_type,
                 "question_count": question_count,
                 "linked_workspace": bool(workspace_id),
+                "saved_question_set": bool(saved_questions),
             },
         )
         return self._public_session(session)
@@ -397,6 +432,13 @@ class MockInterviewService:
             session["current_question"] = ""
             session["current_question_type"] = ""
             session["current_question_rationale"] = ""
+        elif session.get("question_mode") == "saved_question_set":
+            saved_questions = list(session.get("saved_questions") or [])
+            session["current_question"] = str(saved_questions[question_number])
+            session["current_question_type"] = "saved_question"
+            session["current_question_rationale"] = (
+                "Next question from your saved interview question list."
+            )
         else:
             session["current_question"] = evaluation["next_question"]
             session["current_question_type"] = evaluation["next_question_type"]
@@ -1428,6 +1470,7 @@ Role and verified candidate context:
             "technical": "Walk me through a technical tradeoff you made and how you validated the decision.",
             "final": "What concerns might we have about your candidacy, and how would you address them?",
             "custom": "What is another example that best demonstrates your readiness for this opportunity?",
+            "saved_questions": "Please continue with the next question in your saved list.",
         }
         return questions.get(interview_type, questions["custom"])
 
@@ -1581,6 +1624,9 @@ Role and verified candidate context:
             "status": str(session.get("status") or ""),
             "interview_type": str(session.get("interview_type") or ""),
             "interview_type_label": str(session.get("interview_type_label") or ""),
+            "question_mode": str(session.get("question_mode") or "adaptive"),
+            "question_set_id": str(session.get("question_set_id") or ""),
+            "question_set_name": str(session.get("question_set_name") or ""),
             "question_count": int(session.get("question_count") or 0),
             "answered_count": len(answers),
             "current_question_number": min(len(answers) + 1, int(session.get("question_count") or 0)),
@@ -1632,6 +1678,7 @@ Role and verified candidate context:
             _DEFAULT_OPENINGS["technical"]: "Décrivez le problème technique le plus pertinent que vous avez résolu et les décisions que vous avez prises.",
             _DEFAULT_OPENINGS["final"]: "Pourquoi êtes-vous la bonne personne pour ce poste et que chercheriez-vous à accomplir en premier ?",
             _DEFAULT_OPENINGS["custom"]: "Que souhaitez-vous que l’intervieweur comprenne en premier sur votre adéquation avec cette opportunité ?",
+            _DEFAULT_OPENINGS["saved_questions"]: "Commencez par la première question de votre liste d’entretien enregistrée.",
         }
         return translations.get(text, text)
 

@@ -1,0 +1,22 @@
+Job Discovery source-independent posting-age policy
+Validated: 2026-07-31
+
+Implemented behavior
+- DiscoverySearchPreferences.maximum_posting_age_days defaults to 30.
+- The setting applies after normalization to Greenhouse, Lever, Ashby, Workday, and Manual JSON-LD sources.
+- Available UI choices: 7, 14, 30, 60, or Any age.
+- Normalized fetched postings are retained in the shared public catalog before a user's age filter is applied.
+- Unknown-date postings remain eligible.
+- A future valid-through/application-closing date overrides the age limit.
+- Explicit evergreen or continuous-hiring metadata overrides the age limit.
+- Older postings are excluded from that user's active results before Stage 1 and before new AI assessment.
+- Saved postings and postings already converted to an Application Workspace remain visible.
+- Manual administrator refreshes and external scheduled scans populate the same shared catalog.
+- Each user can independently narrow the centrally collected catalog with a private posting-age preference.
+- Existing persisted preference records without this field load with the 30-day default.
+
+Validation
+- Python compilation: passed.
+- Jinja template parsing: passed.
+- Focused Job Discovery/access-control suite: 46 passed.
+- Full repository suite: 278 tests executed; one unchanged environment-only loader error because Flask is not installed, with 17 runtime-dependent skips.

@@ -1,0 +1,25 @@
+Job Discovery two-stage ranking validation
+============================================
+
+Implemented behavior
+--------------------
+1. Stage 1 evaluates every collected job without an AI call using title terms,
+   locations, workplace preferences, employment type, salary bounds, excluded
+   terms, explicit eligibility blockers, and deterministic skill/title overlap.
+2. Jobs failing mandatory preferences remain discovery records but are exposed
+   in DiscoveryResult.filtered_jobs and do not reach ResumeAI.
+3. Stage 2 calls ResumeAI.analyze_job() only for Stage-1 survivors whose
+   description analysis is not already stored.
+4. Requirements are matched only to verified Career Profile and Evidence
+   Library facts and classified as supported, partial, or unsupported.
+5. The shared career_bridge.domain.fit_scoring scorer supplies weighting,
+   hard-blocker detection, confidence, and recommendation thresholds.
+6. Structured analysis is persisted as:
+   ANALYSIS#<job_id>#<description_fingerprint>
+7. Fit snapshots are persisted as:
+   FIT#<job_id>#<profile_fingerprint>#<description_fingerprint>
+8. Unchanged descriptions reuse JobAnalysis across profile changes. Unchanged
+   descriptions and profiles reuse the complete fit snapshot.
+9. Changed descriptions create a new analysis and fit snapshot.
+
+The discovery store still has no method that creates a JobApplication.

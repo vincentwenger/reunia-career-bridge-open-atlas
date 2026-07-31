@@ -4,11 +4,13 @@ import hashlib
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 from flask import (
@@ -28,6 +30,48 @@ from flask import (
     jsonify,
 )
 from werkzeug.local import LocalProxy
+
+from job_discovery.application_conversion import DiscoveredJobApplicationService
+from job_discovery.models import (
+    CompanySource,
+    DEFAULT_MAX_POSTING_AGE_DAYS,
+    DiscoveredJob,
+    DiscoveryJobDisposition,
+    DiscoveryResultIndexSummary,
+    DiscoveryResultRecord,
+    DiscoverySearchPreferences,
+    DiscoveryScanSchedule,
+    DiscoveryScheduleCadence,
+    JobSourceType,
+    WorkplaceType,
+)
+from job_discovery.posting_age import evaluate_posting_age
+from job_discovery.public_catalog import SHARED_CATALOG_SOURCE_OWNER_ID
+from job_discovery.ranking import (
+    CandidateJobProfile,
+    evaluate_stage_one,
+    ranked_from_snapshot,
+)
+from job_discovery.result_policy import (
+    DEFAULT_CONFIDENCE_TIERS,
+    DEFAULT_MINIMUM_FIT,
+    DEFAULT_RECOMMENDATION_FILTER,
+    DEFAULT_SORT_MODE,
+    DiscoveryResultFilters,
+    assessed_sort_key,
+    assessed_visibility_group,
+    confidence_tier,
+    parse_confidence_query,
+    recommendation_tier,
+)
+from job_discovery.service import JobDiscoveryService
+from job_discovery.sources.workday import parse_workday_careers_url
+from job_discovery.scheduling import next_scheduled_run
+from job_discovery.storage import (
+    DiscoveryOptimisticLockError,
+    DiscoveryStore,
+    InMemoryDiscoveryStore,
+)
 
 from resume_tailor.ai import ResumeAI, ResumeAIError
 from resume_tailor.application_tracker import (
@@ -1960,9 +2004,43 @@ store: WorkflowStore = LocalProxy(
 application_store: ApplicationStore = LocalProxy(
     lambda: current_app.extensions["career_bridge_application_store"]
 )
+discovery_store: DiscoveryStore = LocalProxy(
+    lambda: current_app.extensions["career_bridge_job_discovery_store"]
+)
 document_store: CareerBridgeObjectStore = LocalProxy(
     lambda: current_app.extensions["career_bridge_document_store"]
 )
+
+
+def _normalized_access_values(value: Any) -> set[str]:
+    if isinstance(value, str):
+        items = value.split(",")
+    elif isinstance(value, (list, tuple, set)):
+        items = value
+    else:
+        items = ()
+    return {str(item).strip().lower() for item in items if str(item).strip()}
+
+
+def _current_user_can_manage_job_catalog() -> bool:
+    if bool(session.get("is_admin")):
+        return True
+    user_id = str(session.get("user_id") or "").strip().lower()
+    configured_users = _normalized_access_values(
+        current_app.config.get("JOB_CATALOG_MANAGER_USER_IDS", ())
+    )
+    if user_id and user_id in configured_users:
+        return True
+    configured_groups = _normalized_access_values(
+        current_app.config.get("JOB_CATALOG_MANAGER_GROUPS", ())
+    )
+    user_groups = _normalized_access_values(session.get("groups", ()))
+    return bool(configured_groups & user_groups)
+
+
+def _require_job_catalog_manager() -> None:
+    if not _current_user_can_manage_job_catalog():
+        abort(403, description="Job catalog management access is required.")
 
 
 def _persist_workflow_documents(
@@ -2149,6 +2227,11 @@ def init_application_builder(app: Flask) -> None:
                 document_store=app.extensions["career_bridge_document_store"],
             )
         )
+
+    # The Réunia shell normally initializes this extension. Keep a memory
+    # adapter for standalone Builder tests and local embedding.
+    if app.extensions.get("career_bridge_job_discovery_store") is None:
+        app.extensions["career_bridge_job_discovery_store"] = InMemoryDiscoveryStore()
 
     warning_key = "career_bridge_application_builder_persistence_warning_logged"
     if not app.extensions.get(warning_key):
@@ -2367,6 +2450,7 @@ def _register_application_builder_routes() -> None:
                 current_app.config.get("CAREER_BRIDGE_HOME_URL") or "/app"
             ),
             "is_admin_session": bool(session.get("is_admin")),
+            "can_manage_job_catalog": _current_user_can_manage_job_catalog(),
             "active_application": getattr(g, "active_application", None),
         }
 
@@ -2392,6 +2476,941 @@ def _register_application_builder_routes() -> None:
         current.career_background = career_background_from_form(
             request.form,
             target_role=current.target_title,
+        )
+
+    def _split_discovery_values(raw: str) -> tuple[str, ...]:
+        values: list[str] = []
+        for item in re.split(r"[,\n;]+", str(raw or "")):
+            value = " ".join(item.split())
+            if value and value.casefold() not in {existing.casefold() for existing in values}:
+                values.append(value)
+        return tuple(values)
+
+    def _source_identifier_value(
+        source_type: JobSourceType, raw: str, careers_url: str = ""
+    ) -> str:
+        value = str(raw or "").strip()
+        candidate_url = value if "://" in value else str(careers_url or "").strip()
+        if source_type is JobSourceType.WORKDAY and candidate_url:
+            return parse_workday_careers_url(
+                candidate_url,
+                site_identifier="" if "://" in value else value,
+            ).site
+        if candidate_url and "://" in candidate_url:
+            parsed = urlsplit(candidate_url)
+            path_parts = [part for part in parsed.path.split("/") if part]
+            if path_parts:
+                value = path_parts[0]
+        return value.strip().strip("/")
+
+    def _default_source_url(source_type: JobSourceType, identifier: str) -> str:
+        value = str(identifier or "").strip().strip("/")
+        if not value:
+            return ""
+        if source_type is JobSourceType.GREENHOUSE:
+            return f"https://boards.greenhouse.io/{value}"
+        if source_type is JobSourceType.LEVER:
+            return f"https://jobs.lever.co/{value}"
+        if source_type is JobSourceType.ASHBY:
+            return f"https://jobs.ashbyhq.com/{value}"
+        return ""
+
+    def _interactive_discovery_source(source: CompanySource) -> CompanySource:
+        """Apply browser-safe limits without changing the saved source settings."""
+
+        if source.source_type is not JobSourceType.WORKDAY:
+            return source
+        filters = dict(source.filters)
+
+        def capped_int(name: str, default: int, maximum: int) -> int:
+            try:
+                value = int(filters.get(name, default))
+            except (TypeError, ValueError):
+                value = default
+            return max(0, min(value, maximum))
+
+        def capped_float(name: str, default: float, maximum: float) -> float:
+            try:
+                value = float(filters.get(name, default))
+            except (TypeError, ValueError):
+                value = default
+            return max(0.0, min(value, maximum))
+
+        filters.update(
+            {
+                "max_jobs": capped_int("max_jobs", 80, 80),
+                "max_pages": max(1, capped_int("max_pages", 4, 4)),
+                "detail_fetch_limit": capped_int("detail_fetch_limit", 10, 10),
+                "fetch_budget_seconds": capped_float(
+                    "fetch_budget_seconds", 18.0, 18.0
+                ),
+                "timeout_seconds": max(1.0, capped_float("timeout_seconds", 5.0, 5.0)),
+                "min_request_interval_seconds": capped_float(
+                    "min_request_interval_seconds", 0.2, 0.2
+                ),
+            }
+        )
+        return replace(source, filters=filters)
+
+    def _discovery_search_preferences(
+        owner_id: str, current: WorkflowState
+    ) -> DiscoverySearchPreferences:
+        stored = discovery_store.get_search_preferences(owner_id)
+        if stored is not None:
+            return stored
+        source_profile = current.confirmed_profile or current.source_profile
+        default_locations = (source_profile.contact.location,) if source_profile.contact.location else ()
+        return DiscoverySearchPreferences(
+            owner_id=owner_id,
+            target_titles=(current.target_title,) if current.target_title else (),
+            preferred_locations=default_locations,
+        )
+
+    def _discovery_candidate_profile(
+        current: WorkflowState, *, owner_id: str | None = None
+    ) -> CandidateJobProfile:
+        """Build traceable evidence plus owner-managed search preferences."""
+
+        resolved_owner = owner_id or _application_owner_id()
+        preferences = _discovery_search_preferences(resolved_owner, current)
+        source_profile = current.confirmed_profile or current.source_profile
+        base = CandidateJobProfile.from_resume_workflow(
+            source_profile,
+            current.career_background,
+            target_title=current.target_title,
+        )
+        accepted_workplaces = tuple(preferences.accepted_workplace_types)
+        return replace(
+            base,
+            target_titles=preferences.target_titles,
+            preferred_locations=preferences.preferred_locations,
+            accepts_remote=(
+                not accepted_workplaces
+                or WorkplaceType.REMOTE in accepted_workplaces
+            ),
+            preferred_employment_types=preferences.preferred_employment_types,
+            preferred_keywords=preferences.preferred_keywords,
+            required_keywords=preferences.required_keywords,
+            accepted_workplace_types=accepted_workplaces,
+            minimum_salary=preferences.minimum_salary,
+            minimum_salary_currency=preferences.minimum_salary_currency,
+            minimum_salary_interval=preferences.minimum_salary_interval,
+            excluded_terms=preferences.excluded_terms,
+            require_title_match=preferences.require_title_match,
+            require_location_match=preferences.require_location_match,
+            require_workplace_match=preferences.require_workplace_match,
+            require_employment_type_match=(
+                preferences.require_employment_type_match
+            ),
+        )
+
+    def _discovery_checked_label(raw: str) -> str:
+        value = str(raw or "").strip()
+        if not value:
+            return "Not refreshed yet"
+        try:
+            checked = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if checked.tzinfo is None or checked.utcoffset() is None:
+                return "Last refresh time unavailable"
+            checked = checked.astimezone(timezone.utc)
+        except ValueError:
+            return "Last refresh time unavailable"
+        return "Last refreshed " + checked.strftime("%b %d, %Y at %H:%M UTC")
+
+    def _discovery_posted_label(job: Any) -> str:
+        raw = str(job.posted_at or job.first_seen_at or "").strip()
+        if not raw:
+            return "Posting date not available"
+        try:
+            posted = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if posted.tzinfo is None or posted.utcoffset() is None:
+                return "Posting date not available"
+            age_days = max(0, (datetime.now(timezone.utc) - posted.astimezone(timezone.utc)).days)
+        except ValueError:
+            return "Posting date not available"
+        if age_days == 0:
+            return "Posted today"
+        if age_days == 1:
+            return "Posted 1 day ago"
+        return f"Posted {age_days} days ago"
+
+
+    def _discovery_scan_schedule(owner_id: str) -> DiscoveryScanSchedule:
+        stored = discovery_store.get_scan_schedule(owner_id)
+        if stored is not None:
+            return stored
+        return DiscoveryScanSchedule(
+            owner_id=owner_id,
+            cadence=DiscoveryScheduleCadence.MANUAL,
+            timezone_name=str(
+                current_app.config.get("CAREER_BRIDGE_DEFAULT_TIMEZONE") or "UTC"
+            ),
+        )
+
+    def _discovery_schedule_time_label(value: datetime | None) -> str:
+        if value is None:
+            return "Manual refresh only"
+        return value.astimezone(timezone.utc).strftime("%b %d, %Y at %H:%M UTC")
+
+    _DISCOVERY_RESULT_INDEX_VERSION = "3"
+    _DISCOVERY_RESULT_TABS = (
+        "recommended",
+        "possible",
+        "pending",
+        "low_match",
+        "saved",
+        "ignored",
+    )
+    _DISCOVERY_PAGE_SIZES = (10, 20, 50)
+    _DISCOVERY_MINIMUM_FIT_OPTIONS = (0, 50, 60, 70, 80)
+
+    def _discovery_result_tab(raw: Any) -> str:
+        value = str(raw or "recommended").strip().casefold()
+        return value if value in _DISCOVERY_RESULT_TABS else "recommended"
+
+    def _discovery_positive_int(raw: Any, *, default: int) -> int:
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return default
+        return value if value > 0 else default
+
+    def _discovery_page_size(raw: Any) -> int:
+        value = _discovery_positive_int(raw, default=10)
+        return value if value in _DISCOVERY_PAGE_SIZES else 10
+
+    def _discovery_result_filters(values: Any | None = None) -> DiscoveryResultFilters:
+        source = values if values is not None else request.values
+        raw_minimum_fit = source.get("min_fit", DEFAULT_MINIMUM_FIT)
+        try:
+            minimum_fit = int(raw_minimum_fit)
+        except (TypeError, ValueError):
+            minimum_fit = DEFAULT_MINIMUM_FIT
+        minimum_fit = min(100, max(0, minimum_fit))
+        return DiscoveryResultFilters(
+            minimum_fit=minimum_fit,
+            confidence_tiers=parse_confidence_query(
+                source.get("confidence", ",".join(DEFAULT_CONFIDENCE_TIERS))
+            ),
+            recommendation_filter=str(
+                source.get("recommendation", DEFAULT_RECOMMENDATION_FILTER)
+            ),
+            sort_mode=str(source.get("sort", DEFAULT_SORT_MODE)),
+        )
+
+    def _discovery_results_url(
+        *,
+        result_tab: str | None = None,
+        page: int | None = None,
+        per_page: int | None = None,
+        anchor: str = "job-discovery-results",
+    ) -> str:
+        selected_tab = _discovery_result_tab(
+            result_tab if result_tab is not None else request.values.get("result_tab")
+        )
+        selected_page = _discovery_positive_int(
+            page if page is not None else request.values.get("page"),
+            default=1,
+        )
+        selected_size = _discovery_page_size(
+            per_page if per_page is not None else request.values.get("per_page")
+        )
+        filters = _discovery_result_filters(request.values)
+        return (
+            url_for(
+                "application_builder.job_discovery_workspace",
+                result_tab=selected_tab,
+                page=selected_page,
+                per_page=selected_size,
+                min_fit=filters.minimum_fit,
+                confidence=filters.confidence_query,
+                recommendation=filters.recommendation_filter,
+                sort=filters.sort_mode,
+            )
+            + (f"#{anchor}" if anchor else "")
+        )
+
+    def _discovery_card_analysis(
+        job: Any,
+        profile: CandidateJobProfile,
+        fit: Any | None = None,
+    ) -> dict[str, Any]:
+        resolved_fit = fit or discovery_store.get_fit_snapshot(
+            job.owner_id,
+            job.id,
+            profile.fingerprint,
+            job.description_fingerprint,
+        ) or discovery_store.get_fit_snapshot(
+            job.owner_id,
+            job.id,
+            profile.fingerprint,
+        )
+        stage_one = evaluate_stage_one(job, profile)
+        ranked = (
+            ranked_from_snapshot(job, resolved_fit, stage_one=stage_one)
+            if resolved_fit is not None and stage_one.passed
+            else None
+        )
+        traceable_strengths = tuple(
+            item
+            for item in (
+                resolved_fit.evidence_matches if resolved_fit is not None else ()
+            )
+            if item.status == "supported" and item.evidence
+        )
+        traceable_partial = tuple(
+            item
+            for item in (
+                resolved_fit.evidence_matches if resolved_fit is not None else ()
+            )
+            if item.status == "partial" and item.evidence
+        )
+        return {
+            "job": job,
+            "fit": resolved_fit,
+            "stage_one": stage_one,
+            "search_priority": ranked.search_priority if ranked else None,
+            "preference_score": stage_one.preference_score,
+            "freshness_score": stage_one.freshness_score,
+            "preference_components": stage_one.preference_components,
+            "strongest_matches": traceable_strengths[:3],
+            "partial_matches": traceable_partial[:3],
+            "important_gaps": (
+                resolved_fit.unsupported_requirements[:5] if resolved_fit else ()
+            ),
+        }
+
+    def _discovery_result_index_preference_fingerprint(
+        profile: CandidateJobProfile,
+        maximum_posting_age_days: int | None,
+        filters: DiscoveryResultFilters,
+        allowed_source_ids: tuple[str, ...],
+    ) -> str:
+        age_value = "any" if maximum_posting_age_days is None else str(maximum_posting_age_days)
+        material = "|".join(
+            (
+                profile.preference_fingerprint,
+                f"result_index_version={_DISCOVERY_RESULT_INDEX_VERSION}",
+                f"maximum_posting_age_days={age_value}",
+                f"minimum_fit={filters.minimum_fit}",
+                f"confidence={filters.confidence_query}",
+                f"recommendation={filters.recommendation_filter}",
+                f"sort={filters.sort_mode}",
+                "allowed_sources=" + ",".join(sorted(allowed_source_ids)),
+            )
+        )
+        return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+    def _compact_discovery_job(job: DiscoveredJob) -> DiscoveredJob:
+        """Remove detail-heavy fields that are not needed by the result card."""
+
+        return replace(
+            job,
+            description="",
+            skills=(),
+            metadata={},
+        )
+
+    def _compact_discovery_fit(fit: Any | None) -> Any | None:
+        if fit is None:
+            return None
+        return replace(
+            fit,
+            supported_requirements=(),
+            partial_requirements=(),
+            unsupported_requirements=(),
+            hard_blockers=(),
+            evidence_matches=(),
+        )
+
+    def _discovery_index_card(
+        record: DiscoveryResultRecord,
+    ) -> dict[str, Any]:
+        application = (
+            application_store.get(
+                record.owner_id,
+                record.application_id,
+                include_resume_bytes=False,
+            )
+            if record.application_id
+            else None
+        )
+        return {
+            "job": record.job,
+            "fit": record.fit,
+            "state": None,
+            "disposition": record.disposition,
+            "application": application,
+            "stage_one": None,
+            "search_priority": record.search_priority,
+            "preference_score": record.preference_score,
+            "freshness_score": record.freshness_score,
+            "posted_label": record.posted_label,
+            "result_group": record.result_group,
+        }
+
+    def _discovery_pagination(
+        total: int,
+        *,
+        page: int,
+        per_page: int,
+    ) -> dict[str, Any]:
+        total = max(0, int(total))
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        selected_page = min(_discovery_positive_int(page, default=1), total_pages)
+        start = (selected_page - 1) * per_page
+        end = min(total, start + per_page)
+        return {
+            "page": selected_page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages,
+            "start": start + 1 if total else 0,
+            "end": end,
+            "offset": start,
+            "has_previous": selected_page > 1,
+            "has_next": selected_page < total_pages,
+            "previous_page": max(1, selected_page - 1),
+            "next_page": min(total_pages, selected_page + 1),
+        }
+
+    def _discovery_paginate(
+        records: list[Any],
+        *,
+        page: int,
+        per_page: int,
+    ) -> tuple[list[Any], dict[str, Any]]:
+        pagination = _discovery_pagination(
+            len(records), page=page, per_page=per_page
+        )
+        start = pagination["offset"]
+        return records[start : start + per_page], pagination
+
+    def _discovery_result_cards(
+        owner_id: str,
+        profile: CandidateJobProfile,
+        *,
+        result_tab: str = "recommended",
+        page: int = 1,
+        per_page: int = 10,
+        maximum_posting_age_days: int | None = DEFAULT_MAX_POSTING_AGE_DAYS,
+        filters: DiscoveryResultFilters | None = None,
+        allowed_source_ids: tuple[str, ...] = (),
+    ) -> tuple[list[dict[str, Any]], dict[str, int], dict[str, Any]]:
+        """Return one page from a compact materialized discovery result index.
+
+        A stale or missing index is rebuilt once from jobs, states, and fit
+        snapshots. The index key includes the result-quality filters and sort
+        mode so DynamoDB can return the exact pre-ranked page directly.
+        """
+
+        selected_tab = _discovery_result_tab(result_tab)
+        selected_size = _discovery_page_size(per_page)
+        selected_filters = filters or DiscoveryResultFilters()
+        evidence_fingerprint = profile.fingerprint
+        preference_fingerprint = _discovery_result_index_preference_fingerprint(
+            profile, maximum_posting_age_days, selected_filters, allowed_source_ids
+        )
+        revision_token = discovery_store.get_result_revision(owner_id)
+        cached_summary = discovery_store.get_result_index_summary(
+            owner_id,
+            evidence_fingerprint,
+            preference_fingerprint,
+        )
+        if (
+            cached_summary is not None
+            and cached_summary.revision_token == revision_token
+        ):
+            selected_total = int(getattr(cached_summary, f"{selected_tab}_count"))
+            pagination = _discovery_pagination(
+                selected_total, page=page, per_page=selected_size
+            )
+            page_records = discovery_store.list_result_records_page(
+                owner_id,
+                evidence_fingerprint,
+                preference_fingerprint,
+                selected_tab,
+                offset=pagination["offset"],
+                limit=selected_size,
+            )
+            page_cards = [_discovery_index_card(item) for item in page_records]
+            summary = {
+                "recommended_count": cached_summary.recommended_count,
+                "possible_count": cached_summary.possible_count,
+                "pending_count": cached_summary.pending_count,
+                "low_match_count": cached_summary.low_match_count,
+                "saved_count": cached_summary.saved_count,
+                "ignored_count": cached_summary.ignored_count,
+                "filtered_count": cached_summary.filtered_count,
+                "quality_filtered_count": cached_summary.quality_filtered_count,
+                "age_filtered_count": cached_summary.age_filtered_count,
+                "shown_count": len(page_cards),
+                "ranked_count": (
+                    cached_summary.recommended_count
+                    + cached_summary.possible_count
+                    + cached_summary.low_match_count
+                ),
+                "pinned_count": cached_summary.saved_count,
+                "top_count": len(page_cards),
+            }
+            return page_cards, summary, pagination
+
+        applications = application_store.list_for_owner(owner_id)
+        applications_by_source_job = {
+            item.source_job_id: item
+            for item in applications
+            if item.source_job_id
+        }
+        jobs = discovery_store.list_discovered_jobs(owner_id, active_only=True)
+        allowed_source_id_set = set(allowed_source_ids)
+        states = {
+            (item.source_id, item.job_id): item
+            for item in discovery_store.list_job_states(owner_id)
+        }
+        fits_by_key: dict[tuple[str, str, str], Any] = {}
+        for snapshot in discovery_store.list_fit_snapshots(owner_id):
+            key = (
+                snapshot.job_id,
+                snapshot.profile_fingerprint,
+                snapshot.description_fingerprint,
+            )
+            current = fits_by_key.get(key)
+            if current is None or snapshot.analyzed_at > current.analyzed_at:
+                fits_by_key[key] = snapshot
+
+        groups: dict[str, list[dict[str, Any]]] = {
+            name: [] for name in _DISCOVERY_RESULT_TABS
+        }
+        filtered_count = 0
+        quality_filtered_count = 0
+        age_filtered_count = 0
+
+        for job in jobs:
+            fit = fits_by_key.get(
+                (job.id, profile.fingerprint, job.description_fingerprint)
+            ) or fits_by_key.get((job.id, profile.fingerprint, ""))
+            job_state = states.get((job.source_id, job.id))
+            application = applications_by_source_job.get(job.id)
+            disposition = (
+                DiscoveryJobDisposition.APPLICATION_CREATED
+                if application is not None
+                else job_state.disposition
+                if job_state is not None
+                else None
+            )
+            if (
+                job.source_id not in allowed_source_id_set
+                and disposition
+                not in {
+                    DiscoveryJobDisposition.SAVED,
+                    DiscoveryJobDisposition.APPLICATION_CREATED,
+                    DiscoveryJobDisposition.IGNORED,
+                }
+            ):
+                continue
+            age_decision = evaluate_posting_age(
+                job,
+                maximum_age_days=maximum_posting_age_days,
+            )
+            if (
+                not age_decision.eligible
+                and disposition
+                not in {
+                    DiscoveryJobDisposition.SAVED,
+                    DiscoveryJobDisposition.APPLICATION_CREATED,
+                    DiscoveryJobDisposition.IGNORED,
+                }
+            ):
+                age_filtered_count += 1
+                continue
+
+            stage_one = evaluate_stage_one(job, profile)
+            ranked = (
+                ranked_from_snapshot(job, fit, stage_one=stage_one)
+                if fit is not None and stage_one.passed
+                else None
+            )
+            card = {
+                "job": job,
+                "fit": fit,
+                "state": job_state,
+                "disposition": disposition,
+                "application": application,
+                "stage_one": stage_one,
+                "search_priority": ranked.search_priority if ranked else None,
+                "preference_score": stage_one.preference_score,
+                "freshness_score": stage_one.freshness_score,
+                "posted_label": _discovery_posted_label(job),
+                "recommendation_tier": (
+                    recommendation_tier(fit.recommendation) if fit is not None else "unassessed"
+                ),
+                "confidence_tier": (
+                    confidence_tier(fit.confidence) if fit is not None else "unassessed"
+                ),
+            }
+
+            if disposition is DiscoveryJobDisposition.IGNORED:
+                card["result_group"] = "ignored"
+                groups["ignored"].append(card)
+                continue
+            if disposition in {
+                DiscoveryJobDisposition.SAVED,
+                DiscoveryJobDisposition.APPLICATION_CREATED,
+            }:
+                card["result_group"] = "saved"
+                groups["saved"].append(card)
+                continue
+            if not stage_one.passed:
+                filtered_count += 1
+                continue
+            if fit is None:
+                card["result_group"] = "pending"
+                groups["pending"].append(card)
+                continue
+
+            result_group = assessed_visibility_group(
+                fit_score=fit.fit_score,
+                recommendation=fit.recommendation,
+                confidence=fit.confidence,
+                filters=selected_filters,
+            )
+            if result_group is None:
+                quality_filtered_count += 1
+                continue
+            card["result_group"] = result_group
+            groups[result_group].append(card)
+
+        def assessed_card_key(item: dict[str, Any]) -> tuple[object, ...]:
+            fit = item.get("fit")
+            if fit is None:
+                return (0, 0, 0, 0, 0, 0, "")
+            return assessed_sort_key(
+                fit_score=fit.fit_score,
+                recommendation=fit.recommendation,
+                confidence=fit.confidence,
+                preference_score=item["preference_score"],
+                freshness_score=item["freshness_score"],
+                posted_at=item["job"].posted_at or item["job"].first_seen_at,
+                title=item["job"].title,
+                sort_mode=selected_filters.sort_mode,
+            )
+
+        for group_name in ("recommended", "possible", "low_match"):
+            groups[group_name].sort(key=assessed_card_key, reverse=True)
+        groups["pending"].sort(
+            key=lambda item: (
+                item["preference_score"],
+                item["freshness_score"],
+                item["job"].posted_at,
+                item["job"].title.casefold(),
+            ),
+            reverse=True,
+        )
+        groups["saved"].sort(
+            key=lambda item: (
+                1 if item["application"] is not None else 0,
+                *assessed_card_key(item),
+            ),
+            reverse=True,
+        )
+        groups["ignored"].sort(
+            key=lambda item: (
+                item["job"].company.casefold(),
+                item["job"].title.casefold(),
+            )
+        )
+
+        result_records: list[DiscoveryResultRecord] = []
+        for group_name, cards in groups.items():
+            for ordinal, card in enumerate(cards):
+                application = card["application"]
+                result_records.append(
+                    DiscoveryResultRecord(
+                        owner_id=owner_id,
+                        evidence_fingerprint=evidence_fingerprint,
+                        preference_fingerprint=preference_fingerprint,
+                        result_group=group_name,
+                        job=_compact_discovery_job(card["job"]),
+                        recommendation_tier=card["recommendation_tier"],
+                        confidence_tier=card["confidence_tier"],
+                        visibility_category=group_name,
+                        disposition=card["disposition"],
+                        application_id=(
+                            application.id if application is not None else ""
+                        ),
+                        fit=_compact_discovery_fit(card["fit"]),
+                        preference_score=card["preference_score"],
+                        freshness_score=card["freshness_score"],
+                        search_priority=card["search_priority"],
+                        posted_label=card["posted_label"],
+                        sort_rank=f"{ordinal:08d}",
+                    )
+                )
+
+        index_summary = DiscoveryResultIndexSummary(
+            owner_id=owner_id,
+            evidence_fingerprint=evidence_fingerprint,
+            preference_fingerprint=preference_fingerprint,
+            revision_token=revision_token,
+            recommended_count=len(groups["recommended"]),
+            possible_count=len(groups["possible"]),
+            pending_count=len(groups["pending"]),
+            low_match_count=len(groups["low_match"]),
+            saved_count=len(groups["saved"]),
+            ignored_count=len(groups["ignored"]),
+            filtered_count=filtered_count,
+            quality_filtered_count=quality_filtered_count,
+            age_filtered_count=age_filtered_count,
+        )
+        discovery_store.replace_result_index(index_summary, result_records)
+
+        page_cards, pagination = _discovery_paginate(
+            groups[selected_tab], page=page, per_page=selected_size
+        )
+        summary = {
+            "recommended_count": index_summary.recommended_count,
+            "possible_count": index_summary.possible_count,
+            "pending_count": index_summary.pending_count,
+            "low_match_count": index_summary.low_match_count,
+            "saved_count": index_summary.saved_count,
+            "ignored_count": index_summary.ignored_count,
+            "filtered_count": index_summary.filtered_count,
+            "quality_filtered_count": index_summary.quality_filtered_count,
+            "age_filtered_count": index_summary.age_filtered_count,
+            "shown_count": len(page_cards),
+            "ranked_count": (
+                index_summary.recommended_count
+                + index_summary.possible_count
+                + index_summary.low_match_count
+            ),
+            "pinned_count": index_summary.saved_count,
+            "top_count": len(page_cards),
+        }
+        return page_cards, summary, pagination
+
+    def _job_action_service() -> DiscoveredJobApplicationService:
+        return DiscoveredJobApplicationService(discovery_store, application_store)
+
+    @application_builder_bp.get("/job-discovery")
+    def job_discovery_workspace():
+        current = state()
+        owner_id = g.application_owner_id
+        discovery_view = (
+            "settings" if request.args.get("view") == "settings" else "results"
+        )
+        can_manage_catalog = _current_user_can_manage_job_catalog()
+        discovery_sources = discovery_store.list_company_sources(
+            SHARED_CATALOG_SOURCE_OWNER_ID
+        )
+        if discovery_view == "results" and discovery_sources:
+            try:
+                (
+                    JobDiscoveryService(store=discovery_store)
+                    .enable_shared_public_catalog()
+                    .hydrate_owner_from_shared_catalog(owner_id, discovery_sources)
+                )
+            except Exception as exc:
+                current_app.logger.warning(
+                    "Shared public job catalog hydration failed owner=%s error=%s",
+                    owner_id,
+                    exc,
+                )
+        enabled_discovery_sources = tuple(
+            source for source in discovery_sources if source.enabled
+        )
+        latest_discovery_check = max(
+            (
+                source.last_checked_at
+                for source in discovery_sources
+                if source.last_checked_at
+            ),
+            default="",
+        )
+        discovery_preferences = _discovery_search_preferences(owner_id, current)
+
+        template_context: dict[str, Any] = {
+            "active_tab": "discovery",
+            "discovery_view": discovery_view,
+            "can_manage_job_catalog": can_manage_catalog,
+            "discovery_source_count": len(discovery_sources),
+            "enabled_discovery_source_count": len(enabled_discovery_sources),
+            "discovery_checked_label": _discovery_checked_label(
+                latest_discovery_check
+            ),
+            "discovery_sources": discovery_sources,
+            "discovery_source_checked_labels": {
+                source.id: _discovery_checked_label(source.last_checked_at)
+                for source in discovery_sources
+            },
+            "discovery_source_types": (
+                (JobSourceType.GREENHOUSE.value, "Greenhouse"),
+                (JobSourceType.LEVER.value, "Lever"),
+                (JobSourceType.ASHBY.value, "Ashby"),
+                (JobSourceType.WORKDAY.value, "Workday"),
+                (
+                    JobSourceType.GENERIC_JSONLD.value,
+                    "Manual career-page URL (JSON-LD)",
+                ),
+            ),
+            "discovery_preferences": discovery_preferences,
+            "discovery_workplace_types": (
+                (WorkplaceType.REMOTE.value, "Remote"),
+                (WorkplaceType.HYBRID.value, "Hybrid"),
+                (WorkplaceType.ONSITE.value, "Onsite"),
+            ),
+            "discovery_accepted_workplace_values": tuple(
+                item.value
+                for item in discovery_preferences.accepted_workplace_types
+            ),
+        }
+
+        if discovery_view == "settings":
+            discovery_schedule = _discovery_scan_schedule(
+                SHARED_CATALOG_SOURCE_OWNER_ID
+            )
+            try:
+                next_run = next_scheduled_run(discovery_schedule)
+                schedule_error = ""
+            except ValueError as exc:
+                next_run = None
+                schedule_error = str(exc)
+            template_context.update(
+                discovery_schedule=discovery_schedule,
+                discovery_schedule_next_label=_discovery_schedule_time_label(
+                    next_run
+                ),
+                discovery_schedule_error=schedule_error,
+                discovery_schedule_cadences=(
+                    (DiscoveryScheduleCadence.MANUAL.value, "Manual only"),
+                    (DiscoveryScheduleCadence.DAILY.value, "Daily"),
+                    (DiscoveryScheduleCadence.WEEKLY.value, "Weekly"),
+                ),
+                discovery_schedule_timezones=(
+                    "America/Los_Angeles",
+                    "America/Denver",
+                    "America/Chicago",
+                    "America/New_York",
+                    "UTC",
+                ),
+                discovery_weekdays=tuple(
+                    enumerate(
+                        (
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                            "Sunday",
+                        )
+                    )
+                ),
+            )
+        else:
+            result_tab = _discovery_result_tab(
+                "ignored"
+                if request.args.get("show_ignored") == "1"
+                else request.args.get("result_tab")
+            )
+            page = _discovery_positive_int(request.args.get("page"), default=1)
+            per_page = _discovery_page_size(request.args.get("per_page"))
+            discovery_filters = _discovery_result_filters(request.args)
+            discovery_profile = _discovery_candidate_profile(
+                current,
+                owner_id=owner_id,
+            )
+            (
+                discovery_cards,
+                discovery_result_summary,
+                discovery_pagination,
+            ) = _discovery_result_cards(
+                owner_id,
+                discovery_profile,
+                result_tab=result_tab,
+                page=page,
+                per_page=per_page,
+                maximum_posting_age_days=(
+                    discovery_preferences.maximum_posting_age_days
+                ),
+                filters=discovery_filters,
+                allowed_source_ids=tuple(
+                    source.id for source in enabled_discovery_sources
+                ),
+            )
+            template_context.update(
+                discovery_cards=discovery_cards,
+                discovery_dispositions=DiscoveryJobDisposition,
+                discovery_result_summary=discovery_result_summary,
+                discovery_result_tab=result_tab,
+                discovery_result_tabs=(
+                    ("recommended", "Recommended"),
+                    ("possible", "Possible matches"),
+                    ("pending", "Awaiting assessment"),
+                    ("low_match", "Low matches"),
+                    ("saved", "Saved"),
+                    ("ignored", "Ignored"),
+                ),
+                discovery_pagination=discovery_pagination,
+                discovery_page_sizes=_DISCOVERY_PAGE_SIZES,
+                discovery_filters=discovery_filters,
+                discovery_minimum_fit_options=_DISCOVERY_MINIMUM_FIT_OPTIONS,
+                discovery_confidence_options=(
+                    ("high,medium", "High and Medium"),
+                    ("high", "High only"),
+                    ("medium", "Medium only"),
+                    ("low", "Low only"),
+                    ("high,medium,low", "All confidence levels"),
+                ),
+                discovery_recommendation_options=(
+                    ("all_viable", "Strong, Good, and Stretch"),
+                    ("strong", "Strong match only"),
+                    ("good", "Good match only"),
+                    ("stretch", "Stretch opportunities only"),
+                    ("all", "All recommendation tiers"),
+                ),
+                discovery_sort_options=(
+                    ("recommended", "Recommended order"),
+                    ("job_fit", "Job Fit"),
+                    ("confidence", "Confidence"),
+                    ("newest", "Newest posting"),
+                ),
+            )
+
+        return render_template(
+            "application_builder/job_discovery.html",
+            **template_context,
+        )
+
+    @application_builder_bp.get(
+        "/discovery/jobs/<source_id>/<job_id>/analysis"
+    )
+    def discovered_job_analysis(source_id: str, job_id: str):
+        owner_id = _application_owner_id()
+        job = discovery_store.get_discovered_job(owner_id, source_id, job_id)
+        if job is None:
+            abort(404)
+        profile = _discovery_candidate_profile(state(), owner_id=owner_id)
+        fit = discovery_store.get_fit_snapshot(
+            owner_id,
+            job.id,
+            profile.fingerprint,
+            job.description_fingerprint,
+        ) or discovery_store.get_fit_snapshot(
+            owner_id, job.id, profile.fingerprint
+        )
+        analysis_error = ""
+        if fit is None:
+            result = JobDiscoveryService(store=discovery_store).assess_existing_jobs(
+                [job], profile
+            )
+            if result.ranked_jobs:
+                fit = result.ranked_jobs[0].fit_snapshot
+            elif result.analysis_errors:
+                analysis_error = result.analysis_errors[0].message
+        return render_template(
+            "application_builder/_discovery_job_analysis.html",
+            analysis=_discovery_card_analysis(job, profile, fit),
+            analysis_error=analysis_error,
         )
 
     @application_builder_bp.get("/")
@@ -4742,6 +5761,366 @@ def _register_application_builder_routes() -> None:
                 application_id=application.id,
             )
             + "#interview-workspace"
+        )
+
+    @application_builder_bp.post("/discovery/sources")
+    def create_discovery_source():
+        _require_job_catalog_manager()
+        owner_id = SHARED_CATALOG_SOURCE_OWNER_ID
+        try:
+            source_type = JobSourceType(
+                str(request.form.get("source_type") or "").strip()
+            )
+            company_name = str(request.form.get("company_name") or "").strip()
+            careers_url = str(request.form.get("careers_url") or "").strip()
+            source_identifier = _source_identifier_value(
+                source_type,
+                request.form.get("source_identifier", ""),
+                careers_url,
+            )
+            if source_type is JobSourceType.GENERIC_JSONLD:
+                source_identifier = ""
+            elif source_type is JobSourceType.WORKDAY:
+                target = parse_workday_careers_url(
+                    careers_url,
+                    site_identifier=source_identifier,
+                )
+                source_identifier = target.site
+                careers_url = target.careers_url
+            else:
+                careers_url = careers_url or _default_source_url(
+                    source_type, source_identifier
+                )
+            source = CompanySource(
+                id=uuid4().hex,
+                owner_id=owner_id,
+                company_name=company_name,
+                careers_url=careers_url,
+                source_type=source_type,
+                source_identifier=source_identifier,
+                enabled=request.form.get("enabled", "1") not in {"0", "false"},
+                filters={
+                    "include_compensation": True,
+                    "deactivate_after_missed_scans": 3,
+                },
+            )
+            discovery_store.put_company_source(source)
+        except (ValueError, DiscoveryOptimisticLockError) as exc:
+            flash(f"Company source could not be saved: {exc}", "error")
+        else:
+            flash("Company source added. Refresh jobs for everyone to collect its postings.", "success")
+        return redirect(
+            url_for("application_builder.job_discovery_workspace", view="settings")
+            + "#job-discovery-settings"
+        )
+
+    @application_builder_bp.post("/discovery/sources/<source_id>/update")
+    def update_discovery_source(source_id: str):
+        _require_job_catalog_manager()
+        owner_id = SHARED_CATALOG_SOURCE_OWNER_ID
+        existing = discovery_store.get_company_source(owner_id, source_id)
+        if existing is None:
+            abort(404)
+        try:
+            source_type = JobSourceType(
+                str(request.form.get("source_type") or existing.source_type.value).strip()
+            )
+            careers_url = str(request.form.get("careers_url") or "").strip()
+            source_identifier = _source_identifier_value(
+                source_type,
+                request.form.get("source_identifier", ""),
+                careers_url,
+            )
+            if source_type is JobSourceType.GENERIC_JSONLD:
+                source_identifier = ""
+            elif source_type is JobSourceType.WORKDAY:
+                target = parse_workday_careers_url(
+                    careers_url,
+                    site_identifier=source_identifier,
+                )
+                source_identifier = target.site
+                careers_url = target.careers_url
+            else:
+                careers_url = careers_url or _default_source_url(
+                    source_type, source_identifier
+                )
+            revision = int(request.form.get("revision", existing.revision))
+            updated = replace(
+                existing,
+                company_name=str(
+                    request.form.get("company_name") or existing.company_name
+                ).strip(),
+                careers_url=careers_url,
+                source_type=source_type,
+                source_identifier=source_identifier,
+                enabled=request.form.get("enabled") == "1",
+                revision=revision,
+            )
+            discovery_store.put_company_source(updated)
+        except (ValueError, DiscoveryOptimisticLockError) as exc:
+            flash(f"Company source could not be updated: {exc}", "error")
+        else:
+            flash("Company source updated.", "success")
+        return redirect(
+            url_for("application_builder.job_discovery_workspace", view="settings")
+            + "#job-discovery-settings"
+        )
+
+    @application_builder_bp.post("/discovery/sources/<source_id>/toggle")
+    def toggle_discovery_source(source_id: str):
+        _require_job_catalog_manager()
+        owner_id = SHARED_CATALOG_SOURCE_OWNER_ID
+        existing = discovery_store.get_company_source(owner_id, source_id)
+        if existing is None:
+            abort(404)
+        try:
+            discovery_store.put_company_source(
+                replace(existing, enabled=not existing.enabled)
+            )
+        except DiscoveryOptimisticLockError as exc:
+            flash(str(exc), "error")
+        else:
+            flash(
+                "Company source enabled." if not existing.enabled else "Company source disabled.",
+                "success",
+            )
+        return redirect(
+            url_for("application_builder.job_discovery_workspace", view="settings")
+            + "#job-discovery-settings"
+        )
+
+    @application_builder_bp.post("/discovery/sources/<source_id>/delete")
+    def delete_discovery_source(source_id: str):
+        _require_job_catalog_manager()
+        owner_id = SHARED_CATALOG_SOURCE_OWNER_ID
+        if not discovery_store.delete_company_source(owner_id, source_id):
+            abort(404)
+        flash(
+            "Company source removed from the shared catalog. Existing saved jobs and Application Workspaces remain private to their users.",
+            "success",
+        )
+        return redirect(
+            url_for("application_builder.job_discovery_workspace", view="settings")
+            + "#job-discovery-settings"
+        )
+
+    @application_builder_bp.post("/discovery/preferences")
+    def update_discovery_preferences():
+        owner_id = _application_owner_id()
+        raw_salary = str(request.form.get("minimum_salary") or "").strip()
+        raw_maximum_age = str(
+            request.form.get("maximum_posting_age_days") or "30"
+        ).strip().casefold()
+        try:
+            maximum_posting_age_days = (
+                None if raw_maximum_age in {"0", "any", "all"}
+                else int(raw_maximum_age)
+            )
+            preferences = DiscoverySearchPreferences(
+                owner_id=owner_id,
+                target_titles=_split_discovery_values(
+                    request.form.get("target_titles", "")
+                ),
+                preferred_locations=_split_discovery_values(
+                    request.form.get("preferred_locations", "")
+                ),
+                accepted_workplace_types=tuple(
+                    request.form.getlist("accepted_workplace_types")
+                ),
+                preferred_employment_types=_split_discovery_values(
+                    request.form.get("preferred_employment_types", "")
+                ),
+                preferred_keywords=_split_discovery_values(
+                    request.form.get("preferred_keywords", "")
+                ),
+                required_keywords=_split_discovery_values(
+                    request.form.get("required_keywords", "")
+                ),
+                minimum_salary=float(raw_salary) if raw_salary else None,
+                minimum_salary_currency=str(
+                    request.form.get("minimum_salary_currency") or "USD"
+                ),
+                minimum_salary_interval=str(
+                    request.form.get("minimum_salary_interval") or "year"
+                ),
+                excluded_terms=_split_discovery_values(
+                    request.form.get("excluded_terms", "")
+                ),
+                maximum_posting_age_days=maximum_posting_age_days,
+                require_title_match=request.form.get("require_title_match") == "1",
+                require_location_match=request.form.get("require_location_match") == "1",
+                require_workplace_match=request.form.get("require_workplace_match") == "1",
+                require_employment_type_match=(
+                    request.form.get("require_employment_type_match") == "1"
+                ),
+            )
+            discovery_store.put_search_preferences(preferences)
+            catalog_sources = discovery_store.list_company_sources(
+                SHARED_CATALOG_SOURCE_OWNER_ID
+            )
+            (
+                JobDiscoveryService(store=discovery_store)
+                .enable_shared_public_catalog()
+                .hydrate_owner_from_shared_catalog(
+                    owner_id, catalog_sources, force=True
+                )
+            )
+        except ValueError as exc:
+            flash(f"Search preferences could not be saved: {exc}", "error")
+        else:
+            flash(
+                "Search preferences saved. Search Priority has been recalculated without changing Job Fit.",
+                "success",
+            )
+        return redirect(
+            url_for("application_builder.job_discovery_workspace", view="settings")
+            + "#job-discovery-settings"
+        )
+
+    @application_builder_bp.post("/discovery/schedule")
+    def update_discovery_schedule():
+        _require_job_catalog_manager()
+        owner_id = SHARED_CATALOG_SOURCE_OWNER_ID
+        existing = discovery_store.get_scan_schedule(owner_id)
+        try:
+            schedule = DiscoveryScanSchedule(
+                owner_id=owner_id,
+                cadence=str(request.form.get("cadence") or "manual"),
+                local_hour=int(request.form.get("local_hour") or 8),
+                weekday=int(request.form.get("weekday") or 0),
+                timezone_name=str(request.form.get("timezone_name") or "UTC"),
+                last_run_at=existing.last_run_at if existing else "",
+            )
+            # Validate the IANA time-zone name before persisting it.
+            next_scheduled_run(schedule)
+            discovery_store.put_scan_schedule(schedule)
+        except (TypeError, ValueError) as exc:
+            flash(f"Scan schedule could not be saved: {exc}", "error")
+        else:
+            flash(
+                "Scan schedule saved. It will be honored by the external discovery runner; no scheduler runs inside Flask or Gunicorn.",
+                "success",
+            )
+        return redirect(
+            url_for("application_builder.job_discovery_workspace", view="settings")
+            + "#job-discovery-schedule"
+        )
+
+    @application_builder_bp.post("/discovery/refresh")
+    def refresh_discovered_jobs():
+        _require_job_catalog_manager()
+        owner_id = _application_owner_id()
+        sources = discovery_store.list_company_sources(
+            SHARED_CATALOG_SOURCE_OWNER_ID, enabled_only=True
+        )
+        if not sources:
+            flash(
+                "No enabled job sources are configured. Add a company source before refreshing jobs.",
+                "warning",
+            )
+            return redirect(_discovery_results_url())
+
+        discovery_service = (
+            JobDiscoveryService(store=discovery_store)
+            .enable_shared_public_catalog()
+        )
+        result = discovery_service.discover(
+            sources,
+            candidate_profile=None,
+            analyze_new_jobs=False,
+            source_fetch_transform=_interactive_discovery_source,
+        )
+        discovery_service.hydrate_owner_from_shared_catalog(owner_id, sources)
+        issue_count = len(result.errors) + len(result.analysis_errors)
+        message = (
+            f"Job refresh completed across {len(sources)} enabled source"
+            f"{'s' if len(sources) != 1 else ''}. "
+            "Collected public postings are now available to every user; "
+            "each user's posting-age filters and evidence-based fit assessment "
+            "remain private."
+        )
+        if result.shared_catalog_hits:
+            message += (
+                f" {result.shared_catalog_hits} source"
+                f"{'s reused' if result.shared_catalog_hits != 1 else ' reused'} recently collected public jobs without rescanning."
+            )
+        if result.shared_catalog_refreshes:
+            message += (
+                f" {result.shared_catalog_refreshes} shared public source"
+                f"{'s were' if result.shared_catalog_refreshes != 1 else ' was'} refreshed for all users."
+            )
+        if result.shared_refreshes_in_progress:
+            message += (
+                f" {result.shared_refreshes_in_progress} source refresh"
+                f"{'es were' if result.shared_refreshes_in_progress != 1 else ' was'} already in progress; cached public jobs were used."
+            )
+        if issue_count:
+            message += f" {issue_count} source or analysis issue{'s' if issue_count != 1 else ''} need review."
+        flash(message, "warning" if issue_count else "success")
+        for error in result.errors:
+            current_app.logger.warning(
+                "Job discovery source refresh failed catalog_owner=%s actor=%s source=%s type=%s error=%s",
+                SHARED_CATALOG_SOURCE_OWNER_ID,
+                owner_id,
+                error.source_id,
+                error.source_type.value,
+                error.message,
+            )
+        for error in result.analysis_errors:
+            current_app.logger.warning(
+                "Job discovery analysis failed catalog_owner=%s actor=%s source=%s job=%s error=%s",
+                SHARED_CATALOG_SOURCE_OWNER_ID,
+                owner_id,
+                error.source_id,
+                error.job_id,
+                error.message,
+            )
+        return redirect(_discovery_results_url())
+
+    @application_builder_bp.post(
+        "/discovery/jobs/<source_id>/<job_id>/save"
+    )
+    def save_discovered_job(source_id: str, job_id: str):
+        try:
+            _job_action_service().save(_application_owner_id(), source_id, job_id)
+        except LookupError:
+            abort(404)
+        flash("Job saved for later review.", "success")
+        return redirect(_discovery_results_url(anchor=f"discovered-job-{job_id}"))
+
+    @application_builder_bp.post(
+        "/discovery/jobs/<source_id>/<job_id>/ignore"
+    )
+    def ignore_discovered_job(source_id: str, job_id: str):
+        try:
+            _job_action_service().ignore(_application_owner_id(), source_id, job_id)
+        except LookupError:
+            abort(404)
+        flash("Job ignored. You can save it later to restore it.", "success")
+        return redirect(_discovery_results_url(anchor=f"discovered-job-{job_id}"))
+
+    @application_builder_bp.post(
+        "/discovery/jobs/<source_id>/<job_id>/create-application"
+    )
+    def create_application_from_discovered_job(source_id: str, job_id: str):
+        try:
+            result = _job_action_service().create_application_workspace(
+                _application_owner_id(), source_id, job_id
+            )
+        except LookupError:
+            abort(404)
+        session["active_application_id"] = result.application.id
+        flash(
+            "Application workspace created from the discovered posting."
+            if result.created
+            else "This discovered posting already has an application workspace.",
+            "success" if result.created else "info",
+        )
+        return redirect(
+            url_for(
+                "application_builder.open_application_builder",
+                application_id=result.application.id,
+            )
         )
 
     @application_builder_bp.get("/applications/<application_id>/builder")

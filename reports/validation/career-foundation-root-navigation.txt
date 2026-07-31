@@ -1,0 +1,44 @@
+Career Foundation root navigation validation
+===========================================
+
+Implemented information architecture
+------------------------------------
+Root-level reusable setup:
+- Career Foundation
+  - Career Profile
+  - Career Translation
+  - Career Evidence Library
+
+Three job-application workflow modules:
+1. Build Your Application
+   - Job Discovery
+   - Job Applications
+   - Resume Workflow
+   - Resume Reports
+   - Application Materials
+2. Prepare and Practice
+   - Interview Preparation
+   - Mock Interview
+3. Improve and Take Action
+   - Interview Review
+   - Career Action Plan
+   - Impact & Progress
+
+Consistency changes
+-------------------
+- Updated all three synchronized navbar template copies.
+- Separated active-state logic for Career Foundation and Build Your Application.
+- Added French navigation labels for the new root area and scope headings.
+- Added a distinct Career Foundation panel to the authenticated homepage.
+- Kept Build Your Application homepage shortcuts application-specific.
+- Split Career Foundation and Build Your Application into separate User Guide sections.
+- Updated the navigation contract test to enforce one reusable root area plus exactly three workflow modules.
+
+Validation
+----------
+PASS: 12/12 focused navigation contract tests.
+PASS: Jinja syntax parsing for all changed templates.
+PASS: JavaScript syntax check for products/reunia/static/js/i18n.js.
+PASS: Python compile check for career_bridge, products, and tests.
+PASS: 238 broader tests executed successfully, with 17 expected skips, after excluding one test module that could not import because Flask is not installed in the validation runtime.
+NOTE: requirements.txt already declares Flask>=3.1.0,<4.0.0; the excluded test is an environment dependency limitation, not a detected application failure.

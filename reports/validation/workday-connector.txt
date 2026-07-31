@@ -1,0 +1,43 @@
+Workday connector validation
+Date: 2026-07-30
+
+Implemented:
+- First-class JobSourceType.WORKDAY.
+- Public Workday board URL parsing for myworkdayjobs.com and myworkdaysite.com.
+- Tenant, locale, and career-site auto-detection.
+- POST pagination through the public Workday CXS listing endpoint.
+- Per-posting detail enrichment for description, locations, employment type,
+  remote type, requisition ID, posting date, closing date, and apply status.
+- Exclusion of postings that explicitly report canApply=false.
+- Exact-host SSRF/redirect controls, bounded response sizes, timeouts,
+  pagination/job caps, and shared per-company request spacing.
+- Job Discovery UI support and Intel-ready help text.
+- Connector contract, parser, mapping, pagination, and UI contract tests.
+
+Validation commands:
+1. python -m compileall -q job_discovery products/resume_taylor/app.py
+   Result: PASS
+
+2. Job Discovery focused suite (84 tests)
+   Result: PASS (84 tests, 1 runtime-dependent test skipped)
+
+3. Full repository discovery
+   Result: 239 tests executed; 17 skipped; one unrelated import failure because
+   Flask is not installed in this execution environment. The failing module was
+   tests.unit.test_mock_interview_saved_questions and does not exercise Job
+   Discovery or the Workday connector.
+
+Live-network note:
+The execution container did not provide outbound DNS access, so the Intel
+Workday endpoint could not be smoke-tested live. The connector is covered with
+representative Workday CXS fixture responses and the shared connector contract.
+
+
+504 timeout hardening (2026-07-30):
+- Interactive Workday refresh is capped at 80 listings, four listing pages, ten detail requests, and an 18-second connector budget.
+- Workday detail requests beyond the interactive cap are deferred; listing-only jobs remain visible as Awaiting assessment.
+- Interactive refresh reuses cached fit snapshots but does not start new sequential AI analyses inside the gateway request.
+- Full detail enrichment and new assessments remain available to the external discovery runner.
+- DynamoDB discovered-job writes use batch_writer when available, with a compatibility fallback for test doubles.
+- Focused Job Discovery suite: PASS, 89 tests with 1 runtime-dependent skip.
+- Full repository suite: 243 tests executed; 17 skipped; the sole loader error is the unrelated saved mock-interview test because Flask is not installed in this execution environment.
