@@ -1,0 +1,13 @@
+Public Job Discovery: all-countries default and simplified filters
+
+Changes
+- Public Job Discovery now always defaults to the worldwide job catalog.
+- Country and U.S. state result-filter controls were removed.
+- Country and U.S.-state query parameters are ignored server-side so old URLs cannot restore a U.S.-only result view.
+- Sort by was moved into the remaining compact Match filters row.
+- Obsolete country/state JavaScript and layout CSS were removed.
+- Result-index version advanced to 6.
+
+Validation
+- python -m pytest -q tests -k 'job_discovery'
+- 150 passed, 1 skipped, 184 deselected, 19 subtests passed

@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% from 'macros/ui.html' import workspace_state %}
 
-{% set guided_flow = request.args.get('guided') == '1' %}
 {% set preparation_view = route_view | default(request.args.get('view', 'library'), true) %}
 {% if preparation_view not in ['library', 'materials', 'context', 'search'] %}
     {% set preparation_view = 'library' %}
@@ -36,7 +35,6 @@
     class="app-page knowledge-page preparation-workspace"
     id="knowledgePage"
     data-active-view="{{ preparation_view }}"
-    data-guided-flow="{{ 'true' if guided_flow else 'false' }}"
     data-context-endpoint="{{ request.script_root }}/api/career/profile"
     data-materials-endpoint="{{ request.script_root }}/api/career/application-materials"
     data-context-storage-scope="{{ assistant_context_storage_scope | default(session.get('user_id') or 'default') }}"
@@ -94,7 +92,7 @@
                     Save Career Profile
                 </button>
                 {% else %}
-                <a class="btn knowledge-hero-button knowledge-hero-button-secondary" href="{{ request.script_root }}/application-materials{% if guided_flow %}?guided=1{% endif %}">
+                <a class="btn knowledge-hero-button knowledge-hero-button-secondary" href="{{ request.script_root }}/application-materials">
                     Review Application Materials
                 </a>
                 {% endif %}
@@ -103,67 +101,6 @@
 
     </header>
 
-    {% if guided_flow %}
-    <section class="guided-flow-panel" aria-label="Guided application setup">
-        <div class="guided-flow-heading">
-            <div>
-                <span>Guided application flow</span>
-                <strong>Build the application, prepare evidence, then practice</strong>
-            </div>
-            <a href="{{ request.script_root }}/app">Exit guided flow</a>
-        </div>
-        <ol class="guided-flow-progress">
-            <li class="{% if preparation_view == 'materials' %}active{% elif preparation_view in ['context', 'search'] %}complete{% endif %}">
-                <span>{% if preparation_view in ['context', 'search'] %}✓{% else %}1{% endif %}</span>
-                <div><strong>Application Materials</strong><small>Optional</small></div>
-            </li>
-            <li class="{% if preparation_view == 'context' %}active{% elif preparation_view == 'search' %}complete{% endif %}">
-                <span>{% if preparation_view == 'search' %}✓{% else %}2{% endif %}</span>
-                <div><strong>Career Profile</strong><small>Optional</small></div>
-            </li>
-            <li class="{% if preparation_view == 'search' %}active{% endif %}">
-                <span>3</span>
-                <div><strong>Evidence Check</strong><small>Optional</small></div>
-            </li>
-            <li>
-                <span>4</span>
-                <div><strong>Record</strong><small>Required</small></div>
-            </li>
-        </ol>
-    </section>
-    {% else %}
-
-    <nav class="preparation-subnav" aria-label="Career preparation sections">
-        <a href="{{ request.script_root }}/career-evidence-library" class="preparation-subnav-link {% if preparation_view == 'library' %}active{% endif %}" {% if preparation_view == 'library' %}aria-current="page"{% endif %}>
-            <span class="preparation-subnav-icon" aria-hidden="true">▦</span>
-            <span>
-                <strong>Career Evidence Library</strong>
-                <small>Verified projects, achievements, and experience</small>
-            </span>
-        </a>
-        <a href="{{ request.script_root }}/application-materials" class="preparation-subnav-link {% if preparation_view == 'materials' %}active{% endif %}" {% if preparation_view == 'materials' %}aria-current="page"{% endif %}>
-            <span class="preparation-subnav-icon" aria-hidden="true">◫</span>
-            <span>
-                <strong>Application Materials</strong>
-                <small>Resume, job posting, notes, and recruiter messages</small>
-            </span>
-        </a>
-        <a href="{{ request.script_root }}/career-profile" class="preparation-subnav-link {% if preparation_view == 'context' %}active{% endif %}" {% if preparation_view == 'context' %}aria-current="page"{% endif %}>
-            <span class="preparation-subnav-icon" aria-hidden="true">✦</span>
-            <span>
-                <strong>Career Profile</strong>
-                <small>Reusable professional and international background</small>
-            </span>
-        </a>
-        <a href="{{ request.script_root }}/interview-preparation" class="preparation-subnav-link {% if preparation_view == 'search' %}active{% endif %}" {% if preparation_view == 'search' %}aria-current="page"{% endif %}>
-            <span class="preparation-subnav-icon" aria-hidden="true">⌕</span>
-            <span>
-                <strong>Interview Preparation</strong>
-                <small>Company, role, interviewers, likely questions, and evidence</small>
-            </span>
-        </a>
-    </nav>
-    {% endif %}
 
     {% if preparation_view == 'library' %}
     <section class="preparation-view" id="document-library-view" aria-labelledby="documentLibraryTitle">
@@ -556,7 +493,7 @@
                         <div class="workspace-card-header">
                             <div>
                                 <h2 id="internationalBackgroundTitle">International career background</h2>
-                                <p>Used by Career Translation to explain unfamiliar titles, credentials, terminology, and experience across countries.</p>
+                                <p>Used by the Baseline Resume workflow to explain unfamiliar titles, credentials, terminology, and experience across countries.</p>
                             </div>
                         </div>
                         <div class="form-grid context-form-grid">
@@ -580,7 +517,7 @@
                             <label class="form-field context-full-width-field">
                                 <span>International education and credentials</span>
                                 <textarea id="profileInternationalCredentials" name="international_credentials" rows="4" placeholder="List degrees, institutions, professional credentials, and the country where each was earned.">{{ assistant_context_international_credentials | default('') }}</textarea>
-                                <small>Career Translation can identify credentials that may need a local explanation or equivalent.</small>
+                                <small>The Baseline Resume workflow can identify credentials that may need a local explanation or equivalent.</small>
                             </label>
                             <label class="form-field context-full-width-field">
                                 <span>Certifications</span>
@@ -650,7 +587,7 @@
                     <div class="context-priority-note career-profile-usage-note">
                         <strong>How this profile is intended to be used</strong>
                         <span><b>Job Discovery:</b> preferred roles, industries, location, and work preferences.</span>
-                        <span><b>Career Translation:</b> countries, credentials, unfamiliar titles, languages, and transition context.</span>
+                        <span><b>Baseline Resume:</b> countries, credentials, unfamiliar titles, languages, and transition context.</span>
                         <span><b>Resume and interviews:</b> professional identity, skills, accomplishments, goals, and constraints.</span>
                         <span>Target company, job posting, recruiter, and interview-specific details remain application-specific.</span>
                     </div>
@@ -812,7 +749,7 @@
                     <h2>Career Profile</h2>
                     <p>Your saved default and application-specific context will be included automatically when enabled.</p>
                     <div class="context-preview-status" id="searchContextStatus">Loading context…</div>
-                    <a class="text-link" href="{{ request.script_root }}/career-profile{% if guided_flow %}?guided=1{% endif %}">Review Career Profile</a>
+                    <a class="text-link" href="{{ request.script_root }}/career-profile">Review Career Profile</a>
                 </section>
                 <section class="workspace-card source-guide-card">
                     <h2>Source guide</h2>
@@ -825,29 +762,6 @@
     </section>
     {% endif %}
 
-    {% if guided_flow and preparation_view in ['materials', 'context', 'search'] %}
-    <nav class="guided-flow-actions" aria-label="Guided application flow actions">
-        {% if preparation_view == 'materials' %}
-        <a class="guided-flow-back" href="{{ request.script_root }}/app">← Back to home</a>
-        <div>
-            <a class="guided-flow-skip" href="{{ request.script_root }}/career-profile?guided=1">Skip this step</a>
-            <a class="guided-flow-continue" href="{{ request.script_root }}/career-profile?guided=1">Continue to Career Profile <span aria-hidden="true">→</span></a>
-        </div>
-        {% elif preparation_view == 'context' %}
-        <a class="guided-flow-back" href="{{ request.script_root }}/application-materials?guided=1">← Application Materials</a>
-        <div>
-            <a class="guided-flow-skip" href="{{ request.script_root }}/interview-preparation?guided=1">Skip this step</a>
-            <a class="guided-flow-continue" href="{{ request.script_root }}/interview-preparation?guided=1">Continue to Evidence Check <span aria-hidden="true">→</span></a>
-        </div>
-        {% else %}
-        <a class="guided-flow-back" href="{{ request.script_root }}/career-profile?guided=1">← Career Profile</a>
-        <div>
-            <a class="guided-flow-skip" href="{{ request.script_root }}/mock-interview?guided=1">Skip this step</a>
-            <a class="guided-flow-continue" href="{{ request.script_root }}/mock-interview?guided=1">Continue to Mock Interview <span aria-hidden="true">→</span></a>
-        </div>
-        {% endif %}
-    </nav>
-    {% endif %}
 </div>
 
 <div id="contextSummaryValues" class="sr-only" aria-live="polite">No context details added yet.</div>

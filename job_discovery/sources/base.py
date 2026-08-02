@@ -339,7 +339,25 @@ def validate_source_policy(
         )
     if not source.enabled:
         raise SourcePolicyError("Disabled company sources cannot be fetched")
-    if expected_type in {JobSourceType.GENERIC_JSONLD, JobSourceType.WORKDAY}:
+    if expected_type in {
+        JobSourceType.GENERIC_JSONLD,
+        JobSourceType.WORKDAY,
+        JobSourceType.SUCCESSFACTORS,
+        JobSourceType.ORACLE_CLOUD_HCM,
+        JobSourceType.ICIMS,
+        JobSourceType.SMARTRECRUITERS,
+        JobSourceType.AVATURE,
+        JobSourceType.EIGHTFOLD,
+        JobSourceType.TALEO,
+        JobSourceType.DAYFORCE,
+        JobSourceType.TALEMETRY_TTC,
+        JobSourceType.JOBVITE,
+        JobSourceType.UKG_PRO,
+        JobSourceType.PEOPLEADMIN,
+        JobSourceType.RADANCY_TALENTBREW,
+        JobSourceType.AMAZON_JOBS,
+        JobSourceType.BRANDED_REQUISITION,
+    }:
         host = urlsplit(source.careers_url).hostname or ""
         validate_fetch_url(source.careers_url, allowed_domains=(host,))
         if expected_type is JobSourceType.GENERIC_JSONLD:

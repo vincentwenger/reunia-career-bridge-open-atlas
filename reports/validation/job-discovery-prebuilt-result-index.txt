@@ -1,0 +1,24 @@
+Job Discovery prebuilt result-index validation
+==============================================
+
+Behavior
+--------
+- GET /applications/job-discovery no longer performs a full result-index rebuild.
+- A valid materialized index is read with its summary and bounded result page.
+- A stale materialized index remains visible and is marked for deferred rebuilding.
+- A missing index renders an "Updating job results" state and is built by a separate CSRF-protected POST request.
+- Deferred shared-catalog hydration prebuilds the default result index after owner records change.
+- Browser-driven multi-source refresh prebuilds once after the complete run.
+- Browser-driven multi-job assessment prebuilds once after the complete run.
+- Search preference, save, ignore, and no-JavaScript mutation paths prebuild before redirecting.
+- Concurrent revision changes are detected; the prebuild verifies its commit and retries once.
+- Mutation actions use a best-effort wrapper so an index failure does not roll back an already successful user action.
+
+Validation
+----------
+- Python compilation: passed
+- JavaScript syntax: passed
+- Unit tests: 206 passed, 3 skipped
+- Contract tests: 217 passed, 2 skipped
+- Regression tests: 22 passed, 2 skipped
+- Integration tests: 2 passed, 27 skipped because optional Flask/runtime dependencies are unavailable in this workspace

@@ -1,0 +1,130 @@
+{% extends 'application_builder/base.html' %}
+
+{% block title %}Baseline Resume · Réunia Career Bridge{% endblock %}
+
+{% block content %}
+<span class="sr-only">Career Foundation · One-time setup. A job description is not needed here. Imported Resume · Verified Resume Evidence · Baseline Resume</span>
+<section class="card" id="career-translation-setup" aria-labelledby="career-translation-setup-title">
+  <div class="section-heading compact-section-heading">
+    <div><h2 id="career-translation-setup-title">Baseline Resume</h2></div>
+    <span class="resume-import-status {{ 'is-ready' if translation_ready else 'is-pending' }}">
+      {{ 'Ready' if translation_ready else ('Needs review' if state.profile_upload_name else 'Resume needed') }}
+    </span>
+  </div>
+
+  <form
+    action="{{ url_for('application_builder.upload_profile') }}"
+    method="post"
+    enctype="multipart/form-data"
+    class="stack-form loading-form career-translation-foundation-form"
+    data-loading-title="Building the Baseline Resume…"
+    data-loading-message="The Imported Resume is being preserved while a destination-language baseline is generated."
+    data-loading-steps="Reading the imported resume|Resolving the destination language|Translating resume content consistently|Checking for mixed-language sections|Saving the Baseline Resume"
+    data-loading-step-details="Extracting only documented resume facts.|Using the selected country and optional language override.|Translating resume content while preserving proper names.|Rejecting incomplete mixed-language output.|Keeping the baseline separate from job applications."
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="return_to" value="career_translation">
+
+    <div class="field-grid two career-translation-target-fields">
+      <div>
+        <label for="foundation-target-country">Target country</label>
+        <input id="foundation-target-country" name="target_country" value="{{ career_background.target_country }}" placeholder="United States" data-target-country>
+      </div>
+      <div>
+        <label for="foundation-resume-language">Resume language</label>
+        <select id="foundation-resume-language" name="resume_language">
+          <option value="">Automatic — {{ resume_language_choice.name }}{% if resume_language_choice.country %} for {{ resume_language_choice.country }}{% endif %}</option>
+          {% for language_code, language_label in resume_language_options %}
+            <option value="{{ language_label }}" {% if selected_resume_language|lower == language_label|lower %}selected{% endif %}>{{ language_label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="foundation-target-role">General target role <span class="optional-label">Optional</span></label>
+        <input id="foundation-target-role" name="target_role" value="{{ career_background.target_role }}" placeholder="Data Platform Engineer">
+      </div>
+      <div>
+        <label for="foundation-profile-file">Resume file</label>
+        <input id="foundation-profile-file" type="file" name="profile_file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,.md,application/json,.json" {% if not state.profile_upload_name %}required{% endif %}>
+        <p class="caption">Leave blank to regenerate the existing resume after changing country or language.</p>
+      </div>
+    </div>
+
+    {% if state.profile_upload_name %}
+      <div class="career-translation-source-summary career-translation-source-summary-minimal">
+        <div><span>Imported file</span><strong>{{ state.profile_upload_name }}</strong></div>
+        <div><span>Baseline language</span><strong>{{ resume_language_choice.name if translation_ready else preview_language_name ~ ' → ' ~ resume_language_choice.name }}</strong></div>
+      </div>
+    {% endif %}
+
+    <div class="button-row">
+      <button class="button primary" type="submit">{{ 'Regenerate baseline' if state.profile_upload_name else 'Import and generate' }}</button>
+    </div>
+  </form>
+</section>
+
+{% if source_profile.all_source_text().strip() %}
+<section class="card career-translation-resume-preview" id="initial-resume" aria-labelledby="initial-resume-title">
+  <div class="section-heading compact-section-heading">
+    <div>
+      <h2 id="initial-resume-title">{{ 'Baseline Resume' if translation_ready else 'Imported Resume preview' }} · {{ resume_language_choice.name if translation_ready else preview_language_name }}</h2>
+    </div>
+    <span class="resume-import-status {{ 'is-ready' if translation_ready else 'is-pending' }}">{{ 'Ready' if translation_ready else 'translation pending' }}</span>
+  </div>
+
+  <article class="career-translation-resume-sheet" aria-label="{{ 'Baseline Resume' if translation_ready else 'Imported Resume preview while translation is pending' }}">
+    <header>
+      <h3>{{ source_profile.name or 'Candidate' }}</h3>
+      <p>
+        {% if source_profile.contact.location %}{{ source_profile.contact.location }}{% endif %}
+        {% if source_profile.contact.email %}{% if source_profile.contact.location %} · {% endif %}{{ source_profile.contact.email }}{% endif %}
+        {% if source_profile.contact.phone %} · {{ source_profile.contact.phone }}{% endif %}
+      </p>
+    </header>
+
+    {% if source_profile.current_summary %}
+      <section><h4>{{ resume_labels.professional_summary }}</h4><p>{{ source_profile.current_summary }}</p></section>
+    {% endif %}
+
+    {% set skills = source_profile.skills %}
+    {% if skills.hard_skills or skills.soft_skills or skills.tools_software or skills.industry_knowledge or skills.languages %}
+      <section>
+        <h4>{{ resume_labels.skills }}</h4>
+        <dl class="career-translation-skill-grid">
+          {% if skills.hard_skills %}<div><dt>{{ resume_labels.hard_skills }}</dt><dd>{{ skills.hard_skills|join(', ') }}</dd></div>{% endif %}
+          {% if skills.soft_skills %}<div><dt>{{ resume_labels.soft_skills }}</dt><dd>{{ skills.soft_skills|join(', ') }}</dd></div>{% endif %}
+          {% if skills.tools_software %}<div><dt>{{ resume_labels.tools_software }}</dt><dd>{{ skills.tools_software|join(', ') }}</dd></div>{% endif %}
+          {% if skills.industry_knowledge %}<div><dt>{{ resume_labels.industry_knowledge }}</dt><dd>{{ skills.industry_knowledge|join(', ') }}</dd></div>{% endif %}
+          {% if skills.languages %}<div><dt>{{ resume_labels.languages }}</dt><dd>{{ skills.languages|join(', ') }}</dd></div>{% endif %}
+        </dl>
+      </section>
+    {% endif %}
+
+    {% if source_profile.experiences %}
+      <section>
+        <h4>{{ resume_labels.experience }}</h4>
+        {% for experience in source_profile.experiences %}
+          <div class="career-translation-experience">
+            <div><strong>{{ experience.title }}</strong><span>{{ experience.dates }}</span></div>
+            <p>{{ experience.employer }}{% if experience.location %} · {{ experience.location }}{% endif %}</p>
+            {% if experience.bullets %}<ul>{% for bullet in experience.bullets %}<li>{{ bullet.text }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+        {% endfor %}
+      </section>
+    {% endif %}
+
+    {% if source_profile.education %}
+      <section>
+        <h4>{{ resume_labels.education_credentials }}</h4>
+        {% for item in source_profile.education %}
+          <div class="career-translation-education">
+            <div><strong>{{ item.credential }}</strong><span>{{ item.date }}</span></div>
+            <p>{{ item.institution }}{% if item.location %} · {{ item.location }}{% endif %}{% if item.detail %} · {{ item.detail }}{% endif %}</p>
+          </div>
+        {% endfor %}
+      </section>
+    {% endif %}
+  </article>
+</section>
+{% endif %}
+{% endblock %}

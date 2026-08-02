@@ -35,6 +35,7 @@ from .docx_styles import (
     resume_preference_label,
 )
 from .models import ApprovedResume, CandidateProfile
+from .resume_language import resume_format_headings, resume_labels
 
 
 class PdfConversionError(RuntimeError):
@@ -425,13 +426,19 @@ def _add_summary(story: list, approved: ApprovedResume, theme, styles, heading: 
     story.append(Paragraph(_markup(summary), styles["body"]))
 
 
-def _skill_groups(profile: CandidateProfile, approved: ApprovedResume, resume_format: str):
+def _skill_groups(
+    profile: CandidateProfile,
+    approved: ApprovedResume,
+    resume_format: str,
+    resume_language: str,
+):
+    labels = resume_labels(resume_language)
     category_map = {
-        "hard": ("Hard Skills", approved.skills.hard_skills),
-        "soft": ("Soft Skills", approved.skills.soft_skills),
-        "tools": ("Tools & Software", approved.skills.tools_software),
-        "industry": ("Industry Knowledge", approved.skills.industry_knowledge),
-        "languages": ("Languages", profile.skills.languages),
+        "hard": (labels["hard_skills"], approved.skills.hard_skills),
+        "soft": (labels["soft_skills"], approved.skills.soft_skills),
+        "tools": (labels["tools_software"], approved.skills.tools_software),
+        "industry": (labels["industry_knowledge"], approved.skills.industry_knowledge),
+        "languages": (labels["languages"], profile.skills.languages),
     }
     groups = []
     for key in SKILL_CATEGORY_ORDER[resume_format]:
@@ -451,8 +458,9 @@ def _add_skills(
     *,
     heading: str,
     resume_format: str,
+    resume_language: str,
 ) -> None:
-    groups = _skill_groups(profile, approved, resume_format)
+    groups = _skill_groups(profile, approved, resume_format, resume_language)
     if not groups:
         return
     story.extend(_section_flowables(heading, theme, styles))
@@ -622,6 +630,7 @@ def export_resume_pdf(
     career_stage: str | None = None,
     resume_format: str | None = None,
     visual_design: str | None = None,
+    resume_language: str | None = None,
 ) -> bytes:
     """Generate a styled, ATS-readable PDF without Word or LibreOffice.
 
@@ -635,7 +644,7 @@ def export_resume_pdf(
     design_key = normalize_visual_design(visual_design)
     theme = compose_resume_theme(stage, design_key)
     styles = _build_styles(theme)
-    headings = RESUME_FORMAT_SECTIONS[format_key]
+    headings = resume_format_headings(resume_language or "English", format_key)
 
     output = BytesIO()
     usable_width = LETTER[0] - (theme.left_margin + theme.right_margin) * inch
@@ -668,6 +677,7 @@ def export_resume_pdf(
             styles,
             heading=headings["skills"],
             resume_format=format_key,
+            resume_language=resume_language or "English",
         )
 
     def add_experience() -> None:

@@ -82,42 +82,8 @@
                 <span>Search</span>
                 <div>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.7-3.7"></path></svg>
-                    <input id="action-search" type="search" placeholder="Search actions, applications, or findings…" autocomplete="off">
+                    <input id="action-search" type="search" placeholder="Search actions or applications…" autocomplete="off">
                 </div>
-            </label>
-
-            <label class="action-filter-field" for="action-application-filter">
-                <span>Application</span>
-                <select id="action-application-filter"><option value="all">All applications</option></select>
-            </label>
-
-            <label class="action-filter-field" for="action-source-filter">
-                <span>Generated from</span>
-                <select id="action-source-filter"><option value="all">All sources</option></select>
-            </label>
-
-            <label class="action-filter-field" for="action-due-filter">
-                <span>Due date</span>
-                <select id="action-due-filter">
-                    <option value="all">All due dates</option>
-                    <option value="overdue">Overdue</option>
-                    <option value="today">Due today</option>
-                    <option value="due_soon">Due within 7 days</option>
-                    <option value="later">Due later</option>
-                    <option value="none">No due date</option>
-                </select>
-            </label>
-
-            <label class="action-filter-field" for="action-priority-filter">
-                <span>Priority</span>
-                <select id="action-priority-filter">
-                    <option value="all">All priorities</option>
-                    <option value="urgent">Urgent</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                    <option value="none">No priority</option>
-                </select>
             </label>
 
             <label class="action-filter-field" for="action-status-filter">
@@ -132,23 +98,55 @@
                 </select>
             </label>
 
-            <label class="action-filter-field action-sort-field" for="action-sort">
-                <span>Sort by</span>
-                <select id="action-sort" aria-describedby="action-sort-description">
-                    <option value="attention">Recommended order</option>
-                    <option value="due_asc">Due date: earliest</option>
-                    <option value="due_desc">Due date: latest</option>
-                    <option value="priority">Priority</option>
-                    <option value="application">Application</option>
-                    <option value="source">Source</option>
-                    <option value="newest">Newest first</option>
-                </select>
-                <small class="action-sort-description" id="action-sort-description">
-                    Overdue and blocked actions first, then deadline and priority.
-                </small>
-            </label>
-
-            <button class="action-clear-button" id="clear-action-filters" type="button">Clear filters</button>
+            <details class="action-advanced-filters">
+                <summary>More filters</summary>
+                <div class="action-advanced-filter-grid">
+                    <label class="action-filter-field" for="action-application-filter">
+                        <span>Application</span>
+                        <select id="action-application-filter"><option value="all">All applications</option></select>
+                    </label>
+                    <label class="action-filter-field" for="action-source-filter">
+                        <span>Generated from</span>
+                        <select id="action-source-filter"><option value="all">All sources</option></select>
+                    </label>
+                    <label class="action-filter-field" for="action-due-filter">
+                        <span>Due date</span>
+                        <select id="action-due-filter">
+                            <option value="all">All due dates</option>
+                            <option value="overdue">Overdue</option>
+                            <option value="today">Due today</option>
+                            <option value="due_soon">Due within 7 days</option>
+                            <option value="later">Due later</option>
+                            <option value="none">No due date</option>
+                        </select>
+                    </label>
+                    <label class="action-filter-field" for="action-priority-filter">
+                        <span>Priority</span>
+                        <select id="action-priority-filter">
+                            <option value="all">All priorities</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                            <option value="none">No priority</option>
+                        </select>
+                    </label>
+                    <label class="action-filter-field action-sort-field" for="action-sort">
+                        <span>Sort by</span>
+                        <select id="action-sort" aria-describedby="action-sort-description">
+                            <option value="attention">Recommended order</option>
+                            <option value="due_asc">Due date: earliest</option>
+                            <option value="due_desc">Due date: latest</option>
+                            <option value="priority">Priority</option>
+                            <option value="application">Application</option>
+                            <option value="source">Source</option>
+                            <option value="newest">Newest first</option>
+                        </select>
+                        <small class="action-sort-description" id="action-sort-description">Overdue and blocked actions first, then deadline and priority.</small>
+                    </label>
+                    <button class="action-clear-button" id="clear-action-filters" type="button">Clear filters</button>
+                </div>
+            </details>
         </div>
 
         <div class="action-table-shell" id="action-table-shell" aria-busy="true">

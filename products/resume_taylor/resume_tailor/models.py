@@ -174,6 +174,7 @@ class NewcomerCareerProfile(StrictModel):
     roles: list[str] = Field(default_factory=list)
     languages: list[str] = Field(default_factory=list)
     target_country: str = ""
+    resume_language: str = ""
     target_country_experience: str = ""
     target_role: str = ""
     international_credentials: list[str] = Field(default_factory=list)
@@ -219,6 +220,7 @@ class NewcomerCareerProfile(StrictModel):
         "years_experience",
         "current_location",
         "target_country",
+        "resume_language",
         "target_country_experience",
         "target_role",
         "us_employment_experience",
@@ -248,6 +250,7 @@ class NewcomerCareerProfile(StrictModel):
                 self.roles,
                 self.languages,
                 self.target_country,
+                self.resume_language,
                 self.target_country_experience,
                 self.target_role,
                 self.international_credentials,

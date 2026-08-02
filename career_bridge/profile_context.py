@@ -85,6 +85,42 @@ def split_profile_values(value: Any, *, split_commas: bool = True) -> tuple[str,
     return tuple(values)
 
 
+def values_not_already_in_profile(
+    values: Any,
+    reusable_values: Any,
+) -> list[str]:
+    """Return normalized application values absent from the reusable profile."""
+
+    if isinstance(values, str):
+        values = split_profile_values(values)
+    if isinstance(reusable_values, str):
+        reusable_values = split_profile_values(reusable_values)
+    reusable_keys = {
+        _text(value).casefold()
+        for value in (reusable_values or ())
+        if _text(value)
+    }
+    additions: list[str] = []
+    seen: set[str] = set()
+    for raw in values or ():
+        value = _text(raw)
+        key = value.casefold()
+        if value and key not in reusable_keys and key not in seen:
+            additions.append(value)
+            seen.add(key)
+    return additions
+
+
+def text_not_already_in_profile(value: Any, reusable_value: Any) -> str:
+    """Suppress an application text value when Career Profile already supplies it."""
+
+    normalized = _text(value)
+    reusable = _text(reusable_value)
+    if normalized and reusable and normalized.casefold() == reusable.casefold():
+        return ""
+    return normalized
+
+
 @dataclass(frozen=True, slots=True)
 class ReusableCareerProfile:
     enabled: bool = True

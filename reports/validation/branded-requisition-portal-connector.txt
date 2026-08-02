@@ -1,0 +1,21 @@
+Branded Requisition Portal connector validation
+
+Implemented a vendor-neutral, exact-host public connector for branded career sites
+that expose /api/requisitions/search and /job/<id>/<slug>.
+
+Coverage:
+- URL normalization and shared catalog identity
+- bounded page= pagination
+- robots.txt and exact-host enforcement
+- public detail enrichment
+- import aliases and UI option
+- Heritage Bank sample mapping
+
+Focused validation result:
+- 222 Job Discovery tests passed
+- 1 environment-dependent persistence test skipped
+
+Repository-wide result:
+- 443 tests run
+- 10 unrelated pre-existing errors because scripts/deployment/upload_to_lightsail.bat is absent
+- 31 environment-dependent tests skipped

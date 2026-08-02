@@ -1,0 +1,26 @@
+First Tech company-source migration
+===================================
+
+Problem
+-------
+First Tech Federal Credit Union retired its legacy Jobvite career board. The
+old jobs.jobvite.com/firsttechfed routes can redirect to Jobvite's invalid-link
+support page and loop until the crawler's bounded redirect limit is reached.
+
+Current public source
+---------------------
+First Tech's official careers page now links to its Talemetry / TTC Portals
+site at:
+https://firsttechfedcareers.ttcportals.com/search/jobs
+
+Change
+------
+- Updated the bundled Oregon/Washington source CSV and import templates from
+  Jobvite to Talemetry / TTC Portals.
+- Added a narrowly scoped runtime migration for an existing saved First Tech
+  Jobvite source. On the next refresh, the same source record is rewritten to
+  the current TTC URL before adapter selection, so administrators do not need
+  to delete and recreate it manually.
+- The migration preserves the source ID, owner, enabled state, scan filters,
+  revision handling, and existing user job/application relationships.
+- Other Jobvite sources are not changed.

@@ -60,6 +60,13 @@ class AdminAnalyticsResilienceContractTests(unittest.TestCase):
         self.assertIn("users: data.users_available !== false", self.script)
         self.assertIn("registered-user details", self.script)
 
+    def test_user_rows_compute_live_assistance_access_before_serializing(self) -> None:
+        assignment = "live_assistance = live_interview_assistance_access(user_id, user)"
+        first_use = '"groups": live_assistance.get("groups", [])'
+        self.assertIn(assignment, self.service)
+        self.assertIn(first_use, self.service)
+        self.assertLess(self.service.index(assignment), self.service.index(first_use))
+
     def test_dashboard_warning_names_core_sources(self) -> None:
         self.assertIn("activity: 'visitor and session activity'", self.script)
         self.assertIn("users: 'registered users'", self.script)

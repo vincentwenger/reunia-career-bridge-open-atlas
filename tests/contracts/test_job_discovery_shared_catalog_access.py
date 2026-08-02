@@ -18,10 +18,15 @@ class SharedJobCatalogAccessContractTests(unittest.TestCase):
         source = APP.read_text(encoding="utf-8")
         for function_name in (
             "create_discovery_source",
+            "import_discovery_sources",
+            "download_discovery_source_csv_template",
+            "download_discovery_source_json_template",
             "update_discovery_source",
             "toggle_discovery_source",
             "delete_discovery_source",
+            "delete_all_discovery_sources",
             "update_discovery_schedule",
+            "refresh_discovered_job_source",
             "refresh_discovered_jobs",
         ):
             start = source.index(f"def {function_name}")

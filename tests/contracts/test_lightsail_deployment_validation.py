@@ -110,7 +110,15 @@ class _SmokeOpener:
                 raise AssertionError("cleanup CSRF was not submitted")
             self.deleted = True
             return _Response(self._applications_page(), url=url)
-        if "/applications/?tab=applications" in url:
+        if any(
+            path in url
+            for path in (
+                "/applications/career-translation",
+                "/applications/?tab=applications",
+                "/applications/?tab=tailoring",
+                "/applications/?tab=reports",
+            )
+        ):
             return _Response(self._applications_page(), url=url)
         raise AssertionError(f"Unexpected URL: {url}")
 
@@ -209,6 +217,15 @@ class LightsailDeploymentValidationTests(unittest.TestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertTrue(payload["application_builder"]["multi_worker_safe"])
 
+    def test_workspace_smoke_validation_checks_all_navbar_routes(self) -> None:
+        opener = _SmokeOpener()
+        body = validator._validate_authenticated_workspace_routes(
+            opener, "https://career.example", timeout=1
+        )
+        self.assertIn("csrf_token", body)
+        for _, path in validator.APPLICATION_BUILDER_WORKSPACE_PATHS:
+            self.assertTrue(any(path in url for url in opener.urls), path)
+
     def test_demo_health_requires_explicit_validator_override(self) -> None:
         with patch.object(validator, "build_opener", return_value=_DemoHealthOpener()):
             with self.assertRaisesRegex(
@@ -225,7 +242,7 @@ class LightsailDeploymentValidationTests(unittest.TestCase):
         self.assertEqual(payload["application_builder"]["durability"], "mixed")
 
     def test_demo_storage_never_allows_lightsail_scale_greater_than_one(self) -> None:
-        # The explicit demo-storage acknowledgement only relaxes the health
+        # The explicit non-durable-storage acknowledgement only relaxes the health
         # durability check. It must never relax the single-node scale guard.
         with patch.object(validator, "build_opener", return_value=_DemoHealthOpener()):
             payload = validator._validate_health(

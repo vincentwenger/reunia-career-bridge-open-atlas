@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, TypeVar
+from typing import Any, Mapping, TypeVar
 
 from dotenv import load_dotenv
 from flask import current_app, has_app_context, has_request_context, session
@@ -36,6 +36,12 @@ from .models import (
     TailoringProposal,
 )
 from .resume_import import RESUME_IMPORT_SYSTEM, build_resume_import_prompt
+from .resume_language import (
+    RESUME_TRANSLATION_SYSTEM,
+    build_resume_translation_prompt,
+    restore_translation_protected_fields,
+    validate_translated_profile,
+)
 from .prompts import (
     AUDIT_FIX_SYSTEM,
     AUDIT_SYSTEM,
@@ -56,6 +62,7 @@ T = TypeVar("T", bound=BaseModel)
 
 _OPERATION_FEATURES = {
     "create_candidate_profile_from_resume": "application_builder_resume_import",
+    "translate_candidate_profile": "application_builder_career_translation",
     "analyze_job": "application_builder_job_analysis",
     "create_proposal": "application_builder_resume_tailoring",
     "refine_proposal": "application_builder_resume_tailoring",
@@ -65,6 +72,7 @@ _OPERATION_FEATURES = {
 }
 _OPERATION_TOKEN_CONFIG = {
     "create_candidate_profile_from_resume": ("AI_MAX_OUTPUT_TOKENS_RESUME_IMPORT", 3200),
+    "translate_candidate_profile": ("AI_MAX_OUTPUT_TOKENS_RESUME_TRANSLATION", 3600),
     "analyze_job": ("AI_MAX_OUTPUT_TOKENS_RESUME_JOB_ANALYSIS", 2400),
     "create_proposal": ("AI_MAX_OUTPUT_TOKENS_RESUME_TAILORING", 5200),
     "refine_proposal": ("AI_MAX_OUTPUT_TOKENS_RESUME_TAILORING", 5200),
@@ -119,6 +127,8 @@ class ResumeAI:
         reasoning_effort: str | None = None,
         max_attempts: int | None = None,
         user_id: str | None = None,
+        request_timeout_seconds: float | None = None,
+        max_output_tokens_by_operation: Mapping[str, int] | None = None,
     ) -> None:
         self.model = model.strip()
         if not self.model:
@@ -132,7 +142,32 @@ class ResumeAI:
         # More than three provider attempts creates disproportionate cost and latency.
         self.max_attempts = min(3, max(1, int(configured_attempts)))
         self.user_id = _current_cost_user_id(user_id)
-        self.client = OpenAI(api_key=get_api_key(), timeout=90.0, max_retries=0)
+        try:
+            request_timeout = (
+                90.0
+                if request_timeout_seconds is None
+                else float(request_timeout_seconds)
+            )
+        except (TypeError, ValueError):
+            request_timeout = 90.0
+        self.request_timeout_seconds = min(300.0, max(1.0, request_timeout))
+        self.max_output_tokens_by_operation: dict[str, int] = {}
+        for operation_name, configured_value in dict(
+            max_output_tokens_by_operation or {}
+        ).items():
+            normalized_operation = str(operation_name or "").strip()
+            if not normalized_operation:
+                continue
+            try:
+                normalized_value = max(100, int(configured_value))
+            except (TypeError, ValueError):
+                continue
+            self.max_output_tokens_by_operation[normalized_operation] = normalized_value
+        self.client = OpenAI(
+            api_key=get_api_key(),
+            timeout=self.request_timeout_seconds,
+            max_retries=0,
+        )
 
     def _parse(
         self,
@@ -243,6 +278,19 @@ class ResumeAI:
                     break
                 time.sleep(2 ** (attempt - 1))
             except Exception as exc:
+                # Structured-output parsing raises an SDK exception when the model
+                # consumes the whole completion budget before finishing the JSON.
+                # The provider has already processed/billed this request, so retain
+                # the conservative reservation rather than treating it as unused.
+                if self._is_length_limit_error(exc):
+                    if reservation is not None:
+                        reservation.settle(None)
+                    raise ResumeAIError(
+                        "The AI response reached its output-token limit before "
+                        "producing complete structured data. This job can be "
+                        "retried later."
+                    ) from exc
+
                 # Includes SDK/schema incompatibilities and application budget limits.
                 if reservation is not None:
                     reservation.release()
@@ -266,11 +314,26 @@ class ResumeAI:
         )
 
     def _max_output_tokens(self, operation: str) -> int:
+        explicit_override = self.max_output_tokens_by_operation.get(operation)
+        if explicit_override is not None:
+            return explicit_override
         config_name, default = _OPERATION_TOKEN_CONFIG.get(
             operation,
             ("AI_MAX_OUTPUT_TOKENS_APPLICATION_BUILDER", 4000),
         )
         return _configured_int(config_name, default, minimum=100)
+
+    @staticmethod
+    def _is_length_limit_error(exc: Exception) -> bool:
+        error_name = type(exc).__name__.casefold()
+        detail = str(exc).casefold()
+        return (
+            "lengthfinishreasonerror" in error_name
+            or "length limit was reached" in detail
+            or "finish_reason='length'" in detail
+            or 'finish_reason="length"' in detail
+            or "finish reason was length" in detail
+        )
 
     def _cache_key(
         self,
@@ -462,10 +525,38 @@ class ResumeAI:
         )
         if findings:
             raise ResumeAIError(
-                "The imported Candidate Profile introduced content that could not be traced "
+                "The imported Verified Resume Evidence introduced content that could not be traced "
                 "to the uploaded resume. Review the source document and try the import again."
             )
         return profile
+
+    def translate_candidate_profile(
+        self,
+        profile: CandidateProfile,
+        *,
+        target_language: str,
+        target_country: str = "",
+    ) -> CandidateProfile:
+        translated = self._parse(
+            RESUME_TRANSLATION_SYSTEM,
+            build_resume_translation_prompt(
+                profile,
+                target_language=target_language,
+                target_country=target_country,
+            ),
+            CandidateProfile,
+            operation="translate_candidate_profile",
+        )
+        translated = restore_translation_protected_fields(profile, translated)
+        issues = validate_translated_profile(
+            profile, translated, target_language
+        )
+        if issues:
+            raise ResumeAIError(
+                "The resume translation did not preserve the Verified Resume Evidence: "
+                + "; ".join(issues[:4])
+            )
+        return translated
 
     def analyze_job(self, job_description: str, stated_title: str = "") -> JobAnalysis:
         return self._parse(

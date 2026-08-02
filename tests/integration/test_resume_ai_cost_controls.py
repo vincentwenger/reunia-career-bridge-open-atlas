@@ -149,6 +149,32 @@ class ResumeAICostControlTests(unittest.TestCase):
         self.assertEqual(reservation.settled_cost, 0.012)
         self.assertFalse(reservation.released)
 
+    def test_operation_specific_output_limit_override(self):
+        app = _test_app()
+        with app.test_request_context("/"):
+            ai = ResumeAI(
+                "gpt-4o-mini",
+                max_output_tokens_by_operation={"analyze_job": 4800},
+            )
+            self.assertEqual(ai._max_output_tokens("analyze_job"), 4800)
+            self.assertEqual(ai._max_output_tokens("create_proposal"), 5200)
+
+    def test_length_limit_errors_are_recognized(self):
+        class LengthFinishReasonError(Exception):
+            pass
+
+        self.assertTrue(
+            ResumeAI._is_length_limit_error(
+                LengthFinishReasonError("Could not parse response content")
+            )
+        )
+        self.assertTrue(
+            ResumeAI._is_length_limit_error(
+                RuntimeError("Could not parse response content as the length limit was reached")
+            )
+        )
+        self.assertFalse(ResumeAI._is_length_limit_error(RuntimeError("network error")))
+
     def test_attempt_defaults_and_cap(self):
         app = _test_app()
         with app.test_request_context("/"):

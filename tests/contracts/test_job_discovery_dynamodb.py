@@ -216,6 +216,7 @@ class DynamoDBDiscoveryStoreTests(unittest.TestCase):
 
         self.assertEqual(1, status.job_count)
         self.assertEqual(status, self.store.get_public_catalog_status(key))
+        self.assertEqual([status], self.store.list_public_catalog_statuses())
         jobs = self.store.list_public_catalog_jobs(key)
         self.assertEqual(1, len(jobs))
         self.assertEqual(PUBLIC_CATALOG_OWNER_ID, jobs[0].owner_id)
@@ -313,6 +314,7 @@ class DynamoDBDiscoveryStoreTests(unittest.TestCase):
             preferred_keywords=("Snowflake",),
             required_keywords=("SQL",),
             minimum_salary=150000,
+            excluded_title_terms=("intern",),
             require_location_match=True,
             updated_at="2026-07-30T20:00:00+00:00",
         )
@@ -324,6 +326,7 @@ class DynamoDBDiscoveryStoreTests(unittest.TestCase):
         self.assertIsNone(self.store.get_search_preferences("owner-b"))
         item = self.table.items[("owner-a", "PREFERENCES#SEARCH")]
         self.assertEqual("discovery_search_preferences", item["entity_type"])
+        self.assertEqual(["intern"], item["excluded_title_terms"])
 
 
     def test_round_trips_owner_scoped_scan_schedule(self) -> None:

@@ -21,6 +21,7 @@ from meeting_assistant.services.ai_cost_control_service import (
 )
 from meeting_assistant.services.browser_recorder_service import BrowserRecorderService
 from meeting_assistant.services.meeting_materials_service import MeetingMaterialsService
+from meeting_assistant.services.interview_readiness_service import InterviewReadinessService
 from meeting_assistant.services.transcript_service import TranscriptService
 from meeting_assistant.services.user_service import UserService
 from meeting_assistant.utils.exceptions import (
@@ -202,6 +203,10 @@ class MockInterviewService:
                     "Could not load Application Builder records for mock interviews"
                 )
                 applications = []
+            readiness_by_application = InterviewReadinessService(
+                application_store=application_store,
+                transcript_service=self.transcript_service,
+            ).build_for_applications(user_id, applications)
             for application in applications:
                 application_id = str(getattr(application, "id", "") or "").strip()
                 if not application_id:
@@ -218,12 +223,9 @@ class MockInterviewService:
                 details = []
                 if status:
                     details.append(status.replace("_", " ").title())
-                readiness = getattr(application, "interview_readiness", None)
-                if readiness is not None:
-                    try:
-                        details.append(f"Interview readiness {round(float(readiness))}%")
-                    except (TypeError, ValueError):
-                        pass
+                readiness = readiness_by_application.get(application_id)
+                if readiness is not None and readiness.score is not None:
+                    details.append(f"Interview readiness {readiness.score:.0f}%")
                 options.append(
                     {
                         "id": f"builder:{application_id}",
@@ -954,6 +956,10 @@ class MockInterviewService:
             "participants": [interview_audience] if interview_audience else [],
             "interview_audience": interview_audience,
         }
+        readiness = InterviewReadinessService(
+            application_store=application_store,
+            transcript_service=self.transcript_service,
+        ).build_for_applications(user_id, [application]).get(application_id)
         context = {
             "company": company,
             "target_role": role,
@@ -965,10 +971,8 @@ class MockInterviewService:
             "application_status": status,
             "application_notes": notes[:5000],
             "next_action": next_action[:1000],
-            "interview_readiness": getattr(
-                application,
-                "interview_readiness",
-                None,
+            "interview_readiness": (
+                readiness.score if readiness is not None else None
             ),
             "saved_interview_preparation": preparation_content,
             "verified_evidence_source": evidence_source,

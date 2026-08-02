@@ -2024,6 +2024,7 @@ def _document_for_report(
     career_stage: str | None = None,
     resume_format: str | None = None,
     visual_design: str | None = None,
+    resume_language: str | None = None,
 ) -> tuple[Document | None, str | None]:
     if generated_document_bytes is not None:
         try:
@@ -2042,6 +2043,7 @@ def _document_for_report(
             career_stage=career_stage,
             resume_format=resume_format,
             visual_design=visual_design,
+            resume_language=resume_language,
         )
         return Document(BytesIO(generated)), None
     except Exception as generated_error:
@@ -2701,6 +2703,7 @@ def build_resume_report(
     career_stage: str | None = None,
     resume_format: str | None = None,
     visual_design: str | None = None,
+    resume_language: str | None = None,
 ) -> ResumeReport:
     effective_resume_title = (resume_title or analysis.target_title).strip()
     selected_bullets = _selected_bullets(proposal)
@@ -2715,6 +2718,7 @@ def build_resume_report(
         career_stage=career_stage,
         resume_format=resume_format,
         visual_design=visual_design,
+        resume_language=resume_language,
     )
 
     contact_checks = [

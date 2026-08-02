@@ -12,9 +12,27 @@ from job_discovery.models import (
     WorkplaceType,
     discovered_job_id,
 )
+from job_discovery.posting_details import PostingDescriptionFetchResult
 from job_discovery.storage import InMemoryDiscoveryStore
 from tests.helpers.dynamodb_application_store import make_application_store
 
+
+
+class StubDescriptionFetcher:
+    def __init__(self, description: str, *, error: str = "") -> None:
+        self.description = description
+        self.error = error
+        self.calls: list[str] = []
+
+    def fetch(self, job: DiscoveredJob) -> PostingDescriptionFetchResult:
+        self.calls.append(job.id)
+        return PostingDescriptionFetchResult(
+            description=self.description,
+            attempted=True,
+            refreshed=True,
+            method="test_detail",
+            error=self.error,
+        )
 
 def _source(owner_id: str = "owner-1") -> CompanySource:
     return CompanySource(
@@ -134,6 +152,80 @@ class DiscoveredJobApplicationServiceTests(unittest.TestCase):
         self.assertFalse(second.created)
         self.assertEqual(first.application.id, second.application.id)
         self.assertEqual(1, len(self.application_store.list_for_owner("owner-1")))
+
+    def test_create_workspace_uses_on_demand_full_description(self) -> None:
+        full_description = " ".join(
+            ["Build governed data platforms with Python SQL AWS and reliable controls."]
+            * 12
+        )
+        fetcher = StubDescriptionFetcher(full_description)
+        service = DiscoveredJobApplicationService(
+            self.discovery_store,
+            self.application_store,
+            description_fetcher=fetcher,
+        )
+
+        result = service.create_application_workspace(
+            "owner-1", self.source.id, self.job.id
+        )
+
+        self.assertTrue(result.created)
+        self.assertTrue(result.description_refreshed)
+        self.assertEqual(full_description, result.application.job_description)
+        self.assertEqual([self.job.id], fetcher.calls)
+
+    def test_existing_workspace_with_untouched_summary_is_upgraded(self) -> None:
+        first = self.service.create_application_workspace(
+            "owner-1", self.source.id, self.job.id
+        )
+        full_description = " ".join(
+            ["Own production data pipelines observability governance and delivery."]
+            * 14
+        )
+        service = DiscoveredJobApplicationService(
+            self.discovery_store,
+            self.application_store,
+            description_fetcher=StubDescriptionFetcher(full_description),
+        )
+
+        reopened = service.create_application_workspace(
+            "owner-1", self.source.id, self.job.id
+        )
+
+        self.assertFalse(reopened.created)
+        self.assertTrue(reopened.description_refreshed)
+        self.assertEqual(self.job.description, reopened.previous_job_description)
+        self.assertEqual(full_description, reopened.application.job_description)
+        self.assertEqual(first.application.id, reopened.application.id)
+
+    def test_existing_user_edited_description_is_not_overwritten(self) -> None:
+        first = self.service.create_application_workspace(
+            "owner-1", self.source.id, self.job.id
+        )
+        user_edit = "My manually reviewed and edited description."
+        edited = self.application_store.update_builder_progress(
+            "owner-1",
+            first.application.id,
+            workflow_step="setup",
+            job_description=user_edit,
+        )
+        self.assertIsNotNone(edited)
+        full_description = " ".join(
+            ["Employer-provided complete posting description and requirements."] * 15
+        )
+        service = DiscoveredJobApplicationService(
+            self.discovery_store,
+            self.application_store,
+            description_fetcher=StubDescriptionFetcher(full_description),
+        )
+
+        reopened = service.create_application_workspace(
+            "owner-1", self.source.id, self.job.id
+        )
+
+        self.assertFalse(reopened.description_refreshed)
+        self.assertEqual("", reopened.previous_job_description)
+        self.assertEqual(user_edit, reopened.application.job_description)
 
     def test_owner_scoping_prevents_cross_user_promotion(self) -> None:
         with self.assertRaises(LookupError):

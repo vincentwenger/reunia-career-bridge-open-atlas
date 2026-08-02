@@ -1,0 +1,26 @@
+Amazon Jobs company-specific connector validation
+
+Implemented:
+- JobSourceType.AMAZON_JOBS and an Amazon Jobs option in Discovery settings.
+- Official-host-only validation for amazon.jobs / www.amazon.jobs.
+- Locale-aware normalization of root, search, filtered search, and job-detail URLs.
+- Preservation of public search filters such as country and region.
+- Bounded offset/result_limit pagination sorted by recent postings.
+- Public job-detail enrichment through official Amazon Jobs pages.
+- robots.txt, exact-host redirects, timeout, response-size, request-rate, max-page,
+  max-job, detail-fetch, and interactive browser-budget controls.
+- Shared public catalog identity and six-hour default catalog freshness.
+- CSV/JSON aliases and examples.
+- Oregon/Washington sample CSV updated so Amazon uses Amazon Jobs.
+- On-demand full-description retrieval when an Application Workspace is opened.
+
+Scope:
+- Public Amazon corporate jobs on amazon.jobs only.
+- No candidate accounts, employee-only postings, or hiring.amazon.com hourly workflows.
+
+Validation:
+- Official-host and unsafe-host tests.
+- URL normalization and catalog identity tests.
+- Filter-preserving bounded pagination fixtures.
+- Full public detail and JSON-LD extraction fixtures.
+- Source import, UI contract, service registration, and Job Discovery regressions.

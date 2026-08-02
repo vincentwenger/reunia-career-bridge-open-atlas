@@ -1,0 +1,27 @@
+{% extends "application_builder/base.html" %}
+
+{% block title %}Application storage unavailable · Réunia Career Bridge{% endblock %}
+
+{% block content %}
+<section class="card application-builder-storage-error" role="alert" aria-labelledby="storage-unavailable-title">
+  <span class="eyebrow">Application Builder unavailable</span>
+  <h2 id="storage-unavailable-title">Career Bridge storage is not ready</h2>
+  <p>
+    Réunia could not reach one of the DynamoDB tables or the S3 document bucket used by
+    Baseline Resume, Job Applications, Resume Workflow, and Resume Reports.
+  </p>
+  <p>
+    No application data was changed. An administrator should verify that the configured
+    AWS resources exist in the selected region, use the documented key schemas, and are
+    accessible to the deployed credentials.
+  </p>
+  <dl class="application-builder-storage-diagnostics">
+    <div><dt>AWS error</dt><dd>{{ storage_error_code }}</dd></div>
+    {% if storage_request_id %}<div><dt>Request reference</dt><dd>{{ storage_request_id }}</dd></div>{% endif %}
+  </dl>
+  <div class="button-row">
+    <a class="button primary" href="{{ request.url }}">Retry</a>
+    <a class="button secondary" href="{{ career_bridge_home_url }}">Return to Career Bridge</a>
+  </div>
+</section>
+{% endblock %}

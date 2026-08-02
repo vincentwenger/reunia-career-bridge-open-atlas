@@ -1,0 +1,44 @@
+Oracle Cloud HCM Job Discovery Connector
+========================================
+
+Date: 2026-08-01
+
+Implemented
+-----------
+- Added JobSourceType.ORACLE_CLOUD_HCM and a first-class OracleCloudHcmJobSource adapter.
+- Added "Oracle Cloud HCM" to the Discovery settings source selector.
+- Accepts public Oracle Candidate Experience career-site and job-detail URLs,
+  including employer vanity domains that retain the Candidate Experience path.
+- Canonicalizes job-detail and filtered URLs to one shared company catalog identity.
+- Reads bounded public Candidate Experience requisition listings and job details.
+- Falls back to embedded Oracle job data, JSON-LD, and HTML job cards when the
+  requisition resource is unavailable or disabled.
+- Maps job title, requisition ID, description, locations, workplace type,
+  employment type, posting and closing dates, department, skills, and salary data.
+- Rejects cross-host posting and apply URLs and preserves the configured career-site host.
+- Honors robots.txt, exact-host redirects, response-size limits, timeouts,
+  pagination/job caps, and shared per-company request spacing.
+- Adds browser-safe refresh limits and deferred full-description enrichment.
+- Integrates with shared public catalogs, CSV/JSON imports, source forms,
+  posting-detail enrichment, and the common connector contract.
+
+Validation
+----------
+1. python -m compileall -q job_discovery products/resume_taylor/app.py tests
+   Result: PASS
+
+2. Focused Job Discovery unittest suite
+   Result: PASS (169 tests, 1 skipped)
+
+Skipped integration test
+------------------------
+- tests.integration.test_job_discovery_flask_persistence was skipped because this
+  execution environment does not include Flask, Redis, OpenAI, and xlrd runtime
+  dependencies. The connector unit, contract, regression, source-import,
+  catalog, posting-detail, pagination, fallback, and UI tests all passed.
+
+Compatibility note
+------------------
+Oracle documents the Candidate Experience requisition resources as internal-use.
+This connector therefore treats them as a best-effort integration with the public
+career site and retains embedded-data, JSON-LD, and HTML fallbacks.

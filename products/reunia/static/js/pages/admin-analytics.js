@@ -447,7 +447,7 @@
         'Live Assistance': 'Accounts authorized for live interview assistance that started a session or requested an AI answer.',
         'Interview Review': 'Accounts that opened a saved mock interview for review and follow-up.',
         'Career Action Plan': 'Accounts that opened or used the application-linked career planning area.',
-        'Impact & Progress': 'Accounts that opened the user-facing Impact & Progress area.',
+        'Progress & Outcomes': 'Accounts that opened the user-facing Progress & Outcomes area.',
     };
 
     const operationDescriptions = {
@@ -955,6 +955,10 @@
             incidentMetaChip('HTTP', httpStatus),
             incidentMetaChip('Reference', incident.reference_id),
             incidentMetaChip('Source', incident.source),
+            incidentMetaChip('Exception', incident.exception_type),
+            incidentMetaChip('Request', [incident.request_method, incident.request_path].filter(Boolean).join(' ')),
+            incidentMetaChip('Endpoint', incident.endpoint),
+            incidentMetaChip('Blueprint', incident.blueprint),
             incidentMetaChip('Model', incident.model),
             incidentMetaChip('Duration', duration > 0 ? formatMilliseconds(duration) : ''),
         ].filter(Boolean).join('');
@@ -983,6 +987,13 @@
                         </section>
                     </div>
                     ${metadata ? `<div class="admin-failure-meta">${metadata}</div>` : ''}
+                    ${incident.technical_details ? `
+                        <details class="admin-failure-support-report admin-incident-technical-details">
+                            <summary>Sanitized technical details</summary>
+                            <div class="admin-failure-support-report-body">
+                                <pre>${escapeHtml(incident.technical_details)}</pre>
+                            </div>
+                        </details>` : ''}
                     <section class="admin-failure-section admin-incident-support-section">
                         <header><h3>Related automated support reports</h3><p>Reports are matched using the reference ID or a nearby submission time.</p></header>
                         <div class="admin-failure-event-list">${reports.length ? reports.map(renderIncidentSupportReport).join('') : '<div class="admin-incident-no-report">No related automated support report was found.</div>'}</div>

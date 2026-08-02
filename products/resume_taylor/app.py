@@ -8,11 +8,13 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from uuid import uuid4
 from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
+from botocore.exceptions import BotoCoreError, ClientError
 from flask import (
     Blueprint,
     Flask,
@@ -32,8 +34,13 @@ from flask import (
 )
 from werkzeug.local import LocalProxy
 
-from career_bridge.profile_context import ReusableCareerProfile
+from career_bridge.profile_context import (
+    ReusableCareerProfile,
+    text_not_already_in_profile,
+    values_not_already_in_profile,
+)
 from job_discovery.application_conversion import DiscoveredJobApplicationService
+from job_discovery.location_filter import job_matches_location_filters
 from job_discovery.models import (
     CompanySource,
     DEFAULT_MAX_POSTING_AGE_DAYS,
@@ -46,9 +53,14 @@ from job_discovery.models import (
     DiscoveryScheduleCadence,
     JobSourceType,
     WorkplaceType,
+    utc_now_iso,
 )
 from job_discovery.posting_age import evaluate_posting_age
-from job_discovery.public_catalog import SHARED_CATALOG_SOURCE_OWNER_ID
+from job_discovery.posting_details import PostingDescriptionFetcher
+from job_discovery.public_catalog import (
+    SHARED_CATALOG_SOURCE_OWNER_ID,
+    public_source_key,
+)
 from job_discovery.ranking import (
     CandidateJobProfile,
     evaluate_stage_one,
@@ -67,7 +79,34 @@ from job_discovery.result_policy import (
     recommendation_tier,
 )
 from job_discovery.service import JobDiscoveryService
+from job_discovery.source_import import (
+    CompanySourceImportError,
+    CompanySourceImportRow,
+    MAX_SOURCE_IMPORT_BYTES,
+    parse_company_source_import,
+)
 from job_discovery.sources.workday import parse_workday_careers_url
+from job_discovery.sources.successfactors import successfactors_search_url
+from job_discovery.sources.oracle_cloud_hcm import (
+    parse_oracle_cloud_hcm_careers_url,
+)
+from job_discovery.sources.icims import parse_icims_careers_url
+from job_discovery.sources.smartrecruiters import parse_smartrecruiters_careers_url
+from job_discovery.sources.avature import parse_avature_careers_url
+from job_discovery.sources.eightfold import parse_eightfold_careers_url
+from job_discovery.sources.taleo import parse_taleo_careers_url
+from job_discovery.sources.dayforce import parse_dayforce_careers_url
+from job_discovery.sources.talemetry_ttc import parse_talemetry_ttc_careers_url
+from job_discovery.sources.jobvite import parse_jobvite_careers_url
+from job_discovery.sources.ukg_pro import parse_ukg_pro_careers_url
+from job_discovery.sources.peopleadmin import parse_peopleadmin_careers_url
+from job_discovery.sources.radancy_talentbrew import (
+    parse_radancy_talentbrew_careers_url,
+)
+from job_discovery.sources.amazon_jobs import parse_amazon_jobs_careers_url
+from job_discovery.sources.branded_requisition import (
+    parse_branded_requisition_careers_url,
+)
 from job_discovery.scheduling import next_scheduled_run
 from job_discovery.storage import (
     DiscoveryOptimisticLockError,
@@ -76,6 +115,10 @@ from job_discovery.storage import (
 )
 
 from resume_tailor.ai import ResumeAI, ResumeAIError
+from resume_tailor.terminology import (
+    APPLICATION_BASELINE_LABEL,
+    CAREER_BASELINE_RESUME_LABEL,
+)
 from resume_tailor.application_tracker import (
     APPLICATION_STATUS_OPTIONS,
     INTERVIEW_AUDIENCE_SUGGESTIONS,
@@ -84,6 +127,7 @@ from resume_tailor.application_tracker import (
     build_application_metrics,
     normalize_application_status,
     normalize_iso_date,
+    normalize_job_url,
 )
 from resume_tailor.application_fit import (
     ApplicationFitAssessment,
@@ -156,18 +200,27 @@ from resume_tailor.models import (
     CandidateAnswer,
     CandidateProfile,
     CandidateQuestion,
+    ContactInfo,
     EducationItem,
     NewcomerCareerProfile,
     ProposalAudit,
     SkillSet,
     TailoringProposal,
+    VerifiedSkills,
 )
 from resume_tailor.profile_io import (
     candidate_bullet_text,
-    load_candidate_profile,
     load_candidate_profile_bytes,
 )
 from resume_tailor.resume_import import extract_resume_text, resume_extension
+from resume_tailor.resume_language import (
+    detect_text_language,
+    language_name,
+    resolve_resume_language,
+    resume_labels,
+    resume_language_options,
+    translated_profile_fingerprint,
+)
 from resume_tailor.optimization import (
     FINAL_OPTIMIZATION_SECTIONS,
     final_optimization_actionable_issues,
@@ -236,13 +289,20 @@ from resume_tailor.workflow_serialization import workflow_state_fingerprint
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_PROFILE_PATH = BASE_DIR / "data" / "candidate_profile.json"
 RESUME_TEMPLATE_PATHS = {
     "early_career": BASE_DIR / "data" / "resume_template_early_career.docx",
     "professional": BASE_DIR / "data" / "resume_template_professional.docx",
     "executive": BASE_DIR / "data" / "resume_template_executive.docx",
 }
 DEFAULT_JOB_PATH = BASE_DIR / "data" / "job_description_example.txt"
+DEFAULT_JOB_DESCRIPTION = (
+    DEFAULT_JOB_PATH.read_text(encoding="utf-8")
+    if DEFAULT_JOB_PATH.exists()
+    else ""
+)
+DEFAULT_JOB_DESCRIPTION_NORMALIZED = normalize_job_description(
+    DEFAULT_JOB_DESCRIPTION
+)
 
 try:
     RESUME_PAGE_LIMIT = max(1, int(os.getenv("RESUME_PAGE_LIMIT", "2")))
@@ -315,6 +375,7 @@ def resume_export_kwargs(state: WorkflowState) -> dict[str, str]:
         "career_stage": normalize_career_stage(state.resume_career_stage),
         "resume_format": normalize_resume_format(state.resume_format),
         "visual_design": normalize_visual_design(state.resume_visual_design),
+        "resume_language": _resolved_resume_language(state).name,
     }
 
 
@@ -451,18 +512,146 @@ def _career_background_with_profile(
 
 
 def _effective_career_background(state: WorkflowState) -> NewcomerCareerProfile:
-    """Return request-time profile context without persisting it into the application."""
+    """Return request-time profile context with the resolved resume language."""
 
     reusable = (
         getattr(g, "reusable_career_profile", ReusableCareerProfile())
         if has_app_context()
         else ReusableCareerProfile()
     )
-    return _career_background_with_profile(
+    updated = _career_background_with_profile(
         state.career_background,
         reusable,
         target_role=state.target_title,
     )
+    choice = resolve_resume_language(
+        updated.target_country,
+        state.career_background.resume_language,
+        state.job_description,
+    )
+    # AI prompts receive the effective language name even when the form is set
+    # to Automatic. The persisted field remains blank so the UI still reflects
+    # that the user did not choose an override.
+    updated.resume_language = choice.name
+    return updated
+
+
+def _resolved_resume_language(state: WorkflowState):
+    effective = _career_background_with_profile(
+        state.career_background,
+        (
+            getattr(g, "reusable_career_profile", ReusableCareerProfile())
+            if has_app_context()
+            else ReusableCareerProfile()
+        ),
+        target_role=state.target_title,
+    )
+    return resolve_resume_language(
+        effective.target_country,
+        state.career_background.resume_language,
+        state.job_description,
+    )
+
+
+def _ensure_target_language_profile(
+    state: WorkflowState,
+    ai: ResumeAI,
+) -> CandidateProfile:
+    """Translate the Imported Resume once per source/language combination."""
+
+    if state.original_source_profile is None:
+        # Workflows created before target-language translation was introduced
+        # still need an immutable verified source baseline for later language
+        # changes and for downloading the originally imported profile.
+        state.original_source_profile = state.source_profile.model_copy(deep=True)
+    original = state.original_source_profile
+    choice = _resolved_resume_language(state)
+    fingerprint = translated_profile_fingerprint(original, choice.code)
+    if (
+        state.source_profile_translation_fingerprint == fingerprint
+        and state.source_profile_language == choice.code
+    ):
+        return state.source_profile
+
+    translated = ai.translate_candidate_profile(
+        original,
+        target_language=choice.code,
+        target_country=choice.country,
+    )
+    state.source_profile = translated
+    state.source_profile_language = choice.code
+    state.source_profile_translation_fingerprint = fingerprint
+    # Translation changes the reusable Baseline Resume. Cached reports
+    # and tailoring proposals must therefore be rebuilt from the translated text.
+    state.clear_results()
+    return translated
+
+
+def _career_background_application_additions(
+    background: NewcomerCareerProfile,
+    profile: ReusableCareerProfile,
+) -> NewcomerCareerProfile:
+    """Return only application-specific context not already in Career Profile.
+
+    Older workflow submissions copied the effective reusable profile values into
+    the application record because the Career Translation form displayed those
+    values as editable inputs.  Subtracting reusable values here both avoids
+    asking the user to repeat them and quietly cleans those duplicates the next
+    time the setup form is submitted.
+    """
+
+    payload = profile.newcomer_payload()
+    additions = background.model_copy(deep=True)
+
+    for field in (
+        "countries_worked",
+        "industries",
+        "roles",
+        "languages",
+        "international_credentials",
+        "professional_certifications",
+        "unfamiliar_job_titles",
+        "career_transitions",
+    ):
+        setattr(
+            additions,
+            field,
+            values_not_already_in_profile(
+                getattr(background, field),
+                payload.get(field, ()),
+            ),
+        )
+
+    additions.us_employment_experience = text_not_already_in_profile(
+        background.us_employment_experience,
+        payload.get("us_employment_experience"),
+    )
+
+    # These values are supplied directly by Career Profile or are displayed in
+    # the application-specific Target country field, not in the additions panel.
+    for field in (
+        "professional_headline",
+        "current_role",
+        "years_experience",
+        "current_location",
+        "preferred_roles",
+        "core_skills",
+        "key_accomplishments",
+        "target_country",
+        "resume_language",
+        "target_country_experience",
+        "target_role",
+        "work_preferences",
+        "relocation_preferences",
+        "work_authorization",
+        "career_goals",
+        "constraints",
+        "career_profile_fingerprint",
+    ):
+        value = getattr(additions, field)
+        setattr(additions, field, [] if isinstance(value, list) else "")
+
+    return additions
 
 def career_background_from_form(
     form: Any,
@@ -478,6 +667,7 @@ def career_background_from_form(
     current.roles = parse_comma_list(form.get("career_roles", ""))
     current.languages = parse_comma_list(form.get("career_languages", ""))
     current.target_country = " ".join(str(form.get("target_country", "")).split())
+    current.resume_language = " ".join(str(form.get("resume_language", "")).split())
     current.target_role = normalize_target_title(target_role)
     current.international_credentials = parse_comma_list(
         form.get("international_credentials", "")
@@ -507,7 +697,7 @@ def _hash_json(payload: dict[str, Any]) -> str:
 
 
 def _proposal_json(proposal: TailoringProposal) -> str:
-    # The Career Translation Assessment is advisory workflow metadata. It does
+    # The Target-Market Review is advisory workflow metadata. It does
     # not change the resume document, report scores, or revision identity.
     return json.dumps(
         proposal.model_dump(exclude={"career_translation_assessment"}),
@@ -548,7 +738,7 @@ WORKFLOW_PANEL_BY_STEP = {
 # User-facing resume names follow the workflow outputs rather than the internal
 # Draft/Final storage lifecycle. Keep these centralized so every comparison,
 # heading, and download uses the same concise vocabulary.
-INITIAL_RESUME_LABEL = "Initial Resume"
+INITIAL_RESUME_LABEL = APPLICATION_BASELINE_LABEL
 JOB_ALIGNED_RESUME_LABEL = "Job-Aligned Resume"
 FINAL_RESUME_LABEL = "Final Resume"
 
@@ -724,15 +914,25 @@ def _approved_resume_from_proposal(
 
 
 
+def _empty_candidate_profile() -> CandidateProfile:
+    """Return a neutral profile for a user who has not imported a resume yet."""
+    return CandidateProfile(
+        name="",
+        contact=ContactInfo(location="", phone="", email=""),
+        current_summary="",
+        skills=VerifiedSkills(),
+        education=[],
+        experiences=[],
+    )
+
+
 def _default_state() -> WorkflowState:
-    profile = load_candidate_profile(DEFAULT_PROFILE_PATH)
-    job_description = DEFAULT_JOB_PATH.read_text(encoding="utf-8") if DEFAULT_JOB_PATH.exists() else ""
     return WorkflowState(
-        source_profile=profile,
-        career_background=NewcomerCareerProfile(
-            languages=list(profile.skills.languages)
-        ),
-        job_description=job_description,
+        source_profile=_empty_candidate_profile(),
+        career_background=NewcomerCareerProfile(),
+        # A new user has not selected a target job yet. Keep this empty rather
+        # than exposing the bundled Barclays example in Career Translation.
+        job_description="",
         processing_mode=get_default_processing_mode(),
         custom_analysis_tailoring_model=get_default_analysis_tailoring_model(),
         custom_evidence_review_model=get_default_evidence_review_model(),
@@ -817,7 +1017,7 @@ def current_application_fit(
 
     The fit score intentionally does not read the rewritten resume text. Before
     confirmation it uses the original evidence proposal; afterward it uses the
-    evidence decisions plus confirmed Candidate Profile facts. This prevents a
+    evidence decisions plus facts from Verified Resume Evidence. This prevents a
     more aggressive rewrite from manufacturing a higher apply recommendation.
     """
     if state.analysis is None or state.initial_evidence_proposal is None:
@@ -875,8 +1075,8 @@ def build_guided_workflow(
     """Build the canonical six-step Application Builder status."""
     if workflow_stage == "initial":
         current_key = "setup"
-        headline = "Current stage: Career and Job Setup"
-        guidance = "Add the target job and source resume, then analyze the match."
+        headline = "Current stage: Application and Job Setup"
+        guidance = "Add the target job and imported resume, then analyze the match."
     elif not confirmation_complete:
         current_key = "confirmation"
         headline = "Current stage: Confirm Relevant Experience"
@@ -887,7 +1087,7 @@ def build_guided_workflow(
         guidance = (
             "Review every tailored change and confirm that the wording remains accurate."
             if input_is_current
-            else "The job inputs changed. Return to Career and Job Setup before continuing."
+            else "The job inputs changed. Return to Application and Job Setup before continuing."
         )
     elif workflow_stage != "final":
         current_key = "quality"
@@ -939,7 +1139,7 @@ def build_guided_workflow(
         return "completed" if key == "evidence_export" and resume_ready else "in_progress"
 
     definitions = (
-        ("setup", "Career and Job Setup", "Add the target job, source resume, and career context.", "#job-input"),
+        ("setup", "Application and Job Setup", "Review the Baseline Resume, add the target job, and capture application-specific context.", "#job-input"),
         ("confirmation", "Confirm Relevant Experience", "Confirm the evidence that may support this application.", "#confirmation-stage"),
         ("review", "Review Tailored Resume", "Review the tailored resume and every evidence-backed change.", "#tailored-resume"),
         ("quality", "Improve Resume Quality", "Apply score-protected writing and searchability improvements.", "#resume-quality"),
@@ -2110,6 +2310,63 @@ application_builder_bp = Blueprint(
 )
 
 
+def _application_builder_storage_error_response(exc: Exception) -> tuple[str, int]:
+    """Return a safe, actionable response when AWS persistence is unavailable."""
+
+    error_code = exc.__class__.__name__
+    if isinstance(exc, ClientError):
+        error_code = str(exc.response.get("Error", {}).get("Code") or error_code)
+    request_id = str(getattr(g, "request_id", "") or "")
+    current_app.logger.exception(
+        "Application Builder storage request failed: code=%s request_id=%s",
+        error_code,
+        request_id,
+    )
+    try:
+        from meeting_assistant.services.server_error_reporting_service import (
+            ServerErrorReportingService,
+        )
+
+        ServerErrorReportingService().report_safely(
+            exc,
+            status_code=503,
+            reference_id=request_id or "unavailable",
+        )
+    except Exception:
+        current_app.logger.exception(
+            "Could not record Application Builder storage incident request_id=%s",
+            request_id,
+        )
+    active_tab = request.args.get("tab", "applications")
+    if request.path.endswith("/career-translation") or (
+        request.path.endswith("/profile/upload")
+        and str(request.form.get("return_to") or "").strip().casefold()
+        == "career_translation"
+    ):
+        active_tab = "career_translation"
+    elif request.path.endswith("/job-discovery"):
+        active_tab = "discovery"
+    return (
+        render_template(
+            "application_builder/storage_unavailable.html",
+            active_tab=active_tab,
+            storage_error_code=error_code,
+            storage_request_id=request_id,
+        ),
+        503,
+    )
+
+
+@application_builder_bp.errorhandler(ClientError)
+def handle_application_builder_client_error(exc: ClientError) -> tuple[str, int]:
+    return _application_builder_storage_error_response(exc)
+
+
+@application_builder_bp.errorhandler(BotoCoreError)
+def handle_application_builder_boto_error(exc: BotoCoreError) -> tuple[str, int]:
+    return _application_builder_storage_error_response(exc)
+
+
 store: WorkflowStore = LocalProxy(
     lambda: current_app.extensions["career_bridge_workflow_store"]
 )
@@ -2118,6 +2375,9 @@ application_store: ApplicationStore = LocalProxy(
 )
 discovery_store: DiscoveryStore = LocalProxy(
     lambda: current_app.extensions["career_bridge_job_discovery_store"]
+)
+posting_description_fetcher: PostingDescriptionFetcher = LocalProxy(
+    lambda: current_app.extensions["career_bridge_posting_description_fetcher"]
 )
 document_store: CareerBridgeObjectStore = LocalProxy(
     lambda: current_app.extensions["career_bridge_document_store"]
@@ -2334,6 +2594,11 @@ def init_application_builder(app: Flask) -> None:
     if app.extensions.get("career_bridge_job_discovery_store") is None:
         app.extensions["career_bridge_job_discovery_store"] = InMemoryDiscoveryStore()
 
+    if app.extensions.get("career_bridge_posting_description_fetcher") is None:
+        app.extensions["career_bridge_posting_description_fetcher"] = (
+            PostingDescriptionFetcher()
+        )
+
     warning_key = "career_bridge_application_builder_persistence_warning_logged"
     if not app.extensions.get(warning_key):
         fully_persistent = (
@@ -2354,6 +2619,113 @@ def init_application_builder(app: Flask) -> None:
 
 
 def _register_application_builder_routes() -> None:
+    def _job_discovery_page_timing_active() -> bool:
+        return (
+            request.method == "GET"
+            and str(request.endpoint or "")
+            == "application_builder.job_discovery_workspace"
+        )
+
+    def _start_job_discovery_timing() -> None:
+        if not _job_discovery_page_timing_active():
+            return
+        if getattr(g, "job_discovery_timing_started_at", None) is None:
+            g.job_discovery_timing_started_at = perf_counter()
+            g.job_discovery_timing_phases = []
+
+    def _record_job_discovery_phase(
+        metric: str, started_at: float, description: str
+    ) -> float:
+        finished_at = perf_counter()
+        if _job_discovery_page_timing_active():
+            _start_job_discovery_timing()
+            phases = getattr(g, "job_discovery_timing_phases", None)
+            if isinstance(phases, list):
+                phases.append(
+                    (
+                        str(metric),
+                        max(0.0, (finished_at - started_at) * 1000.0),
+                        str(description),
+                    )
+                )
+        return finished_at
+
+    def _job_discovery_slow_request_threshold_ms() -> float:
+        raw_value = current_app.config.get(
+            "CAREER_BRIDGE_JOB_DISCOVERY_SLOW_REQUEST_MS", 1000
+        )
+        try:
+            return max(0.0, float(raw_value))
+        except (TypeError, ValueError):
+            return 1000.0
+
+    def _finalize_job_discovery_timing(response: Response) -> Response:
+        if (
+            not _job_discovery_page_timing_active()
+            or bool(getattr(g, "job_discovery_timing_finalized", False))
+        ):
+            return response
+
+        started_at = getattr(g, "job_discovery_timing_started_at", None)
+        if started_at is None:
+            return response
+        total_ms = max(0.0, (perf_counter() - float(started_at)) * 1000.0)
+        phases = tuple(getattr(g, "job_discovery_timing_phases", ()) or ())
+        server_timing_values: list[str] = []
+        log_values: list[str] = []
+        for metric, duration_ms, description in phases:
+            safe_metric = re.sub(r"[^A-Za-z0-9_-]", "_", str(metric))
+            safe_description = (
+                str(description).replace("\\", " ").replace('"', "'")
+            )
+            server_timing_values.append(
+                f'{safe_metric};dur={duration_ms:.2f};desc="{safe_description}"'
+            )
+            log_values.append(f"{safe_metric}_ms={duration_ms:.2f}")
+        server_timing_values.append(
+            f'jd_total;dur={total_ms:.2f};desc="Job Discovery total"'
+        )
+        existing_server_timing = str(
+            response.headers.get("Server-Timing") or ""
+        ).strip()
+        generated_server_timing = ", ".join(server_timing_values)
+        response.headers["Server-Timing"] = (
+            f"{existing_server_timing}, {generated_server_timing}"
+            if existing_server_timing
+            else generated_server_timing
+        )
+
+        request_id = str(
+            getattr(g, "workflow_request_id", "")
+            or getattr(g, "request_id", "")
+            or ""
+        )
+        discovery_view = str(
+            getattr(g, "job_discovery_timing_view", "")
+            or ("settings" if request.args.get("view") == "settings" else "results")
+        )
+        owner_scope = str(getattr(g, "job_discovery_timing_owner_scope", "") or "")
+        index_state = str(getattr(g, "job_discovery_timing_index_state", "") or "")
+        details = " ".join(log_values)
+        log_method = (
+            current_app.logger.warning
+            if total_ms >= _job_discovery_slow_request_threshold_ms()
+            else current_app.logger.info
+        )
+        log_method(
+            "Job Discovery timing request_id=%s view=%s status=%s "
+            "owner_scope=%s index_state=%s total_ms=%.2f %s",
+            request_id,
+            discovery_view,
+            response.status_code,
+            owner_scope,
+            index_state,
+            total_ms,
+            details,
+        )
+        g.job_discovery_timing_finalized = True
+        return response
+
     def workflow_conflict_response(
         conflict: WorkflowConflictError | None = None,
     ) -> Response:
@@ -2365,14 +2737,19 @@ def _register_application_builder_routes() -> None:
             "state, review it, and apply the change again."
         )
         active_application = getattr(g, "active_application", None)
+        foundation_conflict = _career_translation_foundation_request()
         retry_url = (
-            url_for(
-                "application_builder.index",
-                tab="tailoring",
-                application_id=active_application.id,
+            url_for("application_builder.career_translation_workspace")
+            if foundation_conflict
+            else (
+                url_for(
+                    "application_builder.index",
+                    tab="tailoring",
+                    application_id=active_application.id,
+                )
+                if active_application is not None
+                else url_for("application_builder.index", tab="applications")
             )
-            if active_application is not None
-            else url_for("application_builder.index", tab="applications")
         )
         wants_json = bool(request.is_json) or (
             request.accept_mimetypes.best == "application/json"
@@ -2399,7 +2776,9 @@ def _register_application_builder_routes() -> None:
             response = Response(
                 render_template(
                     "application_builder/workflow_conflict.html",
-                    active_tab="tailoring",
+                    active_tab=(
+                        "career_translation" if foundation_conflict else "tailoring"
+                    ),
                     conflict_message=message,
                     retry_url=retry_url,
                     conflict_request_id=request_id,
@@ -2411,17 +2790,91 @@ def _register_application_builder_routes() -> None:
         response.headers["Cache-Control"] = "no-store"
         return response
 
+    def _career_translation_foundation_request() -> bool:
+        """Return True for routes that edit the Baseline Resume."""
+
+        endpoint = str(request.endpoint or "")
+        if endpoint in {
+            "application_builder.career_translation_workspace",
+        }:
+            return True
+        return (
+            endpoint == "application_builder.upload_profile"
+            and str(request.form.get("return_to") or "").strip().casefold()
+            == "career_translation"
+        )
+
+    def _job_discovery_account_request() -> bool:
+        """Return True when the request belongs to account-level Job Discovery.
+
+        Discovery uses the reusable foundation profile and must not load whichever
+        job application happened to be active in the user's previous workspace.
+        All Discovery endpoint names contain either ``discovery`` or
+        ``discovered``.
+        """
+
+        endpoint = str(request.endpoint or "")
+        return endpoint.startswith("application_builder.") and (
+            "discovery" in endpoint or "discovered" in endpoint
+        )
+
+    def _career_translation_workflow_key(owner_id: str) -> str:
+        return f"{owner_id}:career-foundation:translation"
+
+    def _seed_application_from_career_translation(
+        owner_id: str, workflow_state: WorkflowState
+    ) -> None:
+        """Copy the one-time translated baseline into an empty application workflow.
+
+        The application receives its own serialized profile copy, but not the
+        foundation document key. This prevents replacing an application-specific
+        resume from deleting the account-level imported resume object.
+        """
+
+        if (
+            workflow_state.source_resume_key
+            or workflow_state.source_profile.all_source_text().strip()
+        ):
+            return
+        foundation = store.load(_career_translation_workflow_key(owner_id)).state
+        if not foundation.source_profile.all_source_text().strip():
+            return
+        workflow_state.source_profile = foundation.source_profile.model_copy(deep=True)
+        workflow_state.original_source_profile = (
+            foundation.original_source_profile.model_copy(deep=True)
+            if foundation.original_source_profile is not None
+            else foundation.source_profile.model_copy(deep=True)
+        )
+        workflow_state.source_profile_language = foundation.source_profile_language
+        workflow_state.source_profile_translation_fingerprint = (
+            foundation.source_profile_translation_fingerprint
+        )
+        workflow_state.career_background = foundation.career_background.model_copy(
+            deep=True
+        )
+        workflow_state.profile_upload_name = foundation.profile_upload_name
+        workflow_state.source_resume_fingerprint = (
+            foundation.source_resume_fingerprint
+        )
+        workflow_state.source_resume_key = ""
+
     @application_builder_bp.before_request
     def load_workflow_state() -> Response | None:
+        _start_job_discovery_timing()
+        context_started_at = perf_counter()
         if current_app.config.get("CAREER_BRIDGE_REQUIRE_AUTH") and not session.get(
             "user_id"
         ):
-            return redirect(
+            response = redirect(
                 str(
                     current_app.config.get("CAREER_BRIDGE_LOGIN_URL")
                     or "/login.html"
                 )
             )
+            _record_job_discovery_phase(
+                "jd_context", context_started_at, "Request context"
+            )
+            return response
 
         owner_id = (
             str(session.get("user_id") or "").strip()
@@ -2434,7 +2887,9 @@ def _register_application_builder_routes() -> None:
         # Retain the legacy key because existing application routes and tests use it.
         session["workflow_sid"] = owner_id
 
-        requested_application_id = (
+        foundation_request = _career_translation_foundation_request()
+        discovery_request = _job_discovery_account_request()
+        requested_application_id = "" if (foundation_request or discovery_request) else (
             str((request.view_args or {}).get("application_id") or "").strip()
             or str(request.args.get("application_id") or "").strip()
             or str(request.form.get("application_id") or "").strip()
@@ -2454,88 +2909,183 @@ def _register_application_builder_routes() -> None:
             session["active_application_id"] = application.id
 
         workflow_key = (
-            f"{owner_id}:application:{requested_application_id}"
-            if requested_application_id
-            else f"{owner_id}:application:scratch"
+            _career_translation_workflow_key(owner_id)
+            if foundation_request or discovery_request
+            else (
+                f"{owner_id}:application:{requested_application_id}"
+                if requested_application_id
+                else f"{owner_id}:application:scratch"
+            )
         )
         session["active_workflow_key"] = workflow_key
         g.application_owner_id = owner_id
         g.active_application = application
         g.workflow_key = workflow_key
+        g.skip_workflow_document_hydration = discovery_request
         g.workflow_state_deleted = False
         g.workflow_request_id = normalize_workflow_request_id(
             getattr(g, "request_id", "")
         )
+        _record_job_discovery_phase(
+            "jd_context", context_started_at, "Request context"
+        )
+        workflow_started_at = perf_counter()
         loaded_workflow = store.load(workflow_key)
         g.workflow_state = loaded_workflow.state
         g.workflow_initial_version = loaded_workflow.version
         g.workflow_initial_fingerprint = loaded_workflow.fingerprint
         g.workflow_initial_updated_at = loaded_workflow.updated_at
         g.workflow_initial_updated_by_request = loaded_workflow.updated_by_request
-        if application is not None:
-            if not g.workflow_state.source_resume_key and application.original_resume_key:
+        if application is None:
+            # Workflows created by older releases may still contain the exact
+            # bundled Barclays example. It was never user input, so remove it
+            # when opening the unassigned Career Translation scratch workspace.
+            if (
+                DEFAULT_JOB_DESCRIPTION_NORMALIZED
+                and normalize_job_description(g.workflow_state.job_description)
+                == DEFAULT_JOB_DESCRIPTION_NORMALIZED
+            ):
+                g.workflow_state.job_description = ""
+        else:
+            # A newly created application workflow may be produced from legacy
+            # demo state. Seed that untouched workflow from the selected
+            # application record so a Job Discovery workspace opens with the
+            # actual posting. Once the workflow has been saved, preserve edits.
+            is_uninitialized_application_workflow = (
+                loaded_workflow.version == 0
+                and not loaded_workflow.updated_at
+                and not loaded_workflow.updated_by_request
+            )
+            workflow_job_description = normalize_job_description(
+                g.workflow_state.job_description
+            )
+            uses_demo_job_description = bool(
+                application.source_job_id
+                and DEFAULT_JOB_DESCRIPTION_NORMALIZED
+                and workflow_job_description == DEFAULT_JOB_DESCRIPTION_NORMALIZED
+            )
+            if (
+                not g.workflow_state.source_resume_key
+                and application.original_resume_key
+            ):
                 g.workflow_state.source_resume_key = application.original_resume_key
-            if not g.workflow_state.target_title:
+            if is_uninitialized_application_workflow:
                 g.workflow_state.target_title = application.role
-            if not g.workflow_state.career_background.target_role:
-                g.workflow_state.career_background.target_role = (
-                    g.workflow_state.target_title or application.role
-                )
-            if not g.workflow_state.job_description and application.job_description:
                 g.workflow_state.job_description = application.job_description
+                g.workflow_state.career_background.target_role = application.role
+            else:
+                if not g.workflow_state.target_title:
+                    g.workflow_state.target_title = application.role
+                if not g.workflow_state.career_background.target_role:
+                    g.workflow_state.career_background.target_role = (
+                        g.workflow_state.target_title or application.role
+                    )
+                if uses_demo_job_description or (
+                    not workflow_job_description and application.job_description
+                ):
+                    g.workflow_state.job_description = application.job_description
 
+            _seed_application_from_career_translation(
+                owner_id, g.workflow_state
+            )
+            g.workflow_state.career_background.target_role = (
+                g.workflow_state.target_title or application.role
+            )
+
+            pending_refresh = session.get(
+                "pending_application_job_description_refresh"
+            )
+            if (
+                isinstance(pending_refresh, dict)
+                and str(pending_refresh.get("application_id") or "")
+                == application.id
+            ):
+                previous_fingerprint = str(
+                    pending_refresh.get("previous_fingerprint") or ""
+                )
+                current_fingerprint = hashlib.sha256(
+                    normalize_job_description(
+                        g.workflow_state.job_description
+                    ).encode("utf-8")
+                ).hexdigest()
+                if (
+                    not normalize_job_description(g.workflow_state.job_description)
+                    or current_fingerprint == previous_fingerprint
+                ):
+                    g.workflow_state.job_description = application.job_description
+                session.pop("pending_application_job_description_refresh", None)
+
+        _record_job_discovery_phase(
+            "jd_workflow", workflow_started_at, "Workflow load"
+        )
+        profile_started_at = perf_counter()
         g.reusable_career_profile = _load_reusable_career_profile(owner_id)
+        _record_job_discovery_phase(
+            "jd_profile", profile_started_at, "Reusable profile load"
+        )
         return None
+
+    @application_builder_bp.after_request
+    def add_job_discovery_server_timing(response: Response) -> Response:
+        """Expose phase timings after workflow persistence has completed."""
+
+        return _finalize_job_discovery_timing(response)
 
     @application_builder_bp.after_request
     def persist_workflow_state(response: Response) -> Response:
         """Persist only changed state using optimistic version checking."""
 
-        workflow_key = str(getattr(g, "workflow_key", "") or "")
-        workflow_state = getattr(g, "workflow_state", None)
-        if (
-            workflow_key
-            and workflow_state is not None
-            and not bool(getattr(g, "workflow_state_deleted", False))
-        ):
-            _persist_workflow_documents(
-                str(getattr(g, "application_owner_id", "") or ""),
-                workflow_key,
-                workflow_state,
-            )
-            current_fingerprint = workflow_state_fingerprint(workflow_state)
-            initial_fingerprint = str(
-                getattr(g, "workflow_initial_fingerprint", "") or ""
-            )
-            if current_fingerprint == initial_fingerprint:
-                return response
-            try:
-                saved = store.save(
+        persist_started_at = perf_counter()
+        try:
+            workflow_key = str(getattr(g, "workflow_key", "") or "")
+            workflow_state = getattr(g, "workflow_state", None)
+            if (
+                workflow_key
+                and workflow_state is not None
+                and not bool(getattr(g, "workflow_state_deleted", False))
+            ):
+                _persist_workflow_documents(
+                    str(getattr(g, "application_owner_id", "") or ""),
                     workflow_key,
                     workflow_state,
-                    expected_version=int(
-                        getattr(g, "workflow_initial_version", 0) or 0
-                    ),
-                    updated_by_request=str(
-                        getattr(g, "workflow_request_id", "") or ""
-                    ),
                 )
-            except WorkflowConflictError as exc:
-                current_app.logger.warning(
-                    "Career Bridge workflow conflict for %s: expected=%s actual=%s "
-                    "request=%s last_updated_by=%s",
-                    hashlib.sha256(workflow_key.encode("utf-8")).hexdigest()[:12],
-                    exc.expected_version,
-                    exc.actual_version,
-                    str(getattr(g, "workflow_request_id", "") or ""),
-                    exc.actual_updated_by_request,
+                current_fingerprint = workflow_state_fingerprint(workflow_state)
+                initial_fingerprint = str(
+                    getattr(g, "workflow_initial_fingerprint", "") or ""
                 )
-                return workflow_conflict_response(exc)
-            g.workflow_initial_version = saved.version
-            g.workflow_initial_fingerprint = saved.fingerprint
-            g.workflow_initial_updated_at = saved.updated_at
-            g.workflow_initial_updated_by_request = saved.updated_by_request
-        return response
+                if current_fingerprint == initial_fingerprint:
+                    return response
+                try:
+                    saved = store.save(
+                        workflow_key,
+                        workflow_state,
+                        expected_version=int(
+                            getattr(g, "workflow_initial_version", 0) or 0
+                        ),
+                        updated_by_request=str(
+                            getattr(g, "workflow_request_id", "") or ""
+                        ),
+                    )
+                except WorkflowConflictError as exc:
+                    current_app.logger.warning(
+                        "Career Bridge workflow conflict for %s: expected=%s actual=%s "
+                        "request=%s last_updated_by=%s",
+                        hashlib.sha256(workflow_key.encode("utf-8")).hexdigest()[:12],
+                        exc.expected_version,
+                        exc.actual_version,
+                        str(getattr(g, "workflow_request_id", "") or ""),
+                        exc.actual_updated_by_request,
+                    )
+                    return workflow_conflict_response(exc)
+                g.workflow_initial_version = saved.version
+                g.workflow_initial_fingerprint = saved.fingerprint
+                g.workflow_initial_updated_at = saved.updated_at
+                g.workflow_initial_updated_by_request = saved.updated_by_request
+            return response
+        finally:
+            _record_job_discovery_phase(
+                "jd_persist", persist_started_at, "Workflow persistence"
+            )
 
     @application_builder_bp.context_processor
     def inject_common_template_values() -> dict[str, Any]:
@@ -2555,9 +3105,12 @@ def _register_application_builder_routes() -> None:
             ),
         }
 
-    def state() -> WorkflowState:
+    def state(*, hydrate_documents: bool = True) -> WorkflowState:
         workflow_state = g.workflow_state
-        _hydrate_workflow_documents(workflow_state)
+        if hydrate_documents and not bool(
+            getattr(g, "skip_workflow_document_hydration", False)
+        ):
+            _hydrate_workflow_documents(workflow_state)
         return workflow_state
 
     def update_job_fields() -> None:
@@ -2598,6 +3151,24 @@ def _register_application_builder_routes() -> None:
                 candidate_url,
                 site_identifier="" if "://" in value else value,
             ).site
+        if source_type is JobSourceType.SUCCESSFACTORS:
+            return value.strip().strip("/")
+        if source_type in {
+            JobSourceType.ORACLE_CLOUD_HCM,
+            JobSourceType.ICIMS,
+            JobSourceType.SMARTRECRUITERS,
+            JobSourceType.AVATURE,
+            JobSourceType.EIGHTFOLD,
+            JobSourceType.TALEO,
+            JobSourceType.DAYFORCE,
+            JobSourceType.TALEMETRY_TTC,
+            JobSourceType.JOBVITE,
+            JobSourceType.UKG_PRO,
+            JobSourceType.PEOPLEADMIN,
+            JobSourceType.RADANCY_TALENTBREW,
+            JobSourceType.AMAZON_JOBS,
+        }:
+            return ""
         if candidate_url and "://" in candidate_url:
             parsed = urlsplit(candidate_url)
             path_parts = [part for part in parsed.path.split("/") if part]
@@ -2617,11 +3188,132 @@ def _register_application_builder_routes() -> None:
             return f"https://jobs.ashbyhq.com/{value}"
         return ""
 
-    def _interactive_discovery_source(source: CompanySource) -> CompanySource:
-        """Apply browser-safe limits without changing the saved source settings."""
+    def _normalized_company_source(
+        *,
+        source_id: str,
+        owner_id: str,
+        company_name: str,
+        source_type: JobSourceType,
+        source_identifier: str,
+        careers_url: str,
+        enabled: bool,
+        existing: CompanySource | None = None,
+    ) -> CompanySource:
+        company_name = " ".join(str(company_name or "").split())
+        careers_url = str(careers_url or "").strip()
+        source_identifier = _source_identifier_value(
+            source_type, source_identifier, careers_url
+        )
+        if source_type is JobSourceType.GENERIC_JSONLD:
+            source_identifier = ""
+        elif source_type is JobSourceType.SUCCESSFACTORS:
+            source_identifier = ""
+            careers_url = successfactors_search_url(careers_url)
+        elif source_type is JobSourceType.ORACLE_CLOUD_HCM:
+            source_identifier = ""
+            careers_url = parse_oracle_cloud_hcm_careers_url(
+                careers_url
+            ).listing_url
+        elif source_type is JobSourceType.ICIMS:
+            source_identifier = ""
+            careers_url = parse_icims_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.SMARTRECRUITERS:
+            source_identifier = ""
+            careers_url = parse_smartrecruiters_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.AVATURE:
+            source_identifier = ""
+            careers_url = parse_avature_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.EIGHTFOLD:
+            source_identifier = ""
+            careers_url = parse_eightfold_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.TALEO:
+            source_identifier = ""
+            careers_url = parse_taleo_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.DAYFORCE:
+            source_identifier = ""
+            careers_url = parse_dayforce_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.TALEMETRY_TTC:
+            source_identifier = ""
+            careers_url = parse_talemetry_ttc_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.JOBVITE:
+            source_identifier = ""
+            careers_url = parse_jobvite_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.UKG_PRO:
+            source_identifier = ""
+            careers_url = parse_ukg_pro_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.PEOPLEADMIN:
+            source_identifier = ""
+            careers_url = parse_peopleadmin_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.RADANCY_TALENTBREW:
+            source_identifier = ""
+            careers_url = parse_radancy_talentbrew_careers_url(
+                careers_url
+            ).listing_url
+        elif source_type is JobSourceType.AMAZON_JOBS:
+            source_identifier = ""
+            careers_url = parse_amazon_jobs_careers_url(careers_url).listing_url
+        elif source_type is JobSourceType.BRANDED_REQUISITION:
+            source_identifier = ""
+            careers_url = parse_branded_requisition_careers_url(
+                careers_url
+            ).listing_url
+        elif source_type is JobSourceType.WORKDAY:
+            target = parse_workday_careers_url(
+                careers_url,
+                site_identifier=source_identifier,
+            )
+            source_identifier = target.site
+            careers_url = target.careers_url
+        else:
+            careers_url = careers_url or _default_source_url(
+                source_type, source_identifier
+            )
+        return CompanySource(
+            id=source_id,
+            owner_id=owner_id,
+            company_name=company_name,
+            careers_url=careers_url,
+            source_type=source_type,
+            source_identifier=source_identifier,
+            enabled=enabled,
+            last_checked_at=existing.last_checked_at if existing else "",
+            filters=(
+                dict(existing.filters)
+                if existing
+                else {
+                    "include_compensation": True,
+                    "deactivate_after_missed_scans": 3,
+                }
+            ),
+            revision=existing.revision if existing else 0,
+        )
 
-        if source.source_type is not JobSourceType.WORKDAY:
-            return source
+    def _company_source_identity(source: CompanySource) -> tuple[str, str]:
+        if source.source_type in {
+            JobSourceType.GREENHOUSE,
+            JobSourceType.LEVER,
+            JobSourceType.ASHBY,
+        }:
+            locator = source.source_identifier.casefold().strip().strip("/")
+        else:
+            parsed = urlsplit(source.careers_url)
+            normalized_path = "/".join(
+                part for part in parsed.path.casefold().split("/") if part
+            )
+            normalized_query = parsed.query.casefold()
+            locator = (
+                f"{(parsed.hostname or '').casefold()}|{normalized_path}|{normalized_query}"
+            )
+        return source.source_type.value, locator
+
+    def _interactive_discovery_source(source: CompanySource) -> CompanySource:
+        """Apply browser-safe limits without changing the saved source settings.
+
+        Interactive refreshes run one company per HTTP request. These limits keep
+        an individual source below the gateway timeout while the external runner
+        remains free to perform a complete scheduled scan.
+        """
+
         filters = dict(source.filters)
 
         def capped_int(name: str, default: int, maximum: int) -> int:
@@ -2638,21 +3330,140 @@ def _register_application_builder_routes() -> None:
                 value = default
             return max(0.0, min(value, maximum))
 
-        filters.update(
-            {
-                "max_jobs": capped_int("max_jobs", 80, 80),
-                "max_pages": max(1, capped_int("max_pages", 4, 4)),
-                "detail_fetch_limit": capped_int("detail_fetch_limit", 10, 10),
-                "fetch_budget_seconds": capped_float(
-                    "fetch_budget_seconds", 18.0, 18.0
-                ),
-                "timeout_seconds": max(1.0, capped_float("timeout_seconds", 5.0, 5.0)),
-                "min_request_interval_seconds": capped_float(
-                    "min_request_interval_seconds", 0.2, 0.2
-                ),
-            }
-        )
-        return replace(source, filters=filters)
+        if source.source_type is JobSourceType.WORKDAY:
+            filters.update(
+                {
+                    "max_jobs": capped_int("max_jobs", 80, 80),
+                    "max_pages": max(1, capped_int("max_pages", 4, 4)),
+                    "detail_fetch_limit": capped_int("detail_fetch_limit", 10, 10),
+                    "fetch_budget_seconds": capped_float(
+                        "fetch_budget_seconds", 18.0, 18.0
+                    ),
+                    "timeout_seconds": max(
+                        1.0, capped_float("timeout_seconds", 5.0, 5.0)
+                    ),
+                    "min_request_interval_seconds": capped_float(
+                        "min_request_interval_seconds", 0.2, 0.2
+                    ),
+                }
+            )
+            return replace(source, filters=filters)
+
+        if source.source_type is JobSourceType.SUCCESSFACTORS:
+            filters.update(
+                {
+                    "max_jobs": capped_int("max_jobs", 80, 80),
+                    "max_pages": max(1, capped_int("max_pages", 4, 4)),
+                    "detail_fetch_limit": capped_int("detail_fetch_limit", 10, 10),
+                    "fetch_budget_seconds": capped_float(
+                        "fetch_budget_seconds", 18.0, 18.0
+                    ),
+                    "timeout_seconds": max(
+                        1.0, capped_float("timeout_seconds", 5.0, 5.0)
+                    ),
+                    "min_request_interval_seconds": capped_float(
+                        "min_request_interval_seconds", 0.2, 0.2
+                    ),
+                }
+            )
+            return replace(source, filters=filters)
+
+        if source.source_type is JobSourceType.ORACLE_CLOUD_HCM:
+            filters.update(
+                {
+                    "max_jobs": capped_int("max_jobs", 80, 80),
+                    "max_pages": max(1, capped_int("max_pages", 4, 4)),
+                    "detail_fetch_limit": capped_int(
+                        "detail_fetch_limit", 10, 10
+                    ),
+                    "fetch_budget_seconds": capped_float(
+                        "fetch_budget_seconds", 18.0, 18.0
+                    ),
+                    "timeout_seconds": max(
+                        1.0, capped_float("timeout_seconds", 5.0, 5.0)
+                    ),
+                    "min_request_interval_seconds": capped_float(
+                        "min_request_interval_seconds", 0.2, 0.2
+                    ),
+                }
+            )
+            return replace(source, filters=filters)
+
+        if source.source_type in {
+            JobSourceType.ICIMS,
+            JobSourceType.SMARTRECRUITERS,
+            JobSourceType.AVATURE,
+            JobSourceType.EIGHTFOLD,
+            JobSourceType.TALEO,
+            JobSourceType.DAYFORCE,
+            JobSourceType.TALEMETRY_TTC,
+            JobSourceType.JOBVITE,
+            JobSourceType.UKG_PRO,
+            JobSourceType.PEOPLEADMIN,
+            JobSourceType.RADANCY_TALENTBREW,
+            JobSourceType.AMAZON_JOBS,
+        }:
+            filters.update(
+                {
+                    "max_jobs": capped_int("max_jobs", 80, 80),
+                    "max_pages": max(1, capped_int("max_pages", 4, 4)),
+                    "detail_fetch_limit": capped_int(
+                        "detail_fetch_limit", 10, 10
+                    ),
+                    "fetch_budget_seconds": capped_float(
+                        "fetch_budget_seconds", 18.0, 18.0
+                    ),
+                    "timeout_seconds": max(
+                        1.0, capped_float("timeout_seconds", 5.0, 5.0)
+                    ),
+                    "min_request_interval_seconds": capped_float(
+                        "min_request_interval_seconds", 0.2, 0.2
+                    ),
+                }
+            )
+            return replace(source, filters=filters)
+
+        if source.source_type is JobSourceType.GENERIC_JSONLD:
+            filters.update(
+                {
+                    "max_pages": max(1, capped_int("max_pages", 3, 3)),
+                    "timeout_seconds": max(
+                        1.0, capped_float("timeout_seconds", 4.0, 4.0)
+                    ),
+                    "min_request_interval_seconds": capped_float(
+                        "min_request_interval_seconds", 0.15, 0.15
+                    ),
+                }
+            )
+            return replace(source, filters=filters)
+
+        if source.source_type is JobSourceType.BRANDED_REQUISITION:
+            filters.update(
+                {
+                    "max_jobs": capped_int("max_jobs", 80, 80),
+                    "max_pages": max(1, capped_int("max_pages", 2, 2)),
+                    "detail_fetch_limit": capped_int(
+                        "detail_fetch_limit", 5, 5
+                    ),
+                    "fetch_budget_seconds": capped_float(
+                        "fetch_budget_seconds", 22.0, 22.0
+                    ),
+                    "timeout_seconds": max(
+                        1.0, capped_float("timeout_seconds", 15.0, 15.0)
+                    ),
+                    "min_request_interval_seconds": capped_float(
+                        "min_request_interval_seconds", 0.5, 0.5
+                    ),
+                    "retry_attempts": 1,
+                    "retry_backoff_seconds": 0.0,
+                }
+            )
+            return replace(source, filters=filters)
+
+        # Greenhouse, Lever, and Ashby each expose the complete board in one
+        # bounded public API request, so they can retain their saved settings and
+        # still be marked as complete shared-catalog scans.
+        return source
 
     def _discovery_search_preferences(
         owner_id: str, current: WorkflowState
@@ -2726,6 +3537,7 @@ def _register_application_builder_routes() -> None:
             minimum_salary_currency=preferences.minimum_salary_currency,
             minimum_salary_interval=preferences.minimum_salary_interval,
             excluded_terms=preferences.excluded_terms,
+            excluded_title_terms=preferences.excluded_title_terms,
             require_title_match=preferences.require_title_match,
             require_location_match=preferences.require_location_match,
             require_workplace_match=preferences.require_workplace_match,
@@ -2749,6 +3561,151 @@ def _register_application_builder_routes() -> None:
         except ValueError:
             return "Last refresh time unavailable"
         return "Last refreshed " + checked.strftime("%b %d, %Y at %H:%M UTC")
+
+    def _discovery_scan_time_label(raw: str, *, prefix: str) -> str:
+        value = str(raw or "").strip()
+        if not value:
+            return ""
+        try:
+            checked = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if checked.tzinfo is None or checked.utcoffset() is None:
+                return f"{prefix} time unavailable"
+            checked = checked.astimezone(timezone.utc)
+        except ValueError:
+            return f"{prefix} time unavailable"
+        return f"{prefix} " + checked.strftime("%b %d, %Y at %H:%M UTC")
+
+    def _discovery_source_scan_status(
+        source: CompanySource, statuses_by_key: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Build the manager-facing result of the latest shared catalog scan.
+
+        Public catalog statuses are persisted independently of each user's
+        materialized jobs, so a failed refresh remains visible even when older
+        cached postings are still available.
+        """
+
+        try:
+            status = statuses_by_key.get(public_source_key(source))
+        except (TypeError, ValueError) as exc:
+            return {
+                "state": "issue",
+                "label": "Configuration issue",
+                "attempt_label": "The source configuration could not be evaluated.",
+                "success_label": "",
+                "message": str(exc),
+                "job_count_label": "",
+            }
+
+        if status is None:
+            if source.last_checked_at:
+                return {
+                    "state": "legacy",
+                    "label": "Previously refreshed",
+                    "attempt_label": _discovery_scan_time_label(
+                        source.last_checked_at, prefix="Last refreshed"
+                    ),
+                    "success_label": "",
+                    "message": (
+                        "Detailed scan results were not recorded for this earlier refresh. "
+                        "Run Refresh jobs for everyone to create a current result."
+                    ),
+                    "job_count_label": "",
+                }
+            return {
+                "state": "not_scanned",
+                "label": "Not scanned",
+                "attempt_label": "No scan has been attempted yet.",
+                "success_label": "",
+                "message": "",
+                "job_count_label": "",
+            }
+
+        attempt_label = _discovery_scan_time_label(
+            status.last_attempt_at, prefix="Last scan"
+        ) or "No scan has been attempted yet."
+        success_label = ""
+        if status.last_error and status.last_success_at:
+            success_label = _discovery_scan_time_label(
+                status.last_success_at, prefix="Last successful scan"
+            )
+
+        if status.last_error:
+            normalized_error = str(status.last_error).casefold()
+            if "robots.txt disallows" in normalized_error:
+                indexed_timeout = (
+                    "indexed fallback was unavailable" in normalized_error
+                    and any(
+                        token in normalized_error
+                        for token in (
+                            "timeout",
+                            "timed out",
+                            "502",
+                            "503",
+                            "504",
+                            "temporarily unavailable",
+                            "connection",
+                        )
+                    )
+                )
+                if indexed_timeout:
+                    state = "issue"
+                    label = "Retry recommended"
+                    message = (
+                        "The employer blocks direct listing scans, and the compliant "
+                        "search-index fallback temporarily timed out. This is not a "
+                        "reason to disable or remove the source. Retry the source scan; "
+                        "previously collected jobs remain available. An authorized feed "
+                        "or crawler allowlisting is still the best option for a complete "
+                        "scan. "
+                        f"Technical detail: {status.last_error}"
+                    )
+                else:
+                    state = "permission_required"
+                    label = "Permission required"
+                    message = (
+                        "The employer's robots policy blocks automated discovery for this "
+                        "public search path. Career Bridge will not bypass that policy. "
+                        "Previously collected jobs remain available while an authorized "
+                        "feed, sitemap, allow-rule, or crawler allowlisting is requested. "
+                        f"Technical detail: {status.last_error}"
+                    )
+            else:
+                state = "issue"
+                label = "Issue"
+                message = status.last_error
+        elif status.last_attempt_at and status.complete_scan:
+            state = "success"
+            label = "Successful"
+            message = "The source was scanned successfully."
+        elif status.last_attempt_at:
+            state = "limited"
+            label = "Successful · limited"
+            message = (
+                "The interactive scan completed within browser-safe limits. "
+                "The external scheduled runner can perform a complete scan."
+            )
+        else:
+            state = "not_scanned"
+            label = "Not scanned"
+            message = ""
+
+        job_count_label = ""
+        if status.last_success_at:
+            noun = "posting" if status.job_count == 1 else "postings"
+            job_count_label = (
+                f"{status.job_count} active public {noun} stored from the latest "
+                "successful scan."
+            )
+
+        return {
+            "state": state,
+            "label": label,
+            "attempt_label": attempt_label,
+            "success_label": success_label,
+            "message": message,
+            "job_count_label": job_count_label,
+        }
 
     def _discovery_posted_label(job: Any) -> str:
         raw = str(job.posted_at or job.first_seen_at or "").strip()
@@ -2785,7 +3742,7 @@ def _register_application_builder_routes() -> None:
             return "Manual refresh only"
         return value.astimezone(timezone.utc).strftime("%b %d, %Y at %H:%M UTC")
 
-    _DISCOVERY_RESULT_INDEX_VERSION = "3"
+    _DISCOVERY_RESULT_INDEX_VERSION = "6"
     _DISCOVERY_RESULT_TABS = (
         "recommended",
         "possible",
@@ -2795,7 +3752,12 @@ def _register_application_builder_routes() -> None:
         "ignored",
     )
     _DISCOVERY_PAGE_SIZES = (10, 20, 50)
+    _DISCOVERY_DEFAULT_PAGE_SIZE = 20
     _DISCOVERY_MINIMUM_FIT_OPTIONS = (0, 50, 60, 70, 80)
+    _DISCOVERY_ASSESSMENT_BATCH_DEFAULT = 1
+    _DISCOVERY_ASSESSMENT_BATCH_MAX = 1
+    _DISCOVERY_ASSESSMENT_RUN_DEFAULT = 25
+    _DISCOVERY_ASSESSMENT_RUN_MAX = 100
 
     def _discovery_result_tab(raw: Any) -> str:
         value = str(raw or "recommended").strip().casefold()
@@ -2809,8 +3771,41 @@ def _register_application_builder_routes() -> None:
         return value if value > 0 else default
 
     def _discovery_page_size(raw: Any) -> int:
-        value = _discovery_positive_int(raw, default=10)
-        return value if value in _DISCOVERY_PAGE_SIZES else 10
+        value = _discovery_positive_int(
+            raw, default=_DISCOVERY_DEFAULT_PAGE_SIZE
+        )
+        return (
+            value
+            if value in _DISCOVERY_PAGE_SIZES
+            else _DISCOVERY_DEFAULT_PAGE_SIZE
+        )
+
+    def _discovery_assessment_batch_size(raw: Any) -> int:
+        configured = current_app.config.get(
+            "CAREER_BRIDGE_DISCOVERY_ASSESSMENT_BATCH_SIZE",
+            _DISCOVERY_ASSESSMENT_BATCH_DEFAULT,
+        )
+        try:
+            default = int(configured)
+        except (TypeError, ValueError):
+            default = _DISCOVERY_ASSESSMENT_BATCH_DEFAULT
+        default = min(_DISCOVERY_ASSESSMENT_BATCH_MAX, max(1, default))
+        try:
+            requested = int(raw)
+        except (TypeError, ValueError):
+            return default
+        return min(_DISCOVERY_ASSESSMENT_BATCH_MAX, max(1, requested))
+
+    def _discovery_assessment_run_limit() -> int:
+        configured = current_app.config.get(
+            "CAREER_BRIDGE_DISCOVERY_ASSESSMENT_RUN_LIMIT",
+            _DISCOVERY_ASSESSMENT_RUN_DEFAULT,
+        )
+        try:
+            value = int(configured)
+        except (TypeError, ValueError):
+            value = _DISCOVERY_ASSESSMENT_RUN_DEFAULT
+        return min(_DISCOVERY_ASSESSMENT_RUN_MAX, max(1, value))
 
     def _discovery_result_filters(values: Any | None = None) -> DiscoveryResultFilters:
         source = values if values is not None else request.values
@@ -2829,6 +3824,10 @@ def _register_application_builder_routes() -> None:
                 source.get("recommendation", DEFAULT_RECOMMENDATION_FILTER)
             ),
             sort_mode=str(source.get("sort", DEFAULT_SORT_MODE)),
+            # Public Job Discovery now always shows the worldwide catalog.
+            # Country and U.S.-state result filters are intentionally ignored.
+            country_code="",
+            us_state_code="",
         )
 
     def _discovery_results_url(
@@ -2968,11 +3967,20 @@ def _register_application_builder_routes() -> None:
             if record.application_id
             else None
         )
+        disposition = record.disposition
+        if (
+            disposition is DiscoveryJobDisposition.APPLICATION_CREATED
+            and application is None
+        ):
+            # A cached result index can outlive an application that was
+            # deleted before the discovery state was repaired. Keep the page
+            # usable and let the user create a replacement workspace.
+            disposition = DiscoveryJobDisposition.SAVED
         return {
             "job": record.job,
             "fit": record.fit,
             "state": None,
-            "disposition": record.disposition,
+            "disposition": disposition,
             "application": application,
             "stage_one": None,
             "search_priority": record.search_priority,
@@ -3025,16 +4033,18 @@ def _register_application_builder_routes() -> None:
         *,
         result_tab: str = "recommended",
         page: int = 1,
-        per_page: int = 10,
+        per_page: int = _DISCOVERY_DEFAULT_PAGE_SIZE,
         maximum_posting_age_days: int | None = DEFAULT_MAX_POSTING_AGE_DAYS,
         filters: DiscoveryResultFilters | None = None,
         allowed_source_ids: tuple[str, ...] = (),
-    ) -> tuple[list[dict[str, Any]], dict[str, int], dict[str, Any]]:
-        """Return one page from a compact materialized discovery result index.
+        rebuild_if_needed: bool = False,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+        """Return one page from the compact materialized discovery result index.
 
-        A stale or missing index is rebuilt once from jobs, states, and fit
-        snapshots. The index key includes the result-quality filters and sort
-        mode so DynamoDB can return the exact pre-ranked page directly.
+        Normal page requests never rebuild this read model. They return the
+        current index, or the last materialized index while a separate bounded
+        request refreshes it. Mutation and explicit prebuild requests opt in to
+        the expensive full rebuild with ``rebuild_if_needed=True``.
         """
 
         selected_tab = _discovery_result_tab(result_tab)
@@ -3050,10 +4060,11 @@ def _register_application_builder_routes() -> None:
             evidence_fingerprint,
             preference_fingerprint,
         )
-        if (
-            cached_summary is not None
-            and cached_summary.revision_token == revision_token
+        if cached_summary is not None and (
+            cached_summary.revision_token == revision_token
+            or not rebuild_if_needed
         ):
+            index_stale = cached_summary.revision_token != revision_token
             selected_total = int(getattr(cached_summary, f"{selected_tab}_count"))
             pagination = _discovery_pagination(
                 selected_total, page=page, per_page=selected_size
@@ -3085,10 +4096,31 @@ def _register_application_builder_routes() -> None:
                 ),
                 "pinned_count": cached_summary.saved_count,
                 "top_count": len(page_cards),
+                "index_stale": index_stale,
             }
             return page_cards, summary, pagination
 
+        if not rebuild_if_needed:
+            pagination = _discovery_pagination(0, page=page, per_page=selected_size)
+            return [], {
+                "recommended_count": 0,
+                "possible_count": 0,
+                "pending_count": 0,
+                "low_match_count": 0,
+                "saved_count": 0,
+                "ignored_count": 0,
+                "filtered_count": 0,
+                "quality_filtered_count": 0,
+                "age_filtered_count": 0,
+                "shown_count": 0,
+                "ranked_count": 0,
+                "pinned_count": 0,
+                "top_count": 0,
+                "index_stale": True,
+            }, pagination
+
         applications = application_store.list_for_owner(owner_id)
+        applications_by_id = {item.id: item for item in applications}
         applications_by_source_job = {
             item.source_job_id: item
             for item in applications
@@ -3119,14 +4151,63 @@ def _register_application_builder_routes() -> None:
         age_filtered_count = 0
 
         for job in jobs:
+            if not job_matches_location_filters(
+                job,
+                country_code=selected_filters.country_code,
+                us_state_code=selected_filters.us_state_code,
+            ):
+                continue
             fit = fits_by_key.get(
                 (job.id, profile.fingerprint, job.description_fingerprint)
             ) or fits_by_key.get((job.id, profile.fingerprint, ""))
             job_state = states.get((job.source_id, job.id))
             application = applications_by_source_job.get(job.id)
+            if (
+                application is None
+                and job_state is not None
+                and job_state.disposition
+                is DiscoveryJobDisposition.APPLICATION_CREATED
+            ):
+                # DynamoDB Query is eventually consistent by default. The
+                # application-created state may therefore be visible before
+                # list_for_owner() includes the new application. Resolve the
+                # recorded application ID directly (a strongly consistent
+                # read in the production application store) before deciding
+                # that the link is stale.
+                application = applications_by_id.get(job_state.application_id)
+                if application is None:
+                    application = application_store.get(
+                        owner_id,
+                        job_state.application_id,
+                        include_resume_bytes=False,
+                    )
+                if application is not None:
+                    applications_by_id[application.id] = application
+                    if application.source_job_id:
+                        applications_by_source_job[application.source_job_id] = (
+                            application
+                        )
+
+            stale_application_link = (
+                application is None
+                and job_state is not None
+                and job_state.disposition
+                is DiscoveryJobDisposition.APPLICATION_CREATED
+            )
+            if stale_application_link:
+                current_app.logger.warning(
+                    "Ignoring stale Job Discovery application link owner=%s "
+                    "source=%s job=%s application=%s",
+                    owner_id,
+                    job.source_id,
+                    job.id,
+                    job_state.application_id,
+                )
             disposition = (
                 DiscoveryJobDisposition.APPLICATION_CREATED
                 if application is not None
+                else DiscoveryJobDisposition.SAVED
+                if stale_application_link
                 else job_state.disposition
                 if job_state is not None
                 else None
@@ -3318,11 +4399,88 @@ def _register_application_builder_routes() -> None:
             ),
             "pinned_count": index_summary.saved_count,
             "top_count": len(page_cards),
+            "index_stale": False,
         }
         return page_cards, summary, pagination
 
+    def _prebuild_discovery_result_index(
+        owner_id: str,
+        *,
+        current: WorkflowState | None = None,
+        filters: DiscoveryResultFilters | None = None,
+    ) -> dict[str, Any]:
+        """Build the common owner-scoped result read model outside page GETs."""
+
+        workflow_state = current or state()
+        selected_filters = filters or DiscoveryResultFilters()
+        preferences = _discovery_search_preferences(owner_id, workflow_state)
+        enabled_sources = discovery_store.list_company_sources(
+            SHARED_CATALOG_SOURCE_OWNER_ID, enabled_only=True
+        )
+        profile = _discovery_candidate_profile(workflow_state, owner_id=owner_id)
+        build_kwargs = {
+            "result_tab": "recommended",
+            "page": 1,
+            "per_page": _DISCOVERY_DEFAULT_PAGE_SIZE,
+            "maximum_posting_age_days": preferences.maximum_posting_age_days,
+            "filters": selected_filters,
+            "allowed_source_ids": tuple(source.id for source in enabled_sources),
+        }
+        _discovery_result_cards(
+            owner_id,
+            profile,
+            **build_kwargs,
+            rebuild_if_needed=True,
+        )
+        # A concurrent discovery mutation can advance the revision while the
+        # index is being assembled. Verify that the materialized summary was
+        # committed and retry once against the new revision when necessary.
+        _, summary, _ = _discovery_result_cards(
+            owner_id,
+            profile,
+            **build_kwargs,
+        )
+        if summary["index_stale"]:
+            _discovery_result_cards(
+                owner_id,
+                profile,
+                **build_kwargs,
+                rebuild_if_needed=True,
+            )
+            _, summary, _ = _discovery_result_cards(
+                owner_id,
+                profile,
+                **build_kwargs,
+            )
+        return summary
+
+    def _try_prebuild_discovery_result_index(
+        owner_id: str,
+        *,
+        current: WorkflowState | None = None,
+        filters: DiscoveryResultFilters | None = None,
+    ) -> bool:
+        """Best-effort prebuild for mutation paths that must remain successful."""
+
+        try:
+            summary = _prebuild_discovery_result_index(
+                owner_id,
+                current=current,
+                filters=filters,
+            )
+        except Exception:
+            current_app.logger.exception(
+                "Job Discovery result-index prebuild failed owner=%s", owner_id
+            )
+            return False
+        return not bool(summary.get("index_stale"))
+
     def _job_action_service() -> DiscoveredJobApplicationService:
-        return DiscoveredJobApplicationService(discovery_store, application_store)
+        return DiscoveredJobApplicationService(
+            discovery_store,
+            application_store,
+            description_fetcher=posting_description_fetcher,
+        )
 
     @application_builder_bp.get("/job-discovery")
     def job_discovery_workspace():
@@ -3331,23 +4489,18 @@ def _register_application_builder_routes() -> None:
         discovery_view = (
             "settings" if request.args.get("view") == "settings" else "results"
         )
+        discovery_owner_scope = hashlib.sha256(
+            owner_id.encode("utf-8")
+        ).hexdigest()[:16]
+        g.job_discovery_timing_view = discovery_view
+        g.job_discovery_timing_owner_scope = discovery_owner_scope
+        g.job_discovery_timing_index_state = "not_applicable"
+
+        sources_started_at = perf_counter()
         can_manage_catalog = _current_user_can_manage_job_catalog()
         discovery_sources = discovery_store.list_company_sources(
             SHARED_CATALOG_SOURCE_OWNER_ID
         )
-        if discovery_view == "results" and discovery_sources:
-            try:
-                (
-                    JobDiscoveryService(store=discovery_store)
-                    .enable_shared_public_catalog()
-                    .hydrate_owner_from_shared_catalog(owner_id, discovery_sources)
-                )
-            except Exception as exc:
-                current_app.logger.warning(
-                    "Shared public job catalog hydration failed owner=%s error=%s",
-                    owner_id,
-                    exc,
-                )
         enabled_discovery_sources = tuple(
             source for source in discovery_sources if source.enabled
         )
@@ -3359,7 +4512,49 @@ def _register_application_builder_routes() -> None:
             ),
             default="",
         )
+        discovery_catalog_version = hashlib.sha256(
+            json.dumps(
+                [
+                    {
+                        "id": source.id,
+                        "enabled": source.enabled,
+                        "revision": source.revision,
+                        "last_checked_at": source.last_checked_at,
+                    }
+                    for source in discovery_sources
+                ],
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()[:24]
+        _record_job_discovery_phase(
+            "jd_sources", sources_started_at, "Company source load"
+        )
+
+        preferences_started_at = perf_counter()
         discovery_preferences = _discovery_search_preferences(owner_id, current)
+        _record_job_discovery_phase(
+            "jd_preferences", preferences_started_at, "Search preferences"
+        )
+
+        discovery_source_scan_statuses: dict[str, dict[str, Any]] = {}
+        if can_manage_catalog and discovery_view == "settings":
+            catalog_status_started_at = perf_counter()
+            catalog_statuses_by_key = {
+                status.source_key: status
+                for status in discovery_store.list_public_catalog_statuses()
+            }
+            discovery_source_scan_statuses = {
+                source.id: _discovery_source_scan_status(
+                    source, catalog_statuses_by_key
+                )
+                for source in discovery_sources
+            }
+            _record_job_discovery_phase(
+                "jd_catalog_status",
+                catalog_status_started_at,
+                "Catalog scan status",
+            )
 
         template_context: dict[str, Any] = {
             "active_tab": "discovery",
@@ -3367,19 +4562,44 @@ def _register_application_builder_routes() -> None:
             "can_manage_job_catalog": can_manage_catalog,
             "discovery_source_count": len(discovery_sources),
             "enabled_discovery_source_count": len(enabled_discovery_sources),
+            "discovery_refresh_sources": tuple(
+                {"id": source.id, "company_name": source.company_name}
+                for source in enabled_discovery_sources
+            ),
+            "discovery_assessment_run_limit": _discovery_assessment_run_limit(),
             "discovery_checked_label": _discovery_checked_label(
                 latest_discovery_check
             ),
+            "discovery_catalog_version": discovery_catalog_version,
+            "discovery_owner_scope": discovery_owner_scope,
             "discovery_sources": discovery_sources,
-            "discovery_source_checked_labels": {
-                source.id: _discovery_checked_label(source.last_checked_at)
-                for source in discovery_sources
-            },
+            "discovery_source_scan_statuses": discovery_source_scan_statuses,
             "discovery_source_types": (
                 (JobSourceType.GREENHOUSE.value, "Greenhouse"),
                 (JobSourceType.LEVER.value, "Lever"),
                 (JobSourceType.ASHBY.value, "Ashby"),
                 (JobSourceType.WORKDAY.value, "Workday"),
+                (JobSourceType.SUCCESSFACTORS.value, "SAP SuccessFactors"),
+                (JobSourceType.ORACLE_CLOUD_HCM.value, "Oracle Cloud HCM"),
+                (JobSourceType.ICIMS.value, "iCIMS"),
+                (JobSourceType.SMARTRECRUITERS.value, "SmartRecruiters"),
+                (JobSourceType.AVATURE.value, "Avature"),
+                (JobSourceType.EIGHTFOLD.value, "Eightfold"),
+                (JobSourceType.TALEO.value, "Taleo"),
+                (JobSourceType.DAYFORCE.value, "Dayforce"),
+                (JobSourceType.TALEMETRY_TTC.value, "Talemetry / TTC Portals"),
+                (JobSourceType.JOBVITE.value, "Jobvite"),
+                (JobSourceType.UKG_PRO.value, "UKG Pro / UltiPro"),
+                (JobSourceType.PEOPLEADMIN.value, "PeopleAdmin"),
+                (
+                    JobSourceType.RADANCY_TALENTBREW.value,
+                    "Radancy / TalentBrew",
+                ),
+                (JobSourceType.AMAZON_JOBS.value, "Amazon Jobs"),
+                (
+                    JobSourceType.BRANDED_REQUISITION.value,
+                    "Branded Requisition Portal",
+                ),
                 (
                     JobSourceType.GENERIC_JSONLD.value,
                     "Manual career-page URL (JSON-LD)",
@@ -3398,6 +4618,7 @@ def _register_application_builder_routes() -> None:
         }
 
         if discovery_view == "settings":
+            schedule_started_at = perf_counter()
             discovery_schedule = _discovery_scan_schedule(
                 SHARED_CATALOG_SOURCE_OWNER_ID
             )
@@ -3407,6 +4628,9 @@ def _register_application_builder_routes() -> None:
             except ValueError as exc:
                 next_run = None
                 schedule_error = str(exc)
+            _record_job_discovery_phase(
+                "jd_schedule", schedule_started_at, "Refresh schedule"
+            )
             template_context.update(
                 discovery_schedule=discovery_schedule,
                 discovery_schedule_next_label=_discovery_schedule_time_label(
@@ -3448,34 +4672,14 @@ def _register_application_builder_routes() -> None:
             page = _discovery_positive_int(request.args.get("page"), default=1)
             per_page = _discovery_page_size(request.args.get("per_page"))
             discovery_filters = _discovery_result_filters(request.args)
-            discovery_profile = _discovery_candidate_profile(
-                current,
-                owner_id=owner_id,
+            discovery_results_inline = request.args.get("render_results") == "1"
+            requested_pagination = _discovery_pagination(
+                0, page=page, per_page=per_page
             )
-            (
-                discovery_cards,
-                discovery_result_summary,
-                discovery_pagination,
-            ) = _discovery_result_cards(
-                owner_id,
-                discovery_profile,
-                result_tab=result_tab,
-                page=page,
-                per_page=per_page,
-                maximum_posting_age_days=(
-                    discovery_preferences.maximum_posting_age_days
-                ),
-                filters=discovery_filters,
-                allowed_source_ids=tuple(
-                    source.id for source in enabled_discovery_sources
-                ),
-            )
-            template_context.update(
-                discovery_cards=discovery_cards,
-                discovery_dispositions=DiscoveryJobDisposition,
-                discovery_result_summary=discovery_result_summary,
-                discovery_result_tab=result_tab,
-                discovery_result_tabs=(
+            result_context: dict[str, Any] = {
+                "discovery_results_inline": discovery_results_inline,
+                "discovery_result_tab": result_tab,
+                "discovery_result_tabs": (
                     ("recommended", "Recommended"),
                     ("possible", "Possible matches"),
                     ("pending", "Awaiting assessment"),
@@ -3483,36 +4687,266 @@ def _register_application_builder_routes() -> None:
                     ("saved", "Saved"),
                     ("ignored", "Ignored"),
                 ),
-                discovery_pagination=discovery_pagination,
-                discovery_page_sizes=_DISCOVERY_PAGE_SIZES,
-                discovery_filters=discovery_filters,
-                discovery_minimum_fit_options=_DISCOVERY_MINIMUM_FIT_OPTIONS,
-                discovery_confidence_options=(
+                "discovery_pagination": requested_pagination,
+                "discovery_page_sizes": _DISCOVERY_PAGE_SIZES,
+                "discovery_filters": discovery_filters,
+                "discovery_minimum_fit_options": _DISCOVERY_MINIMUM_FIT_OPTIONS,
+                "discovery_confidence_options": (
                     ("high,medium", "High and Medium"),
                     ("high", "High only"),
                     ("medium", "Medium only"),
                     ("low", "Low only"),
                     ("high,medium,low", "All confidence levels"),
                 ),
-                discovery_recommendation_options=(
+                "discovery_recommendation_options": (
                     ("all_viable", "Strong, Good, and Stretch"),
                     ("strong", "Strong match only"),
                     ("good", "Good match only"),
                     ("stretch", "Stretch opportunities only"),
                     ("all", "All recommendation tiers"),
                 ),
-                discovery_sort_options=(
+                "discovery_sort_options": (
                     ("recommended", "Recommended order"),
                     ("job_fit", "Job Fit"),
                     ("confidence", "Confidence"),
                     ("newest", "Newest posting"),
                 ),
-            )
+                "discovery_results_fallback_url": url_for(
+                    "application_builder.job_discovery_workspace",
+                    result_tab=result_tab,
+                    page=page,
+                    per_page=per_page,
+                    min_fit=discovery_filters.minimum_fit,
+                    confidence=discovery_filters.confidence_query,
+                    recommendation=discovery_filters.recommendation_filter,
+                    sort=discovery_filters.sort_mode,
+                    render_results=1,
+                ),
+            }
 
-        return render_template(
+            if discovery_results_inline:
+                # Progressive-enhancement fallback for browsers without JavaScript.
+                # Normal page requests render only the shell and skeleton; the
+                # compact result page is loaded by ``job_discovery_results_json``.
+                result_profile_started_at = perf_counter()
+                discovery_profile = _discovery_candidate_profile(
+                    current,
+                    owner_id=owner_id,
+                )
+                _record_job_discovery_phase(
+                    "jd_result_profile",
+                    result_profile_started_at,
+                    "Candidate profile",
+                )
+                result_index_started_at = perf_counter()
+                (
+                    discovery_cards,
+                    discovery_result_summary,
+                    discovery_pagination,
+                ) = _discovery_result_cards(
+                    owner_id,
+                    discovery_profile,
+                    result_tab=result_tab,
+                    page=page,
+                    per_page=per_page,
+                    maximum_posting_age_days=(
+                        discovery_preferences.maximum_posting_age_days
+                    ),
+                    filters=discovery_filters,
+                    allowed_source_ids=tuple(
+                        source.id for source in enabled_discovery_sources
+                    ),
+                )
+                _record_job_discovery_phase(
+                    "jd_result_index",
+                    result_index_started_at,
+                    "Result index read",
+                )
+                g.job_discovery_timing_index_state = (
+                    "stale"
+                    if discovery_result_summary.get("index_stale")
+                    else "current"
+                )
+                result_context.update(
+                    discovery_cards=discovery_cards,
+                    discovery_dispositions=DiscoveryJobDisposition,
+                    discovery_result_summary=discovery_result_summary,
+                    discovery_pagination=discovery_pagination,
+                )
+            else:
+                g.job_discovery_timing_index_state = "deferred_json"
+
+            template_context.update(result_context)
+
+        template_started_at = perf_counter()
+        rendered_page = render_template(
             "application_builder/job_discovery.html",
             **template_context,
         )
+        _record_job_discovery_phase(
+            "jd_template", template_started_at, "Template render"
+        )
+        return rendered_page
+
+    @application_builder_bp.get("/job-discovery/results.json")
+    def job_discovery_results_json():
+        """Return one compact, private result page after the HTML shell renders."""
+
+        request_started_at = perf_counter()
+        owner_id = g.application_owner_id
+        current = state(hydrate_documents=False)
+        result_tab = _discovery_result_tab(
+            "ignored"
+            if request.args.get("show_ignored") == "1"
+            else request.args.get("result_tab")
+        )
+        page = _discovery_positive_int(request.args.get("page"), default=1)
+        per_page = _discovery_page_size(request.args.get("per_page"))
+        discovery_filters = _discovery_result_filters(request.args)
+
+        source_started_at = perf_counter()
+        discovery_sources = discovery_store.list_company_sources(
+            SHARED_CATALOG_SOURCE_OWNER_ID
+        )
+        enabled_discovery_sources = tuple(
+            source for source in discovery_sources if source.enabled
+        )
+        source_ms = max(0.0, (perf_counter() - source_started_at) * 1000.0)
+
+        preferences_started_at = perf_counter()
+        discovery_preferences = _discovery_search_preferences(owner_id, current)
+        preferences_ms = max(
+            0.0, (perf_counter() - preferences_started_at) * 1000.0
+        )
+
+        profile_started_at = perf_counter()
+        discovery_profile = _discovery_candidate_profile(
+            current,
+            owner_id=owner_id,
+        )
+        profile_ms = max(0.0, (perf_counter() - profile_started_at) * 1000.0)
+
+        index_started_at = perf_counter()
+        (
+            discovery_cards,
+            discovery_result_summary,
+            discovery_pagination,
+        ) = _discovery_result_cards(
+            owner_id,
+            discovery_profile,
+            result_tab=result_tab,
+            page=page,
+            per_page=per_page,
+            maximum_posting_age_days=(
+                discovery_preferences.maximum_posting_age_days
+            ),
+            filters=discovery_filters,
+            allowed_source_ids=tuple(
+                source.id for source in enabled_discovery_sources
+            ),
+        )
+        index_ms = max(0.0, (perf_counter() - index_started_at) * 1000.0)
+
+        template_started_at = perf_counter()
+        results_html = render_template(
+            "application_builder/_discovery_results_content.html",
+            can_manage_job_catalog=_current_user_can_manage_job_catalog(),
+            discovery_source_count=len(discovery_sources),
+            discovery_cards=discovery_cards,
+            discovery_dispositions=DiscoveryJobDisposition,
+            discovery_result_summary=discovery_result_summary,
+            discovery_result_tab=result_tab,
+            discovery_result_tabs=(
+                ("recommended", "Recommended"),
+                ("possible", "Possible matches"),
+                ("pending", "Awaiting assessment"),
+                ("low_match", "Low matches"),
+                ("saved", "Saved"),
+                ("ignored", "Ignored"),
+            ),
+            discovery_pagination=discovery_pagination,
+            discovery_page_sizes=_DISCOVERY_PAGE_SIZES,
+            discovery_filters=discovery_filters,
+            discovery_minimum_fit_options=_DISCOVERY_MINIMUM_FIT_OPTIONS,
+            discovery_confidence_options=(
+                ("high,medium", "High and Medium"),
+                ("high", "High only"),
+                ("medium", "Medium only"),
+                ("low", "Low only"),
+                ("high,medium,low", "All confidence levels"),
+            ),
+            discovery_recommendation_options=(
+                ("all_viable", "Strong, Good, and Stretch"),
+                ("strong", "Strong match only"),
+                ("good", "Good match only"),
+                ("stretch", "Stretch opportunities only"),
+                ("all", "All recommendation tiers"),
+            ),
+            discovery_sort_options=(
+                ("recommended", "Recommended order"),
+                ("job_fit", "Job Fit"),
+                ("confidence", "Confidence"),
+                ("newest", "Newest posting"),
+            ),
+        )
+        template_ms = max(0.0, (perf_counter() - template_started_at) * 1000.0)
+        total_ms = max(0.0, (perf_counter() - request_started_at) * 1000.0)
+
+        page_url = (
+            url_for(
+                "application_builder.job_discovery_workspace",
+                result_tab=result_tab,
+                page=discovery_pagination["page"],
+                per_page=discovery_pagination["per_page"],
+                min_fit=discovery_filters.minimum_fit,
+                confidence=discovery_filters.confidence_query,
+                recommendation=discovery_filters.recommendation_filter,
+                sort=discovery_filters.sort_mode,
+            )
+            + "#job-discovery-results"
+        )
+        response = jsonify(
+            {
+                "ok": True,
+                "html": results_html,
+                "summary": discovery_result_summary,
+                "pagination": discovery_pagination,
+                "result_tab": result_tab,
+                "index_stale": bool(
+                    discovery_result_summary.get("index_stale")
+                ),
+                "page_url": page_url,
+            }
+        )
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["Vary"] = "Cookie"
+        response.headers["Server-Timing"] = ", ".join(
+            (
+                f'jd_json_sources;dur={source_ms:.2f};desc="Company sources"',
+                f'jd_json_preferences;dur={preferences_ms:.2f};desc="Search preferences"',
+                f'jd_json_profile;dur={profile_ms:.2f};desc="Candidate profile"',
+                f'jd_json_index;dur={index_ms:.2f};desc="Result index page"',
+                f'jd_json_template;dur={template_ms:.2f};desc="Result fragment render"',
+                f'jd_json_total;dur={total_ms:.2f};desc="Result JSON total"',
+            )
+        )
+        result_log_method = (
+            current_app.logger.warning
+            if total_ms >= _job_discovery_slow_request_threshold_ms()
+            else current_app.logger.info
+        )
+        result_log_method(
+            "Job Discovery result JSON owner_scope=%s tab=%s page=%s "
+            "cards=%s stale=%s total_ms=%.2f index_ms=%.2f",
+            hashlib.sha256(owner_id.encode("utf-8")).hexdigest()[:16],
+            result_tab,
+            discovery_pagination["page"],
+            len(discovery_cards),
+            bool(discovery_result_summary.get("index_stale")),
+            total_ms,
+            index_ms,
+        )
+        return response
 
     @application_builder_bp.get(
         "/discovery/jobs/<source_id>/<job_id>/analysis"
@@ -3548,21 +4982,28 @@ def _register_application_builder_routes() -> None:
 
     @application_builder_bp.get("/")
     def index():
-        current = state()
-        ensure_recommended_resume_style(current)
-
         active_tab = request.args.get("tab", "applications")
         if active_tab not in {"tailoring", "reports", "applications", "configuration"}:
             active_tab = "applications"
+        if active_tab == "configuration" and not bool(session.get("is_admin")):
+            abort(403, description="Administrator access is required for AI configuration.")
+
+        current = state()
+        ensure_recommended_resume_style(current)
 
         if active_tab == "applications":
             owner_id = g.application_owner_id
-            applications = application_store.list_for_owner(owner_id)
+            applications, readiness_by_application = (
+                _applications_with_calculated_readiness(
+                    application_store.list_for_owner(owner_id)
+                )
+            )
             style_options = resume_style_options()
             return render_template(
                 "application_builder/applications.html",
                 active_tab=active_tab,
                 applications=applications,
+                readiness_by_application=readiness_by_application,
                 application_metrics=build_application_metrics(applications),
                 application_status_options=APPLICATION_STATUS_OPTIONS,
                 resume_version_options=RESUME_VERSION_OPTIONS,
@@ -3573,7 +5014,6 @@ def _register_application_builder_routes() -> None:
                     option["key"]: f'{option["label"]} — {option["audience"]}'
                     for option in style_options
                 },
-                default_application_date=datetime.now().date().isoformat(),
             )
 
         active_guided_stage = guided_stage_for_state(current)
@@ -3974,6 +5414,10 @@ def _register_application_builder_routes() -> None:
         career_translation_assessment = career_translation_assessment_view(
             current.provisional_proposal or proposal
         )
+        reusable_profile = getattr(
+            g, "reusable_career_profile", ReusableCareerProfile()
+        )
+        resume_language_choice = _resolved_resume_language(current)
         return render_template(
             "application_builder/index.html",
             state=current,
@@ -3983,6 +5427,14 @@ def _register_application_builder_routes() -> None:
             application_fit=application_fit,
             career_translation_assessment=career_translation_assessment,
             career_background=_effective_career_background(current),
+            career_background_additions=_career_background_application_additions(
+                current.career_background,
+                reusable_profile,
+            ),
+            resume_language_choice=resume_language_choice,
+            resume_language_options=resume_language_options(),
+            selected_resume_language=current.career_background.resume_language,
+            resume_labels=resume_labels(resume_language_choice.code),
             selected_workflow_stage=selected_workflow_stage,
             selected_workflow_panel=selected_workflow_panel,
             edit_setup_snapshot=edit_setup_snapshot,
@@ -4072,6 +5524,8 @@ def _register_application_builder_routes() -> None:
 
     @application_builder_bp.post("/configuration")
     def configuration():
+        if not bool(session.get("is_admin")):
+            abort(403, description="Administrator access is required for AI configuration.")
         current = state()
         try:
             old_models = resolve_models(current)
@@ -4145,28 +5599,74 @@ def _register_application_builder_routes() -> None:
     def upload_profile():
         uploaded = request.files.get("profile_file")
         return_to = str(request.form.get("return_to") or "").strip().casefold()
+        is_career_translation = return_to == "career_translation"
         redirect_target = (
-            url_for("application_builder.index", tab="tailoring", stage="setup") + "#resume-import"
-            if return_to == "setup"
-            else url_for("application_builder.index", tab="configuration") + "#candidate-profile"
+            url_for("application_builder.career_translation_workspace")
+            if is_career_translation
+            else (
+                url_for("application_builder.index", tab="tailoring", stage="setup") + "#resume-import"
+                if return_to == "setup"
+                else url_for("application_builder.index", tab="configuration") + "#candidate-profile"
+            )
         )
+        current = state()
+
+        if is_career_translation:
+            current.career_background.target_country = " ".join(
+                str(request.form.get("target_country") or "").split()
+            )
+            current.career_background.resume_language = " ".join(
+                str(request.form.get("resume_language") or "").split()
+            )
+            current.career_background.target_role = normalize_target_title(
+                str(request.form.get("target_role") or "")
+            )
+
         if not uploaded or not uploaded.filename:
-            flash("Choose a PDF, Word, text, Markdown, or Candidate Profile JSON file.", "error")
+            if not is_career_translation:
+                flash("Choose a PDF, Word, text, Markdown, or Verified Resume Evidence JSON file.", "error")
+                return redirect(redirect_target)
+            if not current.source_profile.all_source_text().strip():
+                flash(
+                    "Baseline Resume preferences saved. Import a resume to generate the Baseline Resume.",
+                    "success",
+                )
+                return redirect(redirect_target)
+            try:
+                models = resolve_models(current)
+                translation_ai = ResumeAI(
+                    models.analysis_tailoring_model,
+                    reasoning_effort=models.analysis_tailoring_reasoning_effort,
+                )
+                _ensure_target_language_profile(current, translation_ai)
+            except (ResumeAIError, ValueError, RuntimeError) as exc:
+                flash(
+                    "Baseline Resume preferences were saved, but the resume could not be regenerated: "
+                    + str(exc),
+                    "warning",
+                )
+            else:
+                choice = _resolved_resume_language(current)
+                flash(
+                    f"Baseline Resume saved. The reusable resume is now in {choice.name}.",
+                    "success",
+                )
             return redirect(redirect_target)
 
         filename = uploaded.filename
         data = uploaded.read()
-        current = state()
+        translation_ai: ResumeAI | None = None
         try:
             if resume_extension(filename) == ".json":
                 profile = load_candidate_profile_bytes(data)
             else:
                 resume_text = extract_resume_text(data, filename)
                 models = resolve_models(current)
-                profile = ResumeAI(
+                translation_ai = ResumeAI(
                     models.analysis_tailoring_model,
                     reasoning_effort=models.analysis_tailoring_reasoning_effort,
-                ).create_candidate_profile_from_resume(
+                )
+                profile = translation_ai.create_candidate_profile_from_resume(
                     resume_text=resume_text,
                     filename=filename,
                 )
@@ -4197,10 +5697,45 @@ def _register_application_builder_routes() -> None:
             },
         )
         previous_source_key = current.source_resume_key
+        current.original_source_profile = profile.model_copy(deep=True)
         current.source_profile = profile
+        current.source_profile_language = ""
+        current.source_profile_translation_fingerprint = ""
         current.profile_upload_name = filename
         current.source_resume_key = source_object_key
         current.source_resume_fingerprint = source_fingerprint
+
+        translation_warning = ""
+        translated_choice = _resolved_resume_language(current)
+        try:
+            if translation_ai is None:
+                models = resolve_models(current)
+                translation_ai = ResumeAI(
+                    models.analysis_tailoring_model,
+                    reasoning_effort=models.analysis_tailoring_reasoning_effort,
+                )
+            _ensure_target_language_profile(current, translation_ai)
+        except (ResumeAIError, ValueError, RuntimeError) as exc:
+            # Importing the Imported Resume must still succeed when the AI
+            # provider is temporarily unavailable. The workflow start route will
+            # retry the same target-language conversion before analysis.
+            current.source_profile = profile
+            current.source_profile_language = ""
+            current.source_profile_translation_fingerprint = ""
+            translation_warning = str(exc)
+            current_app.logger.warning(
+                "Resume imported but target-language conversion was deferred: %s",
+                exc,
+            )
+        except Exception as exc:
+            current.source_profile = profile
+            current.source_profile_language = ""
+            current.source_profile_translation_fingerprint = ""
+            translation_warning = "An unexpected translation error occurred."
+            current_app.logger.exception(
+                "Unexpected target-language conversion failure after resume import"
+            )
+
         active_application = getattr(g, "active_application", None)
         if active_application is not None:
             application_store.update_builder_progress(
@@ -4212,17 +5747,43 @@ def _register_application_builder_routes() -> None:
         current.clear_results()
         if previous_source_key and previous_source_key != source_object_key:
             document_store.delete(previous_source_key)
-        flash(
-            "International resume imported into the verified Candidate Profile. Previous analysis results were cleared.",
-            "success",
-        )
+        if translation_warning:
+            flash(
+                "The resume was imported successfully, but its target-language version could not be generated yet. "
+                f"Baseline Resume generation will retry before creating the {CAREER_BASELINE_RESUME_LABEL}. "
+                f"Details: {translation_warning}",
+                "warning",
+            )
+        else:
+            destination = (
+                f" for {translated_choice.country}"
+                if translated_choice.country
+                else (
+                    " for your Baseline Resume"
+                    if is_career_translation
+                    else " for this application"
+                )
+            )
+            preserved_message = (
+                "The verified original was preserved. New application workspaces can reuse this translated baseline."
+                if is_career_translation
+                else "The verified original was preserved and previous analysis results were cleared."
+            )
+            flash(
+                f"Resume imported and converted into {translated_choice.name}{destination}. "
+                + preserved_message,
+                "success",
+            )
         return redirect(redirect_target)
 
     @application_builder_bp.post("/profile/default")
     def restore_default_profile():
         current = state()
         previous_source_key = current.source_resume_key
-        current.source_profile = load_candidate_profile(DEFAULT_PROFILE_PATH)
+        current.source_profile = _empty_candidate_profile()
+        current.original_source_profile = None
+        current.source_profile_language = ""
+        current.source_profile_translation_fingerprint = ""
         current.profile_upload_name = ""
         current.source_resume_key = ""
         current.source_resume_fingerprint = ""
@@ -4237,7 +5798,7 @@ def _register_application_builder_routes() -> None:
         current.clear_results()
         if previous_source_key:
             document_store.delete(previous_source_key)
-        flash("The bundled Candidate Profile was restored.", "success")
+        flash("Verified Resume Evidence cleared. No sample candidate data is loaded.", "success")
         return redirect(url_for("application_builder.index", tab="configuration"))
 
     @application_builder_bp.post("/reset")
@@ -4253,11 +5814,24 @@ def _register_application_builder_routes() -> None:
         update_job_fields()
         action = request.form.get("action", "")
         tailoring_started = False
+        if not current.source_profile.all_source_text().strip():
+            flash("Import a resume before creating the Baseline Resume.", "error")
+            return redirect(
+                url_for("application_builder.index", tab="tailoring", stage="setup")
+                + "#resume-import"
+            )
         if not current.job_description.strip():
             flash("Paste or upload a job description first.", "error")
             return redirect(url_for("application_builder.index", tab="tailoring"))
         try:
             models = resolve_models(current)
+            ai = None
+            if action in {"initial_report", "tailor"}:
+                ai = ResumeAI(
+                    model=models.analysis_tailoring_model,
+                    reasoning_effort=models.analysis_tailoring_reasoning_effort,
+                )
+                _ensure_target_language_profile(current, ai)
             current_input = input_fingerprint(current, models)
             analysis_is_current = bool(
                 current.analysis and current.analysis_input_fingerprint == current_input
@@ -4271,7 +5845,6 @@ def _register_application_builder_routes() -> None:
                 flash("Job description and target title saved.", "success")
 
             elif action == "initial_report":
-                ai = None
                 if analysis_is_current:
                     analysis = current.analysis
                 else:
@@ -4319,11 +5892,11 @@ def _register_application_builder_routes() -> None:
                 )
                 if created:
                     flash(
-                        "Initial Resume Report refreshed successfully.", "success"
+                        f"{APPLICATION_BASELINE_LABEL} Report refreshed successfully.", "success"
                     )
                 else:
                     flash(
-                        "The Initial Resume Report could not be refreshed: "
+                        f"The {APPLICATION_BASELINE_LABEL} Report could not be refreshed: "
                         + (current.initial_report_error or "Unknown report error."),
                         "warning",
                     )
@@ -4337,10 +5910,12 @@ def _register_application_builder_routes() -> None:
                     "initial",
                     profile=current.source_profile,
                 )
-                ai = ResumeAI(
-                    model=models.analysis_tailoring_model,
-                    reasoning_effort=models.analysis_tailoring_reasoning_effort,
-                )
+                if ai is None:  # Defensive fallback for nonstandard callers.
+                    ai = ResumeAI(
+                        model=models.analysis_tailoring_model,
+                        reasoning_effort=models.analysis_tailoring_reasoning_effort,
+                    )
+                    _ensure_target_language_profile(current, ai)
                 analysis = existing_analysis or ai.analyze_job(
                     current.job_description, current.target_title
                 )
@@ -4379,7 +5954,7 @@ def _register_application_builder_routes() -> None:
                 current.initial_evidence_proposal = proposal.model_copy(deep=True)
                 current.initial_evidence_input_fingerprint = current_input
                 # Step 2 should appear as soon as the tailoring proposal is ready.
-                # The Initial Resume Report is generated by an automatic follow-up
+                # The Application Baseline Report is generated by an automatic follow-up
                 # request after the page loads, so Word rendering does not block navigation.
                 current.initial_report = None
                 current.initial_report_input_fingerprint = None
@@ -4389,7 +5964,7 @@ def _register_application_builder_routes() -> None:
                 current.initial_report_error = ""
                 tailoring_started = True
                 flash(
-                    "Job analysis and Career Translation Assessment completed. Confirm the high-value experience questions next; the Initial Resume Report is generating automatically without blocking the workflow.",
+                    "Job analysis and Target-Market Review completed. Confirm the high-value experience questions next; the Application Baseline Report is generating automatically without blocking the workflow.",
                     "success",
                 )
             else:
@@ -4410,12 +5985,17 @@ def _register_application_builder_routes() -> None:
         current = state()
         if not current.job_description.strip():
             flash(
-                "Save a job description in Career and Job Setup before retrying the report.",
+                "Save a job description in Application and Job Setup before retrying the report.",
                 "error",
             )
             return redirect(url_for("application_builder.index", tab="reports", report="initial"))
         try:
             models = resolve_models(current)
+            ai = ResumeAI(
+                model=models.analysis_tailoring_model,
+                reasoning_effort=models.analysis_tailoring_reasoning_effort,
+            )
+            _ensure_target_language_profile(current, ai)
             current_input = input_fingerprint(current, models)
             analysis_is_current = bool(
                 current.analysis
@@ -4425,7 +6005,6 @@ def _register_application_builder_routes() -> None:
                 current.initial_evidence_proposal
                 and current.initial_evidence_input_fingerprint == current_input
             )
-            ai = None
             if analysis_is_current:
                 analysis = current.analysis
             else:
@@ -4471,11 +6050,11 @@ def _register_application_builder_routes() -> None:
             if _refresh_initial_resume_report(
                 current, analysis, evidence_source, force=True
             ):
-                flash("Initial Resume Report refreshed.", "success")
+                flash(f"{APPLICATION_BASELINE_LABEL} Report refreshed.", "success")
             else:
                 raise ValueError(
                     current.initial_report_error
-                    or "The Initial Resume Report could not be refreshed."
+                    or f"The {APPLICATION_BASELINE_LABEL} Report could not be refreshed."
                 )
         except (ResumeAIError, TemplateError, ValueError) as exc:
             current.initial_report_error = str(exc)
@@ -4505,7 +6084,7 @@ def _register_application_builder_routes() -> None:
             current_input = input_fingerprint(current, models)
             if current.analyzed_input_fingerprint != current_input:
                 raise ValueError(
-                    "The job description or analysis model changed. Return to Career and Job Setup and select Start tailoring again."
+                    "The job description or analysis model changed. Return to Application and Job Setup and select Start tailoring again."
                 )
             profile = current.confirmed_profile or current.source_profile
             if _refresh_job_aligned_resume_report(
@@ -4545,7 +6124,7 @@ def _register_application_builder_routes() -> None:
                 )
                 report = current.initial_report
                 error = current.initial_report_error
-                label = "Initial Resume Report"
+                label = f"{APPLICATION_BASELINE_LABEL} Report"
             elif report_name == "draft":
                 proposal = current.draft_proposal
                 if (
@@ -4613,7 +6192,7 @@ def _register_application_builder_routes() -> None:
             models = resolve_models(current)
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
                 raise ValueError(
-                    "The job description or analysis model changed. Return to Career and Job Setup and select Start tailoring again."
+                    "The job description or analysis model changed. Return to Application and Job Setup and select Start tailoring again."
                 )
             profile = current.confirmed_profile or current.source_profile
             _build_final_report_snapshot(
@@ -4648,7 +6227,7 @@ def _register_application_builder_routes() -> None:
             models = resolve_models(current)
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
                 raise ValueError(
-                    "The job description changed. Return to Career and Job Setup and select Start tailoring again."
+                    "The job description changed. Return to Application and Job Setup and select Start tailoring again."
                 )
 
             questions = current.provisional_proposal.candidate_questions
@@ -5140,7 +6719,7 @@ def _register_application_builder_routes() -> None:
                 raise ValueError("Configure an OpenAI API key before optimizing the resume.")
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
                 raise ValueError(
-                    "The job description or tailoring model changed. Return to Career and Job Setup and select Start tailoring again."
+                    "The job description or tailoring model changed. Return to Application and Job Setup and select Start tailoring again."
                 )
 
             profile = current.confirmed_profile or current.source_profile
@@ -5402,7 +6981,7 @@ def _register_application_builder_routes() -> None:
             models = resolve_models(current)
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
                 raise ValueError(
-                    "The job description or tailoring model changed. Return to Career and Job Setup and start tailoring again."
+                    "The job description or tailoring model changed. Return to Application and Job Setup and start tailoring again."
                 )
             profile = current.confirmed_profile or current.source_profile
             edited = proposal_from_form(base, request.form, profile)
@@ -5512,7 +7091,7 @@ def _register_application_builder_routes() -> None:
 
     @application_builder_bp.get("/download/resume-version/<version>")
     def download_resume_version(version: str):
-        """Download the Initial, Job-Aligned, or Final resume version."""
+        """Download the Application Baseline, Job-Aligned, or Final resume version."""
         if version not in {"initial", "draft", "final"}:
             abort(404)
         current = state()
@@ -5573,7 +7152,11 @@ def _register_application_builder_routes() -> None:
 
     @application_builder_bp.get("/download/source-profile")
     def download_source_profile():
-        payload = json.dumps(state().source_profile.model_dump(), ensure_ascii=False, indent=2)
+        current = state()
+        source_profile = current.original_source_profile or current.source_profile
+        if not source_profile.all_source_text().strip():
+            abort(404)
+        payload = json.dumps(source_profile.model_dump(), ensure_ascii=False, indent=2)
         return Response(
             payload,
             mimetype="application/json",
@@ -5631,6 +7214,34 @@ def _register_application_builder_routes() -> None:
             return max(0.0, min(100.0, float(raw_value)))
         except ValueError:
             return None
+
+    def _applications_with_calculated_readiness(applications):
+        application_list = list(applications)
+        try:
+            from meeting_assistant.services.interview_readiness_service import (
+                InterviewReadinessService,
+            )
+
+            assessments = InterviewReadinessService(
+                application_store=application_store
+            ).build_for_applications(_application_owner_id(), application_list)
+        except Exception:
+            current_app.logger.exception(
+                "Could not calculate automatic interview readiness"
+            )
+            assessments = {}
+        enriched = [
+            replace(
+                application,
+                interview_readiness=(
+                    assessments[application.id].score
+                    if application.id in assessments
+                    else None
+                ),
+            )
+            for application in application_list
+        ]
+        return enriched, assessments
 
     def _workflow_state_for_application(application_id: str) -> WorkflowState:
         workflow_key = f"{_application_owner_id()}:application:{application_id}"
@@ -5717,16 +7328,51 @@ def _register_application_builder_routes() -> None:
 
     @application_builder_bp.get("/career-translation")
     def career_translation_workspace():
-        """Open the newcomer career context inside the editable setup step."""
-        return redirect(
-            url_for(
-                "application_builder.index",
-                tab="tailoring",
-                stage="setup",
-                edit="setup",
-                focus="career-translation",
+        """Open the reusable, job-independent Career Translation foundation."""
+
+        current = state()
+        source_profile = current.source_profile
+        language_choice = _resolved_resume_language(current)
+        background = _effective_career_background(current)
+        profile_stats = {
+            "experiences": len(source_profile.experiences),
+            "bullets": sum(
+                len(experience.bullets)
+                for experience in source_profile.experiences
+            ),
+            "skills": len(source_profile.all_verified_skills()),
+            "education": len(source_profile.education),
+        }
+        translation_ready = bool(
+            source_profile.all_source_text().strip()
+            and current.source_profile_language == language_choice.code
+            and current.source_profile_translation_fingerprint
+        )
+        preview_language_code = language_choice.code
+        preview_language_name = language_choice.name
+        if source_profile.all_source_text().strip() and not translation_ready:
+            detected_source_language = detect_text_language(
+                source_profile.all_source_text()
             )
-            + "#newcomer-onboarding"
+            if detected_source_language:
+                preview_language_code = detected_source_language
+                preview_language_name = language_name(detected_source_language)
+        return render_template(
+            "application_builder/career_translation.html",
+            active_tab="career_translation",
+            state=current,
+            source_profile=source_profile,
+            original_source_profile=(
+                current.original_source_profile or source_profile
+            ),
+            career_background=background,
+            resume_language_choice=language_choice,
+            resume_language_options=resume_language_options(),
+            selected_resume_language=current.career_background.resume_language,
+            resume_labels=resume_labels(preview_language_code),
+            preview_language_name=preview_language_name,
+            profile_stats=profile_stats,
+            translation_ready=translation_ready,
         )
 
     @application_builder_bp.get("/interview-preparation")
@@ -5914,38 +7560,14 @@ def _register_application_builder_routes() -> None:
             source_type = JobSourceType(
                 str(request.form.get("source_type") or "").strip()
             )
-            company_name = str(request.form.get("company_name") or "").strip()
-            careers_url = str(request.form.get("careers_url") or "").strip()
-            source_identifier = _source_identifier_value(
-                source_type,
-                request.form.get("source_identifier", ""),
-                careers_url,
-            )
-            if source_type is JobSourceType.GENERIC_JSONLD:
-                source_identifier = ""
-            elif source_type is JobSourceType.WORKDAY:
-                target = parse_workday_careers_url(
-                    careers_url,
-                    site_identifier=source_identifier,
-                )
-                source_identifier = target.site
-                careers_url = target.careers_url
-            else:
-                careers_url = careers_url or _default_source_url(
-                    source_type, source_identifier
-                )
-            source = CompanySource(
-                id=uuid4().hex,
+            source = _normalized_company_source(
+                source_id=uuid4().hex,
                 owner_id=owner_id,
-                company_name=company_name,
-                careers_url=careers_url,
+                company_name=request.form.get("company_name", ""),
                 source_type=source_type,
-                source_identifier=source_identifier,
+                source_identifier=request.form.get("source_identifier", ""),
+                careers_url=request.form.get("careers_url", ""),
                 enabled=request.form.get("enabled", "1") not in {"0", "false"},
-                filters={
-                    "include_compensation": True,
-                    "deactivate_after_missed_scans": 3,
-                },
             )
             discovery_store.put_company_source(source)
         except (ValueError, DiscoveryOptimisticLockError) as exc:
@@ -5955,6 +7577,257 @@ def _register_application_builder_routes() -> None:
         return redirect(
             url_for("application_builder.job_discovery_workspace", view="settings")
             + "#job-discovery-settings"
+        )
+
+    @application_builder_bp.post("/discovery/sources/import")
+    def import_discovery_sources():
+        _require_job_catalog_manager()
+        owner_id = SHARED_CATALOG_SOURCE_OWNER_ID
+        uploaded = request.files.get("source_import_file")
+        if uploaded is None or not uploaded.filename:
+            flash("Choose a CSV or JSON company-source file to import.", "error")
+            return redirect(
+                url_for("application_builder.job_discovery_workspace", view="settings")
+                + "#job-discovery-source-import"
+            )
+        duplicate_policy = str(
+            request.form.get("duplicate_policy") or "skip"
+        ).strip().casefold()
+        if duplicate_policy not in {"skip", "update"}:
+            duplicate_policy = "skip"
+        try:
+            content = uploaded.stream.read(MAX_SOURCE_IMPORT_BYTES + 1)
+            rows = parse_company_source_import(uploaded.filename, content)
+            candidates: list[tuple[CompanySourceImportRow, CompanySource]] = []
+            normalization_errors: list[str] = []
+            for row in rows:
+                try:
+                    candidate = _normalized_company_source(
+                        source_id=uuid4().hex,
+                        owner_id=owner_id,
+                        company_name=row.company_name,
+                        source_type=row.source_type,
+                        source_identifier=row.source_identifier,
+                        careers_url=row.careers_url,
+                        enabled=row.enabled,
+                    )
+                except ValueError as exc:
+                    normalization_errors.append(f"Row {row.row_number}: {exc}")
+                else:
+                    candidates.append((row, candidate))
+            if normalization_errors:
+                preview = "; ".join(normalization_errors[:5])
+                remaining = len(normalization_errors) - 5
+                if remaining > 0:
+                    preview += f"; and {remaining} more error{'s' if remaining != 1 else ''}"
+                raise CompanySourceImportError(preview)
+
+            existing_sources = discovery_store.list_company_sources(owner_id)
+            by_identity = {
+                _company_source_identity(source): source
+                for source in existing_sources
+            }
+            imported = 0
+            updated = 0
+            skipped = 0
+            for row, candidate in candidates:
+                identity = _company_source_identity(candidate)
+                existing = by_identity.get(identity)
+                if existing is not None and duplicate_policy == "skip":
+                    skipped += 1
+                    continue
+                source_to_store = candidate
+                if existing is not None:
+                    source_to_store = _normalized_company_source(
+                        source_id=existing.id,
+                        owner_id=owner_id,
+                        company_name=row.company_name,
+                        source_type=row.source_type,
+                        source_identifier=row.source_identifier,
+                        careers_url=row.careers_url,
+                        enabled=row.enabled,
+                        existing=existing,
+                    )
+                stored = discovery_store.put_company_source(source_to_store)
+                by_identity[identity] = stored
+                if existing is None:
+                    imported += 1
+                else:
+                    updated += 1
+        except (CompanySourceImportError, DiscoveryOptimisticLockError, ValueError) as exc:
+            flash(f"Company sources could not be imported: {exc}", "error")
+        else:
+            summary = (
+                f"Company-source import completed: {imported} added, "
+                f"{updated} updated, and {skipped} duplicate"
+                f"{'s' if skipped != 1 else ''} skipped."
+            )
+            if imported or updated:
+                summary += " Refresh jobs for everyone to collect their postings."
+            flash(summary, "success")
+        return redirect(
+            url_for("application_builder.job_discovery_workspace", view="settings")
+            + "#job-discovery-source-import"
+        )
+
+    @application_builder_bp.get("/discovery/sources/import-template.csv")
+    def download_discovery_source_csv_template():
+        _require_job_catalog_manager()
+        content = (
+            "Company,Source type,ATS site identifier,Career-page URL,Enabled\n"
+            "Intel,Workday,,https://intel.wd1.myworkdayjobs.com/External,true\n"
+            "SAP,SAP SuccessFactors,,https://jobs.sap.com/,true\n"
+            "Oracle,Oracle Cloud HCM,,https://careers.oracle.com/en/sites/jobsearch/jobs,true\n"
+            "iCIMS,iCIMS,,https://careers.icims.com/careers-home/jobs,true\n"
+            "ServiceNow,SmartRecruiters,,https://careers.smartrecruiters.com/ServiceNow,true\n"
+            "Avature,Avature,,https://careers.avature.net/en_US/main/SearchJobs,true\n"
+            "Eightfold,Eightfold,,https://app.eightfold.ai/careers?domain=eightfold.ai,true\n"
+            "Costco Wholesale,Eightfold,,https://careers.costco.com/jobs,true\n"
+            "Transport for London,Taleo,,https://tfl.taleo.net/careersection/external/jobsearch.ftl,true\n"
+            "Dayforce,Dayforce,,https://jobs.dayforcehcm.com/en-US/mydayforce/alljobs,true\n"
+            "First Tech Federal Credit Union,Talemetry / TTC Portals,,https://firsttechfedcareers.ttcportals.com/search/jobs,true\n"
+            "Washington Trust Bank,UKG Pro / UltiPro,,https://recruiting2.ultipro.com/WAS1000WTB/JobBoard/cb002c76-8419-4941-9c78-d28ae4e9c89e,true\n"
+            "Portland State University,PeopleAdmin,,https://jobs.hrc.pdx.edu/postings/search,true\n"
+            "Boeing,Radancy / TalentBrew,,https://jobs.boeing.com/search-jobs,true\n"
+            "Amazon,Amazon Jobs,,https://www.amazon.jobs/en/search?country=USA,true\n"
+            "Heritage Bank,Branded Requisition Portal,,https://careers.heritagebanknw.com/search-jobs,true\n"
+        )
+        return Response(
+            content,
+            mimetype="text/csv",
+            headers={
+                "Content-Disposition": "attachment; filename=job-discovery-company-sources.csv"
+            },
+        )
+
+    @application_builder_bp.get("/discovery/sources/import-template.json")
+    def download_discovery_source_json_template():
+        _require_job_catalog_manager()
+        content = json.dumps(
+            {
+                "companies": [
+                    {
+                        "company": "Intel",
+                        "source_type": "Workday",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://intel.wd1.myworkdayjobs.com/External",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "SAP",
+                        "source_type": "SAP SuccessFactors",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://jobs.sap.com/",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Oracle",
+                        "source_type": "Oracle Cloud HCM",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://careers.oracle.com/en/sites/jobsearch/jobs",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "iCIMS",
+                        "source_type": "iCIMS",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://careers.icims.com/careers-home/jobs",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "ServiceNow",
+                        "source_type": "SmartRecruiters",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://careers.smartrecruiters.com/ServiceNow",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Avature",
+                        "source_type": "Avature",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://careers.avature.net/en_US/main/SearchJobs",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Eightfold",
+                        "source_type": "Eightfold",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://app.eightfold.ai/careers?domain=eightfold.ai",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Costco Wholesale",
+                        "source_type": "Eightfold",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://careers.costco.com/jobs",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Transport for London",
+                        "source_type": "Taleo",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://tfl.taleo.net/careersection/external/jobsearch.ftl",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Dayforce",
+                        "source_type": "Dayforce",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://jobs.dayforcehcm.com/en-US/mydayforce/alljobs",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "First Tech Federal Credit Union",
+                        "source_type": "Talemetry / TTC Portals",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://firsttechfedcareers.ttcportals.com/search/jobs",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Washington Trust Bank",
+                        "source_type": "UKG Pro / UltiPro",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://recruiting2.ultipro.com/WAS1000WTB/JobBoard/cb002c76-8419-4941-9c78-d28ae4e9c89e",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Portland State University",
+                        "source_type": "PeopleAdmin",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://jobs.hrc.pdx.edu/postings/search",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Boeing",
+                        "source_type": "Radancy / TalentBrew",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://jobs.boeing.com/search-jobs",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Amazon",
+                        "source_type": "Amazon Jobs",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://www.amazon.jobs/en/search?country=USA",
+                        "enabled": True,
+                    },
+                    {
+                        "company": "Heritage Bank",
+                        "source_type": "Branded Requisition Portal",
+                        "ats_site_identifier": "",
+                        "career_page_url": "https://careers.heritagebanknw.com/search-jobs",
+                        "enabled": True,
+                    },
+                ]
+            },
+            indent=2,
+        )
+        return Response(
+            content + "\n",
+            mimetype="application/json",
+            headers={
+                "Content-Disposition": "attachment; filename=job-discovery-company-sources.json"
+            },
         )
 
     @application_builder_bp.post("/discovery/sources/<source_id>/update")
@@ -5968,36 +7841,20 @@ def _register_application_builder_routes() -> None:
             source_type = JobSourceType(
                 str(request.form.get("source_type") or existing.source_type.value).strip()
             )
-            careers_url = str(request.form.get("careers_url") or "").strip()
-            source_identifier = _source_identifier_value(
-                source_type,
-                request.form.get("source_identifier", ""),
-                careers_url,
-            )
-            if source_type is JobSourceType.GENERIC_JSONLD:
-                source_identifier = ""
-            elif source_type is JobSourceType.WORKDAY:
-                target = parse_workday_careers_url(
-                    careers_url,
-                    site_identifier=source_identifier,
-                )
-                source_identifier = target.site
-                careers_url = target.careers_url
-            else:
-                careers_url = careers_url or _default_source_url(
-                    source_type, source_identifier
-                )
             revision = int(request.form.get("revision", existing.revision))
-            updated = replace(
-                existing,
-                company_name=str(
-                    request.form.get("company_name") or existing.company_name
-                ).strip(),
-                careers_url=careers_url,
+            if revision != existing.revision:
+                raise DiscoveryOptimisticLockError(
+                    "This source changed after the page was loaded. Reload before saving."
+                )
+            updated = _normalized_company_source(
+                source_id=existing.id,
+                owner_id=owner_id,
+                company_name=request.form.get("company_name") or existing.company_name,
                 source_type=source_type,
-                source_identifier=source_identifier,
+                source_identifier=request.form.get("source_identifier", ""),
+                careers_url=request.form.get("careers_url", ""),
                 enabled=request.form.get("enabled") == "1",
-                revision=revision,
+                existing=existing,
             )
             discovery_store.put_company_source(updated)
         except (ValueError, DiscoveryOptimisticLockError) as exc:
@@ -6047,6 +7904,66 @@ def _register_application_builder_routes() -> None:
             + "#job-discovery-settings"
         )
 
+    @application_builder_bp.post("/discovery/sources/delete-all")
+    def delete_all_discovery_sources():
+        _require_job_catalog_manager()
+        owner_id = SHARED_CATALOG_SOURCE_OWNER_ID
+        sources = discovery_store.list_company_sources(owner_id)
+        expected_count_value = str(
+            request.form.get("expected_source_count") or ""
+        ).strip()
+        try:
+            expected_count = int(expected_count_value)
+            if expected_count < 0:
+                raise ValueError
+        except ValueError:
+            flash(
+                "The remove-all confirmation was missing or invalid. No sources were removed; reload the page and try again.",
+                "error",
+            )
+            return redirect(
+                url_for("application_builder.job_discovery_workspace", view="settings")
+                + "#job-discovery-settings"
+            )
+
+        if expected_count != len(sources):
+            flash(
+                "The shared company-source catalog changed after this page was loaded. No sources were removed; reload the page and try again.",
+                "error",
+            )
+            return redirect(
+                url_for("application_builder.job_discovery_workspace", view="settings")
+                + "#job-discovery-settings"
+            )
+
+        if not sources:
+            flash("There are no company sources to remove.", "success")
+            return redirect(
+                url_for("application_builder.job_discovery_workspace", view="settings")
+                + "#job-discovery-settings"
+            )
+
+        removed_count = 0
+        for source in sources:
+            if discovery_store.delete_company_source(owner_id, source.id):
+                removed_count += 1
+
+        remaining_sources = discovery_store.list_company_sources(owner_id)
+        if remaining_sources:
+            flash(
+                f"Removed {removed_count} company sources, but {len(remaining_sources)} could not be removed. Reload the page before trying again.",
+                "error",
+            )
+        else:
+            flash(
+                f"Removed all {len(sources)} company sources from the shared catalog. Previously collected postings, saved jobs, and Application Workspaces were not deleted.",
+                "success",
+            )
+        return redirect(
+            url_for("application_builder.job_discovery_workspace", view="settings")
+            + "#job-discovery-settings"
+        )
+
     @application_builder_bp.post("/discovery/preferences")
     def update_discovery_preferences():
         owner_id = _application_owner_id()
@@ -6089,6 +8006,9 @@ def _register_application_builder_routes() -> None:
                 excluded_terms=_split_discovery_values(
                     request.form.get("excluded_terms", "")
                 ),
+                excluded_title_terms=_split_discovery_values(
+                    request.form.get("excluded_title_terms", "")
+                ),
                 maximum_posting_age_days=maximum_posting_age_days,
                 require_title_match=request.form.get("require_title_match") == "1",
                 require_location_match=request.form.get("require_location_match") == "1",
@@ -6108,6 +8028,7 @@ def _register_application_builder_routes() -> None:
                     owner_id, catalog_sources, force=True
                 )
             )
+            _try_prebuild_discovery_result_index(owner_id, current=state())
         except ValueError as exc:
             flash(f"Search preferences could not be saved: {exc}", "error")
         else:
@@ -6149,20 +8070,9 @@ def _register_application_builder_routes() -> None:
             + "#job-discovery-schedule"
         )
 
-    @application_builder_bp.post("/discovery/refresh")
-    def refresh_discovered_jobs():
-        _require_job_catalog_manager()
-        owner_id = _application_owner_id()
-        sources = discovery_store.list_company_sources(
-            SHARED_CATALOG_SOURCE_OWNER_ID, enabled_only=True
-        )
-        if not sources:
-            flash(
-                "No enabled job sources are configured. Add a company source before refreshing jobs.",
-                "warning",
-            )
-            return redirect(_discovery_results_url())
-
+    def _run_discovery_source_refresh(
+        owner_id: str, sources: list[CompanySource]
+    ):
         discovery_service = (
             JobDiscoveryService(store=discovery_store)
             .enable_shared_public_catalog()
@@ -6174,32 +8084,6 @@ def _register_application_builder_routes() -> None:
             source_fetch_transform=_interactive_discovery_source,
         )
         discovery_service.hydrate_owner_from_shared_catalog(owner_id, sources)
-        issue_count = len(result.errors) + len(result.analysis_errors)
-        message = (
-            f"Job refresh completed across {len(sources)} enabled source"
-            f"{'s' if len(sources) != 1 else ''}. "
-            "Collected public postings are now available to every user; "
-            "each user's posting-age filters and evidence-based fit assessment "
-            "remain private."
-        )
-        if result.shared_catalog_hits:
-            message += (
-                f" {result.shared_catalog_hits} source"
-                f"{'s reused' if result.shared_catalog_hits != 1 else ' reused'} recently collected public jobs without rescanning."
-            )
-        if result.shared_catalog_refreshes:
-            message += (
-                f" {result.shared_catalog_refreshes} shared public source"
-                f"{'s were' if result.shared_catalog_refreshes != 1 else ' was'} refreshed for all users."
-            )
-        if result.shared_refreshes_in_progress:
-            message += (
-                f" {result.shared_refreshes_in_progress} source refresh"
-                f"{'es were' if result.shared_refreshes_in_progress != 1 else ' was'} already in progress; cached public jobs were used."
-            )
-        if issue_count:
-            message += f" {issue_count} source or analysis issue{'s' if issue_count != 1 else ''} need review."
-        flash(message, "warning" if issue_count else "success")
         for error in result.errors:
             current_app.logger.warning(
                 "Job discovery source refresh failed catalog_owner=%s actor=%s source=%s type=%s error=%s",
@@ -6218,16 +8102,518 @@ def _register_application_builder_routes() -> None:
                 error.job_id,
                 error.message,
             )
+        return result
+
+    def _discovery_source_refresh_payload(
+        source: CompanySource, result
+    ) -> dict[str, Any]:
+        issues = [error.message for error in result.errors]
+        issues.extend(error.message for error in result.analysis_errors)
+        if result.shared_catalog_hits:
+            outcome = "reused"
+            message = f"Reused recently collected {source.company_name} jobs."
+        elif result.shared_catalog_refreshes:
+            outcome = "refreshed"
+            message = f"Refreshed {source.company_name} for the shared catalog."
+        elif result.shared_refreshes_in_progress:
+            outcome = "in_progress"
+            message = (
+                f"A {source.company_name} refresh was already running; "
+                "cached public jobs were used."
+            )
+        elif issues:
+            normalized_issues = [issue.casefold() for issue in issues]
+            robots_issue = any(
+                "robots.txt disallows" in issue for issue in normalized_issues
+            )
+            transient_index_issue = any(
+                "indexed fallback was unavailable" in issue
+                and any(
+                    token in issue
+                    for token in (
+                        "timeout",
+                        "timed out",
+                        "502",
+                        "503",
+                        "504",
+                        "temporarily unavailable",
+                        "connection",
+                    )
+                )
+                for issue in normalized_issues
+            )
+            if robots_issue and transient_index_issue:
+                outcome = "error"
+                message = (
+                    f"{source.company_name}'s direct listing is blocked, and the "
+                    "compliant fallback temporarily failed. Retry the scan."
+                )
+            elif robots_issue:
+                outcome = "permission_required"
+                message = (
+                    f"{source.company_name} requires an authorized feed or crawler "
+                    "permission before automated discovery can run."
+                )
+            else:
+                outcome = "error"
+                message = f"{source.company_name} could not be refreshed."
+        else:
+            outcome = "completed"
+            message = f"Checked {source.company_name}."
+        return {
+            "ok": not issues,
+            "source_id": source.id,
+            "company_name": source.company_name,
+            "outcome": outcome,
+            "message": message,
+            "jobs_available": len(result.jobs),
+            "posting_age_filtered": len(result.age_filtered_jobs),
+            "issues": issues,
+        }
+
+    def _pending_discovery_assessment_jobs(
+        owner_id: str,
+        profile: CandidateJobProfile,
+        *,
+        skip_job_keys: set[str] | None = None,
+    ) -> list[DiscoveredJob]:
+        """Return visible owner jobs that still need a profile-specific fit snapshot."""
+
+        skipped = skip_job_keys or set()
+        enabled_source_ids = {
+            source.id
+            for source in discovery_store.list_company_sources(
+                SHARED_CATALOG_SOURCE_OWNER_ID,
+                enabled_only=True,
+            )
+        }
+        preferences = discovery_store.get_search_preferences(owner_id)
+        maximum_posting_age_days = (
+            preferences.maximum_posting_age_days
+            if preferences is not None
+            else DEFAULT_MAX_POSTING_AGE_DAYS
+        )
+        fit_snapshots = discovery_store.list_fit_snapshots(owner_id)
+        fits = {
+            (
+                item.job_id,
+                item.profile_fingerprint,
+                item.description_fingerprint,
+            )
+            for item in fit_snapshots
+        }
+        legacy_fits = {
+            (item.job_id, item.profile_fingerprint)
+            for item in fit_snapshots
+            if not item.description_fingerprint
+        }
+        states = {
+            (item.source_id, item.job_id): item
+            for item in discovery_store.list_job_states(owner_id)
+        }
+        pending: list[DiscoveredJob] = []
+        for job in discovery_store.list_discovered_jobs(owner_id, active_only=True):
+            job_key = f"{job.source_id}:{job.id}"
+            if job_key in skipped:
+                continue
+            if enabled_source_ids and job.source_id not in enabled_source_ids:
+                continue
+            if (
+                (
+                    job.id,
+                    profile.fingerprint,
+                    job.description_fingerprint,
+                )
+                in fits
+                or (job.id, profile.fingerprint) in legacy_fits
+            ):
+                continue
+            state_record = states.get((job.source_id, job.id))
+            if state_record is not None and state_record.disposition in {
+                DiscoveryJobDisposition.SAVED,
+                DiscoveryJobDisposition.IGNORED,
+                DiscoveryJobDisposition.APPLICATION_CREATED,
+            }:
+                continue
+            if not evaluate_posting_age(
+                job,
+                maximum_age_days=maximum_posting_age_days,
+            ).eligible:
+                continue
+            if not evaluate_stage_one(job, profile).passed:
+                continue
+            pending.append(job)
+
+        pending.sort(
+            key=lambda item: (
+                item.posted_at or item.first_seen_at,
+                item.company.casefold(),
+                item.title.casefold(),
+                item.id,
+            ),
+            reverse=True,
+        )
+        return pending
+
+    def _assessment_request_payload() -> tuple[dict[str, Any], bool]:
+        wants_json = request.is_json or "application/json" in str(
+            request.headers.get("Accept") or ""
+        )
+        source = request.get_json(silent=True) if request.is_json else request.form
+        return dict(source or {}), wants_json
+
+    @application_builder_bp.post("/discovery/assess/pending")
+    def assess_pending_discovered_jobs():
+        """Assess already-collected jobs for the signed-in user in bounded batches."""
+
+        owner_id = _application_owner_id()
+        payload, wants_json = _assessment_request_payload()
+        raw_skipped = payload.get("skip_job_keys") or []
+        if isinstance(raw_skipped, str):
+            raw_skipped = [raw_skipped]
+        skip_job_keys = {
+            str(value).strip()
+            for value in list(raw_skipped)[:2000]
+            if str(value).strip()
+        }
+        batch_size = _discovery_assessment_batch_size(payload.get("batch_size"))
+        profile = _discovery_candidate_profile(state(), owner_id=owner_id)
+
+        if not (
+            profile.target_titles
+            or profile.verified_skills
+            or profile.evidence_statements
+            or profile.evidence_references
+        ):
+            message = (
+                "Complete your Career Profile before assessing jobs so the ranking "
+                "has a target role and verified evidence to use."
+            )
+            if wants_json:
+                return jsonify({"ok": False, "message": message}), 409
+            flash(message, "warning")
+            return redirect(_discovery_results_url(result_tab="pending"))
+
+        all_pending = _pending_discovery_assessment_jobs(owner_id, profile)
+        available = [
+            job
+            for job in all_pending
+            if f"{job.source_id}:{job.id}" not in skip_job_keys
+        ]
+        selected = available[:batch_size]
+        if not selected:
+            unresolved_count = len(all_pending)
+            result_payload = {
+                "ok": unresolved_count == 0,
+                "complete": True,
+                "attempted_count": 0,
+                "assessed_count": 0,
+                "pending_before": unresolved_count,
+                "remaining_count": unresolved_count,
+                "unresolved_count": unresolved_count,
+                "failed_job_keys": [],
+                "issues": [],
+                "message": (
+                    "All eligible pending jobs have been assessed."
+                    if unresolved_count == 0
+                    else "No additional jobs can be assessed in this run because the remaining jobs previously failed."
+                ),
+            }
+            if wants_json:
+                return jsonify(result_payload)
+            flash(
+                result_payload["message"],
+                "success" if unresolved_count == 0 else "warning",
+            )
+            return redirect(_discovery_results_url())
+
+        try:
+            result = JobDiscoveryService(store=discovery_store).assess_existing_jobs(
+                selected,
+                profile,
+            )
+        except Exception as exc:
+            current_app.logger.exception(
+                "Pending job assessment batch failed owner=%s jobs=%s",
+                owner_id,
+                len(selected),
+            )
+            message = f"The pending-job assessment batch failed: {exc}"
+            if wants_json:
+                return jsonify({"ok": False, "message": message}), 500
+            flash(message, "error")
+            return redirect(_discovery_results_url(result_tab="pending"))
+
+        selected_by_id = {job.id: job for job in selected}
+        failed_job_keys: list[str] = []
+        issues: list[str] = []
+        for error in result.analysis_errors:
+            job = selected_by_id.get(error.job_id)
+            source_id = job.source_id if job is not None else error.source_id
+            failed_job_keys.append(f"{source_id}:{error.job_id}")
+            label = (
+                f"{job.company} · {job.title}" if job is not None else error.job_id
+            )
+            issues.append(f"{label}: {error.message}")
+            current_app.logger.warning(
+                "Pending job assessment failed owner=%s source=%s job=%s error=%s",
+                owner_id,
+                source_id,
+                error.job_id,
+                error.message,
+            )
+
+        # Avoid a second full DynamoDB-backed pending-queue scan in the same
+        # request. The initial queue is authoritative for this bounded batch:
+        # successful jobs leave it, failed/skipped jobs remain unresolved, and
+        # unselected jobs remain actionable for the browser's next request.
+        assessed_count = len(result.ranked_jobs)
+        remaining_count = max(0, len(all_pending) - assessed_count)
+        actionable_remaining_count = max(0, len(available) - len(selected))
+        unresolved_count = max(0, remaining_count - actionable_remaining_count)
+        complete = actionable_remaining_count == 0
+        message = (
+            f"Assessed {assessed_count} job{'s' if assessed_count != 1 else ''}."
+        )
+        if actionable_remaining_count:
+            message += f" {actionable_remaining_count} remain in this run."
+        elif unresolved_count:
+            message += f" {unresolved_count} could not be assessed and can be retried later."
+        else:
+            message += " The assessment queue is complete."
+        response_payload = {
+            "ok": not issues,
+            "complete": complete,
+            "attempted_count": len(selected),
+            "assessed_count": assessed_count,
+            "pending_before": len(all_pending),
+            "remaining_count": remaining_count,
+            "actionable_remaining_count": actionable_remaining_count,
+            "unresolved_count": unresolved_count,
+            "failed_job_keys": failed_job_keys,
+            "issues": issues,
+            "message": message,
+        }
+        if wants_json:
+            return jsonify(response_payload)
+        if assessed_count:
+            _try_prebuild_discovery_result_index(
+                owner_id,
+                current=state(),
+                filters=_discovery_result_filters(request.form),
+            )
+        flash(message, "warning" if issues else "success")
         return redirect(_discovery_results_url())
+
+    @application_builder_bp.post("/discovery/result-index/prebuild")
+    def prebuild_discovery_result_index():
+        """Materialize the selected result view outside the initial page GET."""
+
+        owner_id = _application_owner_id()
+        payload = request.get_json(silent=True) if request.is_json else request.form
+        try:
+            summary = _prebuild_discovery_result_index(
+                owner_id,
+                filters=_discovery_result_filters(payload or {}),
+            )
+        except Exception as exc:
+            current_app.logger.exception(
+                "Job Discovery result-index prebuild failed owner=%s", owner_id
+            )
+            return jsonify(
+                {
+                    "ok": False,
+                    "changed": False,
+                    "message": str(exc),
+                }
+            ), 500
+        return jsonify(
+            {
+                "ok": True,
+                "changed": True,
+                "recommended_count": summary["recommended_count"],
+                "possible_count": summary["possible_count"],
+                "pending_count": summary["pending_count"],
+                "low_match_count": summary["low_match_count"],
+                "saved_count": summary["saved_count"],
+                "ignored_count": summary["ignored_count"],
+            }
+        )
+
+    @application_builder_bp.post("/discovery/catalog/hydrate")
+    def hydrate_discovered_jobs_from_shared_catalog():
+        """Synchronize shared postings after the results page has rendered.
+
+        Keeping this work in a separate request lets ``GET /job-discovery``
+        return its existing durable read model without waiting for catalog
+        queries or owner-scoped job writes.
+        """
+
+        owner_id = _application_owner_id()
+        catalog_sources = discovery_store.list_company_sources(
+            SHARED_CATALOG_SOURCE_OWNER_ID
+        )
+        if not catalog_sources:
+            return jsonify(
+                {
+                    "ok": True,
+                    "changed": False,
+                    "hydrated_job_count": 0,
+                }
+            )
+
+        revision_before = discovery_store.get_result_revision(owner_id)
+        try:
+            hydrated_job_count = (
+                JobDiscoveryService(store=discovery_store)
+                .enable_shared_public_catalog()
+                .hydrate_owner_from_shared_catalog(owner_id, catalog_sources)
+            )
+        except Exception as exc:
+            current_app.logger.exception(
+                "Deferred shared catalog hydration failed owner=%s",
+                owner_id,
+            )
+            return jsonify(
+                {
+                    "ok": False,
+                    "changed": False,
+                    "hydrated_job_count": 0,
+                    "message": str(exc),
+                }
+            ), 500
+
+        revision_after = discovery_store.get_result_revision(owner_id)
+        changed = revision_after != revision_before
+        if changed:
+            # This request is already outside the initial page render. Build the
+            # default read model now so the subsequent reload remains index-only.
+            result_index_prebuilt = _try_prebuild_discovery_result_index(owner_id)
+        else:
+            result_index_prebuilt = True
+        return jsonify(
+            {
+                "ok": True,
+                "changed": changed,
+                "hydrated_job_count": hydrated_job_count,
+                "result_index_prebuilt": result_index_prebuilt,
+            }
+        )
+
+    @application_builder_bp.post("/discovery/refresh/source")
+    def refresh_discovered_job_source():
+        _require_job_catalog_manager()
+        owner_id = _application_owner_id()
+        payload = request.get_json(silent=True) if request.is_json else request.form
+        source_id = str((payload or {}).get("source_id") or "").strip()
+        source = discovery_store.get_company_source(
+            SHARED_CATALOG_SOURCE_OWNER_ID, source_id
+        )
+        if source is None or not source.enabled:
+            return jsonify(
+                {
+                    "ok": False,
+                    "message": "The selected company source is unavailable or disabled.",
+                    "source_id": source_id,
+                }
+            ), 404
+        try:
+            result = _run_discovery_source_refresh(owner_id, [source])
+        except Exception as exc:
+            current_app.logger.exception(
+                "Interactive company refresh failed actor=%s source=%s",
+                owner_id,
+                source_id,
+            )
+            return jsonify(
+                {
+                    "ok": False,
+                    "source_id": source.id,
+                    "company_name": source.company_name,
+                    "outcome": "error",
+                    "message": f"{source.company_name} could not be refreshed.",
+                    "issues": [str(exc)],
+                }
+            ), 500
+        return jsonify(_discovery_source_refresh_payload(source, result))
+
+    @application_builder_bp.post("/discovery/refresh")
+    def refresh_discovered_jobs():
+        """No-JavaScript fallback that refreshes one source per request.
+
+        The normal browser flow calls ``refresh_discovered_job_source`` once for
+        each source and displays progress. Keeping this route bounded prevents a
+        bulk form submission from exceeding the gateway timeout.
+        """
+
+        _require_job_catalog_manager()
+        owner_id = _application_owner_id()
+        return_to_settings = str(request.form.get("return_to") or "").strip() == "settings"
+        redirect_url = (
+            url_for("application_builder.job_discovery_workspace", view="settings")
+            + "#job-discovery-settings"
+            if return_to_settings
+            else _discovery_results_url()
+        )
+        sources = discovery_store.list_company_sources(
+            SHARED_CATALOG_SOURCE_OWNER_ID, enabled_only=True
+        )
+        if not sources:
+            flash(
+                "No enabled job sources are configured. Add a company source before refreshing jobs.",
+                "warning",
+            )
+            return redirect(redirect_url)
+
+        requested_source_id = str(request.form.get("source_id") or "").strip()
+        selected_source = next(
+            (source for source in sources if source.id == requested_source_id),
+            None,
+        )
+        if requested_source_id and selected_source is None:
+            flash(
+                "The selected company source is unavailable or disabled. Enable it before scanning.",
+                "warning",
+            )
+            return redirect(redirect_url)
+        if selected_source is None:
+            selected_source = min(
+                sources,
+                key=lambda source: (source.last_checked_at or "", source.company_name.casefold()),
+            )
+
+        result = _run_discovery_source_refresh(owner_id, [selected_source])
+        _try_prebuild_discovery_result_index(
+            owner_id,
+            current=state(),
+            filters=_discovery_result_filters(request.form),
+        )
+        payload = _discovery_source_refresh_payload(selected_source, result)
+        message = payload["message"]
+        if len(sources) > 1 and not requested_source_id:
+            message += (
+                " This fallback refresh processes one company at a time; "
+                "click Refresh jobs again for the next company."
+            )
+        if payload["issues"]:
+            message += f" {len(payload['issues'])} issue{'s' if len(payload['issues']) != 1 else ''} need review."
+        flash(message, "warning" if payload["issues"] else "success")
+        return redirect(redirect_url)
 
     @application_builder_bp.post(
         "/discovery/jobs/<source_id>/<job_id>/save"
     )
     def save_discovered_job(source_id: str, job_id: str):
+        owner_id = _application_owner_id()
         try:
-            _job_action_service().save(_application_owner_id(), source_id, job_id)
+            _job_action_service().save(owner_id, source_id, job_id)
         except LookupError:
             abort(404)
+        _try_prebuild_discovery_result_index(
+            owner_id,
+            current=state(),
+            filters=_discovery_result_filters(request.form),
+        )
         flash("Job saved for later review.", "success")
         return redirect(_discovery_results_url(anchor=f"discovered-job-{job_id}"))
 
@@ -6235,10 +8621,16 @@ def _register_application_builder_routes() -> None:
         "/discovery/jobs/<source_id>/<job_id>/ignore"
     )
     def ignore_discovered_job(source_id: str, job_id: str):
+        owner_id = _application_owner_id()
         try:
-            _job_action_service().ignore(_application_owner_id(), source_id, job_id)
+            _job_action_service().ignore(owner_id, source_id, job_id)
         except LookupError:
             abort(404)
+        _try_prebuild_discovery_result_index(
+            owner_id,
+            current=state(),
+            filters=_discovery_result_filters(request.form),
+        )
         flash("Job ignored. You can save it later to restore it.", "success")
         return redirect(_discovery_results_url(anchor=f"discovered-job-{job_id}"))
 
@@ -6253,12 +8645,43 @@ def _register_application_builder_routes() -> None:
         except LookupError:
             abort(404)
         session["active_application_id"] = result.application.id
-        flash(
-            "Application workspace created from the discovered posting."
-            if result.created
-            else "This discovered posting already has an application workspace.",
-            "success" if result.created else "info",
-        )
+        if result.previous_job_description:
+            previous_fingerprint = hashlib.sha256(
+                normalize_job_description(
+                    result.previous_job_description
+                ).encode("utf-8")
+            ).hexdigest()
+            session["pending_application_job_description_refresh"] = {
+                "application_id": result.application.id,
+                "previous_fingerprint": previous_fingerprint,
+            }
+        if result.description_refreshed:
+            flash(
+                "The full job description was loaded from the employer posting "
+                "and added to Application and Job Setup.",
+                "success",
+            )
+        else:
+            flash(
+                "Application workspace created from the discovered posting."
+                if result.created
+                else "This discovered posting already has an application workspace.",
+                "success" if result.created else "info",
+            )
+        if result.description_fetch_error:
+            current_app.logger.info(
+                "Posting detail lookup kept stored summary owner=%s source=%s "
+                "job=%s error=%s",
+                _application_owner_id(),
+                source_id,
+                job_id,
+                result.description_fetch_error,
+            )
+            flash(
+                "The employer site did not allow the complete description to be "
+                "retrieved, so the available posting details were kept.",
+                "warning",
+            )
         return redirect(
             url_for(
                 "application_builder.open_application_builder",
@@ -6448,32 +8871,37 @@ def _register_application_builder_routes() -> None:
             flash("Company and job title are required.", "error")
             return redirect(url_for("application_builder.index", tab="applications") + "#new-application")
 
+        raw_job_url = request.form.get("job_url", "").strip()
+        job_url = normalize_job_url(raw_job_url)
+        job_description = request.form.get("job_description", "").strip()
+        if raw_job_url and not job_url:
+            flash("Enter a valid HTTP or HTTPS job posting link.", "error")
+            return redirect(url_for("application_builder.index", tab="applications") + "#new-application")
+        if not job_url and not job_description:
+            flash("Add a job posting link or paste the job description.", "error")
+            return redirect(url_for("application_builder.index", tab="applications") + "#new-application")
+
         created = application_store.create(
             _application_owner_id(),
             company=company,
             role=role,
-            job_url=request.form.get("job_url", ""),
-            interview_audience=request.form.get("interview_audience", ""),
-            application_date=normalize_iso_date(request.form.get("application_date")),
-            status=normalize_application_status(request.form.get("status")),
-            resume_version=request.form.get("resume_version", "Not started"),
-            resume_style=normalize_resume_style(request.form.get("resume_style")),
-            alignment_score=_optional_score("alignment_score"),
-            interview_readiness=_optional_score("interview_readiness"),
-            notes=request.form.get("notes", ""),
-            next_action=request.form.get("next_action", ""),
-            next_follow_up_date=normalize_iso_date(
-                request.form.get("next_follow_up_date")
-            ),
-            upcoming_event_date=normalize_iso_date(
-                request.form.get("upcoming_event_date")
-            ),
-            upcoming_event_type=request.form.get("upcoming_event_type", ""),
-            job_description=request.form.get("job_description", ""),
+            job_url=job_url,
+            interview_audience="",
+            application_date="",
+            status="draft",
+            resume_version="Not started",
+            resume_style="",
+            alignment_score=None,
+            notes="",
+            next_action="",
+            next_follow_up_date="",
+            upcoming_event_date="",
+            upcoming_event_type="",
+            job_description=job_description,
             workflow_step="setup",
         )
         session["active_application_id"] = created.id
-        flash("Job application created. Continue with Career and Job Setup.", "success")
+        flash("Job application created. Continue with Application and Job Setup.", "success")
         if request.form.get("start_builder") == "1":
             return redirect(
                 url_for("application_builder.open_application_builder", application_id=created.id)
@@ -6497,7 +8925,6 @@ def _register_application_builder_routes() -> None:
             offer_received=request.form.get("offer_received") == "on",
             notes=request.form.get("notes", ""),
             next_follow_up_date=request.form.get("next_follow_up_date", ""),
-            interview_readiness=_optional_score("interview_readiness"),
             next_action=request.form.get("next_action", ""),
             upcoming_event_date=request.form.get("upcoming_event_date", ""),
             upcoming_event_type=request.form.get("upcoming_event_type", ""),
@@ -6513,10 +8940,47 @@ def _register_application_builder_routes() -> None:
 
     @application_builder_bp.post("/applications/<application_id>/delete")
     def delete_application_record(application_id: str):
-        workflow_key = f"{_application_owner_id()}:application:{application_id}"
+        owner_id = _application_owner_id()
+        workflow_key = f"{owner_id}:application:{application_id}"
         workflow_state = store.peek(workflow_key)
-        if not application_store.delete(_application_owner_id(), application_id):
+        application = application_store.get(
+            owner_id,
+            application_id,
+            include_resume_bytes=False,
+        )
+        if application is None or not application_store.delete(
+            owner_id, application_id
+        ):
             abort(404)
+        if application.source_job_id:
+            try:
+                for discovery_state in discovery_store.list_job_states(owner_id):
+                    if (
+                        discovery_state.job_id == application.source_job_id
+                        and discovery_state.disposition
+                        is DiscoveryJobDisposition.APPLICATION_CREATED
+                        and discovery_state.application_id == application_id
+                    ):
+                        discovery_store.put_job_state(
+                            replace(
+                                discovery_state,
+                                disposition=DiscoveryJobDisposition.SAVED,
+                                application_id="",
+                                updated_at=utc_now_iso(),
+                            )
+                        )
+            except Exception:
+                # The application has already been deleted. Do not turn a
+                # best-effort discovery-link repair into a failed deletion;
+                # the Job Discovery read path also tolerates stale links.
+                current_app.logger.warning(
+                    "Could not repair Job Discovery state after deleting "
+                    "application owner=%s application=%s source_job=%s",
+                    owner_id,
+                    application_id,
+                    application.source_job_id,
+                    exc_info=True,
+                )
         if workflow_state is not None:
             _delete_workflow_document_objects(
                 workflow_state,

@@ -174,7 +174,7 @@ def ensure_career_translation_assessment(
                 protected.disposition = "user_clarification_required"
                 protected.rationale = (
                     protected.rationale.rstrip()
-                    + " The assessment could not trace this item to Candidate Profile evidence, so it cannot shape resume wording yet."
+                    + " The assessment could not trace this item to Verified Resume Evidence, so it cannot shape resume wording yet."
                 ).strip()
                 protected.recommended_action = (
                     protected.recommended_action
@@ -207,8 +207,7 @@ def ensure_career_translation_assessment(
                     "before it can shape resume or interview wording."
                 )
                 protected.rationale = (
-                    "The generated interpretation was not fully traceable to the cited Candidate "
-                    "Profile evidence."
+                    "The generated interpretation was not fully traceable to the cited Verified Resume Evidence."
                 )
                 protected.recommended_action = (
                     "Confirm the official wording, factual responsibilities, and closest target-market "
@@ -216,8 +215,7 @@ def ensure_career_translation_assessment(
                 )
             else:
                 protected.rationale = (
-                    "The source wording and evidence IDs are present in the verified Candidate "
-                    "Profile; any explanation must preserve those facts."
+                    "The source wording and evidence IDs are present in Verified Resume Evidence; any explanation must preserve those facts."
                 )
                 protected.recommended_action = (
                     "Keep official facts unchanged and use only the evidence-supported explanation."
@@ -269,9 +267,9 @@ def ensure_career_translation_assessment(
                 ),
                 evidence_ids=[matched.id] if matched else [],
                 rationale=(
-                    "The exact title is documented in the Candidate Profile; only its explanation may be clarified."
+                    "The exact title is documented in the Verified Resume Evidence; only its explanation may be clarified."
                     if matched
-                    else "The title was supplied as onboarding context but is not independently documented in the Candidate Profile."
+                    else "The title was supplied as onboarding context but is not independently documented in the Verified Resume Evidence."
                 ),
                 recommended_action=(
                     "Keep the official title unchanged and add a concise functional explanation only when useful."
@@ -314,9 +312,9 @@ def ensure_career_translation_assessment(
                 ),
                 evidence_ids=evidence_ids,
                 rationale=(
-                    "The credential is present in the Candidate Profile and may be explained without changing its official name."
+                    "The credential is present in the Verified Resume Evidence and may be explained without changing its official name."
                     if documented
-                    else "The credential was entered during onboarding but is not yet documented in the Candidate Profile."
+                    else "The credential was entered during onboarding but is not yet documented in the Verified Resume Evidence."
                 ),
                 recommended_action=(
                     "Preserve the official credential name and add issuing body or equivalency context only when verified."
@@ -360,7 +358,7 @@ def ensure_career_translation_assessment(
                 rationale=(
                     "A focused confirmation question can determine whether relevant experience exists."
                     if needs_question
-                    else "No Candidate Profile evidence currently supports this requirement."
+                    else "No Verified Resume Evidence currently supports this requirement."
                 ),
                 recommended_action=(
                     "Answer the related confirmation question with a specific fact or keep the requirement outside the resume."

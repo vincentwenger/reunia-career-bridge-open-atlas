@@ -1,0 +1,18 @@
+Job Discovery on-demand application description validation
+Date: 2026-07-31
+
+Implemented behavior
+- Opening an Application Workspace now performs a targeted full-description lookup when the stored discovery text looks like a short listing summary.
+- Workday jobs use the public Workday CXS detail endpoint for the selected posting.
+- Other short postings use the same canonical URL as View posting and attempt a robots-aware JSON-LD JobPosting extraction.
+- The retrieved description is saved to the Job Application and seeded into Career and Job Setup.
+- Existing workspaces are upgraded only when their stored description still matches the untouched discovery summary.
+- User-edited job descriptions are preserved.
+- Fetch failures, robots restrictions, timeouts, and unsupported page formats fall back to the stored summary without blocking workspace access.
+
+Validation
+- 333 repository tests passed.
+- 22 tests skipped because optional runtime dependencies/services are unavailable in this validation environment.
+- The relevant Job Discovery source, posting-detail, application-conversion, action-contract, and persistence tests passed.
+- A separate full discovery run found 10 pre-existing deployment-contract errors because scripts/deployment/upload_to_lightsail.bat is absent from the uploaded package; this file was already absent and is unrelated to this change.
+- Python compilation completed successfully.

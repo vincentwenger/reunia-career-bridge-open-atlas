@@ -1,0 +1,29 @@
+Application Builder navbar 500 storage fix
+============================================
+
+Observed symptom
+- Career Translation, Job Applications, Resume Workflow, and Resume Reports all return a generic HTTP 500 after navigation.
+
+Repository finding
+- All affected pages cross the Application Builder persistence boundary.
+- DynamoDB/S3 clients are lazy: startup validates configured resource names but did not verify that the named resources exist, are in the selected region, use the required key schemas, or are reachable by the deployed AWS identity.
+- A missing/incompatible/inaccessible resource therefore surfaced only on the first workspace read as a generic 500.
+
+Changes
+- Added an Application Builder AWS exception handler that logs the request reference and returns an actionable HTTP 503 storage page instead of a generic 500.
+- Added scripts/deployment/provision_career_bridge_storage.py and a Windows wrapper.
+- The preflight reads the current Lightsail container environment, validates or creates missing DynamoDB tables, enables workflow TTL, and validates/configures the private versioned S3 document bucket.
+- Existing resources are never replaced; incompatible key schemas fail explicitly.
+- Demo storage mode validates only the mandatory DynamoDB application table.
+- upload_to_lightsail.bat runs the storage preflight before building/pushing.
+- The live deployment validator now signs in and opens all four affected navbar workspaces before running the application create/read/delete smoke test.
+
+Required schemas
+- Applications: owner_id (String HASH), storage_key (String RANGE)
+- Workflows: workflow_id (String HASH), TTL attribute expires_at
+- Discovery: owner_id (String HASH), storage_key (String RANGE)
+- Documents: private S3 bucket, Block Public Access enabled, versioning enabled
+
+Validation
+- Python compileall: passed.
+- unittest discovery: 308 tests passed; 20 dependency-related skips; 0 failures; 0 errors.

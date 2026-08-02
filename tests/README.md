@@ -50,7 +50,7 @@ python -m unittest tests.contracts.test_storage_backend_migration_contracts -v
 
 It also verifies cross-instance/restart durability, optimistic concurrency,
 owner isolation, large-object S3 externalization, legacy inline-item migration,
-S3 cleanup on application deletion, and the demo-storage Lightsail scale guard.
+S3 cleanup on application deletion, and the non-durable-storage Lightsail scale guard.
 The Flask cross-instance cases run when Flask and the Builder runtime
 dependencies are installed.
 
@@ -64,7 +64,7 @@ warning without contacting AWS or a live deployment.
 
 ## Job discovery contracts
 
-The discovery tests exercise a shared connector contract against all four initial adapters, fixture normalization, deduplication, two-stage cache invalidation, hard eligibility blockers, grounded strengths, owner isolation, owner-scoped search-preference persistence, user-facing source-management contracts, server-side result tabs, pagination, and lazy analysis contracts, idempotent application conversion, cross-instance persistence, DynamoDB optimistic source updates, and per-source failure isolation.
+The discovery tests exercise a shared connector contract against all supported adapter families, fixture normalization, deduplication, two-stage cache invalidation, hard eligibility blockers, grounded strengths, owner isolation, owner-scoped search-preference persistence, user-facing source-management contracts, server-side result tabs, pagination, and lazy analysis contracts, idempotent application conversion, cross-instance persistence, DynamoDB optimistic source updates, and per-source failure isolation.
 
 ```bash
 python -m unittest -v \

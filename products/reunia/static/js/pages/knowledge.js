@@ -1936,8 +1936,6 @@
         }
         state.context = context;
         writeDefaultContextForm(context);
-        updateResponsePreferencesSummary();
-        setResponsePreferencesExpanded(false);
         markDefaultContextSaved(context);
         updateContextStatus(context);
         updateEffectiveContextPreview();
@@ -2039,7 +2037,6 @@
     document.getElementById('assistantContextForm')?.addEventListener('input', () => {
         cacheCurrentMeetingContextDraft();
         updateMeetingInstructionsControls();
-        updateResponsePreferencesSummary();
         updateEffectiveContextPreview();
         updateSaveContextButton();
     });

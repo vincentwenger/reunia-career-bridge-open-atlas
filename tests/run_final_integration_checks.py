@@ -134,13 +134,13 @@ def main() -> int:
             ],
         ),
         (
-            "Three-module navigation contract",
+            "Reduced global navigation contract",
             [
                 sys.executable,
                 "-m",
                 "unittest",
                 "-v",
-                "tests.contracts.test_three_module_navigation",
+                "tests.contracts.test_reduced_navigation",
             ],
         ),
     )

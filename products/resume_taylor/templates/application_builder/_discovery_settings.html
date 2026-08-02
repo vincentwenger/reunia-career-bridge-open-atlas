@@ -1,29 +1,52 @@
 <section class="card discovery-settings" id="job-discovery-settings" aria-labelledby="job-discovery-settings-title">
   <div class="section-heading discovery-settings-heading">
-    <div>
-      <span class="eyebrow">Discovery settings</span>
-      <h2 id="job-discovery-settings-title">{% if can_manage_job_catalog %}Shared catalog and personal preferences{% else %}Personal job preferences{% endif %}</h2>
-      {% if can_manage_job_catalog %}
-        <p>Manage the company sources shared with every user, then define your own ranking preferences. Job Fit remains based only on verified professional evidence.</p>
-      {% else %}
-        <p>Choose how the shared catalog should be filtered and prioritized for you. Company sources and refreshes are maintained centrally by administrators and job curators.</p>
-      {% endif %}
-    </div>
+    <h2 id="job-discovery-settings-title">{% if can_manage_job_catalog %}Discovery settings{% else %}Job preferences{% endif %}</h2>
     <span class="discovery-count">{{ discovery_source_count }} compan{% if discovery_source_count == 1 %}y{% else %}ies{% endif %}</span>
   </div>
 
   <div class="discovery-settings-grid">
     {% if can_manage_job_catalog %}
     <div class="discovery-settings-panel">
-      <h3>Company sources</h3>
+      <div class="section-heading compact-heading">
+        <h3>Company sources</h3>
+        <details class="discovery-add-source discovery-inline-action" {% if not discovery_sources %}open{% endif %}>
+          <summary>Add a company source</summary>
+          <form action="{{ url_for('application_builder.create_discovery_source') }}" method="post" class="stack-form discovery-source-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="field-grid two">
+              <div><label for="new-source-company">Company</label><input id="new-source-company" name="company_name" required></div>
+              <div>
+                <label for="new-source-type">Source type</label>
+                <select id="new-source-type" name="source_type">
+                  {% for value, label in discovery_source_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                </select>
+              </div>
+              <div><label for="new-source-identifier">ATS identifier</label><input id="new-source-identifier" name="source_identifier" placeholder="Greenhouse, Lever or Ashby board"></div>
+              <div><label for="new-source-url">Career-page URL</label><input id="new-source-url" name="careers_url" type="url" placeholder="https://company.example/careers"></div>
+            </div>
+            <button class="button primary" type="submit">Add a company source</button>
+          </form>
+          <details class="source-help">
+            <summary>Source setup help</summary>
+            <p class="form-help">Supported source types: Greenhouse, Lever, Ashby, Workday, SAP SuccessFactors, Oracle Cloud HCM, iCIMS, SmartRecruiters, Avature, Eightfold, Taleo, Dayforce, Talemetry / TTC Portals, Jobvite, UKG Pro / UltiPro, PeopleAdmin, Amazon Jobs, Branded Requisition Portal, and Manual career-page URL.</p>
+            <p class="form-help">URL-based sources use the public career page. Radancy / TalentBrew example: <code>https://jobs.boeing.com/search-jobs</code>.</p>
+          </details>
+        </details>
+      </div>
+
       {% if discovery_sources %}
         <div class="discovery-source-manager-list">
           {% for source in discovery_sources %}
-            <details class="discovery-source-manager" {% if not source.enabled %}data-disabled="true"{% endif %}>
+            {% set scan = discovery_source_scan_statuses[source.id] %}
+            <details class="discovery-source-manager" data-discovery-source-id="{{ source.id }}" {% if not source.enabled %}data-disabled="true"{% endif %}>
               <summary>
-                <span><strong>{{ source.company_name }}</strong> · {{ source.source_type.value|replace('_', ' ')|title }}</span>
-                <span class="application-status {% if source.enabled %}status-considering{% else %}status-archived{% endif %}">{% if source.enabled %}Enabled{% else %}Disabled{% endif %}</span>
+                <span><strong>{{ source.company_name }}</strong><small>{% if source.source_type.value == 'icims' %}iCIMS{% elif source.source_type.value == 'talemetry_ttc' %}Talemetry / TTC{% elif source.source_type.value == 'jobvite' %}Jobvite{% elif source.source_type.value == 'ukg_pro' %}UKG Pro{% elif source.source_type.value == 'peopleadmin' %}PeopleAdmin{% elif source.source_type.value == 'branded_requisition' %}Requisition portal{% else %}{{ source.source_type.value|replace('_', ' ')|title }}{% endif %}</small></span>
+                <span class="discovery-source-summary-badges">
+                  <span class="application-status discovery-scan-badge scan-{{ scan.state }}">{{ scan.label }}</span>
+                  {% if not source.enabled %}<span class="application-status status-archived">Disabled</span>{% endif %}
+                </span>
               </summary>
+
               <form action="{{ url_for('application_builder.update_discovery_source', source_id=source.id) }}" method="post" class="stack-form discovery-source-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="revision" value="{{ source.revision }}">
@@ -35,78 +58,95 @@
                       {% for value, label in discovery_source_types %}<option value="{{ value }}" {% if source.source_type.value == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
                     </select>
                   </div>
-                  <div><label for="source-identifier-{{ source.id }}">ATS site identifier</label><input id="source-identifier-{{ source.id }}" name="source_identifier" value="{{ source.source_identifier }}" placeholder="Board/site name; auto-detected for Workday"></div>
-                  <div><label for="source-url-{{ source.id }}">Career-page URL</label><input id="source-url-{{ source.id }}" name="careers_url" type="url" value="{{ source.careers_url }}" placeholder="https://company.example/careers"></div>
+                  <div><label for="source-identifier-{{ source.id }}">ATS identifier</label><input id="source-identifier-{{ source.id }}" name="source_identifier" value="{{ source.source_identifier }}"></div>
+                  <div><label for="source-url-{{ source.id }}">Career-page URL</label><input id="source-url-{{ source.id }}" name="careers_url" type="url" value="{{ source.careers_url }}"></div>
                 </div>
-                <label class="checkbox-row"><input type="checkbox" name="enabled" value="1" {% if source.enabled %}checked{% endif %}> Include this company when refreshing jobs</label>
-                <p class="form-help">Greenhouse, Lever and Ashby use the site identifier. Workday uses the public Workday board URL and auto-detects its tenant and career site. Manual career pages use standardized JobPosting JSON-LD.</p>
-                <div class="button-row">
-                  <button class="button primary" type="submit">Save source</button>
-                </div>
+                <label class="checkbox-row"><input type="checkbox" name="enabled" value="1" {% if source.enabled %}checked{% endif %}> Enabled</label>
+                <button class="button primary" type="submit">Save</button>
               </form>
+
               <div class="button-row discovery-source-secondary-actions">
+                <form action="{{ url_for('application_builder.refresh_discovered_jobs') }}" method="post" class="discovery-source-scan-form" data-discovery-source-scan data-source-id="{{ source.id }}" data-company-name="{{ source.company_name }}" data-source-refresh-url="{{ url_for('application_builder.refresh_discovered_job_source') }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="source_id" value="{{ source.id }}">
+                  <input type="hidden" name="return_to" value="settings">
+                  <button class="button secondary" type="submit" data-discovery-source-scan-submit {% if not source.enabled %}disabled title="Enable this source before scanning it."{% endif %}>Scan this source</button>
+                  <span class="discovery-source-scan-feedback" data-discovery-source-scan-feedback hidden aria-live="polite"></span>
+                </form>
                 <form action="{{ url_for('application_builder.toggle_discovery_source', source_id=source.id) }}" method="post">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button class="button secondary" type="submit">{% if source.enabled %}Disable{% else %}Enable{% endif %}</button>
                 </form>
-                <form action="{{ url_for('application_builder.delete_discovery_source', source_id=source.id) }}" method="post" onsubmit="return confirm('Remove this company source? Previously collected postings will remain in discovery history.');">
+                <form action="{{ url_for('application_builder.delete_discovery_source', source_id=source.id) }}" method="post" onsubmit="return confirm('Remove this company source? Previously collected postings will remain.');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <button class="button text" type="submit">Remove</button>
                 </form>
               </div>
-              <p class="discovery-source-status">{{ discovery_source_checked_labels[source.id] }}</p>
+
+              <details class="discovery-scan-details scan-{{ scan.state }}">
+                <summary>Last scan result · {{ scan.attempt_label }}</summary>
+                {% if scan.message %}<p class="discovery-source-scan-message">{{ scan.message }}</p>{% endif %}
+                {% if scan.success_label %}<p class="discovery-source-status">{{ scan.success_label }}</p>{% endif %}
+                {% if scan.job_count_label %}<p class="discovery-source-status">{{ scan.job_count_label }}</p>{% endif %}
+              </details>
             </details>
           {% endfor %}
         </div>
       {% else %}
-        <p class="empty-inline">No company sources are configured yet.</p>
+        <p class="empty-inline">No company sources configured.</p>
       {% endif %}
 
-      <details class="discovery-add-source" {% if not discovery_sources %}open{% endif %}>
-        <summary>Add a company source</summary>
-        <form action="{{ url_for('application_builder.create_discovery_source') }}" method="post" class="stack-form discovery-source-form">
+      <details class="discovery-add-source" id="job-discovery-source-import">
+        <summary>Import company sources from CSV or JSON</summary>
+        <form action="{{ url_for('application_builder.import_discovery_sources') }}" method="post" enctype="multipart/form-data" class="stack-form discovery-source-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="field-grid two">
-            <div><label for="new-source-company">Company</label><input id="new-source-company" name="company_name" required></div>
-            <div>
-              <label for="new-source-type">Source type</label>
-              <select id="new-source-type" name="source_type">
-                {% for value, label in discovery_source_types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-              </select>
-            </div>
-            <div><label for="new-source-identifier">ATS site identifier</label><input id="new-source-identifier" name="source_identifier" placeholder="Greenhouse, Lever or Ashby board; optional for Workday"></div>
-            <div><label for="new-source-url">Career-page URL</label><input id="new-source-url" name="careers_url" type="url" placeholder="Required for Workday and Manual JSON-LD"></div>
+          <label for="source-import-file">Configuration file</label>
+          <input id="source-import-file" name="source_import_file" type="file" accept=".csv,.json,text/csv,application/json" required>
+          <label for="source-import-duplicate-policy">Duplicates</label>
+          <select id="source-import-duplicate-policy" name="duplicate_policy">
+            <option value="skip" selected>Skip</option>
+            <option value="update">Update existing source</option>
+          </select>
+          <div class="button-row">
+            <button class="button primary" type="submit">Import</button>
+            <a class="button text" href="{{ url_for('application_builder.download_discovery_source_csv_template') }}">Download CSV example</a>
+            <a class="button text" href="{{ url_for('application_builder.download_discovery_source_json_template') }}">Download JSON example</a>
           </div>
-          <p class="form-help">For Workday, paste the public board URL, for example <code>https://intel.wd1.myworkdayjobs.com/en-US/External</code>. Use Manual career-page URL only for sites that publish schema.org JobPosting data. Only public postings are collected.</p>
-          <button class="button primary" type="submit">Add company source</button>
         </form>
       </details>
+
+      {% if discovery_sources %}
+      <details class="danger-zone">
+        <summary>Danger zone</summary>
+        <form action="{{ url_for('application_builder.delete_all_discovery_sources') }}" method="post" onsubmit="return confirm('Remove all {{ discovery_source_count }} company sources? This cannot be undone. Previously collected postings and applications will remain.');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="expected_source_count" value="{{ discovery_source_count }}">
+          <button class="button danger-outline" type="submit">Remove all company sources</button>
+        </form>
+      </details>
+      {% endif %}
     </div>
     {% else %}
-    <div class="discovery-settings-panel">
-      <span class="eyebrow">Shared job catalog</span>
+    <div class="discovery-settings-panel discovery-managed-catalog-note">
       <h3>Companies are managed centrally</h3>
-      <p>{{ discovery_source_count }} compan{% if discovery_source_count == 1 %}y is{% else %}ies are{% endif %} currently configured. Jobs from every enabled company are available to all users, regardless of which companies an individual follows or saves.</p>
-      <p class="form-help">Your Career Profile, search preferences, Job Fit, saved jobs, ignored jobs, and Application Workspaces remain private to your account.</p>
+      <p class="form-help">The shared company catalog is managed by administrators and job curators. Your controls below only change personal matching preferences.</p>
     </div>
     {% endif %}
 
     <div class="discovery-settings-panel">
-      <h3>Search preferences</h3>
-      {% if reusable_career_profile and reusable_career_profile.has_context() %}
-        <p class="form-help"><strong>Career Profile connected:</strong> preferred roles, current or relocation locations, workplace preferences, industries, and skills supplied the initial defaults. Saved search preferences remain application-specific overrides. <a href="/career-profile">Review Career Profile</a></p>
-      {% else %}
-        <p class="form-help">Complete <a href="/career-profile">Career Profile</a> to seed role, location, workplace, industry, and skill preferences automatically.</p>
-      {% endif %}
+      <div class="section-heading compact-heading">
+        <h3>Search preferences</h3>
+        <a class="text-link" href="/career-profile">Career Profile</a>
+      </div>
       <form action="{{ url_for('application_builder.update_discovery_preferences') }}" method="post" class="stack-form discovery-preferences-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="discovery-target-titles">Desired job titles</label>
         <textarea id="discovery-target-titles" name="target_titles" rows="2" placeholder="Senior Data Engineer, Data Platform Engineer">{{ discovery_preferences.target_titles|join(', ') }}</textarea>
-        <label class="checkbox-row"><input type="checkbox" name="require_title_match" value="1" {% if discovery_preferences.require_title_match %}checked{% endif %}> Hide jobs that do not match these title terms</label>
+        <label class="checkbox-row"><input type="checkbox" name="require_title_match" value="1" {% if discovery_preferences.require_title_match %}checked{% endif %}> Require title match</label>
 
         <label for="discovery-locations">Preferred locations</label>
         <textarea id="discovery-locations" name="preferred_locations" rows="2" placeholder="Portland, Oregon; Seattle, Washington">{{ discovery_preferences.preferred_locations|join(', ') }}</textarea>
-        <label class="checkbox-row"><input type="checkbox" name="require_location_match" value="1" {% if discovery_preferences.require_location_match %}checked{% endif %}> Hide jobs outside these locations</label>
+        <label class="checkbox-row"><input type="checkbox" name="require_location_match" value="1" {% if discovery_preferences.require_location_match %}checked{% endif %}> Require location match</label>
 
         <fieldset>
           <legend>Accepted workplace types</legend>
@@ -115,43 +155,46 @@
               <label class="checkbox-row"><input type="checkbox" name="accepted_workplace_types" value="{{ value }}" {% if value in discovery_accepted_workplace_values %}checked{% endif %}> {{ label }}</label>
             {% endfor %}
           </div>
-          <label class="checkbox-row"><input type="checkbox" name="require_workplace_match" value="1" {% if discovery_preferences.require_workplace_match %}checked{% endif %}> Hide jobs outside the selected workplace types</label>
+          <label class="checkbox-row"><input type="checkbox" name="require_workplace_match" value="1" {% if discovery_preferences.require_workplace_match %}checked{% endif %}> Require workplace match</label>
         </fieldset>
 
-        <label for="discovery-employment-types">Preferred employment types</label>
-        <input id="discovery-employment-types" name="preferred_employment_types" value="{{ discovery_preferences.preferred_employment_types|join(', ') }}" placeholder="Full-time, Contract">
-        <label class="checkbox-row"><input type="checkbox" name="require_employment_type_match" value="1" {% if discovery_preferences.require_employment_type_match %}checked{% endif %}> Hide jobs outside these employment types</label>
-
-        <div class="field-grid three">
-          <div><label for="discovery-minimum-salary">Minimum salary</label><input id="discovery-minimum-salary" name="minimum_salary" type="number" min="0" step="1000" value="{{ discovery_preferences.minimum_salary if discovery_preferences.minimum_salary is not none else '' }}"></div>
-          <div><label for="discovery-salary-currency">Currency</label><input id="discovery-salary-currency" name="minimum_salary_currency" maxlength="3" value="{{ discovery_preferences.minimum_salary_currency }}"></div>
-          <div>
-            <label for="discovery-salary-interval">Interval</label>
-            <select id="discovery-salary-interval" name="minimum_salary_interval">
-              {% for value in ('year', 'month', 'hour') %}<option value="{{ value }}" {% if discovery_preferences.minimum_salary_interval == value %}selected{% endif %}>Per {{ value }}</option>{% endfor %}
-            </select>
-          </div>
-        </div>
-
-        <label for="discovery-maximum-posting-age">Maximum posting age</label>
+        <label for="discovery-maximum-posting-age">Posting age</label>
         <select id="discovery-maximum-posting-age" name="maximum_posting_age_days">
-          {% for value, label in ((7, '7 days'), (14, '14 days'), (30, '30 days — recommended'), (60, '60 days'), (0, 'Any age')) %}
+          {% for value, label in ((7, '7 days'), (14, '14 days'), (30, '30 days'), (60, '60 days'), (0, 'Any age')) %}
             <option value="{{ value }}" {% if (value == 0 and discovery_preferences.maximum_posting_age_days is none) or discovery_preferences.maximum_posting_age_days == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
-        <p class="form-help">Applies to every source type: Greenhouse, Lever, Ashby, Workday, and Manual JSON-LD. Postings with an unknown date remain eligible, and an explicit future closing date overrides the age limit.</p>
 
-        <label for="discovery-preferred-keywords">Preferred keywords</label>
-        <textarea id="discovery-preferred-keywords" name="preferred_keywords" rows="2" placeholder="Snowflake, regulatory reporting, data platform">{{ discovery_preferences.preferred_keywords|join(', ') }}</textarea>
-        <p class="form-help">Preferred keywords improve Preference Fit when they appear in the posting. They never become candidate strengths or alter Job Fit.</p>
+        <details class="advanced-settings">
+          <summary>Advanced filters</summary>
+          <div class="stack-form">
+            <label for="discovery-employment-types">Preferred employment types</label>
+            <input id="discovery-employment-types" name="preferred_employment_types" value="{{ discovery_preferences.preferred_employment_types|join(', ') }}" placeholder="Full-time, Contract">
+            <label class="checkbox-row"><input type="checkbox" name="require_employment_type_match" value="1" {% if discovery_preferences.require_employment_type_match %}checked{% endif %}> Require employment type match</label>
 
-        <label for="discovery-required-keywords">Required keywords</label>
-        <textarea id="discovery-required-keywords" name="required_keywords" rows="2" placeholder="SQL, financial services">{{ discovery_preferences.required_keywords|join(', ') }}</textarea>
-        <p class="form-help">Jobs missing any required keyword are hidden during Stage 1 before an AI call.</p>
+            <div class="field-grid three">
+              <div><label for="discovery-minimum-salary">Minimum salary</label><input id="discovery-minimum-salary" name="minimum_salary" type="number" min="0" step="1000" value="{{ discovery_preferences.minimum_salary if discovery_preferences.minimum_salary is not none else '' }}"></div>
+              <div><label for="discovery-salary-currency">Currency</label><input id="discovery-salary-currency" name="minimum_salary_currency" maxlength="3" value="{{ discovery_preferences.minimum_salary_currency }}"></div>
+              <div>
+                <label for="discovery-salary-interval">Interval</label>
+                <select id="discovery-salary-interval" name="minimum_salary_interval">
+                  {% for value in ('year', 'month', 'hour') %}<option value="{{ value }}" {% if discovery_preferences.minimum_salary_interval == value %}selected{% endif %}>Per {{ value }}</option>{% endfor %}
+                </select>
+              </div>
+            </div>
 
-        <label for="discovery-excluded-terms">Excluded terms</label>
-        <textarea id="discovery-excluded-terms" name="excluded_terms" rows="2" placeholder="commission only, unpaid, travel 75%">{{ discovery_preferences.excluded_terms|join(', ') }}</textarea>
-        <p class="form-help">Mandatory preferences are applied before any AI analysis. Preference Fit and posting freshness affect Search Priority only; they never alter Job Fit.</p>
+            <label for="discovery-preferred-keywords">Preferred keywords</label>
+            <textarea id="discovery-preferred-keywords" name="preferred_keywords" rows="2">{{ discovery_preferences.preferred_keywords|join(', ') }}</textarea>
+            <label for="discovery-required-keywords">Required keywords</label>
+            <textarea id="discovery-required-keywords" name="required_keywords" rows="2">{{ discovery_preferences.required_keywords|join(', ') }}</textarea>
+            <label for="discovery-excluded-title-terms">Excluded job-title terms</label>
+            <p class="form-help">A job is excluded when one of these terms appears in its title.</p>
+            <textarea id="discovery-excluded-title-terms" name="excluded_title_terms" rows="2">{{ discovery_preferences.excluded_title_terms|join(', ') }}</textarea>
+            <label for="discovery-excluded-terms">Excluded terms anywhere in the posting</label>
+            <textarea id="discovery-excluded-terms" name="excluded_terms" rows="2">{{ discovery_preferences.excluded_terms|join(', ') }}</textarea>
+          </div>
+        </details>
+
         <button class="button primary" type="submit">Save search preferences</button>
       </form>
     </div>
@@ -159,15 +202,8 @@
 </section>
 
 {% if can_manage_job_catalog %}
-<section class="card discovery-schedule-card" id="job-discovery-schedule" aria-labelledby="job-discovery-schedule-title">
-  <div class="section-heading">
-    <div>
-      <span class="eyebrow">External scheduled scanning</span>
-      <h2 id="job-discovery-schedule-title">Refresh schedule</h2>
-      <p>Choose manual, daily, or weekly scanning for the shared catalog. One scheduled scan updates the postings available to every user.</p>
-    </div>
-    <span class="discovery-count">{{ discovery_schedule_next_label }}</span>
-  </div>
+<details class="card discovery-schedule-card" id="job-discovery-schedule">
+  <summary><strong>Refresh schedule</strong><span class="discovery-count">{{ discovery_schedule_next_label }}</span></summary>
   {% if discovery_schedule_error %}<div class="alert alert-error">{{ discovery_schedule_error }}</div>{% endif %}
   <form action="{{ url_for('application_builder.update_discovery_schedule') }}" method="post" class="stack-form discovery-schedule-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -197,8 +233,7 @@
         </select>
       </div>
     </div>
-    <p class="form-help">The external runner should invoke <code>python -m job_discovery.scheduling --scheduled</code>. It scans the central catalog owner; Flask and Gunicorn do not run a scheduler.</p>
     <button class="button primary" type="submit">Save refresh schedule</button>
   </form>
-</section>
+</details>
 {% endif %}

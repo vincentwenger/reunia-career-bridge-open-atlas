@@ -1,0 +1,20 @@
+PeopleAdmin robots-safe indexed discovery fallback
+
+Problem
+- Portland State University disallows automated access to /postings/search.
+- The previous connector correctly stopped with Permission required, but could not discover detail pages that remain public and individually permitted.
+
+Change
+- Added an OpenAI hosted web-search fallback for PeopleAdmin listing-route denials.
+- Web search is restricted to the exact configured host.
+- Only HTTPS /postings/<numeric-id> URLs are accepted.
+- The blocked /postings/search route is never requested after denial.
+- Every discovered detail URL still passes the existing robots, DNS, redirect, timeout, response-size, and rate-limit controls.
+- Indexed scans are marked partial; previously collected jobs are preserved rather than counted as missing.
+- Fallback can be disabled globally with JOB_DISCOVERY_INDEXED_SEARCH_FALLBACK=false or per source with indexed_search_fallback=false.
+
+Validation
+- PeopleAdmin listing denial triggers indexed URL discovery.
+- Allowed detail pages are fetched and converted to jobs.
+- Empty indexed results retain the Permission required error.
+- Exact-host and /postings/<id> filtering rejects search pages, third-party domains, and subdomain substitutions.

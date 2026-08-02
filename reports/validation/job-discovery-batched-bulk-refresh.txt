@@ -1,0 +1,32 @@
+Job Discovery batched bulk refresh validation
+==============================================
+
+Problem
+-------
+A single browser POST scanned every enabled source sequentially. With 34 company
+sources, the request exceeded the Lightsail/web gateway timeout and returned 504.
+
+Implemented behavior
+--------------------
+- The browser now sends one CSRF-protected request per company source.
+- A live progress panel shows current company, completed count, reused catalogs,
+  refreshed catalogs, and source-level issues.
+- One source failure does not abort the remaining companies.
+- The user can stop after the current company and safely restart; fresh shared
+  catalogs are reused instead of scanned again.
+- The no-JavaScript POST fallback refreshes one oldest/never-checked source only.
+- Workday retains its existing 18-second interactive budget.
+- Manual JSON-LD is capped to three pages and four-second requests for browser
+  refreshes; saved source settings are unchanged.
+- Greenhouse, Lever, and Ashby retain complete one-request scans.
+
+Validation
+----------
+- 129 Job Discovery tests passed; 1 optional runtime test skipped.
+- 5 new batched-refresh contract tests passed.
+- 229 Python files compiled.
+- 16 application-builder templates parsed.
+- JavaScript syntax validation passed.
+- The broad repository run executed 314 tests; 10 unrelated contract tests errored
+  because the uploaded package does not contain scripts/deployment/upload_to_lightsail.bat.
+  Those missing-file errors pre-existed this change.

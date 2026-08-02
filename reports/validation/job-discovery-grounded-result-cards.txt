@@ -3,7 +3,7 @@ Job Discovery grounded result-card validation
 Implemented:
 - Added EvidenceReference records with record_id, record_type, field_name, label, statement, and verification status.
 - Added RequirementEvidenceMatch records embedded in JobFitSnapshot.
-- CandidateJobProfile.from_career_records creates references for actual Candidate Profile, Career Background, experience, education, skill, certification, and verified Evidence Library records.
+- CandidateJobProfile.from_career_records creates references for actual Verified Resume Evidence, Career Background, experience, education, skill, certification, and verified Evidence Library records.
 - Unverified Evidence Library items are excluded before matching.
 - Posting text and extracted job keywords are never admitted as candidate evidence.
 - Broad requirements use conservative combined-record coverage; one isolated keyword cannot fully support a multi-part requirement.

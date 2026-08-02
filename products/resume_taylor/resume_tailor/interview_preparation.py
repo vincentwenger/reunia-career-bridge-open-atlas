@@ -202,7 +202,7 @@ These findings were saved by the resume workflow for this application. Use them 
 HOW TO USE THE FINDINGS
 - Convert unsupported or partial requirements into explicit potential gaps, likely probing questions, and honest bridge plans.
 - Convert evidence-review warnings and resume-report weaknesses into targeted preparation or resume challenge areas when relevant to an interview.
-- Use Career Translation Assessment findings to prepare explanations of unfamiliar international titles, credentials, terminology, and transferable experience.
+- Use Target-Market Review findings to prepare explanations of unfamiliar international titles, credentials, terminology, and transferable experience.
 - Use alignment changes to emphasize what improved while still preparing for the remaining weak areas.
 - Use excluded or questioned claims only as warnings about what must not be overstated or as prompts for clarification. Never present them as verified experience.
 
@@ -362,11 +362,11 @@ def build_verified_evidence_bundle(
 
     if profile_items and resume_items:
         source_label = (
-            "Confirmed Candidate Profile plus the submitted evidence-reviewed resume "
+            "Confirmed Verified Resume Evidence plus the submitted evidence-reviewed resume "
             "attached to this application"
         )
     elif profile_items:
-        source_label = "Confirmed Candidate Profile and evidence accepted in the resume workflow"
+        source_label = "Confirmed Verified Resume Evidence and evidence accepted in the resume workflow"
     elif resume_items:
         source_label = "Submitted evidence-reviewed resume attached to this application"
     else:

@@ -110,6 +110,7 @@ class CandidateJobProfile:
     minimum_salary_currency: str = ""
     minimum_salary_interval: str = "year"
     excluded_terms: tuple[str, ...] = ()
+    excluded_title_terms: tuple[str, ...] = ()
     require_title_match: bool = False
     require_location_match: bool = False
     require_workplace_match: bool = False
@@ -133,6 +134,7 @@ class CandidateJobProfile:
             "preferred_keywords",
             "required_keywords",
             "excluded_terms",
+            "excluded_title_terms",
             "security_clearances",
             "licenses_certifications",
         ):
@@ -223,6 +225,7 @@ class CandidateJobProfile:
                 "minimum_salary_currency": self.minimum_salary_currency,
                 "minimum_salary_interval": self.minimum_salary_interval,
                 "excluded_terms": self.excluded_terms,
+                "excluded_title_terms": self.excluded_title_terms,
                 "require_title_match": self.require_title_match,
                 "require_location_match": self.require_location_match,
                 "require_workplace_match": self.require_workplace_match,
@@ -545,10 +548,27 @@ def evaluate_stage_one(
     reasons: list[str] = []
     rejected: list[str] = []
     preference_components: list[PreferenceScoreComponent] = []
+    title_searchable = stable_text_key(job.title)
     searchable = stable_text_key(" ".join((job.title, job.company, job.description)))
 
+    excluded_title_matches = [
+        term
+        for term in profile.excluded_title_terms
+        if stable_text_key(term) in title_searchable
+    ]
+    if excluded_title_matches:
+        rejected.append(
+            "Excluded job-title term: " + ", ".join(excluded_title_matches)
+        )
+    excluded_title_keys = {
+        stable_text_key(term) for term in excluded_title_matches
+    }
+
     excluded_matches = [
-        term for term in profile.excluded_terms if stable_text_key(term) in searchable
+        term
+        for term in profile.excluded_terms
+        if stable_text_key(term) in searchable
+        and stable_text_key(term) not in excluded_title_keys
     ]
     if excluded_matches:
         rejected.append("Excluded term: " + ", ".join(excluded_matches))

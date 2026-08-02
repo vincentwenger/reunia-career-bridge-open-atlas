@@ -1,0 +1,39 @@
+Job Discovery deferred catalog hydration validation
+===================================================
+
+Implemented behavior
+--------------------
+- GET /applications/job-discovery no longer calls hydrate_owner_from_shared_catalog().
+- The results page renders from durable owner-scoped result records first.
+- After rendering, app.js performs a separate CSRF-protected POST to
+  /applications/discovery/catalog/hydrate during browser idle time.
+- The deferred endpoint performs no external employer HTTP requests; it only
+  materializes newer records already present in the shared catalog.
+- The endpoint compares the owner's result revision before and after hydration.
+  The browser reloads only when durable owner records changed.
+- A sessionStorage marker is scoped by a one-way owner hash and catalog version,
+  preventing repeated synchronization while navigating result pages while also
+  avoiding cross-account suppression in a shared browser tab.
+- Existing manual source refresh and search-preference save flows continue to
+  hydrate outside the initial page GET.
+
+Regression coverage
+-------------------
+- Contract test verifies hydrate_owner_from_shared_catalog is absent from the
+  job_discovery_workspace GET function and present in the deferred POST route.
+- Contract test verifies the template and JavaScript deferred-sync hooks.
+- Flask integration regression verifies GET does not invoke hydration and POST
+  invokes it for the signed-in owner (test added; runtime dependencies are not
+  installed in this validation environment).
+- Existing public-catalog materialization and result-index tests remain green.
+
+Validation results
+------------------
+- Unit suite: 206 passed, 3 skipped.
+- Contract suite: 214 passed, 2 skipped.
+- Regression suite: 22 passed, 2 skipped.
+- Targeted catalog/result tests: 29 passed.
+- Flask integration suite: 23 skipped because flask, redis, openai, and xlrd are
+  unavailable in this environment.
+- Python compilation: passed.
+- JavaScript syntax check (node --check): passed.

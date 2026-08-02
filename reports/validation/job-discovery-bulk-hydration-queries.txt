@@ -1,0 +1,25 @@
+Job Discovery bulk hydration query optimization
+================================================
+
+Updated behavior
+----------------
+- hydrate_owner_from_shared_catalog() loads all owner-scoped company sources with one list_company_sources() query.
+- It loads all shared public catalog statuses with one list_public_catalog_statuses() query.
+- It loads search preferences once per owner instead of once per source that needs synchronization.
+- It no longer calls get_company_source() or get_public_catalog_status() inside the source loop.
+- Public catalog jobs remain lazy: list_public_catalog_jobs() is called only for sources whose catalog needs synchronization.
+- hydrate_from_shared_catalog() also bulk-loads catalog statuses and caches posting-age preferences per owner.
+- Empty source lists return without persistence reads.
+
+Expected DynamoDB request pattern when opening Job Discovery
+------------------------------------------------------------
+Before: approximately two point reads per company source, plus repeated preference reads and required job queries.
+After: one owner-source prefix query, one shared-status prefix query, one preference read, plus required job queries only for catalogs that need synchronization.
+
+Validation
+----------
+- tests.unit.test_job_discovery_public_catalog: 13 passed.
+- tests/unit discovery suite: 206 passed, 3 skipped.
+- tests/contracts discovery suite: 213 passed, 2 skipped.
+- Python compileall passed.
+- Flask integration tests remain skipped in this workspace because flask, redis, openai, and xlrd are unavailable.

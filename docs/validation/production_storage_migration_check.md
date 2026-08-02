@@ -13,8 +13,8 @@ Production continues to require:
 - Active workflow metadata and optimistic versions: DynamoDB
 - Canonical serialized workflow state: S3
 
-The production demo override may permit process-memory workflows or local
-documents, but it cannot downgrade application record storage away from
+The legacy-named non-durable storage override may permit process-memory workflows or local
+documents for controlled validation, but it cannot downgrade application record storage away from
 DynamoDB.
 
 ## Verified behavior

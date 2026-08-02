@@ -776,7 +776,7 @@ body.application-builder-body {
   }
 }
 
-/* Hackathon MVP: source-resume import belongs to the main journey, not AI configuration. */
+/* Source-resume import belongs to Career Translation, not AI configuration. */
 .resume-import-card {
   border-color: #cfe8df;
   background: linear-gradient(145deg, #ffffff 0%, #f4fbf8 100%);
@@ -865,3 +865,597 @@ body.application-builder-body {
 }
 
 .application-builder-inline-state{margin-bottom:18px}
+
+.application-builder-storage-error {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.application-builder-storage-error h2 {
+  margin-top: 0.35rem;
+}
+
+.application-builder-storage-diagnostics {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border-color, #d8e1ea);
+  border-radius: 0.75rem;
+  background: var(--surface-muted, #f7f9fb);
+}
+
+.application-builder-storage-diagnostics div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.35fr) 1fr;
+  gap: 0.75rem;
+}
+
+.application-builder-storage-diagnostics dt {
+  font-weight: 700;
+}
+
+.application-builder-storage-diagnostics dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Career Foundation: reusable Career Translation baseline */
+.career-translation-foundation-intro .section-heading,
+.career-translation-resume-preview .section-heading {
+  align-items: flex-start;
+}
+
+.career-translation-foundation-form {
+  display: grid;
+  gap: 20px;
+}
+
+.career-translation-source-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #d7e8e4;
+  border-radius: 14px;
+  background: #f7fbfa;
+}
+
+.career-translation-source-summary > div {
+  display: grid;
+  gap: 4px;
+}
+
+.career-translation-source-summary span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.career-translation-source-summary strong {
+  color: #29483f;
+  overflow-wrap: anywhere;
+}
+
+.career-translation-resume-sheet {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 54px);
+  border: 1px solid #d8e1ea;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(35, 67, 59, .08);
+}
+
+.career-translation-resume-sheet > header {
+  padding-bottom: 18px;
+  border-bottom: 2px solid #d7e8e4;
+}
+
+.career-translation-resume-sheet > header h3 {
+  margin: 0;
+  color: #173b34;
+  font-size: clamp(24px, 4vw, 34px);
+}
+
+.career-translation-resume-sheet > header p,
+.career-translation-resume-sheet section > p,
+.career-translation-experience > p,
+.career-translation-education > p {
+  color: #4d625d;
+}
+
+.career-translation-resume-sheet section {
+  margin-top: 24px;
+}
+
+.career-translation-resume-sheet h4 {
+  margin: 0 0 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #dbe7e4;
+  color: #0f766e;
+  font-size: 14px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.career-translation-skill-grid {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+}
+
+.career-translation-skill-grid > div {
+  display: grid;
+  grid-template-columns: minmax(145px, .25fr) 1fr;
+  gap: 12px;
+}
+
+.career-translation-skill-grid dt {
+  color: #29483f;
+  font-weight: 800;
+}
+
+.career-translation-skill-grid dd {
+  margin: 0;
+  color: #4d625d;
+}
+
+.career-translation-experience,
+.career-translation-education {
+  margin-top: 18px;
+}
+
+.career-translation-experience > div,
+.career-translation-education > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.career-translation-experience > div span,
+.career-translation-education > div span {
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.career-translation-experience ul {
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
+
+@media (max-width: 760px) {
+  .career-translation-source-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .career-translation-skill-grid > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .career-translation-experience > div,
+  .career-translation-education > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  .career-translation-experience > div span,
+  .career-translation-education > div span {
+    white-space: normal;
+  }
+}
+
+/* Minimal UI pass: preserve workflows while removing decorative weight and duplication. */
+body.application-builder-body {
+  background: #f7f8fa;
+}
+
+.application-builder-page {
+  width: min(1280px, calc(100% - 36px));
+  margin: 0 auto;
+  padding-top: 18px;
+  padding-bottom: 48px;
+}
+
+.application-builder-hero {
+  margin-bottom: 14px;
+  padding: 20px 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: var(--text);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.application-builder-hero h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(1.55rem, 2.4vw, 2rem);
+  letter-spacing: -.025em;
+}
+
+.application-builder-hero .page-hero-layout { align-items: center; }
+.application-builder-hero-actions { gap: 8px; }
+.application-builder-hero-button {
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 8px;
+  font-size: .86rem;
+  font-weight: 700;
+  box-shadow: none;
+  transition: background .15s ease, border-color .15s ease;
+}
+.application-builder-hero-button:hover { transform: none; }
+.application-builder-hero-button-primary,
+.application-builder-hero-button-primary:hover {
+  border-color: var(--primary);
+  color: #ffffff;
+  background: var(--primary);
+  box-shadow: none;
+}
+.application-builder-hero-button-secondary,
+.application-builder-hero-button-secondary:hover {
+  border-color: #cbd5e1;
+  color: #334155;
+  background: #ffffff;
+}
+
+.application-builder-content { display: grid; gap: 14px; }
+.application-builder-content > * { margin-top: 0; margin-bottom: 0; }
+.application-builder-content .card,
+.application-builder-content .applications-summary,
+.application-builder-content .page-intro,
+.application-builder-content .report-version-map-card,
+.application-builder-content .workflow-navigation,
+.application-builder-content .workflow-stage-intro {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: none;
+}
+.application-builder-content .card { padding: 20px; }
+.application-builder-content .button {
+  min-height: 38px;
+  border-radius: 8px;
+  font-weight: 700;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.application-builder-content .button.primary,
+.application-builder-content .button.primary:hover:not(:disabled) {
+  border-color: var(--primary) !important;
+  background: var(--primary) !important;
+  box-shadow: none !important;
+}
+.application-builder-content .button.secondary,
+.application-builder-content .button.secondary:hover:not(:disabled) {
+  border-color: #cbd5e1;
+  color: #334155;
+  background: #ffffff;
+}
+.application-builder-content .button.text { padding-right: 6px; padding-left: 6px; }
+.application-builder-content input[type="text"],
+.application-builder-content input[type="file"],
+.application-builder-content input[type="url"],
+.application-builder-content input[type="date"],
+.application-builder-content input[type="number"],
+.application-builder-content input:not([type]),
+.application-builder-content textarea,
+.application-builder-content select {
+  border-color: #cbd5e1;
+  border-radius: 8px;
+}
+.application-builder-content details > summary { cursor: pointer; }
+.application-builder-content .section-heading { gap: 12px; margin-bottom: 14px; }
+.application-builder-content .section-heading h2,
+.application-builder-content .section-heading h3 { margin: 0; }
+.application-builder-content .compact-heading { align-items: center; }
+.application-builder-content .compact-heading > h2,
+.application-builder-content .compact-heading > h3 { flex: 1; }
+.application-builder-content .text-link { color: var(--primary); font-size: .88rem; font-weight: 700; text-decoration: none; }
+.application-builder-content .text-link:hover { text-decoration: underline; }
+.application-builder-content .form-help,
+.application-builder-content .caption { color: #64748b; font-size: .82rem; }
+.application-builder-content .eyebrow { font-size: .68rem; }
+
+.active-application-banner {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 9px 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: none;
+  font-size: .86rem;
+}
+.active-application-banner strong { color: #0f172a; }
+.active-application-banner span { color: #64748b; }
+.active-application-banner span + span::before { content: "·"; margin-right: 10px; }
+
+.flash-stack .alert { box-shadow: none; }
+
+/* Applications */
+.application-metric-grid-minimal {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.application-metric-grid-minimal .metric-card {
+  min-height: 78px;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: none;
+}
+.application-metric-grid-minimal .metric-card span { color: #64748b; font-size: .78rem; }
+.application-metric-grid-minimal .metric-card strong { font-size: 1.45rem; }
+.application-add-card > details > summary { font-weight: 750; }
+.application-add-card > details[open] > summary { margin-bottom: 18px; }
+.application-dashboard-grid { gap: 12px; }
+.application-dashboard-card-minimal { padding: 18px !important; }
+.application-dashboard-card-minimal .application-card-header { margin-bottom: 14px; }
+.application-dashboard-card-minimal .application-card-header h3 { margin: 7px 0 2px; }
+.application-dashboard-card-minimal .application-card-header p { margin: 0; }
+.application-dashboard-fields-minimal {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.application-dashboard-fields-minimal > div {
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.application-dashboard-actions { margin-top: 14px; }
+.application-dashboard-actions-minimal { align-items: center; }
+.application-card-more { position: relative; }
+.application-card-more > summary {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #475569;
+  background: #ffffff;
+  font-size: .84rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.application-card-more > summary::-webkit-details-marker { display: none; }
+.application-card-more > summary::after { content: "⌄"; margin-left: 7px; color: #94a3b8; }
+.application-card-more[open] > summary::after { transform: rotate(180deg); }
+.application-card-more-menu {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  bottom: calc(100% + 7px);
+  min-width: 210px;
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .12);
+}
+.application-card-more-menu a {
+  padding: 8px 9px;
+  border-radius: 6px;
+  color: #475569;
+  font-size: .82rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+.application-card-more-menu a:hover,
+.application-card-more-menu a:focus-visible { color: var(--primary); background: #f1f5f9; }
+
+.application-edit-details { margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+.application-edit-details > summary { color: #64748b; font-size: .84rem; font-weight: 700; }
+.application-edit-details[open] > summary { margin-bottom: 16px; }
+.application-danger-zone { margin-top: 18px; padding-top: 12px; border-top: 1px solid #fee2e2; }
+
+/* Discovery */
+.discovery-settings-grid { gap: 14px; }
+.discovery-settings-panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.discovery-settings-panel + .discovery-settings-panel { border-left: 1px solid #e2e8f0; padding-left: 20px; }
+.discovery-inline-action { position: relative; }
+.discovery-inline-action > summary { color: var(--primary); font-size: .86rem; font-weight: 700; }
+.discovery-inline-action[open] { width: 100%; margin-top: 10px; }
+.discovery-inline-action[open] > summary { margin-bottom: 14px; }
+.discovery-source-manager,
+.discovery-add-source,
+.advanced-settings,
+.danger-zone,
+.discovery-scan-details {
+  border-color: #e2e8f0;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.discovery-source-manager > summary { padding: 12px; }
+.discovery-source-manager > summary small { display: block; margin-top: 2px; color: #64748b; font-size: .72rem; }
+.discovery-source-form,
+.discovery-source-secondary-actions,
+.discovery-scan-details { margin-right: 12px; margin-left: 12px; }
+.discovery-scan-details { margin-bottom: 12px; padding: 9px 10px; background: #f8fafc; }
+.discovery-scan-details p { margin: 7px 0 0; }
+.advanced-settings { padding: 0; }
+.advanced-settings > summary,
+.danger-zone > summary { padding: 10px 12px; color: #475569; font-weight: 700; }
+.advanced-settings[open] > summary { border-bottom: 1px solid #e2e8f0; }
+.advanced-settings > .stack-form { padding: 14px 12px; }
+.danger-zone { margin-top: 14px; }
+.danger-zone form { padding: 12px; }
+.discovery-schedule-card { padding: 0 !important; }
+.discovery-schedule-card > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 18px;
+}
+.discovery-schedule-card[open] > summary { border-bottom: 1px solid #e2e8f0; }
+.discovery-schedule-card > form,
+.discovery-schedule-card > .alert { margin: 16px 18px; }
+.discovery-result-tabs { border-bottom: 1px solid #e2e8f0; }
+.discovery-result-tab { border-radius: 0; }
+.discovery-filter-details { border: 1px solid #e2e8f0; border-radius: 8px; }
+.discovery-filter-details > summary { padding: 10px 12px; font-weight: 700; }
+.discovery-filter-details[open] > summary { border-bottom: 1px solid #e2e8f0; }
+.discovery-job-card { box-shadow: none !important; }
+.discovery-score-grid { grid-template-columns: minmax(0, 1fr); }
+.discovery-pagination { justify-content: center; }
+
+/* Interview preparation */
+.interview-application-selector { padding: 16px 20px !important; }
+.interview-readiness-compact {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 16px !important;
+}
+.interview-readiness-item { display: flex; align-items: center; gap: 8px; }
+.interview-readiness-item > span {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #64748b;
+  background: #f1f5f9;
+  font-size: .78rem;
+  font-weight: 800;
+}
+.interview-readiness-item.is-ready > span { color: #166534; background: #dcfce7; }
+.interview-readiness-item.is-missing > span { color: #991b1b; background: #fee2e2; }
+.interview-readiness-item.is-warning > span { color: #92400e; background: #fef3c7; }
+.interview-readiness-item div { display: grid; }
+.interview-readiness-item strong { font-size: .84rem; }
+.interview-readiness-item small { color: #64748b; font-size: .72rem; }
+.interview-readiness-compact .text-link { margin-left: auto; }
+.interview-generation-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  margin: 0;
+  padding: 18px 20px !important;
+  background: #ffffff;
+}
+.interview-generation-copy h2 { margin: 0 0 4px; }
+.interview-generation-copy p { margin: 0; color: #64748b; }
+.interview-generate-form { min-width: 190px; }
+.interview-workspace-header { padding: 4px 0; }
+.interview-workspace-header p { display: none; }
+.interview-card-kicker,
+.interview-section-title div > span { display: none; }
+.interview-section-title > span[aria-hidden="true"] { display: none; }
+.interview-section-title { display: block; }
+.interview-section-title h3 { margin: 0; }
+.interview-section-card,
+.interview-summary-card { box-shadow: none; }
+
+/* Resume workflow and reports */
+.guided-workflow-minimal {
+  padding: 7px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+.guided-workflow-minimal .workflow-stepper {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+.guided-workflow-minimal .workflow-step {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+  font-size: .74rem;
+}
+.guided-workflow-minimal .workflow-step:hover { background: #f8fafc; transform: none; }
+.guided-workflow-minimal .workflow-step.current,
+.guided-workflow-minimal .workflow-step.viewing { color: var(--primary); background: #eef4f8; }
+.guided-workflow-minimal .workflow-step-number {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 50%;
+  font-size: .72rem;
+}
+.guided-workflow-minimal .workflow-step strong { color: inherit; line-height: 1.2; }
+.automatic-report-queue { padding: 10px 12px; border-radius: 8px; box-shadow: none; }
+.automatic-report-queue > span:not(.automatic-report-item) { display: none; }
+.resume-import-minimal { padding: 15px 18px !important; }
+.resume-import-summary-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.resume-import-summary-row h2 { margin: 0 0 3px; font-size: 1rem; }
+.resume-import-summary-row p { margin: 0; color: #64748b; font-size: .84rem; }
+.resume-import-control > summary { color: var(--primary); font-size: .84rem; font-weight: 700; }
+.resume-import-control[open] { min-width: min(100%, 440px); }
+.resume-import-control[open] > summary { margin-bottom: 12px; }
+.workflow-stage-intro-minimal { padding: 13px 18px !important; }
+.workflow-stage-intro-minimal .step-heading { margin: 0; }
+.workflow-stage-intro-minimal .step-heading h2 { font-size: 1.05rem; }
+.newcomer-onboarding { padding: 16px; border-radius: 9px; }
+.newcomer-onboarding-heading-minimal { align-items: center; margin-bottom: 14px; }
+.newcomer-onboarding-heading-minimal h3 { margin: 0; }
+.newcomer-onboarding-heading-minimal p { margin: 2px 0 0; color: #64748b; font-size: .82rem; }
+.report-version-tabs { gap: 4px; padding: 5px; border: 1px solid #e2e8f0; border-radius: 9px; background: #ffffff; }
+.report-version-tab { min-height: 38px; border-radius: 6px; }
+.report-stage-context { display: none; }
+.top-report-tabs > .tab-panel > .card { margin-top: 10px; }
+
+/* Career translation */
+.career-translation-source-summary-minimal { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.career-translation-resume-preview { padding: 20px !important; }
+.career-translation-resume-sheet { box-shadow: none; }
+
+@media (max-width: 900px) {
+  .application-builder-page { width: min(100% - 24px, 1280px); padding-top: 12px; }
+  .application-dashboard-fields-minimal { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .guided-workflow-minimal .workflow-stepper { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .discovery-settings-panel + .discovery-settings-panel { border-left: 0; border-top: 1px solid #e2e8f0; padding-top: 18px; padding-left: 0; }
+  .interview-readiness-compact { flex-wrap: wrap; }
+  .interview-readiness-compact .text-link { margin-left: 0; }
+}
+
+@media (max-width: 620px) {
+  .application-builder-page { width: min(100% - 16px, 1280px); }
+  .application-builder-hero { padding: 16px; }
+  .application-builder-hero .page-hero-layout { gap: 12px; }
+  .application-builder-hero-actions,
+  .application-builder-hero-button { width: auto; }
+  .application-builder-content .card { padding: 16px; }
+  .application-metric-grid-minimal { grid-template-columns: 1fr; }
+  .application-dashboard-fields-minimal { grid-template-columns: 1fr; }
+  .application-dashboard-actions-minimal { align-items: stretch; flex-direction: column; }
+  .application-dashboard-actions-minimal > .button,
+  .application-card-more,
+  .application-card-more > summary { width: 100%; }
+  .application-card-more > summary { justify-content: center; }
+  .application-card-more-menu { position: static; margin-top: 6px; box-shadow: none; }
+  .guided-workflow-minimal .workflow-stepper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .guided-workflow-minimal .workflow-step { font-size: .7rem; }
+  .resume-import-summary-row { align-items: flex-start; flex-direction: column; }
+  .resume-import-control[open] { width: 100%; min-width: 0; }
+  .interview-generation-card { grid-template-columns: 1fr; }
+  .interview-generate-form { min-width: 0; }
+  .career-translation-source-summary-minimal { grid-template-columns: 1fr; }
+}

@@ -77,6 +77,9 @@ class WorkflowStepSnapshot:
 @dataclass
 class WorkflowState:
     source_profile: CandidateProfile
+    original_source_profile: CandidateProfile | None = None
+    source_profile_language: str = ""
+    source_profile_translation_fingerprint: str = ""
     career_background: NewcomerCareerProfile = field(
         default_factory=NewcomerCareerProfile
     )

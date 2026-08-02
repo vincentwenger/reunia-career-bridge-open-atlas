@@ -34,7 +34,7 @@ APPLICATION_BUILDER_STEPS: tuple[ApplicationBuilderStep, ...] = (
             "resume_id",
             "target_job_description_id",
         ),
-        description="Select the candidate background and source resume, then capture the target company, role, and job description.",
+        description="Select the candidate background and imported resume, then capture the target company, role, and job description.",
     ),
     ApplicationBuilderStep(
         key="confirmation",

@@ -10,7 +10,7 @@ Changes
 
 2. Administrator-facing terminology
    - Replaced visible Meeting Review / saved-meeting / meeting-funnel wording in Admin Analytics with Career Bridge terminology.
-   - Admin labels now use Mock Interview, Interview Review, Career Action Plan, Impact & Progress, and Live Assistance.
+   - Admin labels now use Mock Interview, Interview Review, Career Action Plan, Progress & Outcomes, and Live Assistance.
    - Kept persisted metric names, API response keys, internal repository names, and legacy path detection unchanged for compatibility.
    - Added French translations for the new administrator-facing wording.
 

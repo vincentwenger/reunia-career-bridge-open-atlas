@@ -1,0 +1,24 @@
+Career Bridge dashboard simplification
+
+Expected dashboard structure:
+- One personalized next action
+- One current application card
+- One compact Career Foundation list
+- Three secondary actions
+
+Removed from the dashboard:
+- Four summary metric cards
+- Decorative three-area hero panel
+- Four-item quick-action card
+- Three-module workspace directory
+- Repeated Resume Workflow and Interview Preparation buttons
+- Dashboard-level mock interview disclaimer
+
+Core routes and dashboard summary loading remain unchanged.
+
+Validation:
+- 531 tests passed
+- 36 optional dependency skips
+- JavaScript syntax passed
+- Python compilation passed
+- Dependency-light final integration checks passed

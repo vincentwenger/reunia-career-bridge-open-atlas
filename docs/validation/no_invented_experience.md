@@ -38,4 +38,4 @@ python tests/validators/validate_no_invented_experience.py
 
 The controls provide high-signal deterministic protection and broad regression coverage. Natural-language semantic equivalence cannot be proven perfectly by lexical rules or by another language model. Therefore the system uses conservative behavior: questionable positive claims are removed or downgraded, and final exports are blocked rather than silently accepting unsupported wording.
 
-Historical binary files created before these controls should be regenerated from a workflow that still contains its Candidate Profile, job analysis, proposal, and evidence metadata.
+Historical binary files created before these controls should be regenerated from a workflow that still contains its Verified Resume Evidence, job analysis, proposal, and evidence metadata.

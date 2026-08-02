@@ -181,7 +181,7 @@
                                     <div class="subsection-number">2</div>
                                     <div>
                                         <h3>Candidate Answer Evaluation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
-                                        <p>The MVP scorecard evaluates only the candidate answers recorded during mock-interview practice.</p>
+                                        <p>The scorecard evaluates only the candidate answers recorded during mock-interview practice.</p>
                                     </div>
                                 </div>
                                 <div class="settings-box highlight-box">
@@ -336,7 +336,7 @@
                                     <h2>Interview Review Settings</h2>
                                     <p>
                                         These settings affect mock-interview reviews, practice actions, and the interview-specific scorecard.
-                                        The MVP evaluates candidate answers only.
+                                        The scorecard evaluates candidate answers only.
                                     </p>
                                 </div>
                             </div>
@@ -393,7 +393,7 @@
                                     <div class="subsection-number">2</div>
                                     <div>
                                         <h3>Candidate Answer Evaluation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
-                                        <p>The MVP scorecard evaluates only the candidate answers recorded during mock-interview practice.</p>
+                                        <p>The scorecard evaluates only the candidate answers recorded during mock-interview practice.</p>
                                     </div>
                                 </div>
 
@@ -440,13 +440,13 @@
                                         <div class="form-group retention-control" data-retention-control>
                                             <label class="form-label" for="documentRetentionDays">Uploaded documents</label>
                                             <select id="documentRetentionDays" name="documentRetentionDays" class="form-control">
-                                                <option value="0" {% if settings and settings.documentRetentionDays == 0 %}selected{% endif %}>Keep until I delete them</option>
-                                                <option value="7" {% if not settings or settings.documentRetentionDays == 7 %}selected{% endif %}>Delete after 7 days</option>
+                                                <option value="0" {% if not settings or settings.documentRetentionDays == 0 %}selected{% endif %}>Keep until I delete them — recommended</option>
+                                                <option value="7" {% if settings and settings.documentRetentionDays == 7 %}selected{% endif %}>Delete after 7 days</option>
                                                 <option value="30" {% if settings and settings.documentRetentionDays == 30 %}selected{% endif %}>Delete after 30 days</option>
                                                 <option value="90" {% if settings and settings.documentRetentionDays == 90 %}selected{% endif %}>Delete after 90 days</option>
                                                 <option value="365" {% if settings and settings.documentRetentionDays == 365 %}selected{% endif %}>Delete after 1 year</option>
                                             </select>
-                                            <span class="form-help">Applies only to newly uploaded documents. Temporary recorder uploads already follow system cleanup rules.</span>
+                                            <span class="form-help">Career Evidence Library documents are kept until you delete them by default. A selected automatic period applies only to newly uploaded documents. Temporary recorder uploads continue to follow system cleanup rules.</span>
                                             <span class="retention-warning" data-retention-warning hidden>Automatic deletion is enabled for newly uploaded documents.</span>
                                         </div>
                                     </div>

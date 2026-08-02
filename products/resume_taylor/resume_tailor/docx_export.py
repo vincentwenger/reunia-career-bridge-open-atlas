@@ -36,6 +36,7 @@ from .docx_styles import (
     resume_preference_label,
 )
 from .models import ApprovedResume, CandidateProfile
+from .resume_language import resume_format_headings, resume_labels
 from .validation import adjacent_repeated_words
 
 
@@ -244,13 +245,15 @@ def _add_skills(
     *,
     heading: str = "Skills",
     resume_format: str = "standard",
+    resume_language: str = "English",
 ) -> None:
+    labels = resume_labels(resume_language)
     category_map = {
-        "hard": ("Hard Skills", approved.skills.hard_skills),
-        "soft": ("Soft Skills", approved.skills.soft_skills),
-        "tools": ("Tools & Software", approved.skills.tools_software),
-        "industry": ("Industry Knowledge", approved.skills.industry_knowledge),
-        "languages": ("Languages", profile.skills.languages),
+        "hard": (labels["hard_skills"], approved.skills.hard_skills),
+        "soft": (labels["soft_skills"], approved.skills.soft_skills),
+        "tools": (labels["tools_software"], approved.skills.tools_software),
+        "industry": (labels["industry_knowledge"], approved.skills.industry_knowledge),
+        "languages": (labels["languages"], profile.skills.languages),
     }
     sections = [category_map[key] for key in SKILL_CATEGORY_ORDER[resume_format]]
     populated = [(label, [item.strip() for item in items if item.strip()]) for label, items in sections]
@@ -397,6 +400,7 @@ def export_resume_docx(
     career_stage: str | None = None,
     resume_format: str | None = None,
     visual_design: str | None = None,
+    resume_language: str | None = None,
 ) -> bytes:
     template = Path(template_path)
     if not template.exists():
@@ -427,7 +431,7 @@ def export_resume_docx(
     clear_document_body(document)
     clear_headers_and_footers(document)
 
-    headings = RESUME_FORMAT_SECTIONS[format_key]
+    headings = resume_format_headings(resume_language or "English", format_key)
     _add_header(document, profile, approved, theme)
 
     def add_summary() -> None:
@@ -441,6 +445,7 @@ def export_resume_docx(
             theme,
             heading=headings["skills"],
             resume_format=format_key,
+            resume_language=resume_language or "English",
         )
 
     def add_experience() -> None:

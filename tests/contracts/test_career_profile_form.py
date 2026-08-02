@@ -97,6 +97,13 @@ class CareerProfileFormContractTests(unittest.TestCase):
             self.assertIn(f'"{field}"', service_source)
             self.assertIn(f'context["{field}"]', route_source)
 
+    def test_removed_ai_coaching_helpers_do_not_block_profile_initialization(self) -> None:
+        source = JAVASCRIPT.read_text(encoding="utf-8")
+        self.assertNotIn("updateResponsePreferencesSummary", source)
+        self.assertNotIn("setResponsePreferencesExpanded", source)
+        self.assertIn("markDefaultContextSaved(context)", source)
+        self.assertIn("updateSaveContextButton()", source)
+
     def test_frontend_reads_writes_and_previews_new_fields(self) -> None:
         source = JAVASCRIPT.read_text(encoding="utf-8")
         for field in (

@@ -1,0 +1,18 @@
+JOB DISCOVERY TITLE-ONLY EXCLUSIONS
+
+Implemented:
+- Added DiscoverySearchPreferences.excluded_title_terms.
+- Added CandidateJobProfile.excluded_title_terms.
+- Persisted the field in JSON and DynamoDB preference payloads with backward-compatible empty defaults.
+- Added an "Excluded job-title terms" field in Discovery settings.
+- Clarified the existing field as "Excluded terms anywhere in the posting".
+- Stage 1 now rejects a job when a configured title-only term appears in the normalized job title.
+- A title-only term appearing only in the company name or job description does not reject the job.
+- Duplicate terms entered in both exclusion fields produce one rejection reason.
+- The preference fingerprint includes title-only exclusions so results are recalculated when the setting changes.
+
+Validation:
+- Job Discovery suite: 134 passed, 1 skipped, 16 subtests passed.
+- Python compile validation: passed.
+- Full project suite: 291 passed, 20 skipped, 10 unrelated failures.
+- The 10 unrelated failures are pre-existing deployment-contract failures caused by the uploaded package not containing scripts/deployment/upload_to_lightsail.bat.

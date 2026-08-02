@@ -6,6 +6,10 @@ from typing import Any
 
 from flask import current_app
 
+from career_bridge.application.interview_readiness import (
+    build_interview_readiness_assessments,
+)
+
 from meeting_assistant.services.action_service import ActionService
 from meeting_assistant.services.transcript_service import TranscriptService
 
@@ -81,7 +85,7 @@ def _score_progress(reviews: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 class CareerImpactService:
-    """Assemble defensible social-impact outcomes from Career Bridge records."""
+    """Assemble defensible progress and outcome measures from Career Bridge records."""
 
     def build(self, user_id: str) -> dict[str, Any]:
         application_store = current_app.extensions.get(
@@ -153,6 +157,30 @@ class CareerImpactService:
             actions = []
             warnings.append("Career Action Plan outcomes could not be loaded.")
 
+        list_prepared = getattr(
+            application_store, "list_interview_preparation_application_ids", None
+        )
+        if callable(list_prepared):
+            try:
+                prepared_application_ids = set(list_prepared(user_id))
+            except Exception:
+                current_app.logger.exception(
+                    "Could not list Interview Preparation records for progress"
+                )
+                prepared_application_ids = set()
+        else:
+            prepared_application_ids = {
+                application.id
+                for application in applications
+                if application_store.get_interview_preparation(user_id, application.id)
+                is not None
+            }
+        readiness_by_application = build_interview_readiness_assessments(
+            (application.id for application in applications),
+            prepared_application_ids=prepared_application_ids,
+            reviews=reviews,
+        )
+
         reviews_by_application: dict[str, list[dict[str, Any]]] = defaultdict(list)
         unlinked_reviews: list[dict[str, Any]] = []
         for review in reviews:
@@ -178,9 +206,7 @@ class CareerImpactService:
                 str(item.get("status") or "") == "done"
                 for item in application_actions
             )
-            preparation = application_store.get_interview_preparation(
-                user_id, application.id
-            )
+            readiness = readiness_by_application.get(application.id)
             rows.append(
                 {
                     "application_id": application.id,
@@ -195,7 +221,16 @@ class CareerImpactService:
                     "current_alignment_score": _number(details.get("current_alignment_score")),
                     "alignment_improvement": _number(details.get("alignment_improvement")),
                     "verified_resume_ready": bool(details.get("verified_resume_ready")),
-                    "interview_preparation_ready": preparation is not None,
+                    "interview_preparation_ready": application.id in prepared_application_ids,
+                    "interview_readiness": (
+                        readiness.score if readiness is not None else None
+                    ),
+                    "interview_readiness_status": (
+                        readiness.status_label if readiness is not None else "Not started"
+                    ),
+                    "latest_mock_interview_score": (
+                        readiness.latest_mock_score if readiness is not None else None
+                    ),
                     "mock_interview": interview,
                     "weak_answers_improved": sum(
                         _weak_answers_with_guidance(review)
@@ -251,6 +286,10 @@ class CareerImpactService:
             "applications_measured": len(measured_rows),
             "applications_total": len(applications),
             "mock_interviews": len(reviews),
+            "interview_ready_applications": sum(
+                bool(assessment.is_ready)
+                for assessment in readiness_by_application.values()
+            ),
         }
 
         before_after = self._before_after(summary, rows)
@@ -263,7 +302,7 @@ class CareerImpactService:
             "unlinked_mock_interviews": len(unlinked_reviews),
             "warnings": warnings,
             "measurement_note": (
-                "Only outcomes found in saved Career Translation, resume-report, "
+                "Only outcomes found in saved Baseline Resume, resume-report, "
                 "mock-interview, and Career Action Plan records are counted. Empty "
                 "metrics mean the related workflow has not produced measurable data yet."
             ),
@@ -314,7 +353,7 @@ class CareerImpactService:
                 f"{summary['actions_completed']} application action(s) completed."
             )
         if not after:
-            after.append("Complete a Career Translation or resume workflow to establish the first measured outcome.")
+            after.append("Complete a Baseline Resume or application resume workflow to establish the first measured outcome.")
         return {"before": before, "after": after}
 
     @staticmethod
@@ -334,6 +373,7 @@ class CareerImpactService:
                 "applications_measured": 0,
                 "applications_total": 0,
                 "mock_interviews": 0,
+                "interview_ready_applications": 0,
             },
             "before_after": {"before": [], "after": []},
             "interview_progress": {

@@ -15,21 +15,21 @@ PRODUCTION_LAUNCHER = (
 
 
 class LightsailScaleEnforcementContractTests(unittest.TestCase):
-    """Keep single-process enforcement limited to explicit demo storage."""
+    """Keep single-process enforcement limited to explicit non-durable storage."""
 
     def setUp(self) -> None:
         self.script = DEPLOYMENT_SCRIPT.read_text(encoding="utf-8")
 
-    def test_script_detects_explicit_demo_override(self) -> None:
+    def test_script_detects_explicit_non_durable_override(self) -> None:
         self.assertIn('set "DEMO_STORAGE=0"', self.script)
         self.assertIn(
             'CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION%"=="true"',
             self.script,
         )
 
-    def test_script_enforces_scale_one_only_for_demo_storage(self) -> None:
+    def test_script_enforces_scale_one_only_for_non_durable_storage(self) -> None:
         self.assertIn('if "%DEMO_STORAGE%"=="1" (', self.script)
-        self.assertIn("Demo storage override detected; enforcing Lightsail scale 1", self.script)
+        self.assertIn("Non-durable storage override detected; enforcing Lightsail scale 1", self.script)
         self.assertIn("--scale 1", self.script)
         self.assertIn(
             'if "%DEMO_STORAGE%"=="1" if not "%ACTUAL_SCALE%"=="1"',
@@ -69,11 +69,11 @@ class LightsailScaleEnforcementContractTests(unittest.TestCase):
         scale_update = self.script.index("aws lightsail update-container-service")
         self.assertLess(command_check, scale_update)
 
-    def test_script_fails_prominently_on_aws_or_demo_scale_failure(self) -> None:
+    def test_script_fails_prominently_on_aws_or_non_durable_scale_failure(self) -> None:
         self.assertIn("ERROR: DEPLOYMENT STOPPED", self.script)
-        self.assertIn("Demo-storage scale verification failed", self.script)
-        self.assertIn("Demo storage requires Lightsail scale = 1", self.script)
-        self.assertIn("Demo storage requires Gunicorn workers = 1", self.script)
+        self.assertIn("Non-durable-storage scale verification failed", self.script)
+        self.assertIn("Non-durable storage requires Lightsail scale = 1", self.script)
+        self.assertIn("Non-durable storage requires Gunicorn workers = 1", self.script)
         self.assertIn("exit /b 1", self.script)
         self.assertGreaterEqual(self.script.count("if errorlevel 1"), 5)
 
@@ -97,7 +97,7 @@ class LightsailScaleEnforcementContractTests(unittest.TestCase):
         text = DEPLOYMENT_DOC.read_text(encoding="utf-8")
         self.assertIn("## Conditional deployment policy", text)
         self.assertIn("Durable DynamoDB/DynamoDB/S3", text)
-        self.assertIn("Demo memory/DynamoDB/local", text)
+        self.assertIn("Non-durable validation memory/DynamoDB/local", text)
         self.assertIn("exactly 1", text)
         self.assertIn("1 or greater", text)
         self.assertIn("Leave the Lightsail **Command** field empty", text)

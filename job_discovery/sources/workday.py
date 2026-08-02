@@ -153,6 +153,55 @@ class WorkdayJobSource:
         self.rate_limiter = rate_limiter or CompanyRateLimiter()
         self.clock = clock or time.monotonic
 
+    def fetch_job_description(self, job: DiscoveredJob) -> str:
+        """Fetch the complete description for one stored Workday posting.
+
+        Bulk catalog refreshes may intentionally defer some Workday detail
+        requests to keep the refresh bounded. Opening an application workspace
+        is an explicit user action, so it is safe to make one targeted CXS
+        detail request here instead of copying the abbreviated listing summary.
+        """
+
+        if job.source_type is not JobSourceType.WORKDAY:
+            raise ValueError("fetch_job_description requires a Workday job")
+
+        metadata = dict(job.metadata or {})
+        target = parse_workday_careers_url(
+            job.canonical_url,
+            site_identifier=str(metadata.get("workday_site") or ""),
+            locale=str(metadata.get("workday_locale") or ""),
+        )
+        external_path = _external_path(metadata.get("workday_external_path"))
+        if not external_path:
+            canonical_path = unquote(urlsplit(job.canonical_url).path)
+            marker_index = canonical_path.find("/job/")
+            if marker_index >= 0:
+                external_path = _external_path(canonical_path[marker_index:])
+        if not external_path:
+            raise SourceFetchError(
+                "The Workday detail path could not be determined from the posting URL."
+            )
+
+        source = CompanySource(
+            id=job.source_id,
+            owner_id=job.owner_id,
+            company_name=job.company,
+            careers_url=target.careers_url,
+            source_type=JobSourceType.WORKDAY,
+            source_identifier=target.site,
+            filters={
+                "timeout_seconds": 8.0,
+                "max_response_bytes": DEFAULT_JSON_MAX_BYTES,
+                "max_redirects": 3,
+                "min_request_interval_seconds": 0.0,
+            },
+        )
+        payload = self._fetch_detail(source, target, external_path)
+        info = payload.get("jobPostingInfo") or {}
+        if not isinstance(info, Mapping):
+            return ""
+        return html_to_text(info.get("jobDescription"))
+
     def fetch_jobs(self, source: CompanySource) -> list[DiscoveredJob]:
         validate_source_policy(source, expected_type=JobSourceType.WORKDAY)
         target = parse_workday_careers_url(

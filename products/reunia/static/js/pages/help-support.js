@@ -38,7 +38,7 @@
         'meeting-review': 'Mention the application workspace or approximate practice date and whether the issue affects Summary, Interview Scorecard, Transcript, or Ask about this interview.',
         sharing: 'Mention which sharing option was selected, whether a password or expiration was used, and what the recipient experienced.',
         'action-center': 'Mention the action, selected view or filters, and whether the problem affects editing, application linking, status, priority, or due date.',
-        analytics: 'Mention the Impact & Progress chart or metric and the applications, mock interviews, or date range you expected it to include.',
+        analytics: 'Mention the Progress & Outcomes chart or metric and the applications, mock interviews, or date range you expected it to include.',
         settings: 'Mention the settings section and the value you selected, including Interview Scorecard Source when relevant.',
         account: 'Mention whether the issue involves sign-in, profile details, navigation, or session behavior. Never include your password.',
         other: 'Describe where the issue happened and the last few steps before it occurred.'

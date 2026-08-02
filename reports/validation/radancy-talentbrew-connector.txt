@@ -1,0 +1,24 @@
+Radancy / TalentBrew Job Discovery connector validation
+========================================================
+
+Coverage
+--------
+- Source type enum, adapter registration, and settings dropdown.
+- Employer-branded portal URL normalization.
+- Root, locale, search, location, category, business, and job-detail URLs.
+- Exact configured-host restrictions for branded career sites.
+- Public search pagination using TalentBrew's p query parameter.
+- Job-card and detail-page extraction with JSON-LD/HTML fallbacks.
+- Full job-description enrichment.
+- Shared-catalog identity and source deduplication.
+- CSV/JSON aliases and bundled company-source examples.
+- Scan-status, browser refresh limits, robots, redirect, timeout, response-size, and rate-limit safeguards.
+
+Focused validation
+------------------
+205 Job Discovery tests passed.
+1 environment-dependent integration test was skipped because the sandbox does not include the application's full Flask/Redis/OpenAI/xlrd runtime.
+
+Repository-wide note
+--------------------
+The broader repository retains 10 unrelated pre-existing deployment-test errors because scripts/deployment/upload_to_lightsail.bat is absent from the uploaded project.

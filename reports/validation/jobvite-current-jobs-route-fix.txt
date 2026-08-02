@@ -1,0 +1,11 @@
+Jobvite current listing route fix (historical)
+==============================================
+
+This validation covered the legacy First Tech Jobvite board and remains useful
+for other active Jobvite-hosted sources. First Tech has since moved its official
+career site to Talemetry / TTC Portals, so the bundled source no longer uses
+Jobvite. See first-tech-source-migration.txt for the current configuration.
+
+The Jobvite connector still prefers /<career-site>/jobs before legacy /search
+and board-root variants for Jobvite customers that continue to use the hosted
+Jobvite career site.

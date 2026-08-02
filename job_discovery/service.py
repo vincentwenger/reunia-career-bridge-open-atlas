@@ -39,7 +39,23 @@ from .sources.generic_jsonld import GenericJsonLdJobSource
 from .sources.greenhouse import GreenhouseJobSource
 from .sources.lever import LeverJobSource
 from .sources.workday import WorkdayJobSource
+from .sources.successfactors import SuccessFactorsJobSource
+from .sources.oracle_cloud_hcm import OracleCloudHcmJobSource
+from .sources.icims import IcmsJobSource
+from .sources.smartrecruiters import SmartRecruitersJobSource
+from .sources.avature import AvatureJobSource
+from .sources.eightfold import EightfoldJobSource
+from .sources.taleo import TaleoJobSource
+from .sources.dayforce import DayforceJobSource
+from .sources.talemetry_ttc import TalemetryTtcJobSource
+from .sources.jobvite import JobviteJobSource
+from .sources.ukg_pro import UkgProJobSource
+from .sources.peopleadmin import PeopleAdminJobSource
+from .sources.radancy_talentbrew import RadancyTalentBrewJobSource
+from .sources.amazon_jobs import AmazonJobsJobSource
+from .sources.branded_requisition import BrandedRequisitionJobSource
 from .storage import DiscoveryStore, InMemoryDiscoveryStore
+from .source_migrations import migrate_known_company_source
 
 
 PUBLIC_COVERAGE_DESCRIPTION = (
@@ -134,6 +150,7 @@ class JobDiscoveryService:
                     ),
                     revision=existing_source.revision,
                 )
+            configured_source = migrate_known_company_source(configured_source)
             if persist_source_configuration:
                 configured_source = self.store.put_company_source(configured_source)
             if not configured_source.enabled:
@@ -177,12 +194,15 @@ class JobDiscoveryService:
                         if acquired:
                             try:
                                 fetched_jobs = deduplicate_jobs(adapter.fetch_jobs(fetch_source))
+                                effective_complete_scan = complete_scan and _adapter_scan_is_complete(
+                                    adapter, fetch_source, fetched_jobs
+                                )
                                 self.store.sync_public_catalog(
                                     configured_source,
                                     catalog_key,
                                     fetched_jobs,
                                     checked_at=evaluated_at,
-                                    complete_scan=complete_scan,
+                                    complete_scan=effective_complete_scan,
                                 )
                                 catalog_jobs = self.store.list_public_catalog_jobs(catalog_key)
                                 shared_catalog_refreshes += 1
@@ -218,6 +238,18 @@ class JobDiscoveryService:
                     ]
                 else:
                     source_jobs = deduplicate_jobs(adapter.fetch_jobs(fetch_source))
+                    if not _adapter_scan_is_complete(adapter, fetch_source, source_jobs):
+                        # Indexed/feed fallbacks are intentionally non-exhaustive. Preserve
+                        # previously collected active jobs instead of counting unseen records
+                        # as misses and eventually deactivating them.
+                        source_jobs = deduplicate_jobs(
+                            self.store.list_discovered_jobs(
+                                configured_source.owner_id,
+                                source_id=configured_source.id,
+                                active_only=True,
+                            )
+                            + source_jobs
+                        )
 
                 preferences = self.store.get_search_preferences(configured_source.owner_id)
                 maximum_age_days = (
@@ -295,10 +327,34 @@ class JobDiscoveryService:
         normalized_owner = str(owner_id or "").strip()
         if not normalized_owner:
             raise ValueError("owner_id is required")
+        if not sources:
+            return 0
+
+        # Deferred hydration is called with the complete centrally managed
+        # source list after the Job Discovery HTML has rendered. Fetch the
+        # owner's materialized sources and all shared catalog statuses once
+        # instead of issuing two point reads for every source. On DynamoDB this
+        # changes the sync pattern from O(number of sources) network calls to two
+        # prefix queries plus the job queries required only for catalogs that
+        # actually need synchronization.
+        existing_sources_by_id = {
+            source.id: source
+            for source in self.store.list_company_sources(normalized_owner)
+        }
+        catalog_statuses_by_key = {
+            status.source_key: status
+            for status in self.store.list_public_catalog_statuses()
+        }
+        preferences = self.store.get_search_preferences(normalized_owner)
+        maximum_age_days = (
+            preferences.maximum_posting_age_days
+            if preferences is not None
+            else DEFAULT_MAX_POSTING_AGE_DAYS
+        )
 
         hydrated = 0
         for catalog_source in sources:
-            existing = self.store.get_company_source(normalized_owner, catalog_source.id)
+            existing = existing_sources_by_id.get(catalog_source.id)
             config_changed = existing is None or any(
                 (
                     existing.company_name != catalog_source.company_name,
@@ -317,13 +373,14 @@ class JobDiscoveryService:
             )
             if config_changed:
                 owner_source = self.store.put_company_source(owner_source)
+                existing_sources_by_id[catalog_source.id] = owner_source
             else:
                 owner_source = existing
 
             if not catalog_source.enabled:
                 continue
             catalog_key = public_source_key(catalog_source)
-            status = self.store.get_public_catalog_status(catalog_key)
+            status = catalog_statuses_by_key.get(catalog_key)
             if status is None or not status.last_success_at:
                 continue
             if (
@@ -337,12 +394,6 @@ class JobDiscoveryService:
             owner_jobs = [
                 materialize_catalog_job(job, owner_source) for job in public_jobs
             ]
-            preferences = self.store.get_search_preferences(normalized_owner)
-            maximum_age_days = (
-                preferences.maximum_posting_age_days
-                if preferences is not None
-                else DEFAULT_MAX_POSTING_AGE_DAYS
-            )
             eligible_jobs, _ = partition_jobs_by_posting_age(
                 owner_jobs,
                 maximum_age_days=maximum_age_days,
@@ -359,18 +410,26 @@ class JobDiscoveryService:
     ) -> int:
         """Copy newer shared public postings into owner-scoped discovery records.
 
-        This performs no external HTTP requests. It lets a user see jobs collected
-        by another user as soon as they open Job Discovery.
+        This performs no external HTTP requests. It is intended for an explicit
+        post-render sync or an external refresh workflow rather than the initial
+        Job Discovery page request.
         """
 
         if not self._use_shared_public_catalog:
             return 0
+        if not sources:
+            return 0
+        catalog_statuses_by_key = {
+            status.source_key: status
+            for status in self.store.list_public_catalog_statuses()
+        }
+        maximum_age_days_by_owner: dict[str, int] = {}
         hydrated = 0
         for source in sources:
             if not source.enabled or not public_catalog_enabled(source):
                 continue
             catalog_key = public_source_key(source)
-            status = self.store.get_public_catalog_status(catalog_key)
+            status = catalog_statuses_by_key.get(catalog_key)
             if status is None or not status.last_success_at:
                 continue
             if source.last_checked_at and source.last_checked_at >= status.last_success_at:
@@ -379,12 +438,15 @@ class JobDiscoveryService:
             if not public_jobs:
                 continue
             owner_jobs = [materialize_catalog_job(job, source) for job in public_jobs]
-            preferences = self.store.get_search_preferences(source.owner_id)
-            maximum_age_days = (
-                preferences.maximum_posting_age_days
-                if preferences is not None
-                else DEFAULT_MAX_POSTING_AGE_DAYS
-            )
+            maximum_age_days = maximum_age_days_by_owner.get(source.owner_id)
+            if maximum_age_days is None:
+                preferences = self.store.get_search_preferences(source.owner_id)
+                maximum_age_days = (
+                    preferences.maximum_posting_age_days
+                    if preferences is not None
+                    else DEFAULT_MAX_POSTING_AGE_DAYS
+                )
+                maximum_age_days_by_owner[source.owner_id] = maximum_age_days
             eligible_jobs, _ = partition_jobs_by_posting_age(
                 owner_jobs,
                 maximum_age_days=maximum_age_days,
@@ -545,6 +607,22 @@ def _analysis_record(job: DiscoveredJob, analysis: JobAnalysis) -> JobAnalysisRe
     )
 
 
+
+def _adapter_scan_is_complete(
+    adapter: JobSource,
+    source: CompanySource,
+    jobs: list[DiscoveredJob],
+) -> bool:
+    checker = getattr(adapter, "scan_is_complete", None)
+    if not callable(checker):
+        return True
+    try:
+        return bool(checker(source, jobs))
+    except Exception:
+        # Completeness metadata must never make an otherwise successful source
+        # scan fail. Unknown adapters retain the historical complete-scan behavior.
+        return True
+
 def _job_analysis(record: JobAnalysisRecord) -> JobAnalysis:
     return JobAnalysis(
         target_title=record.target_title,
@@ -564,15 +642,60 @@ def _model_payload(value: object) -> dict[str, object]:
     raise TypeError(f"Unsupported analysis model: {type(value)!r}")
 
 
+def _job_discovery_ai_timeout_seconds() -> float:
+    """Keep one interactive assessment request below the web gateway timeout."""
+
+    raw = os.getenv("JOB_DISCOVERY_AI_TIMEOUT_SECONDS", "20")
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        value = 20.0
+    # Lightsail/proxy 504s commonly occur before the generic 90-second AI timeout.
+    # Leave time for DynamoDB reads/writes and Flask to serialize the response.
+    return min(25.0, max(5.0, value))
+
+
+def _job_discovery_ai_reasoning_effort() -> str:
+    """Use the smallest reasoning budget for extraction/classification work."""
+
+    value = str(
+        os.getenv("JOB_DISCOVERY_AI_REASONING_EFFORT", "minimal") or "minimal"
+    ).strip().casefold()
+    supported = {"none", "minimal", "low", "medium", "high", "xhigh", "max"}
+    return value if value in supported else "minimal"
+
+
+def _job_discovery_ai_max_output_tokens() -> int:
+    """Reserve enough room for reasoning plus the structured requirement list."""
+
+    raw = os.getenv("JOB_DISCOVERY_AI_MAX_OUTPUT_TOKENS", "4800")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = 4800
+    return min(12000, max(1600, value))
+
+
 def _default_analyzer_factory(owner_id: str) -> JobAnalyzer:
     from products.resume_taylor.resume_tailor.ai import ResumeAI
 
-    model = (
-        os.getenv("JOB_DISCOVERY_AI_MODEL")
-        or os.getenv("AI_MODEL_FAST")
-        or "gpt-4o-mini"
-    ).strip()
-    return ResumeAI(model, user_id=owner_id)
+    # Job assessment is a high-volume extraction and ranking workload. Keep its
+    # model independent from the broader application preset so changing
+    # AI_MODEL_FAST cannot accidentally make a large discovery backlog costly.
+    # Interactive discovery deliberately uses one provider attempt with a short
+    # timeout: a slow posting is isolated and can be retried instead of causing
+    # the entire browser batch to fail with HTTP 504.
+    model = (os.getenv("JOB_DISCOVERY_AI_MODEL") or "gpt-5-nano").strip()
+    return ResumeAI(
+        model,
+        reasoning_effort=_job_discovery_ai_reasoning_effort(),
+        user_id=owner_id,
+        max_attempts=1,
+        request_timeout_seconds=_job_discovery_ai_timeout_seconds(),
+        max_output_tokens_by_operation={
+            "analyze_job": _job_discovery_ai_max_output_tokens(),
+        },
+    )
 
 
 def default_adapters() -> dict[JobSourceType, JobSource]:
@@ -584,5 +707,20 @@ def default_adapters() -> dict[JobSourceType, JobSource]:
         JobSourceType.LEVER: LeverJobSource(rate_limiter=limiter),
         JobSourceType.ASHBY: AshbyJobSource(rate_limiter=limiter),
         JobSourceType.WORKDAY: WorkdayJobSource(rate_limiter=limiter),
+        JobSourceType.SUCCESSFACTORS: SuccessFactorsJobSource(rate_limiter=limiter),
+        JobSourceType.ORACLE_CLOUD_HCM: OracleCloudHcmJobSource(rate_limiter=limiter),
+        JobSourceType.ICIMS: IcmsJobSource(rate_limiter=limiter),
+        JobSourceType.SMARTRECRUITERS: SmartRecruitersJobSource(rate_limiter=limiter),
+        JobSourceType.AVATURE: AvatureJobSource(rate_limiter=limiter),
+        JobSourceType.EIGHTFOLD: EightfoldJobSource(rate_limiter=limiter),
+        JobSourceType.TALEO: TaleoJobSource(rate_limiter=limiter),
+        JobSourceType.DAYFORCE: DayforceJobSource(rate_limiter=limiter),
+        JobSourceType.TALEMETRY_TTC: TalemetryTtcJobSource(rate_limiter=limiter),
+        JobSourceType.JOBVITE: JobviteJobSource(rate_limiter=limiter),
+        JobSourceType.UKG_PRO: UkgProJobSource(rate_limiter=limiter),
+        JobSourceType.PEOPLEADMIN: PeopleAdminJobSource(rate_limiter=limiter),
+        JobSourceType.RADANCY_TALENTBREW: RadancyTalentBrewJobSource(rate_limiter=limiter),
+        JobSourceType.AMAZON_JOBS: AmazonJobsJobSource(rate_limiter=limiter),
+        JobSourceType.BRANDED_REQUISITION: BrandedRequisitionJobSource(rate_limiter=limiter),
         JobSourceType.GENERIC_JSONLD: GenericJsonLdJobSource(rate_limiter=limiter),
     }

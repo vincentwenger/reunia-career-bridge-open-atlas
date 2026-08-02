@@ -126,7 +126,7 @@ def _build_safe_summary(
             if len(selected) >= 3:
                 break
     while len(selected) < 3:
-        selected.append("Documented professional experience from the Candidate Profile")
+        selected.append("Documented professional experience from the Verified Resume Evidence")
 
     selected = selected[:4]
     skills = _dedupe(profile.all_verified_skills())
@@ -216,7 +216,7 @@ def repair_unsupported_candidate_claims(
     """Remove unsupported generated candidate claims without changing workflow metadata.
 
     Unlike the full deterministic repair pass, this function preserves candidate
-    questions, inclusion choices, evidence decisions, and Career Translation
+    questions, inclusion choices, evidence decisions, and Baseline Resume
     findings. It is safe to run immediately after every model-generated proposal.
     """
 

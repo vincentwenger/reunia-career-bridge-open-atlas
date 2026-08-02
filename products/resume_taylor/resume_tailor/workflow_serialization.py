@@ -109,10 +109,21 @@ def workflow_state_fingerprint(state: WorkflowState) -> str:
 
 
 def workflow_payload_fingerprint(content: bytes | bytearray | str) -> str:
-    """Fingerprint an existing serialized workflow document canonically."""
+    """Fingerprint the serialized workflow document exactly as persisted.
 
-    state = workflow_state_from_json_bytes(content)
-    return workflow_state_fingerprint(state)
+    This intentionally hashes the stored UTF-8 payload rather than
+    deserializing and serializing it again. A newer ``WorkflowState`` schema
+    may add fields with defaults. Re-serializing an older, otherwise valid
+    document would include those new defaults and produce a different digest,
+    incorrectly treating schema evolution as object corruption.
+    """
+
+    serialized = (
+        bytes(content)
+        if isinstance(content, (bytes, bytearray))
+        else str(content).encode("utf-8")
+    )
+    return hashlib.sha256(serialized).hexdigest()
 
 
 def _canonical_json_bytes(payload: Mapping[str, Any]) -> bytes:

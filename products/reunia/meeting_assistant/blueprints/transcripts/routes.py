@@ -87,7 +87,7 @@ def submit_transcript():
     """Retired desktop-recorder compatibility endpoint."""
     return jsonify(
         {
-            "error": "The Windows Desktop Recorder is not part of the Career Bridge MVP.",
+            "error": "The Windows Desktop Recorder is retired in Career Bridge. Use Adaptive Mock Interview instead.",
             "replacement": "/mock-interview",
         }
     ), 410

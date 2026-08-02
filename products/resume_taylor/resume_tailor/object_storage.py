@@ -296,19 +296,26 @@ def workflow_state_object_key(
 ) -> str:
     """Return a private, immutable object key for one workflow-state version.
 
-    Scratch and application workflow-state documents use separate top-level
-    prefixes so an S3 lifecycle rule can clean orphaned scratch objects after
-    DynamoDB TTL removes their metadata without affecting retained application
-    workflows.
+    Scratch, application, and Career Foundation workflow-state documents use
+    separate top-level prefixes so an S3 lifecycle rule can clean orphaned
+    scratch objects after DynamoDB TTL removes their metadata without affecting
+    retained application or foundation workflows.
     """
 
     owner_id, marker, _ = workflow_key.partition(":application:")
     if not marker:
-        owner_id = workflow_key
+        owner_id, foundation_marker, _ = workflow_key.partition(
+            ":career-foundation:"
+        )
+        if not foundation_marker:
+            owner_id = workflow_key
     workflow_namespace = hashlib.sha256(workflow_key.encode("utf-8")).hexdigest()[:24]
     digest = (fingerprint or "unknown")[:24]
+    requested_retention_class = str(retention_class).strip().casefold()
     safe_retention_class = (
-        "scratch" if str(retention_class).strip().casefold() == "scratch" else "application"
+        requested_retention_class
+        if requested_retention_class in {"scratch", "application", "foundation"}
+        else "application"
     )
     return (
         f"{object_prefix(config)}/workflow-state/{safe_retention_class}/users/"

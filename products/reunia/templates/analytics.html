@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'macros/ui.html' import page_hero, workspace_state %}
 
-{% block title %}Réunia - Social Impact{% endblock %}
+{% block title %}Réunia - Progress & Outcomes{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/analytics.css') }}">
@@ -10,11 +10,11 @@
 {% block content %}
 <div class="app-page impact-container">
     {{ page_hero(
-        'Social Impact & Career Progress',
-        'Measure how Career Bridge clarifies international experience, protects evidence, improves role alignment, strengthens interview answers, and turns guidance into completed actions.'
+        'Progress & Outcomes',
+        'Track application results, resume improvement, interview readiness, practice scores, and completed actions from saved Career Bridge records.'
     ) }}
 
-    <section class="impact-toolbar" aria-label="Impact dashboard controls">
+    <section class="impact-toolbar" aria-label="Progress dashboard controls">
         <div>
             <span class="impact-eyebrow">Evidence-backed measurement</span>
             <strong>Every number comes from saved candidate workflow records.</strong>
@@ -33,7 +33,7 @@
             'impact-loading-state',
             'loading',
             'Loading measurable outcomes',
-            'Collecting saved Career Translation, resume, interview, and action-plan evidence.',
+            'Collecting saved baseline-resume, application, interview, and action-plan evidence.',
             hidden=false
         ) }}
         {{ workspace_state(
@@ -48,7 +48,7 @@
         {{ workspace_state(
             'impact-error-state',
             'error',
-            'Social-impact outcomes could not be loaded',
+            'Progress and outcomes could not be loaded',
             'The saved evidence remains unchanged. Retry the dashboard request when the service is available.',
             hidden=true,
             action_label='Retry loading',
@@ -57,24 +57,31 @@
     </div>
 
     <div id="impact-dashboard-content" hidden>
-    <section class="impact-metric-grid" aria-label="Measured social-impact outcomes">
-        <article class="impact-metric-card"><span class="impact-metric-icon">◎</span><div><span>International credentials identified</span><strong id="impact-credentials">—</strong><small>Credential explanations found in Career Translation</small></div></article>
-        <article class="impact-metric-card"><span class="impact-metric-icon">Aa</span><div><span>Career terminology clarified</span><strong id="impact-terminology">—</strong><small>Titles and regional terms translated for the target market</small></div></article>
-        <article class="impact-metric-card"><span class="impact-metric-icon">✓</span><div><span>Unsupported resume claims prevented</span><strong id="impact-claims">—</strong><small>Unsupported requirements or claims kept outside the resume</small></div></article>
-        <article class="impact-metric-card"><span class="impact-metric-icon">↺</span><div><span>Relevant experience recovered</span><strong id="impact-recovered">—</strong><small>Confirmed evidence or hidden accomplishments restored</small></div></article>
-        <article class="impact-metric-card"><span class="impact-metric-icon">↗</span><div><span>Resume-to-job alignment improvement</span><strong id="impact-alignment">—</strong><small>Average change from Initial to latest measured resume</small></div></article>
-        <article class="impact-metric-card"><span class="impact-metric-icon">🎙</span><div><span>Mock-interview score improvement</span><strong id="impact-interview">—</strong><small>Change from first to latest scored practice session</small></div></article>
-        <article class="impact-metric-card"><span class="impact-metric-icon">✦</span><div><span>Weak answers improved</span><strong id="impact-answers">—</strong><small>Low-scoring answers with evidence-safe improved examples</small></div></article>
-        <article class="impact-metric-card"><span class="impact-metric-icon">☑</span><div><span>Application actions completed</span><strong id="impact-actions">—</strong><small>Completed items in the Career Action Plan</small></div></article>
+    <section class="impact-metric-grid impact-metric-grid-primary" aria-label="Key career progress and outcomes">
+        <article class="impact-metric-card"><span class="impact-metric-icon">↗</span><div><span>Resume alignment improvement</span><strong id="impact-alignment">—</strong><small>Average change from Application Baseline to latest measured resume</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">🎙</span><div><span>Mock-interview improvement</span><strong id="impact-interview">—</strong><small>Change from first to latest scored practice session</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">◎</span><div><span>Interview-ready applications</span><strong id="impact-ready">—</strong><small>Calculated from preparation and scored practice</small></div></article>
+        <article class="impact-metric-card"><span class="impact-metric-icon">☑</span><div><span>Actions completed</span><strong id="impact-actions">—</strong><small>Completed items in the Career Action Plan</small></div></article>
     </section>
+
+    <details class="impact-more-metrics">
+        <summary>Additional measurements</summary>
+        <section class="impact-metric-grid impact-metric-grid-secondary" aria-label="Additional measured outcomes">
+            <article class="impact-metric-card"><span class="impact-metric-icon">◎</span><div><span>Credentials identified</span><strong id="impact-credentials">—</strong><small>Credential explanations found in the Baseline Resume workflow</small></div></article>
+            <article class="impact-metric-card"><span class="impact-metric-icon">Aa</span><div><span>Terminology clarified</span><strong id="impact-terminology">—</strong><small>Titles and regional terms clarified for the target market</small></div></article>
+            <article class="impact-metric-card"><span class="impact-metric-icon">✓</span><div><span>Unsupported claims prevented</span><strong id="impact-claims">—</strong><small>Unsupported requirements kept outside the resume</small></div></article>
+            <article class="impact-metric-card"><span class="impact-metric-icon">↺</span><div><span>Experience recovered</span><strong id="impact-recovered">—</strong><small>Confirmed evidence or hidden accomplishments restored</small></div></article>
+            <article class="impact-metric-card"><span class="impact-metric-icon">✦</span><div><span>Weak answers improved</span><strong id="impact-answers">—</strong><small>Low-scoring answers with evidence-safe improved examples</small></div></article>
+        </section>
+    </details>
 
     <section class="impact-story-grid">
         <article class="impact-story-card impact-before">
-            <header><span>Before Career Bridge</span><h2>Barriers remain hidden</h2></header>
+            <header><span>Starting point</span><h2>What still needs attention</h2></header>
             <ul id="impact-before-list"></ul>
         </article>
         <article class="impact-story-card impact-after">
-            <header><span>After Career Bridge</span><h2>Evidence becomes understandable and actionable</h2></header>
+            <header><span>Current progress</span><h2>What has improved or been completed</h2></header>
             <ul id="impact-after-list"></ul>
         </article>
     </section>
@@ -86,7 +93,7 @@
                 <a href="{{ request.script_root }}/applications/?tab=applications">Open applications <span aria-hidden="true">→</span></a>
             </header>
             <div class="impact-alignment-list" id="impact-alignment-list"></div>
-            <div class="impact-empty" id="impact-alignment-empty" hidden>Complete an Initial Resume Report and a later resume report to measure alignment improvement.</div>
+            <div class="impact-empty" id="impact-alignment-empty" hidden>Complete an Application Baseline Report and a later resume report to measure alignment improvement.</div>
         </article>
 
         <article class="impact-panel">
@@ -111,7 +118,7 @@
         </header>
         <div class="impact-table-scroll">
             <table class="impact-table">
-                <thead><tr><th>Application</th><th>Translation</th><th>Evidence</th><th>Alignment</th><th>Interview practice</th><th>Actions</th><th>Result</th></tr></thead>
+                <thead><tr><th>Application</th><th>Translation</th><th>Evidence</th><th>Alignment</th><th>Readiness</th><th>Interview practice</th><th>Actions</th><th>Result</th></tr></thead>
                 <tbody id="impact-application-body"></tbody>
             </table>
         </div>
@@ -120,7 +127,7 @@
 
     <section class="impact-integrity">
         <div class="impact-integrity-icon">i</div>
-        <div><strong>Measurement integrity</strong><p>Career Bridge does not infer sensitive traits, immigration status, personality, or emotion. It counts workflow artifacts, confirmed evidence, report score changes, observable interview criteria, and completed actions. A zero can mean either no issue was found or the related workflow has not yet been completed.</p><ul id="impact-warnings"></ul></div>
+        <div><strong>Measurement integrity</strong><p>Career Bridge does not infer sensitive traits, immigration status, personality, or emotion. Interview readiness is calculated from a saved Interview Preparation record (40 points) and the latest scored Mock Interview (up to 60 points). Other metrics count workflow artifacts, confirmed evidence, report score changes, observable interview criteria, and completed actions.</p><ul id="impact-warnings"></ul></div>
     </section>
     </div>
 </div>

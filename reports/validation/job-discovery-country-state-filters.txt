@@ -1,0 +1,18 @@
+JOB DISCOVERY COUNTRY AND U.S. STATE FILTERS
+
+Implemented
+- Added Country and U.S. state controls to Public job discovery.
+- Added deterministic country/state normalization and matching.
+- Recognizes U.S. state abbreviations and full names.
+- Recognizes explicit international country names and common aliases.
+- Keeps nationwide U.S.-remote roles visible for a selected U.S. state.
+- Preserves filters across tabs, pagination, page-size changes, save/ignore actions,
+  shared refreshes, and pending-job assessment runs.
+- Includes country and state in the materialized result-index fingerprint.
+- Does not guess unknown or location-unspecified postings into a country/state.
+
+Validation
+- Job Discovery suite: 141 passed, 1 skipped, 16 subtests passed.
+- Full suite: 298 passed, 20 skipped, 113 subtests passed.
+- 10 unrelated pre-existing deployment contract failures remain because
+  scripts/deployment/upload_to_lightsail.bat is absent from the supplied archive.

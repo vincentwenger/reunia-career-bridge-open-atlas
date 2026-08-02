@@ -12,8 +12,16 @@ from job_discovery.sources.ashby import AshbyJobSource
 from job_discovery.sources.base import HttpResponse, JobSource
 from job_discovery.sources.generic_jsonld import GenericJsonLdJobSource
 from job_discovery.sources.greenhouse import GreenhouseJobSource
+from job_discovery.sources.icims import IcmsJobSource
 from job_discovery.sources.lever import LeverJobSource
+from job_discovery.sources.oracle_cloud_hcm import (
+    OracleCloudHcmJobSource,
+    _api_detail_url,
+    _api_listing_url,
+    parse_oracle_cloud_hcm_careers_url,
+)
 from job_discovery.sources.workday import WorkdayJobSource
+from job_discovery.sources.successfactors import SuccessFactorsJobSource
 from job_discovery.storage import InMemoryTTLCache
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "job_discovery"
@@ -134,7 +142,7 @@ class JobSourceConnectorContractTests(unittest.TestCase):
                             "jobPostingInfo": {
                                 "title": "Senior Data Platform Engineer",
                                 "jobReqId": "REQ-42",
-                                "jobDescription": "<p>Build regulated data platforms.</p><script>bad()</script>",
+                                "jobDescription": "<p>Build regulated data platforms.</p>",
                                 "location": "Portland, Oregon",
                                 "timeType": "Full time",
                                 "remoteType": "Hybrid",
@@ -144,6 +152,136 @@ class JobSourceConnectorContractTests(unittest.TestCase):
                         }
                     ).encode("utf-8"),
                     "application/json",
+                ),
+            }
+        )
+
+        successfactors_root = "https://examplebank.jobs.hr.cloud.sap/"
+        successfactors_search = "https://examplebank.jobs.hr.cloud.sap/search/"
+        successfactors_robots = "https://examplebank.jobs.hr.cloud.sap/robots.txt"
+        successfactors_job = (
+            "https://examplebank.jobs.hr.cloud.sap/job/Portland/"
+            "Senior-Data-Platform-Engineer/42-en_US"
+        )
+        successfactors_http = FixtureHttpClient(
+            {
+                successfactors_robots: _response(
+                    successfactors_robots, b"User-agent: *\nAllow: /\n", "text/plain"
+                ),
+                successfactors_search: _response(
+                    successfactors_search,
+                    f"""<html><body><p>Results 1 - 1 of 1</p><table><tr>
+                    <td><a href=\"{successfactors_job}/\">Senior Data Platform Engineer</a></td>
+                    <td>Portland, Oregon</td></tr></table></body></html>""".encode("utf-8"),
+                    "text/html",
+                ),
+                successfactors_job: _response(
+                    successfactors_job,
+                    b"""<script type=\"application/ld+json\">{
+                    \"@type\":\"JobPosting\",
+                    \"identifier\":{\"value\":\"REQ-42\"},
+                    \"title\":\"Senior Data Platform Engineer\",
+                    \"description\":\"<p>Build regulated data platforms.</p>\",
+                    \"employmentType\":\"FULL_TIME\",
+                    \"jobLocationType\":\"HYBRID\",
+                    \"jobLocation\":{\"address\":{\"addressLocality\":\"Portland\",\"addressRegion\":\"Oregon\"}},
+                    \"url\":\"https://examplebank.jobs.hr.cloud.sap/job/Portland/Senior-Data-Platform-Engineer/42-en_US\"
+                    }</script>""",
+                    "text/html",
+                ),
+            }
+        )
+
+        oracle_root = "https://examplebank.fa.us2.oraclecloud.com"
+        oracle_listing = (
+            oracle_root + "/hcmUI/CandidateExperience/en/sites/CX_1/jobs"
+        )
+        oracle_target = parse_oracle_cloud_hcm_careers_url(oracle_listing)
+        oracle_api_listing = _api_listing_url(oracle_target, limit=24, offset=0)
+        oracle_api_detail = _api_detail_url(oracle_target, "REQ-42")
+        oracle_robots = oracle_root + "/robots.txt"
+        oracle_http = FixtureHttpClient(
+            {
+                oracle_robots: _response(
+                    oracle_robots, b"User-agent: *\nAllow: /\n", "text/plain"
+                ),
+                oracle_api_listing: _response(
+                    oracle_api_listing,
+                    json.dumps(
+                        {
+                            "items": [
+                                {
+                                    "requisitionList": [
+                                        {
+                                            "Id": "REQ-42",
+                                            "Title": "Senior Data Platform Engineer",
+                                            "PrimaryLocation": "Portland, Oregon",
+                                            "JobType": "Full Time",
+                                            "WorkplaceType": "Hybrid",
+                                        }
+                                    ]
+                                }
+                            ],
+                            "hasMore": False,
+                        }
+                    ).encode("utf-8"),
+                    "application/vnd.oracle.adf.resourcecollection+json",
+                ),
+                oracle_api_detail: _response(
+                    oracle_api_detail,
+                    json.dumps(
+                        {
+                            "items": [
+                                {
+                                    "Id": "REQ-42",
+                                    "Title": "Senior Data Platform Engineer",
+                                    "ExternalDescriptionStr": (
+                                        "<p>Build regulated data platforms.</p>"
+                                    ),
+                                    "PrimaryLocation": "Portland, Oregon",
+                                    "JobType": "Full Time",
+                                    "WorkplaceType": "Hybrid",
+                                }
+                            ]
+                        }
+                    ).encode("utf-8"),
+                    "application/vnd.oracle.adf.resourcecollection+json",
+                ),
+            }
+        )
+
+        icims_root = "https://careers-examplebank.icims.com"
+        icims_listing = icims_root + "/jobs/search"
+        icims_job = icims_root + "/jobs/47190/senior-data-platform-engineer/job"
+        icims_robots = icims_root + "/robots.txt"
+        icims_http = FixtureHttpClient(
+            {
+                icims_robots: _response(
+                    icims_robots, b"User-agent: *\nAllow: /\n", "text/plain"
+                ),
+                icims_listing: _response(
+                    icims_listing,
+                    f"""<html><body><article class="iCIMS_JobsTable">
+                    <div>Position Type Regular Full-Time</div>
+                    <div>Requisition ID REQ-42</div>
+                    <a href="{icims_job}">Senior Data Platform Engineer</a>
+                    <div>Job Locations Portland, Oregon Hybrid</div>
+                    </article></body></html>""".encode("utf-8"),
+                    "text/html",
+                ),
+                icims_job: _response(
+                    icims_job,
+                    f"""<script type="application/ld+json">{{
+                    "@type":"JobPosting",
+                    "identifier":{{"value":"REQ-42"}},
+                    "title":"Senior Data Platform Engineer",
+                    "description":"<p>Build regulated data platforms.</p>",
+                    "employmentType":"FULL_TIME",
+                    "jobLocationType":"HYBRID",
+                    "jobLocation":{{"address":{{"addressLocality":"Portland","addressRegion":"Oregon"}}}},
+                    "url":"{icims_job}"
+                    }}</script>""".encode("utf-8"),
+                    "text/html",
                 ),
             }
         )
@@ -223,6 +361,45 @@ class JobSourceConnectorContractTests(unittest.TestCase):
                     careers_url="https://examplebank.wd5.myworkdayjobs.com/en-US/External",
                     source_type=JobSourceType.WORKDAY,
                     source_identifier="External",
+                    filters={"min_request_interval_seconds": 0},
+                    owner_id=common["owner_id"],
+                    company_name=common["company_name"],
+                ),
+            ),
+            (
+                "successfactors",
+                SuccessFactorsJobSource(successfactors_http),
+                CompanySource(
+                    id="source-successfactors",
+                    careers_url=successfactors_root,
+                    source_type=JobSourceType.SUCCESSFACTORS,
+                    source_identifier="",
+                    filters={"min_request_interval_seconds": 0},
+                    owner_id=common["owner_id"],
+                    company_name=common["company_name"],
+                ),
+            ),
+            (
+                "oracle_cloud_hcm",
+                OracleCloudHcmJobSource(oracle_http),
+                CompanySource(
+                    id="source-oracle-cloud-hcm",
+                    careers_url=oracle_listing,
+                    source_type=JobSourceType.ORACLE_CLOUD_HCM,
+                    source_identifier="",
+                    filters={"min_request_interval_seconds": 0},
+                    owner_id=common["owner_id"],
+                    company_name=common["company_name"],
+                ),
+            ),
+            (
+                "icims",
+                IcmsJobSource(icims_http),
+                CompanySource(
+                    id="source-icims",
+                    careers_url=icims_listing,
+                    source_type=JobSourceType.ICIMS,
+                    source_identifier="",
                     filters={"min_request_interval_seconds": 0},
                     owner_id=common["owner_id"],
                     company_name=common["company_name"],

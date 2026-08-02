@@ -66,6 +66,9 @@ class BaseConfig:
     CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME = os.getenv(
         "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME", ""
     ).strip()
+    CAREER_BRIDGE_JOB_DISCOVERY_SLOW_REQUEST_MS = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_SLOW_REQUEST_MS", "1000"
+    ).strip()
     CAREER_BRIDGE_APPLICATIONS_TABLE_NAME = os.getenv(
         "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME", ""
     ).strip()
@@ -452,6 +455,11 @@ class BaseConfig:
                 "cached_input": 0.10,
                 "output": 6.00,
             },
+            "gpt-5-nano": {
+                "input": 0.05,
+                "cached_input": 0.005,
+                "output": 0.40,
+            },
             "gpt-4o-mini": {
                 "input": 0.15,
                 "cached_input": 0.075,
@@ -669,7 +677,7 @@ class ProductionConfig(BaseConfig):
 
     # Durable Career Bridge persistence is the production baseline. Local
     # memory/filesystem adapters remain available only when explicitly
-    # selected together with the narrow demo-storage override.
+    # selected together with the narrow non-durable-storage override.
     CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = os.getenv(
         "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "dynamodb"
     ).strip().lower()

@@ -6,6 +6,8 @@ from datetime import date
 from typing import Iterable
 from urllib.parse import urlparse
 
+from .terminology import APPLICATION_BASELINE_LABEL, LEGACY_RESUME_VERSION_LABELS
+
 APPLICATION_STATUS_OPTIONS: tuple[tuple[str, str], ...] = (
     ("draft", "Draft"),
     ("considering", "Considering"),
@@ -29,7 +31,7 @@ _APPLICATION_STATUS_ALIASES = {
 
 RESUME_VERSION_OPTIONS: tuple[str, ...] = (
     "Not started",
-    "Initial Resume",
+    APPLICATION_BASELINE_LABEL,
     "Tailored Resume",
     "Final Resume",
     "External resume",
@@ -53,7 +55,7 @@ INTERVIEW_AUDIENCE_SUGGESTIONS: tuple[str, ...] = (
 )
 
 APPLICATION_BUILDER_STEP_LABELS: dict[str, str] = {
-    "setup": "Career and Job Setup",
+    "setup": "Application and Job Setup",
     "confirmation": "Confirm Relevant Experience",
     "review": "Review Tailored Resume",
     "quality": "Improve Resume Quality",
@@ -62,7 +64,7 @@ APPLICATION_BUILDER_STEP_LABELS: dict[str, str] = {
 }
 
 APPLICATION_BUILDER_NEXT_ACTIONS: dict[str, str] = {
-    "setup": "Complete Career and Job Setup",
+    "setup": "Complete Application and Job Setup",
     "confirmation": "Confirm relevant experience",
     "review": "Review the tailored resume",
     "quality": "Improve resume quality",
@@ -114,13 +116,17 @@ class ApplicationRecord:
         )
 
     @property
+    def resume_version_label(self) -> str:
+        return LEGACY_RESUME_VERSION_LABELS.get(self.resume_version, self.resume_version)
+
+    @property
     def has_resume_snapshot(self) -> bool:
         return bool(self.resume_bytes or self.resume_docx_key)
 
     @property
     def interview_readiness_label(self) -> str:
         if self.interview_readiness is None:
-            return "Not assessed"
+            return "Not calculated"
         return f"{self.interview_readiness:.0f}%"
 
     @property
@@ -148,7 +154,7 @@ class ApplicationRecord:
     @property
     def workflow_step_label(self) -> str:
         return APPLICATION_BUILDER_STEP_LABELS.get(
-            self.workflow_step, "Career and Job Setup"
+            self.workflow_step, "Application and Job Setup"
         )
 
     @property

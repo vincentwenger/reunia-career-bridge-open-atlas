@@ -33,9 +33,13 @@ def workflow_retention_class(workflow_key: str) -> str:
     """Classify a workflow key without storing its owner or application ID.
 
     The Application Builder uses ``<owner>:application:scratch`` for its
-    temporary workspace and ``<owner>:application:<application-id>`` for a
-    durable application-linked workflow.
+    temporary workspace, ``<owner>:application:<application-id>`` for a
+    durable application-linked workflow, and ``<owner>:career-foundation:*``
+    for retained account-level foundation state.
     """
+
+    if ":career-foundation:" in workflow_key:
+        return "foundation"
 
     marker = ":application:"
     if marker not in workflow_key:
@@ -210,6 +214,10 @@ class ApplicationStore(Protocol):
     def get_interview_preparation(
         self, owner_id: str, application_id: str
     ) -> InterviewPreparationRecord | None: ...
+
+    def list_interview_preparation_application_ids(
+        self, owner_id: str
+    ) -> tuple[str, ...]: ...
 
     def save_interview_preparation(
         self,

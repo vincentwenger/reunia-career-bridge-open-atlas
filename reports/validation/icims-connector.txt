@@ -1,0 +1,21 @@
+iCIMS Job Discovery connector validation
+========================================
+
+Implemented:
+- iCIMS source type in Discovery settings
+- Public icims.com career-site URL normalization
+- Classic /jobs/search and branded /.../jobs listing support
+- Direct /jobs/<id> URL normalization
+- Bounded pagination and robots.txt enforcement
+- Listing-card extraction with JSON-LD and HTML detail fallbacks
+- Full-description enrichment
+- CSV/JSON company-source import aliases
+- Shared-catalog identity, refresh limits, and posting-detail integration
+
+Validation performed:
+- 179 Job Discovery unit, contract, regression, and integration tests run
+- 0 failures
+- 0 errors
+- 1 skipped integration test
+- Python compileall passed
+- Focused iCIMS wiring assertions passed

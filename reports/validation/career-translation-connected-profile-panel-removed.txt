@@ -1,0 +1,20 @@
+Career Translation Connected Career Profile Panel Removal
+=========================================================
+
+Change
+------
+- Removed the complete read-only "Connected Career Profile" card from the dedicated Career Translation page.
+- Removed its "Reusable career context" content, missing-profile warning, and "Update Career Profile" link from that page.
+- Removed the now-unused route-local reusable profile template argument.
+- Kept the backend Career Profile integration used to resolve translation context, target country, titles, credentials, languages, and resume language.
+
+Validation
+----------
+- Career Profile workflow connection contract: 9 passed.
+- Contract suite: 225 passed, 2 skipped.
+- Unit suite: 206 passed, 3 skipped.
+- Regression suite: 22 passed, 2 skipped.
+- Integration suite: 2 passed, 28 skipped because optional runtime dependencies are unavailable.
+- Python compilation: passed.
+- Career Translation Jinja parsing: passed.
+- Template absence checks for the removed panel, heading, and link: passed.

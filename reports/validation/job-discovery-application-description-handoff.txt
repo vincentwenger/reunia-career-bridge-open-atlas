@@ -1,0 +1,31 @@
+Job Discovery application-description handoff validation
+========================================================
+
+Root cause:
+- New application-linked workflows were initialized from the generic demo state.
+- That state contains the sample job description.
+- The workspace loader only copied the application record's description when the
+  workflow field was empty, so the sample text blocked the real discovered-job
+  description.
+
+Implemented:
+- A brand-new application workspace is now seeded from its application record,
+  including the selected job title and complete job description.
+- Existing Job Discovery workspaces that still contain the exact bundled demo
+  description are repaired automatically when opened.
+- A user-edited job description is preserved and is never replaced by this repair.
+- The application record remains the source of the discovered posting data.
+
+Regression coverage added:
+- A newly created public-job workspace displays and persists the selected job
+  description instead of the sample value.
+- An existing affected workspace replaces the known demo description.
+- Reopening a workspace preserves a manually edited description.
+
+Validation:
+- Python compileall passed.
+- 95 Job Discovery unit tests passed.
+- 19 Job Discovery action and workflow persistence contract tests passed.
+- The two new Flask runtime regression cases were added; execution was skipped in
+  this build environment because Flask, Redis, OpenAI, and xlrd dependencies were
+  unavailable.

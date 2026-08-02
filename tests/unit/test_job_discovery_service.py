@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import os
+import sys
 import tempfile
+import types
 import unittest
+from unittest.mock import Mock, patch
 from pathlib import Path
 
 from job_discovery.deduplication import deduplicate_jobs
@@ -16,7 +20,11 @@ from job_discovery.models import (
     discovered_job_id,
 )
 from job_discovery.ranking import CandidateJobProfile, evaluate_stage_one
-from job_discovery.service import JobDiscoveryService, PUBLIC_COVERAGE_DESCRIPTION
+from job_discovery.service import (
+    JobDiscoveryService,
+    PUBLIC_COVERAGE_DESCRIPTION,
+    _default_analyzer_factory,
+)
 from products.resume_taylor.resume_tailor.models import JobAnalysis, JobRequirement
 from job_discovery.storage import InMemoryDiscoveryStore, JsonFileDiscoveryStore
 
@@ -102,6 +110,98 @@ def job(**overrides):
 
 
 class JobDiscoveryServiceTests(unittest.TestCase):
+
+    def test_default_analyzer_uses_lowest_cost_job_discovery_model(self) -> None:
+        module_name = "products.resume_taylor.resume_tailor.ai"
+        fake_ai_module = types.ModuleType(module_name)
+        resume_ai = Mock()
+        fake_ai_module.ResumeAI = resume_ai
+        with patch.dict(sys.modules, {module_name: fake_ai_module}):
+            with patch.dict(os.environ, {"JOB_DISCOVERY_AI_MODEL": ""}, clear=False):
+                analyzer = _default_analyzer_factory("owner-1")
+
+        self.assertIs(analyzer, resume_ai.return_value)
+        resume_ai.assert_called_once_with(
+            "gpt-5-nano",
+            reasoning_effort="minimal",
+            user_id="owner-1",
+            max_attempts=1,
+            request_timeout_seconds=20.0,
+            max_output_tokens_by_operation={"analyze_job": 4800},
+        )
+
+    def test_job_discovery_model_can_be_explicitly_overridden(self) -> None:
+        module_name = "products.resume_taylor.resume_tailor.ai"
+        fake_ai_module = types.ModuleType(module_name)
+        resume_ai = Mock()
+        fake_ai_module.ResumeAI = resume_ai
+        with patch.dict(sys.modules, {module_name: fake_ai_module}):
+            with patch.dict(
+                os.environ,
+                {"JOB_DISCOVERY_AI_MODEL": "custom-assessment-model"},
+                clear=False,
+            ):
+                _default_analyzer_factory("owner-2")
+
+        resume_ai.assert_called_once_with(
+            "custom-assessment-model",
+            reasoning_effort="minimal",
+            user_id="owner-2",
+            max_attempts=1,
+            request_timeout_seconds=20.0,
+            max_output_tokens_by_operation={"analyze_job": 4800},
+        )
+
+    def test_job_discovery_timeout_is_configurable_but_gateway_bounded(self) -> None:
+        module_name = "products.resume_taylor.resume_tailor.ai"
+        fake_ai_module = types.ModuleType(module_name)
+        resume_ai = Mock()
+        fake_ai_module.ResumeAI = resume_ai
+        with patch.dict(sys.modules, {module_name: fake_ai_module}):
+            with patch.dict(
+                os.environ,
+                {
+                    "JOB_DISCOVERY_AI_MODEL": "gpt-5-nano",
+                    "JOB_DISCOVERY_AI_TIMEOUT_SECONDS": "90",
+                },
+                clear=False,
+            ):
+                _default_analyzer_factory("owner-timeout")
+
+        resume_ai.assert_called_once_with(
+            "gpt-5-nano",
+            reasoning_effort="minimal",
+            user_id="owner-timeout",
+            max_attempts=1,
+            request_timeout_seconds=25.0,
+            max_output_tokens_by_operation={"analyze_job": 4800},
+        )
+
+    def test_job_discovery_reasoning_and_output_budget_are_configurable(self) -> None:
+        module_name = "products.resume_taylor.resume_tailor.ai"
+        fake_ai_module = types.ModuleType(module_name)
+        resume_ai = Mock()
+        fake_ai_module.ResumeAI = resume_ai
+        with patch.dict(sys.modules, {module_name: fake_ai_module}):
+            with patch.dict(
+                os.environ,
+                {
+                    "JOB_DISCOVERY_AI_MODEL": "gpt-5-nano",
+                    "JOB_DISCOVERY_AI_REASONING_EFFORT": "low",
+                    "JOB_DISCOVERY_AI_MAX_OUTPUT_TOKENS": "6200",
+                },
+                clear=False,
+            ):
+                _default_analyzer_factory("owner-budget")
+
+        resume_ai.assert_called_once_with(
+            "gpt-5-nano",
+            reasoning_effort="low",
+            user_id="owner-budget",
+            max_attempts=1,
+            request_timeout_seconds=20.0,
+            max_output_tokens_by_operation={"analyze_job": 6200},
+        )
 
     def test_interactive_refresh_reuses_cache_without_starting_new_analysis(self) -> None:
         store = InMemoryDiscoveryStore(clock=lambda: "2026-07-30T18:00:00+00:00")
@@ -272,6 +372,19 @@ class JobDiscoveryServiceTests(unittest.TestCase):
                 "https://acme.wd1.myworkdayjobs.com/en-US/External",
                 "External",
             ),
+            JobSourceType.SUCCESSFACTORS: (
+                "https://acme.jobs.hr.cloud.sap/",
+                "",
+            ),
+            JobSourceType.ORACLE_CLOUD_HCM: (
+                "https://acme.fa.us2.oraclecloud.com/"
+                "hcmUI/CandidateExperience/en/sites/CX_1/jobs",
+                "",
+            ),
+            JobSourceType.ICIMS: (
+                "https://careers-acme.icims.com/jobs/search",
+                "",
+            ),
             JobSourceType.GENERIC_JSONLD: ("https://careers.acme.example/jobs", ""),
         }
         for source_type, (careers_url, identifier) in source_values.items():
@@ -410,6 +523,38 @@ class JobDiscoveryServiceTests(unittest.TestCase):
         self.assertIn("excluded term", rejection_text)
         self.assertIn("sponsorship", rejection_text)
         self.assertIn("salary", rejection_text)
+
+    def test_title_exclusions_only_match_the_job_title(self) -> None:
+        profile = CandidateJobProfile(excluded_title_terms=("sales",))
+
+        title_match = evaluate_stage_one(
+            job(title="Regional Sales Manager", description="Lead a customer team."),
+            profile,
+        )
+        description_only = evaluate_stage_one(
+            job(
+                title="Senior Python Engineer",
+                description="Partner closely with the sales organization.",
+            ),
+            profile,
+        )
+
+        self.assertFalse(title_match.passed)
+        self.assertIn(
+            "excluded job-title term",
+            " ".join(title_match.rejection_reasons).casefold(),
+        )
+        self.assertTrue(description_only.passed)
+        self.assertEqual((), description_only.rejection_reasons)
+
+        duplicate_configuration = evaluate_stage_one(
+            job(title="Regional Sales Manager"),
+            CandidateJobProfile(
+                excluded_title_terms=("sales",),
+                excluded_terms=("sales",),
+            ),
+        )
+        self.assertEqual(1, len(duplicate_configuration.rejection_reasons))
 
     def test_two_stage_cache_uses_description_and_profile_fingerprints(self) -> None:
         analyzer = CountingAnalyzer()

@@ -1,0 +1,27 @@
+Automatic server error reporting
+================================
+
+Implemented
+-----------
+- Global Flask exception handling now records every unhandled HTTP 500 failure.
+- Explicit 5xx responses are also recorded after the request, even when no exception escaped.
+- Application Builder AWS storage handlers preserve and report the original exception before returning HTTP 503.
+- Each failure creates:
+  1. an Admin Analytics > Incidents event, and
+  2. a linked Admin Analytics > Support inbox request.
+- Job Discovery requests are classified as "Job Discovery".
+- The report contains request reference, UTC timestamp, HTTP status, feature, method/path,
+  endpoint, blueprint, user identity when available, exception class/message, and sanitized traceback.
+- Request bodies, form data, cookies, and authorization headers are not collected.
+- Common secret/token formats are redacted before persistence.
+- Reporting is best effort: failure of the Support repository does not prevent Incident storage,
+  and failure of Incident storage does not replace the user's original error response.
+
+Validation
+----------
+PASS: Python compileall
+PASS: Node syntax check for Admin Analytics and i18n JavaScript
+PASS: tests.contracts.test_automatic_server_error_reporting
+PASS: tests.contracts.test_admin_analytics_resilience
+NOTE: Runtime Flask integration tests were added for /applications/job-discovery, but this
+      environment could not install the project dependencies, so those tests were skipped here.

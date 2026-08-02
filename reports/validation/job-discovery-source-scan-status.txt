@@ -1,0 +1,16 @@
+Job Discovery company-source scan status validation
+
+Implemented:
+- Discovery settings shows a persisted Last scan result for every shared company source.
+- Collapsed source rows show Successful, Successful · limited, Issue, Previously refreshed, or Not scanned.
+- Expanded source details show the last attempt time, exact sanitized issue message, prior successful scan time after a failure, and retained active posting count.
+- Existing PublicJobCatalogStatus records are reused; no storage migration is required.
+- Settings loads all public catalog statuses with one prefix query instead of one DynamoDB read per company source.
+- Status presentation is responsive for narrow screens.
+
+Validation:
+- 116 Job Discovery unit tests passed.
+- 6 Job Discovery regression tests passed.
+- 50 Job Discovery contract tests passed.
+- Total: 172 tests passed.
+- Python syntax compilation passed for the changed application and storage modules.

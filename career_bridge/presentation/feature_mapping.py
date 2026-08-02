@@ -16,7 +16,7 @@ class RepurposedFeature:
     career_bridge_name: str
     recommendation: str
     route: str | None = None
-    available_in_mvp: bool = True
+    available_to_standard_users: bool = True
 
 
 REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
@@ -40,7 +40,7 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
     ),
     RepurposedFeature(
         "Newcomer Career Onboarding",
-        "Career Translation",
+        "Baseline Resume",
         "Translate international titles, credentials, terminology, and transferable skills without treating onboarding context as verified evidence.",
         "/applications/career-translation",
     ),
@@ -64,15 +64,15 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
     ),
     RepurposedFeature(
         "Windows Desktop Recorder",
-        "Remove from MVP",
-        "Avoid desktop-client complexity in the hackathon MVP.",
-        available_in_mvp=False,
+        "Retired",
+        "Use the browser-based Adaptive Mock Interview instead of a desktop recorder.",
+        available_to_standard_users=False,
     ),
     RepurposedFeature(
         "Live Q&A",
-        "Remove from real interviews",
-        "Do not position the product as secretly answering questions during an employer interview.",
-        available_in_mvp=False,
+        "Restricted administration feature",
+        "Do not expose real-time answer generation to standard candidate accounts.",
+        available_to_standard_users=False,
     ),
     RepurposedFeature(
         "Meeting Review",
@@ -94,8 +94,8 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
     ),
     RepurposedFeature(
         "Analytics",
-        "Impact & Progress",
-        "Measure translated credentials, protected evidence, recovered experience, alignment gains, interview improvement, and completed actions.",
+        "Progress & Outcomes",
+        "Track application outcomes, resume gains, automatic interview readiness, practice improvement, and completed actions.",
         "/progress",
     ),
     RepurposedFeature(

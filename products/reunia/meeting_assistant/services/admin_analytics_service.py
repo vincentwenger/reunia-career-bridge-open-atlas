@@ -34,6 +34,7 @@ _FAILURE_METRICS = {
     "document_processing_failed",
     "live_qa_failure",
     "ai_failure",
+    "server_error",
 }
 _FAILURE_LABELS = {
     "recording_failed": "Recording failed",
@@ -41,6 +42,7 @@ _FAILURE_LABELS = {
     "document_processing_failed": "Document processing failed",
     "live_qa_failure": "Live Assistance failed",
     "ai_failure": "AI request failed",
+    "server_error": "Server error",
 }
 
 _ALLOWED_PRODUCT_METRICS = {
@@ -64,6 +66,7 @@ _ALLOWED_PRODUCT_METRICS = {
     "live_qa_failure",
     "ai_request",
     "ai_failure",
+    "server_error",
 }
 _FEATURE_LABELS = {
     "meeting_preparation": "Interview Preparation",
@@ -76,7 +79,14 @@ _FEATURE_LABELS = {
     "live_qa": "Live Assistance",
     "meeting_review": "Interview Review",
     "action_center": "Career Action Plan",
-    "analytics": "Impact & Progress",
+    "analytics": "Progress & Outcomes",
+    "job_discovery": "Job Discovery",
+    "career_translation": "Baseline Resume",
+    "resume_workflow": "Resume Workflow",
+    "resume_reports": "Resume Reports",
+    "job_applications": "Job Applications",
+    "admin_analytics": "Admin Analytics",
+    "support": "Help & Support",
 }
 
 
@@ -846,7 +856,10 @@ class AdminAnalyticsService:
         if self.support_repository is not None:
             try:
                 for item in self.support_repository.list_all():
-                    if str(item.get("source") or "") != "browser_recorder_error":
+                    if str(item.get("source") or "") not in {
+                        "browser_recorder_error",
+                        "automatic_server_error",
+                    }:
                         continue
                     user_id = str(item.get("user_id") or item.get("email") or "").strip()
                     if user_id:
@@ -990,6 +1003,8 @@ class AdminAnalyticsService:
             return "Live Assistance"
         if metric == "ai_failure":
             return "AI Assistance"
+        if metric == "server_error":
+            return "Server request"
         return "Other"
 
     @staticmethod
@@ -1027,6 +1042,8 @@ class AdminAnalyticsService:
             return "The Live Assistance request did not complete successfully; the stored telemetry does not identify a more specific cause."
         if metric == "ai_failure":
             return "The AI request failed before a usable response was returned; the stored telemetry does not identify a more specific cause."
+        if metric == "server_error":
+            return "A server-side exception or explicit 5xx response interrupted the request. Review the sanitized technical details and related Support inbox report."
         return "The available telemetry does not identify a confirmed cause."
 
     @staticmethod
@@ -1093,7 +1110,10 @@ class AdminAnalyticsService:
         if self.support_repository is not None:
             try:
                 for item in self.support_repository.list_all():
-                    if str(item.get("source") or "") != "browser_recorder_error":
+                    if str(item.get("source") or "") not in {
+                        "browser_recorder_error",
+                        "automatic_server_error",
+                    }:
                         continue
                     user_id = str(item.get("user_id") or item.get("email") or "").strip()
                     if user_id:
@@ -1179,6 +1199,13 @@ class AdminAnalyticsService:
             "feature": str(item.get("feature") or ""),
             "model": str(item.get("model") or ""),
             "duration_ms": AdminAnalyticsService._integer(item.get("duration_ms")),
+            "exception_type": str(item.get("exception_type") or ""),
+            "request_method": str(item.get("request_method") or ""),
+            "request_path": str(item.get("request_path") or ""),
+            "endpoint": str(item.get("endpoint") or ""),
+            "blueprint": str(item.get("blueprint") or ""),
+            "technical_details": str(item.get("technical_details") or ""),
+            "support_request_id": str(item.get("support_request_id") or ""),
         }
 
     @staticmethod
@@ -1187,7 +1214,7 @@ class AdminAnalyticsService:
             "request_id": str(item.get("request_id") or ""),
             "created_at": str(item.get("created_at") or ""),
             "status": str(item.get("status") or "new"),
-            "subject": str(item.get("subject") or "Mock Interview recorder error"),
+            "subject": str(item.get("subject") or "Automated technical error report"),
             "message": str(item.get("message") or ""),
             "page_url": str(item.get("page_url") or ""),
         }
@@ -1449,6 +1476,7 @@ class AdminAnalyticsService:
         for user in users:
             user_id = str(user.get("user_id") or user.get("email") or "")
             user_key = self._user_key(user_id)
+            live_assistance = live_interview_assistance_access(user_id, user)
             records = activity_by_user.get(user_key, [])
             events = events_by_user.get(user_key, [])
             period_records = [

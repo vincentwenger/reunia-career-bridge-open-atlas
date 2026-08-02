@@ -10,8 +10,16 @@ from job_discovery.sources.ashby import AshbyJobSource
 from job_discovery.sources.base import DEFAULT_USER_AGENT, HttpResponse
 from job_discovery.sources.generic_jsonld import GenericJsonLdJobSource, HostRateLimiter
 from job_discovery.sources.greenhouse import GreenhouseJobSource
+from job_discovery.sources.icims import IcmsJobSource, parse_icims_careers_url
 from job_discovery.sources.lever import LeverJobSource
+from job_discovery.sources.oracle_cloud_hcm import (
+    OracleCloudHcmJobSource,
+    _api_detail_url,
+    _api_listing_url,
+    parse_oracle_cloud_hcm_careers_url,
+)
 from job_discovery.sources.workday import WorkdayJobSource, parse_workday_careers_url
+from job_discovery.sources.successfactors import SuccessFactorsJobSource, successfactors_search_url
 from job_discovery.storage import InMemoryTTLCache
 
 
@@ -396,6 +404,504 @@ class WorkdaySourceTests(unittest.TestCase):
 
         self.assertEqual(("intel", "External", "en-US"), (board.tenant, board.site, board.locale))
         self.assertEqual(("intel", "External"), (endpoint.tenant, endpoint.site))
+
+
+class SuccessFactorsSourceTests(unittest.TestCase):
+    def test_maps_public_search_and_job_detail_pages(self) -> None:
+        root = "https://example.jobs.hr.cloud.sap/"
+        search_url = "https://example.jobs.hr.cloud.sap/search/"
+        robots_url = "https://example.jobs.hr.cloud.sap/robots.txt"
+        job_url = (
+            "https://example.jobs.hr.cloud.sap/job/Portland/"
+            "Senior-Data-Platform-Engineer/123-en_US"
+        )
+        listing = f"""
+        <html><body>
+          <p>Results 1 – 1 of 1</p>
+          <table><tr>
+            <td><a href="{job_url}/">Senior Data Platform Engineer</a></td>
+            <td>Portland, Oregon</td>
+          </tr></table>
+        </body></html>
+        """
+        detail = """
+        <html><head><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "JobPosting",
+          "identifier": {"value": "REQ-123"},
+          "title": "Senior Data Platform Engineer",
+          "description": "<p>Build regulated data platforms.</p>",
+          "datePosted": "2026-07-30",
+          "employmentType": "FULL_TIME",
+          "jobLocationType": "HYBRID",
+          "jobLocation": {"address": {"addressLocality": "Portland", "addressRegion": "Oregon", "addressCountry": "US"}},
+          "url": "https://example.jobs.hr.cloud.sap/job/Portland/Senior-Data-Platform-Engineer/123-en_US/?utm_source=test"
+        }
+        </script></head></html>
+        """
+        http = StubHttpClient({
+            robots_url: response(robots_url, "User-agent: *\nAllow: /\n", content_type="text/plain"),
+            search_url: response(search_url, listing, content_type="text/html"),
+            job_url: response(job_url, detail, content_type="text/html"),
+        })
+        source = CompanySource(
+            id="example-sf",
+            owner_id="owner-1",
+            company_name="Example",
+            careers_url=root,
+            source_type=JobSourceType.SUCCESSFACTORS,
+            source_identifier="",
+            filters={"min_request_interval_seconds": 0},
+        )
+
+        jobs = SuccessFactorsJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(1, len(jobs))
+        job = jobs[0]
+        self.assertEqual("REQ-123", job.external_job_id)
+        self.assertEqual("Senior Data Platform Engineer", job.title)
+        self.assertEqual("Portland, Oregon, US", job.location)
+        self.assertEqual("Full-time", job.employment_type)
+        self.assertEqual(WorkplaceType.HYBRID, job.workplace_type)
+        self.assertEqual("Build regulated data platforms.", job.description)
+        self.assertNotIn("utm_source", job.canonical_url)
+
+    def test_follows_startrow_pagination(self) -> None:
+        root = "https://example.jobs.hr.cloud.sap/"
+        search_url = "https://example.jobs.hr.cloud.sap/search/"
+        page_two = "https://example.jobs.hr.cloud.sap/search?startrow=10"
+        robots_url = "https://example.jobs.hr.cloud.sap/robots.txt"
+        first_job = "https://example.jobs.hr.cloud.sap/job/Portland/Engineer-One/101-en_US"
+        second_job = "https://example.jobs.hr.cloud.sap/job/Seattle/Engineer-Two/102-en_US"
+        http = StubHttpClient({
+            robots_url: response(robots_url, "User-agent: *\nAllow: /\n", content_type="text/plain"),
+            search_url: response(search_url, f'<p>Results 1 - 10 of 11</p><a href="{first_job}">Engineer One</a><a href="{page_two}" rel="next">Next</a>', content_type="text/html"),
+            page_two: response(page_two, f'<p>Results 11 - 11 of 11</p><a href="{second_job}">Engineer Two</a>', content_type="text/html"),
+        })
+        source = CompanySource(
+            id="example-sf-pages", owner_id="owner-1", company_name="Example",
+            careers_url=root, source_type=JobSourceType.SUCCESSFACTORS, source_identifier="",
+            filters={"page_size": 10, "max_pages": 2, "detail_fetch_limit": 0, "min_request_interval_seconds": 0},
+        )
+
+        jobs = SuccessFactorsJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(["Engineer One", "Engineer Two"], [job.title for job in jobs])
+        self.assertIn(page_two, http.calls)
+
+    def test_derives_search_url_for_root_and_brand_paths(self) -> None:
+        self.assertEqual(
+            "https://example.jobs.hr.cloud.sap/search/",
+            successfactors_search_url("https://example.jobs.hr.cloud.sap/"),
+        )
+        self.assertEqual(
+            "https://example.jobs.hr.cloud.sap/brand/search/",
+            successfactors_search_url("https://example.jobs.hr.cloud.sap/brand"),
+        )
+
+
+
+class OracleCloudHcmSourceTests(unittest.TestCase):
+    def test_parses_candidate_experience_listing_and_job_urls(self) -> None:
+        target = parse_oracle_cloud_hcm_careers_url(
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/"
+            "en/sites/CX_1/job/REQ-42?keyword=data&utm_source=test"
+        )
+
+        self.assertEqual("CX_1", target.site)
+        self.assertEqual("en", target.language)
+        self.assertEqual(
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/"
+            "en/sites/CX_1/jobs",
+            target.listing_url,
+        )
+
+    def test_maps_public_candidate_experience_api_and_job_detail(self) -> None:
+        root = "https://example.fa.us2.oraclecloud.com"
+        listing_url = root + "/hcmUI/CandidateExperience/en/sites/CX_1/jobs"
+        target = parse_oracle_cloud_hcm_careers_url(listing_url)
+        api_listing = _api_listing_url(target, limit=24, offset=0)
+        api_detail = _api_detail_url(target, "REQ-42")
+        robots_url = root + "/robots.txt"
+        http = StubHttpClient({
+            robots_url: response(
+                robots_url,
+                "User-agent: *\nAllow: /\n",
+                content_type="text/plain",
+            ),
+            api_listing: response(
+                api_listing,
+                {
+                    "items": [
+                        {
+                            "requisitionList": [
+                                {
+                                    "Id": "REQ-42",
+                                    "Title": "Senior Data Platform Engineer",
+                                    "PrimaryLocation": "Portland, Oregon, US",
+                                    "PostedDate": "2026-07-30",
+                                    "JobType": "Full Time",
+                                    "WorkplaceType": "Hybrid",
+                                }
+                            ]
+                        }
+                    ],
+                    "hasMore": False,
+                },
+                content_type="application/vnd.oracle.adf.resourcecollection+json",
+            ),
+            api_detail: response(
+                api_detail,
+                {
+                    "items": [
+                        {
+                            "Id": "REQ-42",
+                            "Title": "Senior Data Platform Engineer",
+                            "ExternalDescriptionStr": "<p>Build regulated data platforms.</p>",
+                            "PrimaryLocation": "Portland, Oregon, US",
+                            "PostedDate": "2026-07-30",
+                            "JobType": "Full Time",
+                            "WorkplaceType": "Hybrid",
+                        }
+                    ]
+                },
+                content_type="application/vnd.oracle.adf.resourcecollection+json",
+            ),
+        })
+        source = CompanySource(
+            id="example-oracle-hcm",
+            owner_id="owner-1",
+            company_name="Example Bank",
+            careers_url=listing_url,
+            source_type=JobSourceType.ORACLE_CLOUD_HCM,
+            source_identifier="",
+            filters={"min_request_interval_seconds": 0},
+        )
+
+        jobs = OracleCloudHcmJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(1, len(jobs))
+        job = jobs[0]
+        self.assertEqual("REQ-42", job.external_job_id)
+        self.assertEqual("Senior Data Platform Engineer", job.title)
+        self.assertEqual("Portland, Oregon, US", job.location)
+        self.assertEqual("Full-time", job.employment_type)
+        self.assertEqual(WorkplaceType.HYBRID, job.workplace_type)
+        self.assertEqual("Build regulated data platforms.", job.description)
+        self.assertEqual("CX_1", job.metadata["oracle_cloud_hcm_site"])
+        self.assertEqual([robots_url, api_listing, api_detail], http.calls)
+
+    def test_maps_embedded_oracle_job_records_without_detail_requests(self) -> None:
+        root = "https://example.fa.us2.oraclecloud.com"
+        listing_url = root + "/hcmUI/CandidateExperience/en/sites/CX_1/jobs"
+        target = parse_oracle_cloud_hcm_careers_url(listing_url)
+        api_listing = _api_listing_url(target, limit=24, offset=0)
+        robots_url = root + "/robots.txt"
+        payload = {
+            "items": [
+                {
+                    "requisitionList": [
+                        {
+                            "RequisitionNumber": "REQ-99",
+                            "Title": "Data Engineer",
+                            "ExternalDescriptionHtml": "<p>Build governed pipelines.</p>",
+                            "PrimaryLocation": "Seattle, Washington",
+                            "ExternalPostedStartDate": "2026-07-30",
+                            "FullTimeOrPartTime": "Full Time",
+                            "WorkplaceTypeCode": "Hybrid",
+                            "JobFunction": "Engineering",
+                            "JobURL": "https://malicious.example/job/REQ-99",
+                            "ApplyURL": "https://malicious.example/apply/REQ-99",
+                        }
+                    ]
+                }
+            ],
+            "hasMore": False,
+        }
+        http = StubHttpClient({
+            robots_url: response(
+                robots_url,
+                "User-agent: *\nAllow: /\n",
+                content_type="text/plain",
+            ),
+            api_listing: response(
+                api_listing,
+                payload,
+                content_type="application/vnd.oracle.adf.resourcecollection+json",
+            ),
+        })
+        source = CompanySource(
+            id="oracle-embedded",
+            owner_id="owner-1",
+            company_name="Example Bank",
+            careers_url=listing_url,
+            source_type=JobSourceType.ORACLE_CLOUD_HCM,
+            source_identifier="",
+            filters={
+                "detail_fetch_limit": 0,
+                "min_request_interval_seconds": 0,
+            },
+        )
+
+        jobs = OracleCloudHcmJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(1, len(jobs))
+        self.assertEqual("REQ-99", jobs[0].external_job_id)
+        self.assertEqual("Data Engineer", jobs[0].title)
+        self.assertEqual("Engineering", jobs[0].department)
+        self.assertEqual(WorkplaceType.HYBRID, jobs[0].workplace_type)
+        self.assertEqual(
+            root + "/hcmUI/CandidateExperience/en/sites/CX_1/job/REQ-99",
+            jobs[0].canonical_url,
+        )
+        self.assertEqual(jobs[0].canonical_url, jobs[0].apply_url)
+        self.assertEqual([robots_url, api_listing], http.calls)
+
+    def test_follows_public_api_offset_pagination(self) -> None:
+        root = "https://example.fa.us2.oraclecloud.com"
+        listing_url = root + "/hcmUI/CandidateExperience/en/sites/CX_1/jobs"
+        target = parse_oracle_cloud_hcm_careers_url(listing_url)
+        first_url = _api_listing_url(target, limit=1, offset=0)
+        second_url = _api_listing_url(target, limit=1, offset=1)
+        robots_url = root + "/robots.txt"
+
+        def page(external_id: str, title: str, has_more: bool) -> dict[str, object]:
+            return {
+                "items": [
+                    {
+                        "requisitionList": [
+                            {
+                                "Id": external_id,
+                                "Title": title,
+                                "PrimaryLocation": "Portland, Oregon",
+                            }
+                        ]
+                    }
+                ],
+                "hasMore": has_more,
+            }
+
+        http = StubHttpClient({
+            robots_url: response(
+                robots_url,
+                "User-agent: *\nAllow: /\n",
+                content_type="text/plain",
+            ),
+            first_url: response(
+                first_url,
+                page("REQ-1", "Engineer One", True),
+                content_type="application/vnd.oracle.adf.resourcecollection+json",
+            ),
+            second_url: response(
+                second_url,
+                page("REQ-2", "Engineer Two", False),
+                content_type="application/vnd.oracle.adf.resourcecollection+json",
+            ),
+        })
+        source = CompanySource(
+            id="oracle-pages",
+            owner_id="owner-1",
+            company_name="Example Bank",
+            careers_url=listing_url,
+            source_type=JobSourceType.ORACLE_CLOUD_HCM,
+            source_identifier="",
+            filters={
+                "page_size": 1,
+                "max_pages": 2,
+                "detail_fetch_limit": 0,
+                "min_request_interval_seconds": 0,
+            },
+        )
+
+        jobs = OracleCloudHcmJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(["Engineer One", "Engineer Two"], [job.title for job in jobs])
+        self.assertEqual([robots_url, first_url, second_url], http.calls)
+
+    def test_falls_back_to_public_html_when_api_is_disabled(self) -> None:
+        root = "https://example.fa.us2.oraclecloud.com"
+        listing_url = root + "/hcmUI/CandidateExperience/en/sites/CX_1/jobs"
+        robots_url = root + "/robots.txt"
+        job_url = root + "/hcmUI/CandidateExperience/en/sites/CX_1/job/REQ-7"
+        listing = (
+            f'<article class="job-tile"><a href="{job_url}">Data Engineer</a>'
+            "<span>Seattle, Washington</span></article>"
+        )
+        http = StubHttpClient({
+            robots_url: response(
+                robots_url,
+                "User-agent: *\nAllow: /\n",
+                content_type="text/plain",
+            ),
+            listing_url: response(listing_url, listing, content_type="text/html"),
+        })
+        source = CompanySource(
+            id="oracle-html",
+            owner_id="owner-1",
+            company_name="Example Bank",
+            careers_url=listing_url,
+            source_type=JobSourceType.ORACLE_CLOUD_HCM,
+            source_identifier="",
+            filters={
+                "use_public_api": False,
+                "detail_fetch_limit": 0,
+                "min_request_interval_seconds": 0,
+            },
+        )
+
+        jobs = OracleCloudHcmJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(1, len(jobs))
+        self.assertEqual("REQ-7", jobs[0].external_job_id)
+        self.assertEqual("Data Engineer", jobs[0].title)
+        self.assertEqual([robots_url, listing_url], http.calls)
+
+
+class IcmsSourceTests(unittest.TestCase):
+    def test_normalizes_classic_and_branded_icims_urls(self) -> None:
+        self.assertEqual(
+            "https://careers-example.icims.com/jobs/search",
+            parse_icims_careers_url(
+                "https://careers-example.icims.com/jobs/47190/content-creator/job?iis=board"
+            ).listing_url,
+        )
+        self.assertEqual(
+            "https://careers.icims.com/careers-home/jobs",
+            parse_icims_careers_url(
+                "https://careers.icims.com/careers-home/jobs/6315?lang=en-us"
+            ).listing_url,
+        )
+        self.assertEqual(
+            "https://careers-example.icims.com/jobs/search",
+            parse_icims_careers_url("https://careers-example.icims.com/").listing_url,
+        )
+        with self.assertRaisesRegex(ValueError, "icims.com"):
+            parse_icims_careers_url("https://careers.example.com/jobs")
+
+    def test_maps_classic_listing_pagination_and_jsonld_detail(self) -> None:
+        root = "https://careers-example.icims.com"
+        listing_url = root + "/jobs/search"
+        second_page = listing_url + "?pr=1"
+        robots_url = root + "/robots.txt"
+        first_job = root + "/jobs/47190/data-engineer/job"
+        second_job = root + "/jobs/47189/platform-engineer/job"
+        full_description = " ".join(
+            ["Build governed data platforms using Python SQL and cloud services."] * 12
+        )
+        first_page_html = f"""
+        <html><body><p>Search Results Page 1 of 2</p>
+          <article class="iCIMS_JobsTable">
+            <div>Position Type Regular Full-Time</div>
+            <div>Requisition ID REQ-47190</div>
+            <a href="{first_job}">Data Engineer</a>
+            <div>Job Locations US-OR-Portland</div>
+          </article>
+          <a rel="next" href="?pr=1">Next page</a>
+        </body></html>
+        """
+        second_page_html = f"""
+        <html><body><p>Search Results Page 2 of 2</p>
+          <article class="iCIMS_JobsTable">
+            <div>Position Type Regular Full-Time</div>
+            <div>Requisition ID REQ-47189</div>
+            <a href="{second_job}">Platform Engineer</a>
+            <div>Job Locations US-WA-Seattle</div>
+          </article>
+        </body></html>
+        """
+        detail_html = f"""<script type="application/ld+json">{{
+          "@context": "https://schema.org",
+          "@type": "JobPosting",
+          "identifier": {{"value": "REQ-47190"}},
+          "title": "Data Engineer",
+          "description": "<p>{full_description}</p>",
+          "employmentType": "FULL_TIME",
+          "jobLocationType": "HYBRID",
+          "jobLocation": {{"address": {{"addressLocality": "Portland", "addressRegion": "Oregon", "addressCountry": "US"}}}},
+          "datePosted": "2026-07-30",
+          "url": "{first_job}"
+        }}</script>"""
+        http = StubHttpClient({
+            robots_url: response(robots_url, "User-agent: *\nAllow: /\n", content_type="text/plain"),
+            listing_url: response(listing_url, first_page_html, content_type="text/html"),
+            second_page: response(second_page, second_page_html, content_type="text/html"),
+            first_job: response(first_job, detail_html, content_type="text/html"),
+        })
+        source = CompanySource(
+            id="example-icims",
+            owner_id="owner-1",
+            company_name="Example",
+            careers_url=listing_url,
+            source_type=JobSourceType.ICIMS,
+            source_identifier="",
+            filters={
+                "detail_fetch_limit": 1,
+                "page_size": 1,
+                "min_request_interval_seconds": 0,
+            },
+        )
+
+        jobs = IcmsJobSource(http).fetch_jobs(source)
+
+        self.assertEqual(2, len(jobs))
+        self.assertEqual("REQ-47190", jobs[0].external_job_id)
+        self.assertEqual("Data Engineer", jobs[0].title)
+        self.assertEqual("Portland, Oregon, US", jobs[0].location)
+        self.assertEqual("Full-time", jobs[0].employment_type)
+        self.assertEqual(WorkplaceType.HYBRID, jobs[0].workplace_type)
+        self.assertIn("governed data platforms", jobs[0].description)
+        self.assertEqual("REQ-47189", jobs[1].external_job_id)
+        self.assertEqual("US-WA-Seattle", jobs[1].location)
+        self.assertEqual("deferred", jobs[1].metadata["detail_status"])
+        self.assertEqual(
+            [robots_url, listing_url, second_page, first_job],
+            http.calls,
+        )
+
+    def test_html_detail_fallback_extracts_description_and_fields(self) -> None:
+        root = "https://careers-example.icims.com"
+        listing_url = root + "/jobs/search"
+        robots_url = root + "/robots.txt"
+        job_url = root + "/jobs/12001/senior-data-engineer/job"
+        listing_html = f"""
+        <article class="job-result">
+          <span>Position Type Regular Full-Time</span>
+          <span>Requisition ID 2026-12001</span>
+          <span>Category Engineering</span>
+          <a href="{job_url}">Senior Data Engineer</a>
+          <span>Job Locations US-OR-Portland</span>
+        </article>
+        """
+        detail_html = """
+        <html><body>
+          <h1>Senior Data Engineer</h1>
+          <div>Job Locations US-OR-Portland Position Type Regular Full-Time Requisition ID 2026-12001 Category Engineering</div>
+          <div class="iCIMS_JobContent">Design and maintain reliable data pipelines, governed analytics products, and cloud data services for regulated customers.</div>
+        </body></html>
+        """
+        http = StubHttpClient({
+            robots_url: response(robots_url, "User-agent: *\nAllow: /\n", content_type="text/plain"),
+            listing_url: response(listing_url, listing_html, content_type="text/html"),
+            job_url: response(job_url, detail_html, content_type="text/html"),
+        })
+        source = CompanySource(
+            id="icims-html",
+            owner_id="owner-1",
+            company_name="Example",
+            careers_url=listing_url,
+            source_type=JobSourceType.ICIMS,
+            source_identifier="",
+            filters={"min_request_interval_seconds": 0},
+        )
+
+        job = IcmsJobSource(http).fetch_jobs(source)[0]
+
+        self.assertEqual("2026-12001", job.external_job_id)
+        self.assertEqual("Engineering", job.department)
+        self.assertEqual("Full-time", job.employment_type)
+        self.assertIn("reliable data pipelines", job.description)
+        self.assertEqual("iCIMS", job.metadata["source_platform"])
 
 
 class GenericJsonLdSourceTests(unittest.TestCase):

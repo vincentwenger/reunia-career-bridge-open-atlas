@@ -1,0 +1,32 @@
+JOB DISCOVERY PENDING ASSESSMENT BUTTON
+
+Implemented:
+- Added a user-specific "Assess pending jobs for me" button beneath the shared-catalog refresh action.
+- Added POST /applications/discovery/assess/pending.
+- Assessment reads already-collected owner jobs and does not crawl employer sites.
+- Jobs are assessed one posting per HTTP request so AI latency cannot consume an entire 25-job gateway request.
+- One browser run assesses up to 25 jobs by default (maximum configurable to 100), then reloads results.
+- Added live progress, stop-after-current-batch behavior, failed-job isolation, and retry support.
+- Added Career Profile readiness validation.
+- Added documentation and contract coverage.
+
+Configuration:
+- CAREER_BRIDGE_DISCOVERY_ASSESSMENT_BATCH_SIZE (fixed at 1 for interactive safety)
+- JOB_DISCOVERY_AI_TIMEOUT_SECONDS (default 20, bounded 5-25 seconds)
+- CAREER_BRIDGE_DISCOVERY_ASSESSMENT_RUN_LIMIT (default 25, maximum 100)
+
+Validation:
+- python -m unittest discover -s tests -p 'test_job_discovery*.py'
+- Result: 132 tests passed; 1 environment-dependent test skipped.
+- products/resume_taylor/app.py compiled successfully.
+- products/resume_taylor/static/app.js passed node --check.
+
+2026-07-31 update
+- Added separate "Assess next N jobs" and "Assess all remaining" actions.
+- The all-remaining action continues through bounded batches in the browser, supports stopping after the current batch, and preserves AI budget controls.
+
+2026-08-01 HTTP 504 hardening
+- Reduced each browser/server assessment request to one posting.
+- Job Discovery now uses one OpenAI attempt with a 20-second default timeout.
+- Slow postings become isolated assessment issues instead of an HTTP 504 for the whole run.
+- Removed the second full pending-queue scan from each request to reduce DynamoDB latency.

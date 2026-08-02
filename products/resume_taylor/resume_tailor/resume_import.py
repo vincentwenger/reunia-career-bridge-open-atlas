@@ -16,7 +16,7 @@ Evidence rules:
 - Use only facts explicitly present in the supplied resume text.
 - Never infer a skill, employer, title, credential, date, location, metric, or responsibility.
 - Preserve international job titles, credentials, institution names, locations, dates, and terminology as written.
-- Do not translate or normalize international titles yet; Career Translation handles that later.
+- Do not translate or normalize international titles yet; the Baseline Resume workflow handles that later.
 - When a contact field is absent, return an empty string.
 - Keep accomplishments as separate resume bullets. Do not merge unrelated claims.
 - Create stable unique IDs: experiences EXP-001, EXP-002... and bullets EXP-001-B01, EXP-001-B02...
@@ -47,7 +47,7 @@ def resume_extension(filename: str) -> str:
 def extract_resume_text(data: bytes, filename: str) -> str:
     extension = resume_extension(filename)
     if extension not in SUPPORTED_RESUME_EXTENSIONS - {".json"}:
-        raise ValueError("Supported resume formats are PDF, Word (.docx), text, Markdown, or Candidate Profile JSON.")
+        raise ValueError("Supported resume formats are PDF, Word (.docx), text, Markdown, or Verified Resume Evidence JSON.")
     if not data:
         raise ValueError("The uploaded resume is empty.")
 

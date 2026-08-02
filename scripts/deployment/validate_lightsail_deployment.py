@@ -52,6 +52,12 @@ DEMO_STORAGE_STATUS = {
 }
 # Backward-compatible name used by contract tests and external imports.
 EXPECTED_STORAGE_STATUS = PERSISTENT_STORAGE_STATUS
+APPLICATION_BUILDER_WORKSPACE_PATHS = (
+    ("Career Translation", "applications/career-translation"),
+    ("Job Applications", "applications/?tab=applications"),
+    ("Resume Workflow", "applications/?tab=tailoring"),
+    ("Resume Reports", "applications/?tab=reports"),
+)
 
 
 class ValidationFailure(RuntimeError):
@@ -210,7 +216,7 @@ def _validate_scale(
 ) -> int:
     """Validate service capacity for the active storage durability mode.
 
-    Demo storage is process-local and therefore requires exactly one node.
+    Non-durable storage is process-local and therefore requires exactly one node.
     Durable DynamoDB/S3 storage permits more than one node, but the service must
     still report a positive scale.
     """
@@ -228,7 +234,7 @@ def _validate_scale(
         )
     if require_single_node and scale != 1:
         raise ValidationFailure(
-            f"Unsafe demo-storage Lightsail scale: expected 1, received {scale}."
+            f"Unsafe non-durable-storage Lightsail scale: expected 1, received {scale}."
         )
     return scale
 
@@ -351,7 +357,7 @@ def _positive_flag_value(arguments: Sequence[str], flag: str) -> int:
 def _validate_image_command(
     arguments: Sequence[str], *, require_single_worker: bool = True
 ) -> tuple[int, int]:
-    """Validate the image command for demo or durable storage operation."""
+    """Validate the image command for non-durable or durable storage operation."""
 
     if not arguments or Path(arguments[0]).name.casefold() != "gunicorn":
         raise ValidationFailure("Docker image CMD must start Gunicorn.")
@@ -360,7 +366,7 @@ def _validate_image_command(
     threads = _positive_flag_value(arguments, "--threads")
     if require_single_worker and workers != 1:
         raise ValidationFailure(
-            "Demo storage requires the Docker image CMD to use '--workers 1'."
+            "Non-durable storage requires the Docker image CMD to use '--workers 1'."
         )
     return workers, threads
 
@@ -469,6 +475,36 @@ def _validate_health(
     )
 
 
+def _validate_authenticated_workspace_routes(
+    opener: Any,
+    base_url: str,
+    *,
+    timeout: float,
+) -> str:
+    """Require every navbar-backed Application Builder workspace to render."""
+
+    applications_body = ""
+    for label, relative_path in APPLICATION_BUILDER_WORKSPACE_PATHS:
+        workspace_url = urljoin(f"{base_url}/", relative_path)
+        status, final_url, body = _open(
+            opener,
+            _request(workspace_url),
+            timeout=timeout,
+            action=f"{label} workspace request",
+        )
+        if status != 200:
+            raise ValidationFailure(
+                f"{label} workspace returned HTTP {status}, expected 200."
+            )
+        if "/login" in urlparse(final_url).path:
+            raise ValidationFailure(f"{label} workspace request was not authenticated.")
+        if label == "Job Applications":
+            applications_body = body
+    if not applications_body:
+        raise ValidationFailure("Job Applications workspace did not return a page body.")
+    return applications_body
+
+
 def _authenticated_application_smoke_test(
     base_url: str,
     *,
@@ -503,14 +539,11 @@ def _authenticated_application_smoke_test(
         raise ValidationFailure("Sign-in redirected back to the login page.")
 
     applications_url = urljoin(f"{base_url}/", "applications/?tab=applications")
-    _, applications_final_url, applications_body = _open(
+    applications_body = _validate_authenticated_workspace_routes(
         opener,
-        _request(applications_url),
+        base_url,
         timeout=timeout,
-        action="Application Builder page request",
     )
-    if "/login" in urlparse(applications_final_url).path:
-        raise ValidationFailure("Application Builder request was not authenticated.")
     create_csrf = _csrf_token(
         applications_body, page_name="the Application Builder page"
     )
@@ -690,8 +723,8 @@ def _build_parser() -> argparse.ArgumentParser:
             "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION"
         ),
         help=(
-            "Accept demo workflow-memory/DynamoDB/local-document storage. Use this only "
-            "with the explicit production demo override."
+            "Accept non-durable workflow-memory/DynamoDB/local-document storage. The flag name is retained for compatibility; use it only "
+            "with the explicit non-durable production override."
         ),
     )
     return parser
@@ -755,7 +788,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         )
         if demo_storage:
             print(
-                "PASS  Demo storage is constrained to Lightsail scale=1 and "
+                "PASS  Non-durable storage is constrained to Lightsail scale=1 and "
                 "Gunicorn workers=1."
             )
         else:

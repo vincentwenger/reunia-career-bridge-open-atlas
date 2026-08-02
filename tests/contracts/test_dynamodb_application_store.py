@@ -300,6 +300,15 @@ class DynamoDBApplicationStoreTests(unittest.TestCase):
         self.assertEqual(preparation.evidence_source_label, "Final resume")
         self.assertEqual(preparation.payload()["questions"], ["Why us?"])
 
+        self.assertEqual(
+            self.store.list_interview_preparation_application_ids("owner-1"),
+            (application.id,),
+        )
+        self.assertEqual(
+            self.store.list_interview_preparation_application_ids("owner-2"),
+            (),
+        )
+
         impact = self.store.save_impact_snapshot(
             "owner-1",
             application.id,

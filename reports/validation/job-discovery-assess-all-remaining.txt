@@ -1,0 +1,15 @@
+JOB DISCOVERY — ASSESS ALL REMAINING
+Date: 2026-07-31
+
+Implemented
+- Added "Assess next 25 jobs" for the existing bounded assessment behavior.
+- Added "Assess all remaining" to process the complete current pending queue in one browser action.
+- The all-remaining action still sends bounded batches of up to 3 jobs per HTTP request to reduce gateway timeout risk.
+- Added confirmation for large queues, live progress, issue reporting, and "Stop after current batch" support.
+- Existing AI usage and cost controls remain active.
+
+Validation
+- Python syntax: PASS
+- JavaScript syntax: PASS
+- Jinja template syntax: PASS
+- Job Discovery suite: 144 passed, 1 skipped, 16 subtests passed

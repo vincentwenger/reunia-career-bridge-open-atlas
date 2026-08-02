@@ -27,7 +27,10 @@ SCHEDULING = ROOT / "job_discovery" / "scheduling.py"
 
 class JobDiscoverySchedulingContractTests(unittest.TestCase):
     def test_catalog_manager_has_explicit_refresh_button_and_post_route(self) -> None:
-        template = TEMPLATE.read_text(encoding="utf-8")
+        template = (
+            TEMPLATE.read_text(encoding="utf-8")
+            + TEMPLATE.with_name("_discovery_results_content.html").read_text(encoding="utf-8")
+        )
         app = APP.read_text(encoding="utf-8")
         self.assertIn("Refresh jobs", template)
         self.assertIn("refresh_discovered_jobs", template)

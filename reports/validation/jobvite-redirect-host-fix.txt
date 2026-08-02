@@ -1,0 +1,13 @@
+Jobvite redirect-host scan fix (historical)
+============================================
+
+The exact Jobvite-owned redirect allowlist remains in place for active Jobvite
+sources:
+- jobs.jobvite.com
+- search.jobvite.com
+- www.jobvite.com
+
+First Tech Federal Credit Union has since retired its Jobvite board and moved to
+Talemetry / TTC Portals. Its saved legacy source is now migrated automatically;
+see first-tech-source-migration.txt. The Jobvite host controls continue to apply
+to unrelated companies that still use Jobvite.

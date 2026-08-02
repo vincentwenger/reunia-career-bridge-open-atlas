@@ -68,6 +68,7 @@ from .storage import (
 )
 from .web_state import WorkflowState
 from .workflow_serialization import (
+    workflow_payload_fingerprint,
     workflow_state_fingerprint,
     workflow_state_from_json_bytes,
     workflow_state_json_bytes,
@@ -245,7 +246,7 @@ class DynamoDBWorkflowStore:
 
         workflow_type, ttl_seconds = self._retention(workflow_key)
         remove_expiry = (
-            workflow_type == "application"
+            workflow_type != "scratch"
             and ttl_seconds is None
             and "expires_at" in item
         )
@@ -348,9 +349,20 @@ class DynamoDBWorkflowStore:
                     "The DynamoDB workflow item does not reference serialized state."
                 )
         state = workflow_state_from_json_bytes(content)
-        actual_fingerprint = workflow_state_fingerprint(state)
+        # The persisted fingerprint protects the serialized document, not the
+        # object produced by the current application schema. New releases may
+        # add defaulted WorkflowState fields; deserializing an older payload and
+        # re-serializing it then legitimately changes the JSON without the S3
+        # object having been altered. Accept the exact payload digest and, for
+        # compatibility with early inline prototypes, the normalized state
+        # digest. Meaningful payload tampering still matches neither value.
+        payload_fingerprint = workflow_payload_fingerprint(content)
+        state_fingerprint = workflow_state_fingerprint(state)
         stored_fingerprint = str(item.get("fingerprint") or "")
-        if stored_fingerprint and stored_fingerprint != actual_fingerprint:
+        if stored_fingerprint and stored_fingerprint not in {
+            payload_fingerprint,
+            state_fingerprint,
+        }:
             raise RuntimeError(
                 "The stored workflow-state fingerprint does not match its object."
             )
@@ -879,6 +891,15 @@ class DynamoDBApplicationStore:
         if saved is None:  # pragma: no cover
             raise RuntimeError("The resume findings snapshot was not saved.")
         return saved
+
+    def list_interview_preparation_application_ids(
+        self, owner_id: str
+    ) -> tuple[str, ...]:
+        application_ids = {
+            str(item.get("application_id") or "").strip()
+            for item in self._query_prefix(owner_id, _INTERVIEW_PREPARATION_PREFIX)
+        }
+        return tuple(sorted(value for value in application_ids if value))
 
     def get_interview_preparation(
         self, owner_id: str, application_id: str

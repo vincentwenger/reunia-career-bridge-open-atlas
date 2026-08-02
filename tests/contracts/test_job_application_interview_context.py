@@ -13,14 +13,32 @@ MOCK_INTERVIEW = ROOT / "products" / "reunia" / "meeting_assistant" / "services"
 
 
 class JobApplicationInterviewContextTests(unittest.TestCase):
-    def test_application_form_owns_all_target_context_fields(self) -> None:
+    def test_new_application_form_contains_only_essential_job_fields(self) -> None:
         source = TEMPLATE.read_text(encoding="utf-8")
-        for field in ("company", "role", "job_url", "job_description", "interview_audience"):
-            self.assertIn(f'name="{field}"', source)
-        self.assertIn('id="new-interview-audience"', source)
-        self.assertIn('for="new-interview-audience"', source)
+        creation_form = source.split('id="new-application"', 1)[1].split(
+            '<section class="applications-list"', 1
+        )[0]
+        for field in ("company", "role", "job_url", "job_description"):
+            self.assertIn(f'name="{field}"', creation_form)
+        for deferred_field in (
+            "status",
+            "application_date",
+            "interview_audience",
+            "next_action",
+            "upcoming_event_type",
+            "upcoming_event_date",
+            "notes",
+        ):
+            self.assertNotIn(f'name="{deferred_field}"', creation_form)
+        self.assertIn("Provide a job posting link, the job description, or both.", creation_form)
+        self.assertIn(">Create application</button>", creation_form)
+        self.assertIn('name="start_builder" value="1"', creation_form)
+
+    def test_application_edit_form_keeps_interview_audience(self) -> None:
+        source = TEMPLATE.read_text(encoding="utf-8")
+        self.assertNotIn('id="new-interview-audience"', source)
         self.assertIn('name="interview_audience"', source)
-        self.assertIn("Saved only on this Job Application", source)
+        self.assertIn('for="interview-audience-{{ application.id }}"', source)
         self.assertNotIn("Default audience", source)
 
     def test_dynamodb_round_trips_interview_audience(self) -> None:

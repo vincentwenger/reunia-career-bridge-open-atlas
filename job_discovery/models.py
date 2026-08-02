@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import json
+import re
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
@@ -20,6 +21,21 @@ class JobSourceType(str, Enum):
     LEVER = "lever"
     ASHBY = "ashby"
     WORKDAY = "workday"
+    SUCCESSFACTORS = "successfactors"
+    ORACLE_CLOUD_HCM = "oracle_cloud_hcm"
+    ICIMS = "icims"
+    SMARTRECRUITERS = "smartrecruiters"
+    AVATURE = "avature"
+    EIGHTFOLD = "eightfold"
+    TALEO = "taleo"
+    DAYFORCE = "dayforce"
+    TALEMETRY_TTC = "talemetry_ttc"
+    JOBVITE = "jobvite"
+    UKG_PRO = "ukg_pro"
+    PEOPLEADMIN = "peopleadmin"
+    RADANCY_TALENTBREW = "radancy_talentbrew"
+    AMAZON_JOBS = "amazon_jobs"
+    BRANDED_REQUISITION = "branded_requisition"
     GENERIC_JSONLD = "generic_jsonld"
 
 
@@ -106,7 +122,25 @@ class CompanySource:
             if isinstance(self.source_type, JobSourceType)
             else JobSourceType(str(self.source_type))
         )
-        if source_type in {JobSourceType.GENERIC_JSONLD, JobSourceType.WORKDAY}:
+        if source_type in {
+            JobSourceType.GENERIC_JSONLD,
+            JobSourceType.WORKDAY,
+            JobSourceType.SUCCESSFACTORS,
+            JobSourceType.ORACLE_CLOUD_HCM,
+            JobSourceType.ICIMS,
+            JobSourceType.SMARTRECRUITERS,
+            JobSourceType.AVATURE,
+            JobSourceType.EIGHTFOLD,
+            JobSourceType.TALEO,
+            JobSourceType.DAYFORCE,
+            JobSourceType.TALEMETRY_TTC,
+            JobSourceType.JOBVITE,
+            JobSourceType.UKG_PRO,
+            JobSourceType.PEOPLEADMIN,
+            JobSourceType.RADANCY_TALENTBREW,
+            JobSourceType.AMAZON_JOBS,
+            JobSourceType.BRANDED_REQUISITION,
+        }:
             parsed = urlsplit(careers_url)
             if parsed.scheme not in {"http", "https"} or not parsed.hostname:
                 raise ValueError(f"{source_type.value} sources require an http(s) careers_url")
@@ -130,6 +164,77 @@ class CompanySource:
             ):
                 raise ValueError(
                     "workday careers_url must use a public myworkdayjobs.com or myworkdaysite.com host"
+                )
+            if source_type is JobSourceType.ICIMS and not (
+                host == "icims.com" or host.endswith(".icims.com")
+            ):
+                raise ValueError(
+                    "icims careers_url must use a public icims.com host"
+                )
+            if source_type is JobSourceType.SMARTRECRUITERS and host not in {
+                "careers.smartrecruiters.com",
+                "jobs.smartrecruiters.com",
+                "www.smartrecruiters.com",
+                "smartrecruiters.com",
+                "api.smartrecruiters.com",
+            }:
+                raise ValueError(
+                    "smartrecruiters careers_url must use a public smartrecruiters.com host"
+                )
+            if source_type is JobSourceType.AVATURE and not (
+                host == "avature.net" or host.endswith(".avature.net")
+            ):
+                raise ValueError(
+                    "avature careers_url must use a public avature.net host"
+                )
+            if source_type is JobSourceType.EIGHTFOLD and not (
+                host == "eightfold.ai" or host.endswith(".eightfold.ai")
+            ):
+                route_segments = {
+                    segment.casefold()
+                    for segment in parsed.path.split("/")
+                    if segment
+                }
+                if not route_segments.intersection({"jobs", "careers"}):
+                    raise ValueError(
+                        "eightfold vanity-domain careers_url must include a public "
+                        "/jobs or /careers path"
+                    )
+            if source_type is JobSourceType.TALEO and not (
+                host == "taleo.net" or host.endswith(".taleo.net")
+            ):
+                raise ValueError(
+                    "taleo careers_url must use a public taleo.net host"
+                )
+            if source_type is JobSourceType.DAYFORCE and not (
+                host == "dayforcehcm.com" or host.endswith(".dayforcehcm.com")
+            ):
+                raise ValueError(
+                    "dayforce careers_url must use a public dayforcehcm.com host"
+                )
+            if source_type is JobSourceType.TALEMETRY_TTC and not (
+                host == "ttcportals.com" or host.endswith(".ttcportals.com")
+            ):
+                raise ValueError(
+                    "talemetry_ttc careers_url must use a public ttcportals.com host"
+                )
+            if source_type is JobSourceType.JOBVITE and host != "jobs.jobvite.com":
+                raise ValueError(
+                    "jobvite careers_url must use the public jobs.jobvite.com host"
+                )
+            if source_type is JobSourceType.AMAZON_JOBS and host not in {
+                "amazon.jobs",
+                "www.amazon.jobs",
+            }:
+                raise ValueError(
+                    "amazon_jobs careers_url must use the official amazon.jobs host"
+                )
+            if source_type is JobSourceType.UKG_PRO and not re.fullmatch(
+                r"recruiting\d*\.ultipro\.(?:com|ca)", host
+            ):
+                raise ValueError(
+                    "ukg_pro careers_url must use a public recruiting.ultipro.com, "
+                    "recruiting2.ultipro.com, or equivalent recruiting<number>.ultipro.com/.ca host"
                 )
         elif not source_identifier:
             raise ValueError(f"{source_type.value} sources require a source_identifier")
@@ -221,6 +326,7 @@ class DiscoverySearchPreferences:
     minimum_salary_currency: str = "USD"
     minimum_salary_interval: str = "year"
     excluded_terms: tuple[str, ...] = ()
+    excluded_title_terms: tuple[str, ...] = ()
     maximum_posting_age_days: int | None = DEFAULT_MAX_POSTING_AGE_DAYS
     require_title_match: bool = False
     require_location_match: bool = False
@@ -240,6 +346,7 @@ class DiscoverySearchPreferences:
             "preferred_keywords",
             "required_keywords",
             "excluded_terms",
+            "excluded_title_terms",
         ):
             object.__setattr__(self, name, _clean_tuple(getattr(self, name)))
         workplaces: list[WorkplaceType] = []

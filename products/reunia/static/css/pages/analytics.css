@@ -11,6 +11,11 @@
 .impact-status { min-height:22px; margin:0 2px 15px; color:#64748b; font-size:13px; font-weight:650; }
 .impact-status.is-error { color:#b4232d; }
 .impact-metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:15px; margin-bottom:18px; }
+.impact-more-metrics { margin:-2px 0 18px; padding:0 2px; }
+.impact-more-metrics > summary { width:max-content; color:#1d4e78; font-size:13px; font-weight:800; cursor:pointer; }
+.impact-more-metrics[open] > summary { margin-bottom:14px; }
+.impact-metric-grid-secondary { grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:0; }
+.impact-metric-grid-secondary .impact-metric-card { min-height:120px; padding:17px; box-shadow:none; }
 .impact-metric-card { min-width:0; display:flex; gap:14px; min-height:148px; padding:21px; border:1px solid #e3ebe9; border-radius:18px; background:#fff; box-shadow:0 13px 34px rgba(28,70,61,.055); }
 .impact-metric-icon { width:45px; height:45px; display:grid; place-items:center; flex:0 0 45px; border-radius:14px; color:#1d4e78; background:#e8f5f4; font-weight:900; font-size:17px; }
 .impact-metric-card div { min-width:0; }

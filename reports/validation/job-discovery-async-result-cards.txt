@@ -1,0 +1,35 @@
+Job Discovery asynchronous result-card validation
+=================================================
+
+Implemented behavior
+--------------------
+- GET /applications/job-discovery renders the surrounding workflow, controls,
+  and an accessible result-card skeleton without reading the candidate profile
+  or materialized result page.
+- GET /applications/job-discovery/results.json performs the private profile and
+  result-index reads and returns only the selected result fragment in JSON.
+- The result response is marked `Cache-Control: private, no-store` and
+  `Vary: Cookie` so personalized cards are not shared by intermediary caches.
+- The result endpoint has its own Server-Timing phases for source, preference,
+  profile, result-index, fragment-render, and total duration.
+- Result tabs, match filters, page size, pagination, browser back/forward, and
+  stale-index refresh replace only the result fragment instead of navigating the
+  full page.
+- Four compact skeleton cards preserve layout while results load. Skeleton
+  animation is disabled when the browser requests reduced motion.
+- Deferred cards reinitialize the existing on-demand evidence-analysis loader.
+- Pending-job assessment controls are enabled and counted after the JSON summary
+  arrives rather than requiring the initial GET to read the result index.
+- `render_results=1` provides a server-rendered progressive-enhancement fallback
+  for JavaScript-disabled browsers and a direct recovery link after fetch errors.
+
+Validation
+----------
+- Python compilation: passed
+- Jinja strict shell/content smoke render: passed
+- JavaScript syntax (`node --check`): passed
+- Unit tests: 206 passed, 3 skipped
+- Contract tests: 225 passed, 2 skipped
+- Regression tests: 22 passed, 2 skipped
+- Integration tests: 2 passed, 28 skipped because optional Flask/runtime
+  dependencies are unavailable in this workspace

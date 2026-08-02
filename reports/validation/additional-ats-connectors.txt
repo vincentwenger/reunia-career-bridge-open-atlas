@@ -1,0 +1,18 @@
+Job Discovery additional ATS connectors
+
+Added source types:
+- SmartRecruiters
+- Avature
+- Eightfold
+- Taleo
+- Dayforce
+
+Coverage:
+- Discovery settings source selector
+- CSV/JSON imports and templates
+- URL normalization and shared-catalog identity
+- Bounded refresh limits
+- Per-source scan status integration
+- Full-description enrichment
+- Robots, allowed-host, redirect, timeout, response-size, and rate safeguards
+- Unit and contract tests

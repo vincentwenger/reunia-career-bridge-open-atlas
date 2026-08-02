@@ -17,7 +17,7 @@
         try {
             const endpoint = window.AppUI?.appUrl('/api/career/impact') || '/api/career/impact';
             const response = await fetch(endpoint, {headers: {'Accept': 'application/json'}});
-            if (!response.ok) throw new Error(`Unable to load impact outcomes (${response.status}).`);
+            if (!response.ok) throw new Error(`Unable to load progress outcomes (${response.status}).`);
             const payload = await response.json();
             render(payload);
             const measured = Number(payload?.summary?.applications_measured || 0);
@@ -25,8 +25,8 @@
             setStatus(`${measured} of ${total} job applications currently have measurable outcome data.`);
             showDashboardState(measured > 0 ? 'content' : 'empty');
         } catch (error) {
-            setStatus(error.message || 'Unable to load social-impact outcomes.', true);
-            showDashboardState('error', error.message || 'Unable to load social-impact outcomes.');
+            setStatus(error.message || 'Unable to load progress and outcomes.', true);
+            showDashboardState('error', error.message || 'Unable to load progress and outcomes.');
         } finally {
             setLoading(false);
         }
@@ -54,6 +54,7 @@
         setText('impact-recovered', integer(summary.relevant_experience_recovered));
         setText('impact-alignment', signedPoints(summary.alignment_improvement));
         setText('impact-interview', signedPoints(summary.mock_interview_score_improvement));
+        setText('impact-ready', integer(summary.interview_ready_applications));
         setText('impact-answers', integer(summary.weak_answers_improved));
         setText('impact-actions', integer(summary.actions_completed));
         setText('impact-measurement-note', payload.measurement_note || 'Only saved workflow evidence is counted.');
@@ -136,6 +137,7 @@
                 <td><strong>${translation}</strong><span>${Number(item.credentials_identified || 0)} credentials · ${Number(item.terminology_clarified || 0)} terms</span></td>
                 <td><strong>${evidence}</strong><span>${Number(item.unsupported_claims_prevented || 0)} prevented · ${Number(item.relevant_experience_recovered || 0)} recovered</span></td>
                 <td><strong>${signedPoints(item.alignment_improvement)}</strong><span>${scorePair(item.baseline_alignment_score, item.current_alignment_score)}</span></td>
+                <td><strong>${scoreOrDash(item.interview_readiness)}</strong><span>${escapeHtml(item.interview_readiness_status || 'Not started')}</span></td>
                 <td><strong>${Number(mock.sessions || 0)} session${Number(mock.sessions || 0) === 1 ? '' : 's'}</strong><span>${signedPoints(mock.improvement)} · ${Number(item.weak_answers_improved || 0)} answers improved</span></td>
                 <td><strong>${Number(item.actions_completed || 0)} / ${Number(item.actions_total || 0)}</strong><span>completed</span></td>
                 <td><div class="impact-tags">${resultTags.join('')}</div></td>`;

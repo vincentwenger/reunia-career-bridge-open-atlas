@@ -272,6 +272,9 @@ class WorkflowStatePersistenceTests(unittest.TestCase):
         self.assertIsNone(
             workflow_ttl_seconds(config, "owner:application:app-one")
         )
+        self.assertIsNone(
+            workflow_ttl_seconds(config, "owner:career-foundation:translation")
+        )
 
     def test_memory_store_returns_detached_snapshots_and_detects_stale_saves(self) -> None:
         from resume_tailor.storage import WorkflowConflictError
@@ -427,6 +430,39 @@ class WorkflowStatePersistenceTests(unittest.TestCase):
         self.assertIn("/workflow-state/application/", item["state_json_key"])
         self.assertNotIn("expires_at", item)
 
+    def test_career_foundation_workflow_is_retained_without_dynamodb_ttl(self) -> None:
+        from resume_tailor.dynamodb_storage import DynamoDBWorkflowStore
+
+        table = FakeWorkflowTable()
+        objects = FakeObjectStore()
+        store = DynamoDBWorkflowStore(
+            {
+                "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME": "career-bridge-workflows",
+                "CAREER_BRIDGE_DOCUMENTS_PREFIX": "career-bridge",
+                "CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS": 3600,
+                "CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS": 0,
+            },
+            self._state,
+            table=table,
+            document_store=objects,
+            epoch_clock=lambda: 1_786_000_000,
+        )
+        workflow_key = "vincent@example.com:career-foundation:translation"
+        loaded = store.load(workflow_key)
+        loaded.state.target_title = "Reusable translated baseline"
+        store.save(
+            workflow_key,
+            loaded.state,
+            expected_version=loaded.version,
+            updated_by_request="REQ-FOUNDATION-RETAINED",
+        )
+
+        item = next(iter(table.items.values()))
+        self.assertEqual(item["workflow_type"], "foundation")
+        self.assertEqual(item["retention_policy"], "retained")
+        self.assertIn("/workflow-state/foundation/", item["state_json_key"])
+        self.assertNotIn("expires_at", item)
+
     def test_application_workflow_can_use_an_explicit_longer_ttl(self) -> None:
         from resume_tailor.dynamodb_storage import DynamoDBWorkflowStore
 
@@ -546,6 +582,100 @@ class WorkflowStatePersistenceTests(unittest.TestCase):
         )
         self.assertIn("expires_at", item)
 
+    def test_loading_older_valid_payload_does_not_fail_after_schema_defaults_expand(self) -> None:
+        from resume_tailor.dynamodb_storage import DynamoDBWorkflowStore
+        from resume_tailor.workflow_serialization import workflow_state_json_bytes
+
+        table = FakeWorkflowTable()
+        objects = FakeObjectStore()
+        workflow_key = "owner:application:scratch"
+        store = DynamoDBWorkflowStore(
+            {
+                "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME": "career-bridge-workflows",
+                "CAREER_BRIDGE_DOCUMENTS_PREFIX": "career-bridge",
+            },
+            self._state,
+            table=table,
+            document_store=objects,
+        )
+        state = self._state()
+        payload = json.loads(workflow_state_json_bytes(state).decode("utf-8"))
+        # Simulate a document saved before this defaulted field was introduced.
+        payload["state"].pop("quality_review_started", None)
+        older_serialized = json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        state_key = "career-bridge/workflow-state/scratch/legacy-schema/state.json"
+        objects.put(state_key, older_serialized, "application/json")
+        table.items[store._workflow_id(workflow_key)] = {
+            "workflow_id": store._workflow_id(workflow_key),
+            "entity_type": "career_bridge_workflow",
+            "workflow_type": "scratch",
+            "retention_policy": "dynamodb_ttl",
+            "version": 2,
+            "fingerprint": hashlib.sha256(older_serialized).hexdigest(),
+            "state_json_key": state_key,
+            "updated_at": "2026-07-30T15:00:00+00:00",
+            "updated_by_request": "REQ-OLD-SCHEMA",
+            "expires_at": 1_786_003_600,
+        }
+
+        loaded = store.load(workflow_key)
+
+        self.assertFalse(loaded.state.quality_review_started)
+        self.assertEqual(loaded.version, 2)
+        self.assertEqual(loaded.updated_by_request, "REQ-OLD-SCHEMA")
+
+    def test_loading_meaningfully_tampered_payload_still_fails_integrity_check(self) -> None:
+        from resume_tailor.dynamodb_storage import DynamoDBWorkflowStore
+        from resume_tailor.workflow_serialization import workflow_state_json_bytes
+
+        table = FakeWorkflowTable()
+        objects = FakeObjectStore()
+        workflow_key = "owner:application:scratch"
+        store = DynamoDBWorkflowStore(
+            {
+                "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME": "career-bridge-workflows",
+                "CAREER_BRIDGE_DOCUMENTS_PREFIX": "career-bridge",
+            },
+            self._state,
+            table=table,
+            document_store=objects,
+        )
+        original = workflow_state_json_bytes(self._state())
+        payload = json.loads(original.decode("utf-8"))
+        payload["state"]["target_title"] = "Unexpected altered title"
+        altered = json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        state_key = "career-bridge/workflow-state/scratch/tampered/state.json"
+        objects.put(state_key, altered, "application/json")
+        table.items[store._workflow_id(workflow_key)] = {
+            "workflow_id": store._workflow_id(workflow_key),
+            "entity_type": "career_bridge_workflow",
+            "workflow_type": "scratch",
+            "retention_policy": "dynamodb_ttl",
+            "version": 2,
+            "fingerprint": hashlib.sha256(original).hexdigest(),
+            "state_json_key": state_key,
+            "updated_at": "2026-07-30T15:00:00+00:00",
+            "updated_by_request": "REQ-TAMPERED",
+            "expires_at": 1_786_003_600,
+        }
+
+        with self.assertRaisesRegex(
+            RuntimeError, "fingerprint does not match"
+        ):
+            store.load(workflow_key)
+
     def test_memory_store_expires_only_scratch_workflows_by_default(self) -> None:
         from resume_tailor.web_state import InMemoryWorkflowStore
 
@@ -558,10 +688,13 @@ class WorkflowStatePersistenceTests(unittest.TestCase):
         )
         scratch_key = "owner:application:scratch"
         application_key = "owner:application:app-one"
+        foundation_key = "owner:career-foundation:translation"
         scratch = store.load(scratch_key)
         application = store.load(application_key)
+        foundation = store.load(foundation_key)
         scratch.state.target_title = "Temporary"
         application.state.target_title = "Durable"
+        foundation.state.target_title = "Reusable baseline"
         store.save(
             scratch_key,
             scratch.state,
@@ -574,10 +707,17 @@ class WorkflowStatePersistenceTests(unittest.TestCase):
             expected_version=application.version,
             updated_by_request="REQ-APPLICATION",
         )
+        store.save(
+            foundation_key,
+            foundation.state,
+            expected_version=foundation.version,
+            updated_by_request="REQ-FOUNDATION",
+        )
 
         now[0] += 301
         self.assertIsNone(store.peek(scratch_key))
         self.assertEqual(store.peek(application_key).target_title, "Durable")
+        self.assertEqual(store.peek(foundation_key).target_title, "Reusable baseline")
 
 
     def test_existing_version_conflict_is_rejected_across_nodes(self) -> None:

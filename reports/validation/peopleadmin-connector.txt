@@ -1,0 +1,14 @@
+PeopleAdmin Job Discovery connector
+
+- Adds JobSourceType.PEOPLEADMIN and the UI label "PeopleAdmin".
+- Accepts standard *.peopleadmin.com boards and institution-branded public PeopleAdmin hosts.
+- Normalizes board roots, /postings/search, and /postings/<id> URLs to a shared source identity.
+- Uses bounded page= pagination and enriches full descriptions from public posting detail pages.
+- Applies robots.txt, exact-host, redirect, timeout, response-size, rate-limit, and refresh-budget safeguards.
+- Supports CSV/JSON aliases including PeopleAdmin, PeopleAdmin ATS, PowerSchool PeopleAdmin, and HigherEd PeopleAdmin.
+- Updates Portland State University in the Oregon/Washington example CSV.
+
+Validation
+- 200 focused Job Discovery tests passed.
+- 1 environment-dependent Flask persistence test skipped.
+- Repository-wide validation retains 10 unrelated pre-existing deployment-test errors because scripts/deployment/upload_to_lightsail.bat is absent.

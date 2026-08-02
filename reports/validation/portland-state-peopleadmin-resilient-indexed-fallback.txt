@@ -1,0 +1,38 @@
+Portland State University / PeopleAdmin resilient indexed fallback
+=================================================================
+
+Problem
+-------
+The official PeopleAdmin listing route is disallowed by robots.txt. The compliant
+hosted-index fallback used one high-context request and failed the entire source
+when that request timed out. It also discarded indexed metadata unless an ATS
+detail page could subsequently be fetched.
+
+Changes
+-------
+- Added up to two bounded attempts for transient indexed-search timeouts,
+  connection errors, rate limits, and 502/503/504 provider failures.
+- Reduced web-search context/tool budgets to avoid oversized provider requests.
+- Defaulted PeopleAdmin indexed scans to at most 25 postings unless the source
+  explicitly configures indexed_search_max_results.
+- Preserved indexed title, location, posting date, description, and active status
+  before optional detail-page enrichment.
+- Kept successful indexed results as partial job records when an allowed detail
+  page is temporarily unreadable.
+- Changed the manager-facing status for a robots-blocked route plus temporary
+  indexed timeout from "Permission required" to "Retry recommended". The UI now
+  states that the source should not be disabled or removed.
+- Direct listing crawling remains blocked and is not bypassed.
+
+Validation
+----------
+python -m compileall -q job_discovery products/resume_taylor/app.py
+PASS
+
+python -m unittest tests.unit.test_job_discovery_indexed_search \
+  tests.unit.test_job_discovery_peopleadmin \
+  tests.contracts.test_job_discovery_scan_status_ui
+17 tests passed.
+
+python -m unittest discover -s tests/unit -p 'test_job_discovery*.py'
+192 tests passed.

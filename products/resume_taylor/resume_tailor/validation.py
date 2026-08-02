@@ -148,7 +148,7 @@ def validate_proposal(
                 issue=finding.message,
                 suggested_fix=(
                     "Remove or rewrite the unsupported claim using only facts present in "
-                    "the Candidate Profile or candidate-confirmed evidence."
+                    "the Verified Resume Evidence or candidate-confirmed evidence."
                 ),
             )
         )
@@ -201,7 +201,7 @@ def validate_proposal(
                     section="Skills",
                     source_id=skill,
                     issue=f"'{skill}' is not in the candidate's verified skills.",
-                    suggested_fix="Remove it or add it to the source profile only after the candidate confirms it.",
+                    suggested_fix="Remove it or add it to the verified resume evidence only after the candidate confirms it.",
                 )
             )
 

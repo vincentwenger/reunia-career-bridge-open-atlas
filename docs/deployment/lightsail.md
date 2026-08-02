@@ -12,7 +12,7 @@ The Application Builder uses the direct `/applications/` route and no Nginx side
 ## Data-loss warning
 
 > **WARNING: Redeploying or replacing the Lightsail container can erase Application Builder records.**
-> This warning applies when the explicit demo override permits process-memory
+> This warning applies when the explicit non-durable storage override permits process-memory
 > workflow state or local document storage in production. Those parts rely on
 > ephemeral container-node storage, while application records remain in DynamoDB.
 > Durable DynamoDB/S3 production storage is required by default and should be
@@ -31,9 +31,9 @@ docker run --rm -p 8000:8000 --env-file .env reunia-career-bridge
 - Container port: `8000`
 - Public endpoint port: `8000`
 - Health check path: `/health`
-- Scale: `1` for demo storage; `1` or greater for validated persistent storage
+- Scale: `1` for non-durable storage; `1` or greater for validated persistent storage
 - Lightsail container **Command**: leave empty
-- Gunicorn workers: `1` is the conservative image default; exactly `1` is required only for demo storage
+- Gunicorn workers: `1` is the conservative image default; exactly `1` is required only for non-durable storage
 - Gunicorn threads: `4` in the current image
 
 The health endpoint exposes the non-secret Application Builder storage mode for
@@ -62,7 +62,7 @@ Operational policy:
 | Storage mode | Lightsail scale | Gunicorn workers |
 |---|---:|---:|
 | Durable DynamoDB/DynamoDB/S3 | 1 or greater | 1 or greater |
-| Demo memory/DynamoDB/local | exactly 1 | exactly 1 |
+| Non-durable validation memory/DynamoDB/local | exactly 1 | exactly 1 |
 
 Leaving the Lightsail **Command** field empty remains recommended in both modes
 so the deployed, reviewed image controls the complete startup command.
@@ -76,6 +76,13 @@ CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND=dynamodb
 CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND=memory|dynamodb
 CAREER_BRIDGE_APPLICATIONS_TABLE_NAME=career-bridge-applications
 CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME=career-bridge-job-discovery
+JOB_DISCOVERY_AI_MODEL=gpt-5-nano
+JOB_DISCOVERY_AI_REASONING_EFFORT=minimal
+JOB_DISCOVERY_AI_MAX_OUTPUT_TOKENS=4800
+JOB_DISCOVERY_AI_TIMEOUT_SECONDS=20
+JOB_DISCOVERY_INDEXED_SEARCH_FALLBACK=true
+JOB_DISCOVERY_WEB_SEARCH_MODEL=gpt-5-mini
+JOB_DISCOVERY_WEB_SEARCH_TIMEOUT_SECONDS=50
 CAREER_BRIDGE_WORKFLOWS_TABLE_NAME=career-bridge-workflows
 CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS=28800
 CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS=0
@@ -91,7 +98,7 @@ Development and testing may retain process-memory workflow state and local
 document objects, but application records always use DynamoDB.
 `ProductionConfig` defaults to `dynamodb`, `dynamodb`, and `s3`. Selecting
 non-durable workflow or document adapters in production requires the explicit
-demo override. Storage is selected through `WorkflowStore`, `ApplicationStore`,
+non-durable storage override. Storage is selected through `WorkflowStore`, `ApplicationStore`,
 and `CareerBridgeObjectStore` protocols rather than route-level types.
 
 For durable application records and documents, configure all of the following:
@@ -136,7 +143,7 @@ when any required table/bucket name is blank. This check runs inside Réunia's
 existing production validator and is independent of the Application Builder
 factory, so an unsafe process cannot start far enough to serve traffic.
 
-A hackathon or controlled demo may deliberately bypass only this Career Bridge
+A controlled validation deployment may deliberately bypass only this Career Bridge
 persistence gate with:
 
 ```text
@@ -146,13 +153,13 @@ CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=true
 The override is intentionally narrow: Redis, S3 recorder storage, DynamoDB
 actions/analytics/support/knowledge storage, secrets, and every other existing
 Réunia production safeguard are still required. Startup logs a prominent unsafe
-demo-storage warning. Such a deployment must remain at one Gunicorn worker and
+non-durable-storage warning. Such a deployment must remain at one Gunicorn worker and
 one Lightsail node and can lose records during redeployment or replacement. Do
 not use the override for normal production traffic.
 
 The live deployment validator expects persistent DynamoDB/S3 health metadata by
-default. When validating an intentional demo deployment, pass
-`--allow-demo-storage` (or set the same demo override variable in the validator
+default. When validating an intentional non-durable validation deployment, pass
+`--allow-demo-storage` (or set the same non-durable storage override variable in the validator
 environment).
 
 ### Career Bridge workflow table
@@ -228,7 +235,7 @@ Partition key: owner_id    (String)
 Sort key:      storage_key (String)
 ```
 
-On-demand billing is sufficient for the demo and avoids capacity tuning. No
+On-demand billing avoids capacity tuning for typical Career Bridge workloads. No
 secondary index is required. The repository stores these item families inside
 each owner's partition:
 
@@ -271,9 +278,9 @@ career-bridge/workflow-state/scratch/users/<owner-hash>/<workflow-hash>/...
 career-bridge/workflow-state/application/users/<owner-hash>/<workflow-hash>/...
 ```
 
-Stored objects include uploaded source resumes, final DOCX resumes, final PDF
+Stored objects include uploaded Imported Resumes, final DOCX resumes, final PDF
 resumes, canonical versioned workflow-state JSON, resume-finding snapshots,
-interview-preparation snapshots, and impact snapshot details. Application or
+interview-preparation snapshots, and progress snapshot details. Application or
 workflow deletion removes linked current objects; S3 versioning can retain
 noncurrent versions according to bucket lifecycle policy.
 
@@ -300,7 +307,7 @@ not place credentials in object metadata or object keys.
 
 ## Conditional deployment policy
 
-The explicit demo configuration (`memory` + `dynamodb` + `local`) keeps
+The explicit non-durable validation configuration (`memory` + `dynamodb` + `local`) keeps
 workflow state and documents process-local or container-local. Only that
 configuration requires the complete
 single-process deployment invariant:
@@ -319,13 +326,13 @@ gunicorn --bind 0.0.0.0:8000 --workers 1 --threads 4 ... app:app
 ```
 
 When storage is not fully durable, Réunia emits a startup warning that reports
-all configured storage backends. A demo configuration reports workflow memory,
+all configured storage backends. A non-durable validation configuration reports workflow memory,
 DynamoDB applications, and local documents, followed by a note that workflow or
 document storage is not fully durable. The message is emitted once per
 application process.
 
 Do not enter a custom command in the Lightsail container configuration while the
-service uses the demo storage defaults. In particular, a command containing
+service uses the non-durable storage defaults. In particular, a command containing
 `gunicorn --workers 2` creates two independent processes and splits process-local
 workflow state even when the Lightsail service scale remains `1`.
 Leave the Lightsail **Command** field empty so the container uses the image's
@@ -351,7 +358,7 @@ The Windows deployment script at `scripts/deployment/upload_to_lightsail.bat`:
 
 The script never supplies a Lightsail command override. It exits with a nonzero
 status and a prominent error banner if command or scale inspection fails. In
-demo mode, a failed scale update or any returned scale other than `1` also stops
+non-durable validation mode, a failed scale update or any returned scale other than `1` also stops
 the deployment.
 
 ## Post-deployment validation
@@ -359,8 +366,8 @@ the deployment.
 Run the standalone validator after the Lightsail deployment is active. It verifies:
 
 1. `/health` returns HTTP 200 with persistent DynamoDB/S3 storage metadata, or
-   demo-only metadata only when explicitly allowed;
-2. demo storage is constrained to Lightsail scale `1` and one Gunicorn worker,
+   non-durable metadata only when explicitly allowed;
+2. non-durable storage is constrained to Lightsail scale `1` and one Gunicorn worker,
    while persistent storage accepts any positive scale and worker count;
 3. the public application container has no Lightsail command override and the
    Docker image `CMD` starts Gunicorn with valid positive worker/thread counts;
@@ -424,3 +431,40 @@ cancellation endpoint.
 For authorized users, microphone, speaker, and clipboard behavior continues to
 come from **Settings → Live interview assistance**. Disabled sources are rejected
 before transcription so they do not create OpenAI transcription usage.
+
+## Application Builder 500/503 storage troubleshooting
+
+Career Translation, Job Applications, Resume Workflow, and Resume Reports all
+use the Career Bridge workflow/application persistence boundary. A deployment
+can pass the configuration-name startup gate while still failing its first live
+DynamoDB read when a named table is absent, exists in another region, has the
+wrong primary key, or the deployed credentials cannot access it.
+
+Before building or redeploying, run:
+
+```bat
+scripts\deployment\provision_career_bridge_storage.bat
+```
+
+The command reads the current Lightsail container environment, creates only
+missing Career Bridge resources, and validates these schemas:
+
+```text
+Applications: owner_id (partition key), storage_key (sort key)
+Workflows:    workflow_id (partition key), TTL attribute expires_at
+Discovery:    owner_id (partition key), storage_key (sort key)
+Documents:    private S3 bucket with public access blocked and versioning enabled
+```
+
+Existing resources are never replaced. A table with an incompatible key schema
+causes the command to stop and identify the exact resource that must be replaced
+or renamed. The upload script now runs the same storage preflight before building
+the image. The live deployment validator also requests all four navbar-backed
+workspaces after sign-in, so a deployment with inaccessible storage cannot pass
+validation merely because `/health` responds.
+
+The deployed IAM identity still needs the application runtime permissions listed
+in the table and bucket sections above. The local AWS identity running the
+provisioning command additionally needs permission to describe and create the
+resources and to configure DynamoDB TTL, S3 public-access blocking, and bucket
+versioning.

@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% from 'macros/ui.html' import page_hero, workspace_state %}
-{% set guided_flow = request.args.get('guided') == '1' %}
 
 {% block title %}Réunia - Adaptive Mock Interview{% endblock %}
 
@@ -15,28 +14,12 @@
     class="app-page mock-interview-page"
     id="mockInterviewPage"
     data-storage-scope="{{ session.get('user_id') or 'default' }}"
-    data-guided-flow="{{ 'true' if guided_flow else 'false' }}"
     data-review-url="{{ request.script_root }}/interview-review"
 >
     {{ page_hero(
         'Adaptive Mock Interview',
         'Practice with adaptive AI questions or a reusable list of your own questions. Réunia listens to each answer, evaluates the evidence, and generates a complete interview review.'
     ) }}
-
-    {% if guided_flow %}
-    <section class="mock-guided-flow" aria-label="Guided application flow progress">
-        <div>
-            <span>Guided application flow</span>
-            <strong>Final step: complete a realistic practice interview</strong>
-        </div>
-        <ol>
-            <li class="complete"><span>✓</span><strong>Application Materials</strong></li>
-            <li class="complete"><span>✓</span><strong>Career Profile</strong></li>
-            <li class="complete"><span>✓</span><strong>Interview Preparation</strong></li>
-            <li class="active"><span>4</span><strong>Mock Interview</strong></li>
-        </ol>
-    </section>
-    {% endif %}
 
     <section class="mock-setup-card" id="mockSetupPanel" aria-labelledby="mock-setup-title">
         <div class="mock-card-heading">

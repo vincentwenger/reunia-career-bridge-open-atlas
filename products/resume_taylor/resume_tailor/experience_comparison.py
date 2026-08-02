@@ -35,7 +35,7 @@ def classify_bullet_inclusion(
     if reference_present and not current_present:
         return BulletInclusionComparison(
             "restored_missing_included",
-            "Automatically restored from source resume",
+            "Automatically restored from imported resume",
             reference_text,
             reference_text,
         )

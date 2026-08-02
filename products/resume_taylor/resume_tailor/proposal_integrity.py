@@ -4,7 +4,7 @@ from .models import BulletProposal, CandidateProfile, TailoringProposal
 
 
 _AUTO_RESTORE_NOTE = (
-    "Automatically restored from the Candidate Profile because the generated "
+    "Automatically restored from the Verified Resume Evidence because the generated "
     "proposal did not return a selection decision for this source bullet."
 )
 

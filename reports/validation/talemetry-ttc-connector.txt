@@ -1,0 +1,35 @@
+Talemetry / TTC Portals Job Discovery connector
+================================================
+
+Source type: Talemetry / TTC Portals (talemetry_ttc).
+
+Supported public URL forms:
+- https://company.ttcportals.com/
+- https://company.ttcportals.com/search/jobs
+- https://company.ttcportals.com/jobs/search
+- https://company.ttcportals.com/search/jobs/in/...
+- https://company.ttcportals.com/jobs/<numeric-id>-<slug>
+
+Collection behavior
+-------------------
+- Normalizes all accepted URL forms to the public jobs listing.
+- Uses the paged /search/jobs.json endpoint for listing discovery.
+- Sends JSON Accept and same-tenant /jobs Referer headers.
+- Uses talemetry_job_id as the durable external job identifier.
+- Retains listing title, location, date, category, canonical permalink, and row ID.
+- Enriches a bounded number of jobs from canonical public detail pages and leaves
+  the remainder eligible for on-demand description enrichment.
+- Defaults to one request per second, 50 feed pages, and ten detail enrichments.
+- Honors robots.txt and exact-host, timeout, redirect, response-size, and rate
+  restrictions.
+
+HTTP 403 behavior
+-----------------
+If the JSON or compatibility HTML listing returns HTTP 403, the connector uses
+a domain-restricted hosted-search index to find only official detail URLs on the
+exact configured TTC hostname. The scan is marked partial so existing jobs are
+preserved. The fallback does not impersonate a browser or bypass the blocked
+listing route.
+
+The bundled Oregon/Washington company-source CSV assigns First Tech Federal
+Credit Union to this source type.

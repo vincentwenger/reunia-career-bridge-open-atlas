@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 from job_discovery.models import (
     CompanySource,
@@ -93,7 +94,7 @@ class SharedPublicCatalogTests(unittest.TestCase):
             public_source_key(first_source), public_source_key(second_source)
         )
 
-    def test_opening_discovery_can_hydrate_newer_shared_jobs_without_http(self) -> None:
+    def test_deferred_sync_can_hydrate_newer_shared_jobs_without_external_http(self) -> None:
         first_source = source("owner-a", "intel-a")
         second_source = self.store.put_company_source(source("owner-b", "intel-b"))
         self.service().discover([first_source])
@@ -141,6 +142,63 @@ class SharedPublicCatalogTests(unittest.TestCase):
         )
         self.assertEqual(public_source_key(localized), public_source_key(unlocalized))
 
+    def test_successfactors_root_and_search_urls_share_catalog_key(self) -> None:
+        root = CompanySource(
+            id="sf-a", owner_id="owner-a", company_name="Example",
+            careers_url="https://example.jobs.hr.cloud.sap/",
+            source_type=JobSourceType.SUCCESSFACTORS, source_identifier="",
+        )
+        search = replace(
+            root, id="sf-b", owner_id="owner-b",
+            careers_url="https://example.jobs.hr.cloud.sap/search/",
+        )
+        self.assertEqual(public_source_key(root), public_source_key(search))
+
+    def test_oracle_listing_and_job_urls_share_catalog_key(self) -> None:
+        listing = CompanySource(
+            id="oracle-a",
+            owner_id="owner-a",
+            company_name="Example",
+            careers_url=(
+                "https://example.fa.us2.oraclecloud.com/"
+                "hcmUI/CandidateExperience/en/sites/CX_1/jobs"
+            ),
+            source_type=JobSourceType.ORACLE_CLOUD_HCM,
+            source_identifier="",
+        )
+        detail = replace(
+            listing,
+            id="oracle-b",
+            owner_id="owner-b",
+            careers_url=(
+                "https://example.fa.us2.oraclecloud.com/"
+                "hcmUI/CandidateExperience/en/sites/CX_1/job/REQ-42"
+            ),
+        )
+
+        self.assertEqual(public_source_key(listing), public_source_key(detail))
+
+    def test_icims_listing_and_job_urls_share_catalog_key(self) -> None:
+        listing = CompanySource(
+            id="icims-a",
+            owner_id="owner-a",
+            company_name="Example",
+            careers_url="https://careers-example.icims.com/jobs/search",
+            source_type=JobSourceType.ICIMS,
+            source_identifier="",
+        )
+        detail = replace(
+            listing,
+            id="icims-b",
+            owner_id="owner-b",
+            careers_url=(
+                "https://careers-example.icims.com/jobs/47190/"
+                "data-engineer/job"
+            ),
+        )
+
+        self.assertEqual(public_source_key(listing), public_source_key(detail))
+
     def test_full_scheduled_scan_upgrades_a_fresh_partial_browser_catalog(self) -> None:
         configured = source("owner-a", "intel-a")
         browser_transform = lambda item: replace(
@@ -162,6 +220,40 @@ class SharedPublicCatalogTests(unittest.TestCase):
         status = self.store.get_public_catalog_status(public_source_key(configured))
         self.assertIsNotNone(status)
         self.assertTrue(status.complete_scan)
+
+    def test_failed_refresh_persists_issue_while_retaining_last_success(self) -> None:
+        configured = source("owner-a", "intel-a")
+        first = self.service().discover([configured])
+        self.assertEqual(1, first.shared_catalog_refreshes)
+
+        status_before = self.store.get_public_catalog_status(
+            public_source_key(configured)
+        )
+        self.assertIsNotNone(status_before)
+        self.assertEqual(1, status_before.job_count)
+
+        failing_adapter = CountingAdapter()
+        failing_adapter.fetch_jobs = lambda _source: (_ for _ in ()).throw(
+            RuntimeError("robots.txt disallows crawling https://example.com/careers")
+        )
+        later_service = JobDiscoveryService(
+            adapters={JobSourceType.WORKDAY: failing_adapter},
+            store=self.store,
+            ranking_clock=lambda: "2026-07-31T20:00:00+00:00",
+            use_shared_public_catalog=True,
+        )
+        result = later_service.discover([configured])
+
+        self.assertEqual(1, len(result.errors))
+        status_after = self.store.get_public_catalog_status(
+            public_source_key(configured)
+        )
+        self.assertIsNotNone(status_after)
+        self.assertIn("robots.txt disallows", status_after.last_error)
+        self.assertEqual("2026-07-31T20:00:00+00:00", status_after.last_attempt_at)
+        self.assertEqual(status_before.last_success_at, status_after.last_success_at)
+        self.assertEqual(1, status_after.job_count)
+        self.assertEqual([status_after], self.store.list_public_catalog_statuses())
 
     def test_centrally_managed_sources_materialize_for_every_user(self) -> None:
         catalog_source = self.store.put_company_source(
@@ -186,6 +278,59 @@ class SharedPublicCatalogTests(unittest.TestCase):
         self.assertNotEqual(first_job.id, second_job.id)
         self.assertEqual("owner-a", first_job.owner_id)
         self.assertEqual("owner-b", second_job.owner_id)
+
+    def test_owner_hydration_bulk_loads_sources_statuses_and_preferences(self) -> None:
+        intel = self.store.put_company_source(
+            source(SHARED_CATALOG_SOURCE_OWNER_ID, "intel-shared")
+        )
+        amd = self.store.put_company_source(
+            replace(
+                source(SHARED_CATALOG_SOURCE_OWNER_ID, "amd-shared"),
+                company_name="AMD",
+                careers_url="https://amd.wd1.myworkdayjobs.com/en-US/External",
+            )
+        )
+        catalog_sources = [intel, amd]
+        self.service().discover(catalog_sources, candidate_profile=None)
+
+        with (
+            patch.object(
+                self.store,
+                "list_company_sources",
+                wraps=self.store.list_company_sources,
+            ) as list_sources,
+            patch.object(
+                self.store,
+                "get_company_source",
+                wraps=self.store.get_company_source,
+            ) as get_source,
+            patch.object(
+                self.store,
+                "list_public_catalog_statuses",
+                wraps=self.store.list_public_catalog_statuses,
+            ) as list_statuses,
+            patch.object(
+                self.store,
+                "get_public_catalog_status",
+                wraps=self.store.get_public_catalog_status,
+            ) as get_status,
+            patch.object(
+                self.store,
+                "get_search_preferences",
+                wraps=self.store.get_search_preferences,
+            ) as get_preferences,
+        ):
+            hydrated = self.service().hydrate_owner_from_shared_catalog(
+                "owner-a", catalog_sources
+            )
+
+        self.assertEqual(2, hydrated)
+        list_sources.assert_called_once_with("owner-a")
+        list_statuses.assert_called_once_with()
+        get_preferences.assert_called_once_with("owner-a")
+        get_source.assert_not_called()
+        get_status.assert_not_called()
+        self.assertEqual(2, len(self.store.list_discovered_jobs("owner-a")))
 
     def test_disabling_central_source_updates_user_copy_without_http(self) -> None:
         catalog_source = self.store.put_company_source(

@@ -25,8 +25,32 @@ _DEFAULT_FRESHNESS_SECONDS = {
     JobSourceType.LEVER: 6 * 60 * 60,
     JobSourceType.ASHBY: 6 * 60 * 60,
     JobSourceType.WORKDAY: 12 * 60 * 60,
+    JobSourceType.SUCCESSFACTORS: 12 * 60 * 60,
+    JobSourceType.ORACLE_CLOUD_HCM: 12 * 60 * 60,
+    JobSourceType.ICIMS: 12 * 60 * 60,
+    JobSourceType.SMARTRECRUITERS: 6 * 60 * 60,
+    JobSourceType.AVATURE: 12 * 60 * 60,
+    JobSourceType.EIGHTFOLD: 12 * 60 * 60,
+    JobSourceType.TALEO: 12 * 60 * 60,
+    JobSourceType.DAYFORCE: 12 * 60 * 60,
+    JobSourceType.TALEMETRY_TTC: 12 * 60 * 60,
+    JobSourceType.JOBVITE: 12 * 60 * 60,
+    JobSourceType.UKG_PRO: 12 * 60 * 60,
+    JobSourceType.PEOPLEADMIN: 12 * 60 * 60,
+    JobSourceType.RADANCY_TALENTBREW: 12 * 60 * 60,
+    JobSourceType.AMAZON_JOBS: 6 * 60 * 60,
+    JobSourceType.BRANDED_REQUISITION: 12 * 60 * 60,
     JobSourceType.GENERIC_JSONLD: 24 * 60 * 60,
 }
+
+
+def _successfactors_catalog_url(value: str) -> str:
+    canonical = canonicalize_url(value)
+    parsed = urlsplit(canonical)
+    path = parsed.path or "/"
+    if "/search" not in path.casefold() and "/go/" not in path.casefold() and "company=" not in parsed.query.casefold():
+        path = path.rstrip("/") + "/search/"
+    return canonicalize_url(parsed._replace(path=path, fragment="").geturl())
 
 
 def public_catalog_enabled(source: CompanySource) -> bool:
@@ -45,7 +69,77 @@ def public_source_key(source: CompanySource) -> str:
         if value not in (None, "", {}, []):
             selectors[name] = value
     canonical_url = canonicalize_url(source.careers_url)
-    if source.source_type is JobSourceType.GENERIC_JSONLD:
+    if source.source_type is JobSourceType.SUCCESSFACTORS:
+        source_location = _successfactors_catalog_url(source.careers_url)
+    elif source.source_type is JobSourceType.ORACLE_CLOUD_HCM:
+        from .sources.oracle_cloud_hcm import parse_oracle_cloud_hcm_careers_url
+
+        source_location = parse_oracle_cloud_hcm_careers_url(
+            source.careers_url
+        ).listing_url
+    elif source.source_type is JobSourceType.ICIMS:
+        from .sources.icims import parse_icims_careers_url
+
+        source_location = parse_icims_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.SMARTRECRUITERS:
+        from .sources.smartrecruiters import parse_smartrecruiters_careers_url
+
+        source_location = parse_smartrecruiters_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.AVATURE:
+        from .sources.avature import parse_avature_careers_url
+
+        source_location = parse_avature_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.EIGHTFOLD:
+        from .sources.eightfold import parse_eightfold_careers_url
+
+        source_location = parse_eightfold_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.TALEO:
+        from .sources.taleo import parse_taleo_careers_url
+
+        source_location = parse_taleo_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.DAYFORCE:
+        from .sources.dayforce import parse_dayforce_careers_url
+
+        source_location = parse_dayforce_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.TALEMETRY_TTC:
+        from .sources.talemetry_ttc import parse_talemetry_ttc_careers_url
+
+        source_location = parse_talemetry_ttc_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.JOBVITE:
+        from .sources.jobvite import parse_jobvite_careers_url
+
+        source_location = parse_jobvite_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.UKG_PRO:
+        from .sources.ukg_pro import parse_ukg_pro_careers_url
+
+        source_location = parse_ukg_pro_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.PEOPLEADMIN:
+        from .sources.peopleadmin import parse_peopleadmin_careers_url
+
+        source_location = parse_peopleadmin_careers_url(source.careers_url).listing_url
+    elif source.source_type is JobSourceType.RADANCY_TALENTBREW:
+        from .sources.radancy_talentbrew import (
+            parse_radancy_talentbrew_careers_url,
+        )
+
+        source_location = parse_radancy_talentbrew_careers_url(
+            source.careers_url
+        ).listing_url
+    elif source.source_type is JobSourceType.AMAZON_JOBS:
+        from .sources.amazon_jobs import parse_amazon_jobs_careers_url
+
+        source_location = parse_amazon_jobs_careers_url(
+            source.careers_url
+        ).listing_url
+    elif source.source_type is JobSourceType.BRANDED_REQUISITION:
+        from .sources.branded_requisition import (
+            parse_branded_requisition_careers_url,
+        )
+
+        source_location = parse_branded_requisition_careers_url(
+            source.careers_url
+        ).listing_url
+    elif source.source_type is JobSourceType.GENERIC_JSONLD:
         source_location = canonical_url
     elif source.source_type is JobSourceType.WORKDAY:
         parsed = urlsplit(canonical_url)

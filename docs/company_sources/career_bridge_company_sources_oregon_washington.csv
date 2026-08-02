@@ -1,0 +1,35 @@
+﻿Company,Source type,ATS site identifier,Career-page URL,Enabled
+Oregon Health & Science University — OHSU,iCIMS,,https://externalcareers-ohsu.icims.com/jobs/intro,TRUE
+Providence Health & Services,Oracle Cloud HCM,,https://evac.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs,TRUE
+Intel,Workday,,https://intel.wd1.myworkdayjobs.com/External,TRUE
+Legacy Health,iCIMS,,https://careers-lhs.icims.com/jobs/intro,TRUE
+Kaiser Permanente,Taleo,,https://kp.taleo.net/careersection/externalapplicationbackground/jobsearch.ftl,TRUE
+Amazon,Amazon Jobs,,https://www.amazon.jobs/en/search?country=USA,TRUE
+Nike,Workday,,https://nike.wd1.myworkdayjobs.com/nke,TRUE
+Fred Meyer / Kroger,Oracle Cloud HCM,,https://eluq.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001/jobs,TRUE
+Portland State University,PeopleAdmin,,https://jobs.hrc.pdx.edu/,TRUE
+Lam Research,Eightfold,,https://app.eightfold.ai/careers?domain=lamresearch.com,TRUE
+Boeing,Radancy / TalentBrew,,https://jobs.boeing.com/en/search-jobs,TRUE
+Microsoft,Eightfold,,https://apply.careers.microsoft.com/careers,TRUE
+University of Washington,Workday,,https://uw.wd5.myworkdayjobs.com/UWHires,TRUE
+Providence Swedish,Oracle Cloud HCM,,https://evac.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs,TRUE
+Walmart,Workday,,https://walmart.wd504.myworkdayjobs.com/WalmartExternal,TRUE
+MultiCare Health System,Workday,,https://multicare.wd1.myworkdayjobs.com/multicare,TRUE
+Virginia Mason Franciscan Health,Radancy / TalentBrew,,https://www.commonspirit.careers/vmfc-cs-chi-wa-jobs,TRUE
+Costco Wholesale,Eightfold,,https://careers.costco.com/jobs,TRUE
+Starbucks,Eightfold,,https://app.eightfold.ai/careers?domain=starbucks.com,TRUE
+Disney,Radancy / TalentBrew,,https://www.disneycareers.com/en/search-jobs,TRUE
+U.S. Bank,Workday,,https://usbank.wd1.myworkdayjobs.com/US_Bank_Careers,TRUE
+Umpqua Bank / Columbia Bank,Workday,,https://columbiabank.wd108.myworkdayjobs.com/Columbia,TRUE
+Bank of America,Workday,,https://ghr.wd1.myworkdayjobs.com/Lateral-US,TRUE
+Wells Fargo,Workday,,https://wf.wd1.myworkdayjobs.com/WellsFargoJobs,TRUE
+JPMorgan Chase,Oracle Cloud HCM,,https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs,TRUE
+KeyBank,Workday,,https://keybank.wd5.myworkdayjobs.com/External_Career_Site,TRUE
+Banner Bank,Lever,bannerbank,https://jobs.lever.co/bannerbank,TRUE
+WaFd Bank,iCIMS,,https://careers-wafd.icims.com/jobs/intro,TRUE
+First Interstate Bank,Workday,,https://fib.wd1.myworkdayjobs.com/FIBCareers,TRUE
+BMO Bank,Workday,,https://bmo.wd3.myworkdayjobs.com/External,TRUE
+Washington Trust Bank,UKG Pro / UltiPro,,https://recruiting2.ultipro.com/WAS1000WTB/JobBoard/cb002c76-8419-4941-9c78-d28ae4e9c89e,TRUE
+Heritage Bank,Branded Requisition Portal,,https://careers.heritagebanknw.com/search-jobs,TRUE
+OnPoint Community Credit Union,Dayforce,,https://jobs.dayforcehcm.com/en-US/onpoint/CANDIDATEPORTAL,TRUE
+First Tech Federal Credit Union,Talemetry / TTC Portals,,https://firsttechfedcareers.ttcportals.com/search/jobs,TRUE

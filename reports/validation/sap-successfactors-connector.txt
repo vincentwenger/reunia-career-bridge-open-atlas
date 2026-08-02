@@ -1,0 +1,24 @@
+SAP SuccessFactors Job Discovery Connector
+==========================================
+
+Implemented
+-----------
+- Added JobSourceType.SUCCESSFACTORS and a first-class SuccessFactorsJobSource adapter.
+- Accepts public SAP-hosted and employer-owned Career Site Builder URLs.
+- Canonicalizes root/brand URLs to public search URLs.
+- Reads bounded search-result pagination and public job-detail pages.
+- Extracts schema.org JobPosting fields with safe plain-text descriptions.
+- Honors robots.txt, exact-host restrictions, response limits, redirect limits, timeouts, and per-company rate limits.
+- Adds browser-safe limits and deferred detail enrichment.
+- Integrates with shared public catalogs, CSV/JSON imports, source forms, posting-detail enrichment, and the common connector contract.
+
+Validation
+----------
+Run: pytest -q tests/unit/test_job_discovery_*.py tests/contracts/test_job_discovery_*.py tests/regression/test_job_discovery_required_behaviors.py tests/integration/test_job_discovery_flask_persistence.py
+
+Results
+-------
+- Focused Job Discovery suite: 159 passed, 1 skipped, 20 subtests passed.
+- Full repository suite: 323 passed and 27 skipped; 10 unrelated deployment-contract failures remain because the uploaded package does not contain scripts/deployment/upload_to_lightsail.bat.
+- Python compilation: passed.
+- Jinja template parsing: 16 templates passed.

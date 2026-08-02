@@ -1,0 +1,35 @@
+Career Translation and Resume Terminology Consolidation
+=======================================================
+
+Canonical user-facing terms
+---------------------------
+- Imported Resume: the original uploaded file.
+- Verified Resume Evidence: structured, traceable facts extracted from the Imported Resume and confirmed evidence.
+- Career Baseline Resume: the reusable target-market-language resume created in Career Translation.
+- Application Baseline: the frozen starting resume for one application before tailoring.
+- Target-Market Review: the application-specific review of titles, credentials, terminology, transferable experience, and evidence gaps.
+
+Compatibility
+-------------
+- Internal workflow keys, routes, serialized field names, and report identifiers remain unchanged.
+- Existing application records storing "Initial Resume" are displayed as "Application Baseline" through a legacy label map.
+
+Updated surfaces
+----------------
+- Career Translation setup and preview.
+- Resume Workflow steps, comparisons, reports, loading states, and messages.
+- Interview Preparation evidence descriptions.
+- Job application resume-version display.
+- Analytics, marketing copy, User Guide, presentation metadata, and deployment/validation documentation.
+- AI prompts and generated evidence explanations.
+
+Validation
+----------
+- Contract tests: 237 passed, 2 skipped.
+- Unit tests: 206 passed, 3 skipped.
+- Regression tests: 22 passed, 2 skipped.
+- Integration tests: 2 passed, 28 skipped because optional runtime dependencies are unavailable.
+- Python compilation: passed.
+- JavaScript syntax: passed.
+- Jinja parsing: 52 templates passed.
+- Deprecated user-facing terminology scan: passed.

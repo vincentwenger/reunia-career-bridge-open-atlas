@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable
 
+from .location_filter import normalize_country_filter, normalize_us_state_filter
+
 DEFAULT_MINIMUM_FIT = 60
 DEFAULT_CONFIDENCE_TIERS = ("high", "medium")
 DEFAULT_RECOMMENDATION_FILTER = "all_viable"
@@ -33,6 +35,8 @@ class DiscoveryResultFilters:
     confidence_tiers: tuple[str, ...] = DEFAULT_CONFIDENCE_TIERS
     recommendation_filter: str = DEFAULT_RECOMMENDATION_FILTER
     sort_mode: str = DEFAULT_SORT_MODE
+    country_code: str = ""
+    us_state_code: str = ""
 
     def __post_init__(self) -> None:
         try:
@@ -60,10 +64,15 @@ class DiscoveryResultFilters:
         if sort_mode not in SORT_MODES:
             sort_mode = DEFAULT_SORT_MODE
 
+        country_code = normalize_country_filter(self.country_code)
+        us_state_code = normalize_us_state_filter(self.us_state_code)
+
         object.__setattr__(self, "minimum_fit", minimum_fit)
         object.__setattr__(self, "confidence_tiers", tuple(normalized_confidences))
         object.__setattr__(self, "recommendation_filter", recommendation_filter)
         object.__setattr__(self, "sort_mode", sort_mode)
+        object.__setattr__(self, "country_code", country_code)
+        object.__setattr__(self, "us_state_code", us_state_code)
 
     @property
     def confidence_query(self) -> str:

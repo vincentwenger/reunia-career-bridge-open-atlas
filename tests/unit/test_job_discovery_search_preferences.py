@@ -26,6 +26,7 @@ class DiscoverySearchPreferencesTests(unittest.TestCase):
             minimum_salary=150000,
             minimum_salary_currency="usd",
             excluded_terms=("commission only",),
+            excluded_title_terms=("intern", "sales"),
             maximum_posting_age_days=14,
             require_title_match=True,
             require_workplace_match=True,
@@ -41,6 +42,7 @@ class DiscoverySearchPreferencesTests(unittest.TestCase):
         self.assertIsNone(store.get_search_preferences("owner-b"))
         self.assertEqual("USD", preferences.minimum_salary_currency)
         self.assertEqual(14, preferences.maximum_posting_age_days)
+        self.assertEqual(("intern", "sales"), preferences.excluded_title_terms)
         self.assertEqual(
             (WorkplaceType.REMOTE, WorkplaceType.HYBRID),
             preferences.accepted_workplace_types,

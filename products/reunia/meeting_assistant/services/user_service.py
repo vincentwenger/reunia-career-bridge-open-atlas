@@ -369,7 +369,10 @@ def default_user_settings() -> dict[str, Any]:
         "aiCoachingAudioInstructions": "",
         "aiCoachingClipboardInstructions": "",
         "meetingRetentionDays": 7,
-        "documentRetentionDays": 7,
+        # Career Evidence Library files are reusable career records, not
+        # temporary uploads. Keep them until the user explicitly deletes them
+        # unless the user chooses an automatic retention period in Settings.
+        "documentRetentionDays": 0,
         "shareDefaultExpirationDays": 30,
         "shareRequirePassword": False,
         "shareAllowDownload": False,

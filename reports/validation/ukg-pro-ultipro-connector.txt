@@ -1,0 +1,10 @@
+UKG Pro / UltiPro Job Discovery connector
+
+- Adds JobSourceType.UKG_PRO and the UI label "UKG Pro / UltiPro".
+- Accepts public recruiting.ultipro.com, recruiting<number>.ultipro.com, and matching .ca JobBoard URLs.
+- Extracts tenant and board UUID from the public URL.
+- Uses bounded POST pagination through JobBoardView/LoadSearchResults.
+- Enriches descriptions through public OpportunityDetail pages.
+- Applies robots.txt, exact-host, redirect, timeout, response-size, rate-limit, and refresh-budget safeguards.
+- Supports CSV/JSON aliases: UKG, UKG Pro, UKG Pro Recruiting, UltiPro.
+- Updates Washington Trust Bank in the Oregon/Washington example CSV.

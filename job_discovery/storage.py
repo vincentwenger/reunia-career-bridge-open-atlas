@@ -211,6 +211,9 @@ class DiscoveryStore(Protocol):
     ) -> PublicJobCatalogStatus | None:
         ...
 
+    def list_public_catalog_statuses(self) -> list[PublicJobCatalogStatus]:
+        ...
+
     def list_public_catalog_jobs(
         self, source_key: str, *, active_only: bool = True
     ) -> list[DiscoveredJob]:
@@ -598,6 +601,11 @@ class InMemoryDiscoveryStore:
     ) -> PublicJobCatalogStatus | None:
         with self._lock:
             return self._public_catalog_statuses.get(str(source_key))
+
+    def list_public_catalog_statuses(self) -> list[PublicJobCatalogStatus]:
+        with self._lock:
+            statuses = list(self._public_catalog_statuses.values())
+        return sorted(statuses, key=lambda item: (item.company_name.casefold(), item.source_key))
 
     def list_public_catalog_jobs(
         self, source_key: str, *, active_only: bool = True
@@ -1435,6 +1443,15 @@ class DynamoDBDiscoveryStore:
         item = self._get(PUBLIC_CATALOG_OWNER_ID, _public_source_key(source_key))
         return _public_catalog_status_from_dict(item) if item else None
 
+    def list_public_catalog_statuses(self) -> list[PublicJobCatalogStatus]:
+        statuses = [
+            _public_catalog_status_from_dict(item)
+            for item in self._query_prefix(
+                PUBLIC_CATALOG_OWNER_ID, _PUBLIC_SOURCE_PREFIX
+            )
+        ]
+        return sorted(statuses, key=lambda item: (item.company_name.casefold(), item.source_key))
+
     def list_public_catalog_jobs(
         self, source_key: str, *, active_only: bool = True
     ) -> list[DiscoveredJob]:
@@ -1934,6 +1951,7 @@ def _search_preferences_to_dict(
         "minimum_salary_currency": preferences.minimum_salary_currency,
         "minimum_salary_interval": preferences.minimum_salary_interval,
         "excluded_terms": list(preferences.excluded_terms),
+        "excluded_title_terms": list(preferences.excluded_title_terms),
         "maximum_posting_age_days": preferences.maximum_posting_age_days,
         "require_title_match": preferences.require_title_match,
         "require_location_match": preferences.require_location_match,
@@ -1964,6 +1982,7 @@ def _search_preferences_from_dict(
             payload.get("minimum_salary_interval") or "year"
         ),
         excluded_terms=tuple(payload.get("excluded_terms") or ()),
+        excluded_title_terms=tuple(payload.get("excluded_title_terms") or ()),
         maximum_posting_age_days=payload.get("maximum_posting_age_days", 30),
         require_title_match=bool(payload.get("require_title_match", False)),
         require_location_match=bool(

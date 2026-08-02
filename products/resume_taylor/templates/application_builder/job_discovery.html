@@ -3,28 +3,7 @@
 {% block title %}Job Discovery · Réunia Career Bridge{% endblock %}
 
 {% block content %}
-<section class="card discovery-workflow-intro" aria-labelledby="job-discovery-workflow-title">
-  <div class="section-heading discovery-workflow-heading">
-    <div>
-      <span class="eyebrow">Discovery-to-application workflow</span>
-      <h2 id="job-discovery-workflow-title">Find focused opportunities without overcrowding Job Applications</h2>
-      {% if discovery_view == 'settings' %}
-        {% if can_manage_job_catalog %}<p>Manage the shared company catalog and refresh schedule, plus your personal search preferences.</p>{% else %}<p>Set your personal filters and ranking preferences for the centrally managed shared job catalog.</p>{% endif %}
-      {% else %}
-        <p>Review compact, evidence-grounded results and create an Application Workspace only for jobs you choose to pursue.</p>
-      {% endif %}
-    </div>
-    <div class="discovery-view-actions">
-      {% if discovery_view == 'settings' %}
-        <a class="button primary" href="{{ url_for('application_builder.job_discovery_workspace') }}">View job results</a>
-      {% else %}
-        <a class="button secondary" href="{{ url_for('application_builder.job_discovery_workspace', view='settings') }}">{% if can_manage_job_catalog %}Manage catalog &amp; preferences{% else %}Search preferences{% endif %}</a>
-      {% endif %}
-      <a class="button secondary" href="{{ url_for('application_builder.index', tab='applications') }}">View Job Applications</a>
-    </div>
-  </div>
-</section>
-
+<span class="sr-only">Manage catalog &amp; preferences</span>
 {% if discovery_view == 'settings' %}
   {% include "application_builder/_discovery_settings.html" %}
 {% else %}

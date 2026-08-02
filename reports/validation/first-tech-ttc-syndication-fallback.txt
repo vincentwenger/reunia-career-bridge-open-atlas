@@ -1,0 +1,58 @@
+First Tech TTC 403 and indexed-search timeout fix
+=================================================
+
+Problem
+-------
+First Tech's Talemetry/TTC listing endpoint returns HTTP 403 to the deployed
+server:
+
+  GET https://firsttechfedcareers.ttcportals.com/search/jobs.json?page=1
+
+The previous fallback then used hosted indexed search. If that request timed out,
+the whole source refresh failed with:
+
+  The compliant indexed fallback was unavailable: Indexed posting discovery
+  failed: Request timed out.
+
+Root cause
+----------
+The normal First Tech refresh path still had an external AI search dependency
+after TTC denied the listing request. The fallback was compliant and constrained,
+but it was not deterministic enough for a routine company-source scan.
+
+Changes
+-------
+1. Added a fixed employer-specific fallback for the exact TTC host
+   firsttechfedcareers.ttcportals.com.
+2. The fallback reads First Tech's public employer page on the Partners in
+   Diversity Career Center before attempting any hosted indexed search.
+3. Only jobs under the allow-listed jobs.partnersindiversity.org `/job/...`
+   route are accepted.
+4. Listing and detail requests retain robots checks, public-host validation,
+   redirect limits, response-size limits, timeouts, and per-company throttling.
+5. Job title, location, posting date, employment type, description, salary, and
+   other JSON-LD fields are normalized through the existing public-portal parser.
+6. A bounded number of descriptions are fetched during the scan; remaining
+   descriptions can be enriched on demand from the same allow-listed host.
+7. Results are tagged discovery_mode=verified_employer_syndication and
+   scan_completeness=partial so a syndication publication delay does not
+   deactivate previously collected jobs.
+8. The saved source remains Talemetry/TTC and keeps its existing source ID,
+   settings, and job/application relationships. No user migration is required.
+9. Hosted indexed search remains a last fallback only if the verified employer
+   page is unavailable, and remains unchanged for other TTC tenants.
+
+Safety and scope
+----------------
+- No CAPTCHA solving, proxy rotation, browser impersonation, TLS fingerprint
+  spoofing, or access-control bypass was added.
+- The secondary host is hard-coded and exact-purpose; users cannot supply an
+  arbitrary fallback domain through source filters.
+- The change is scoped to First Tech's exact TTC hostname.
+
+Validation
+----------
+Focused Talemetry/TTC, connector-contract, source-migration, and additional-ATS
+checks: 25 passed, 8 subtests passed.
+
+Full suite: 485 passed, 36 skipped, 149 subtests passed.

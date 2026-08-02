@@ -235,10 +235,10 @@
 
 .action-filter-bar {
     display: grid;
-    grid-template-columns: minmax(230px, 1.5fr) repeat(6, minmax(125px, 0.8fr)) auto;
+    grid-template-columns: minmax(260px, 1fr) minmax(160px, 220px);
     align-items: end;
     gap: 12px;
-    padding: 18px 20px 46px;
+    padding: 18px 20px;
     border-bottom: 1px solid var(--action-border);
     background: #fbfefd;
 }
@@ -250,23 +250,6 @@
     gap: 7px;
 }
 
-.action-sort-field {
-    position: relative;
-}
-
-.action-sort-description {
-    position: absolute;
-    top: calc(100% + 7px);
-    right: 1px;
-    width: max-content;
-    max-width: min(310px, 90vw);
-    color: #6b778a;
-    font-size: 10.5px;
-    font-weight: 600;
-    line-height: 1.35;
-    text-align: right;
-}
-
 .action-search-field > span,
 .action-filter-field > span,
 .action-form-field > span,
@@ -276,10 +259,7 @@
     font-weight: 850;
 }
 
-.action-search-field > div {
-    position: relative;
-}
-
+.action-search-field > div { position: relative; }
 .action-search-field svg {
     position: absolute;
     top: 50%;
@@ -308,24 +288,11 @@
     font-size: 12.5px;
     transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
-
-.action-search-field input {
-    padding: 0 12px 0 38px;
-}
-
+.action-search-field input { padding: 0 12px 0 38px; }
 .action-filter-field select,
 .action-form-field select,
-.action-form-field input {
-    padding: 0 11px;
-}
-
-.action-form-field textarea {
-    min-height: 104px;
-    padding: 12px;
-    resize: vertical;
-    line-height: 1.55;
-}
-
+.action-form-field input { padding: 0 11px; }
+.action-form-field textarea { min-height: 104px; padding: 12px; resize: vertical; line-height: 1.55; }
 .action-search-field input:focus,
 .action-filter-field select:focus,
 .action-form-field input:focus,
@@ -335,10 +302,34 @@
     box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.11);
 }
 
-.action-clear-button {
-    min-height: 41px;
-    padding: 0 13px;
+.action-advanced-filters {
+    grid-column: 1 / -1;
+    border-top: 1px solid #e7efed;
+    padding-top: 12px;
 }
+.action-advanced-filters > summary {
+    width: max-content;
+    color: var(--action-blue-dark);
+    font-size: 12.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.action-advanced-filters[open] > summary { margin-bottom: 14px; }
+.action-advanced-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(130px, 1fr)) auto;
+    align-items: end;
+    gap: 12px;
+}
+.action-sort-description {
+    display: block;
+    margin-top: 5px;
+    color: #6b778a;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+.action-clear-button { min-height: 41px; padding: 0 13px; }
 
 .action-table-shell {
     position: relative;
@@ -823,16 +814,14 @@
 }
 
 @media (max-width: 1280px) {
-    .action-filter-bar {
-        grid-template-columns: minmax(230px, 1.4fr) repeat(3, minmax(140px, 0.8fr));
-    }
+    .action-advanced-filter-grid { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
 }
 
 @media (max-width: 900px) {
     .action-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .action-workspace-header { align-items: flex-start; flex-direction: column; }
-    .action-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .action-search-field { grid-column: 1 / -1; }
+    .action-filter-bar { grid-template-columns: minmax(0, 1fr) minmax(150px, 210px); }
+    .action-advanced-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 620px) {
@@ -842,9 +831,8 @@
     .action-workspace-header { padding: 20px 18px 17px; }
     .action-view-toggle { width: 100%; }
     .action-view-toggle button { flex: 1; padding: 0 7px; }
-    .action-filter-bar { grid-template-columns: 1fr; padding: 16px 16px 46px; }
-    .action-search-field { grid-column: auto; }
-    .action-sort-description { right: auto; left: 1px; text-align: left; }
+    .action-filter-bar { grid-template-columns: 1fr; padding: 16px; }
+    .action-advanced-filter-grid { grid-template-columns: 1fr; }
     .action-clear-button { width: 100%; }
     .action-modal-backdrop { padding: 12px; }
     .action-modal-header, #action-form { padding-right: 18px; padding-left: 18px; }

@@ -22,7 +22,7 @@ Three job-application workflow modules:
 3. Improve and Take Action
    - Interview Review
    - Career Action Plan
-   - Impact & Progress
+   - Progress & Outcomes
 
 Consistency changes
 -------------------

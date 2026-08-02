@@ -4,6 +4,8 @@ The job-discovery feature **finds publicly accessible job postings exposed by co
 
 Collected postings remain discovery records. They are **not** automatically inserted into Job Applications. The user must explicitly choose **Create Application Workspace** for one selected result before the existing application workflow is created.
 
+The **Public job discovery** result panel also provides view-only **Country** and **U.S. state** filters. The first visit defaults the country to **United States**; selecting **All countries** explicitly removes that default. Country values use stable two-letter codes in the URL, while displayed labels remain user friendly. The U.S. state control is enabled only while the selected country is the United States. State matching recognizes abbreviations and full names in normalized source locations. Selecting a U.S. state includes nationwide U.S.-remote postings that identify the United States but do not name a state. Postings whose location cannot be identified are not guessed into a country or state and remain visible when those filters are unset. The controls are visually grouped into match-quality and location/sort sections, with responsive layouts for tablet and mobile widths.
+
 ## Package structure
 
 ```text
@@ -12,9 +14,11 @@ job_discovery/
 ├── application_conversion.py
 ├── service.py
 ├── normalization.py
+├── location_filter.py
 ├── deduplication.py
 ├── ranking.py
 ├── result_policy.py
+├── source_import.py
 ├── storage.py
 └── sources/
     ├── base.py
@@ -38,7 +42,7 @@ class JobSource(Protocol):
 The discovery boundary has eight owner-scoped record types:
 
 - `CompanySource`: one user-managed company/source connector, its source identifier or public career-page URL, enabled state, filters, last successful check time, and an optimistic-concurrency `revision`.
-- `DiscoverySearchPreferences`: the owner-managed desired titles, preferred locations, accepted workplace types, employment types, salary floor, preferred keywords, required keywords, excluded terms, maximum posting age, and mandatory-filter switches used by Stage 1 and Search Priority. Positive keywords are posting preferences only and never become candidate evidence. The posting-age preference defaults to 30 days and applies uniformly after every connector has normalized its records.
+- `DiscoverySearchPreferences`: the owner-managed desired titles, preferred locations, accepted workplace types, employment types, salary floor, preferred keywords, required keywords, posting-wide excluded terms, job-title-only excluded terms, maximum posting age, and mandatory-filter switches used by Stage 1 and Search Priority. Positive keywords are posting preferences only and never become candidate evidence. The posting-age preference defaults to 30 days and applies uniformly after every connector has normalized its records.
 - `DiscoveryScanSchedule`: the owner-managed manual, daily, or weekly scan cadence, local hour, weekday, IANA time zone, and last external run time. It is consumed only by the external runner.
 - `DiscoveredJob`: one public posting, including stable source/external identifiers, canonical URL, description fingerprint, first/last seen timestamps, and active/inactive status.
 - `JobFitSnapshot`: an evidence-profile-specific **Job Fit** result with score, recommendation, confidence, supported/partial/unsupported requirements, hard blockers, record-level evidence matches, and analysis time. Each displayable strength contains a `RequirementEvidenceMatch` with one or more `EvidenceReference` values identifying the exact Career Profile or verified Evidence Library record. It deliberately does not store location, salary, workplace, employment-type, desired-title, freshness, or Search Priority values.
@@ -68,10 +72,40 @@ source = CompanySource(
 
 Adapter-specific settings belong in `filters`, including `region`, `include_compensation`, crawler timeouts, rate limits, cache duration, and maximum page count.
 
+## Bulk company-source import
+
+Administrators and configured catalog-manager groups can populate the shared **Company sources** panel by uploading a UTF-8 CSV or JSON configuration file. The import accepts at most 100 companies and 1 MB per file, validates every row before any source is written, and supports either skipping duplicates or updating the matching source. Downloadable CSV and JSON examples are available beside the upload control. Managers can also use **Remove all company sources** after a destructive-action confirmation. That action removes only the shared source configurations; previously collected postings, saved jobs, and Application Workspaces remain intact. A source-count check prevents a stale settings page from deleting sources that were added after the page loaded.
+
+Each company entry also provides **Scan this source**, which runs the same bounded shared-catalog refresh pipeline for only that enabled company. The card then reopens with its persisted **Last scan result**. Managers can see whether the latest scan succeeded, completed within browser-safe limits, has not run yet, or produced an issue. The panel includes the last-attempt timestamp, the exact sanitized issue message (for example a robots.txt denial), the previous successful-scan timestamp when cached jobs remain available, and the number of active public postings retained from the latest successful scan.
+
+CSV uses these user-facing headers:
+
+```csv
+Company,Source type,ATS site identifier,Career-page URL,Enabled
+Intel,Workday,,https://intel.wd1.myworkdayjobs.com/External,true
+```
+
+JSON may be a direct array or an object containing a `companies` array:
+
+```json
+{
+  "companies": [
+    {
+      "company": "Intel",
+      "source_type": "Workday",
+      "ats_site_identifier": "",
+      "career_page_url": "https://intel.wd1.myworkdayjobs.com/External",
+      "enabled": true
+    }
+  ]
+}
+```
+
+Source-type names are case-insensitive. Supported values are Greenhouse, Lever, Ashby, Workday, SAP SuccessFactors, Oracle Cloud HCM, iCIMS, SmartRecruiters, Avature, Eightfold, Taleo, Dayforce, Talemetry / TTC Portals, Jobvite, UKG Pro / UltiPro, PeopleAdmin, Radancy / TalentBrew, Amazon Jobs, Branded Requisition Portal, and Manual career-page URL. Workday URLs are canonicalized before duplicate matching, so locale variants of the same board do not create separate sources. Invalid rows are reported with their CSV/JSON row number and the panel is left unchanged.
 
 ## Source-independent posting-age policy
 
-Job Discovery applies the same freshness rules to **Greenhouse, Lever, Ashby, Workday, and Manual JSON-LD** records after connector normalization. Normalized public postings are retained in the shared catalog before an individual user's age filter is applied. Each user has a private `DiscoverySearchPreferences.maximum_posting_age_days` setting, defaulting to **30 days**, that controls which centrally collected postings appear in that user's results. The UI offers 7, 14, 30, 60, or Any age.
+Job Discovery applies the same freshness rules to **Greenhouse, Lever, Ashby, Workday, SAP SuccessFactors, Oracle Cloud HCM, iCIMS, SmartRecruiters, Avature, Eightfold, Taleo, Dayforce, Talemetry / TTC Portals, Jobvite, UKG Pro / UltiPro, PeopleAdmin, Radancy / TalentBrew, Amazon Jobs, Branded Requisition Portal, and Manual JSON-LD** records after connector normalization. Normalized public postings are retained in the shared catalog before an individual user's age filter is applied. Each user has a private `DiscoverySearchPreferences.maximum_posting_age_days` setting, defaulting to **30 days**, that controls which centrally collected postings appear in that user's results. The UI offers 7, 14, 30, 60, or Any age.
 
 A posting is retained when any of the following is true:
 
@@ -88,6 +122,14 @@ A user's private age preference is applied while the shared catalog is materiali
 - **Lever:** calls the public Postings API by company site identifier; EU instances can set `filters={"region": "eu"}`.
 - **Ashby:** calls the public job-board posting endpoint and requests compensation by default. Jobs marked `isListed=false` are always excluded; source configuration cannot opt into unlisted records.
 - **Workday:** accepts a public `myworkdayjobs.com` or `myworkdaysite.com` board URL, derives the tenant and career-site identifiers, paginates the same public CXS JSON endpoint used by the career page, and enriches each listing from its public detail endpoint. Closed records with `canApply=false` are excluded. This is a public-career-site integration, not an authenticated or versioned Workday tenant API, so it must fail visibly if Workday changes the public response contract.
+- **SAP SuccessFactors:** accepts a public Career Site Builder URL on an SAP-hosted or employer-owned domain, normalizes the URL to the public search page, follows bounded result pagination, and extracts normalized details from public job pages and schema.org `JobPosting` data. Interactive refreshes defer excess detail pages, while scheduled scans can complete the catalog.
+- **Oracle Cloud HCM:** accepts a public Oracle Recruiting Candidate Experience jobs URL such as `/hcmUI/CandidateExperience/en/sites/CX_1/jobs` or a vanity-domain equivalent. It derives the site and language, uses the unauthenticated Candidate Experience requisition collection/detail resources loaded by the public career site, follows bounded `limit`/`offset` pagination, and maps Oracle requisition descriptions, qualifications, responsibilities, locations, dates, workplace type, employment type, department, and skills. If those resources are unavailable on an older or vanity-domain deployment, it falls back to same-host public HTML, embedded Oracle JSON, and schema.org `JobPosting` data. Oracle documents the CE resources as internal-use interfaces, so this is a best-effort public-career-site integration rather than a supported tenant API and it fails visibly if Oracle changes the contract. No tenant credentials or authenticated recruiting APIs are used.
+- **iCIMS:** accepts a public iCIMS career portal URL on an `icims.com` hostname. It normalizes classic `/jobs/search` portals, branded listing paths ending in `/jobs`, and direct numeric `/jobs/<id>` job URLs. The connector follows bounded public HTML pagination, maps listing-card fields, and enriches a configurable number of postings from public detail pages and schema.org `JobPosting` data. It does not use customer credentials, candidate APIs, or application endpoints.
+- **Jobvite:** accepts hosted `jobs.jobvite.com/<career-site>` boards, searches, and public job-detail URLs. It normalizes them to the hosted search page, follows bounded pagination, and retrieves complete public descriptions without requiring the paid Job Feed API.
+- **PeopleAdmin:** accepts standard `*.peopleadmin.com` boards and institution-branded public hosts. Root, `/postings/search`, paginated search, and `/postings/<id>` URLs normalize to the same public listing. It follows bounded `page=` pagination, enriches postings from their public detail pages, and never accesses applicant accounts or authenticated HR workflows.
+- **Radancy / TalentBrew:** accepts employer-branded public career sites, including root pages, `/search-jobs`, filtered `/location/...` or `/category/...` pages, and `/job/<location>/<slug>/<site-id>/<job-id>` detail URLs. It normalizes the configured host to its public search page, preserves visible locale prefixes, follows bounded public pagination, and enriches descriptions from the branded detail pages. Requests remain restricted to the exact configured hostname because TalentBrew sites normally use employer-owned domains.
+- **Amazon Jobs:** accepts only the official `amazon.jobs` host. Root, locale search, filtered search, and `/jobs/<job-id>/<slug>` URLs normalize to one locale-aware public search catalog. The connector preserves public search filters such as country or region, performs bounded `offset`/`result_limit` pagination, and enriches postings from official Amazon job-detail pages. It does not access employee-only jobs, candidate accounts, or Amazon’s separate hourly-hiring application system.
+- **Branded Requisition Portal:** accepts employer-owned public sites that expose an HTML requisition feed at `/api/requisitions/search` and public details under `/job/<id>/<slug>`. Root, `/search-jobs`, feed, paginated feed, and detail URLs normalize to the same feed while preserving non-pagination public search selectors. Fetches remain restricted to the exact configured hostname, follow bounded `page=` pagination, and enrich full descriptions from public job pages. The label intentionally avoids claiming an unverified ATS vendor.
 - **Generic JSON-LD:** starts at the configured career URL, extracts Schema.org `JobPosting` objects, and can follow a bounded number of same-host job/career links.
 
 The generic connector honors `/robots.txt` using the `ReuniaJobBot` product token, follows RFC 9309 4xx/5xx access semantics, caches robots policy for no more than 24 hours, limits robots parsing to 500 KiB, uses a descriptive user agent, enforces HTTP timeouts, rate-limits requests per configured company source, limits page size and crawl count, and caches fetched pages.
@@ -96,16 +138,16 @@ The generic connector honors `/robots.txt` using the `ReuniaJobBot` product toke
 
 All adapters share the following safeguards:
 
-- **Allowed-domain and SSRF controls:** Greenhouse, Lever, and Ashby API requests use fixed exact-domain allowlists. Workday requests are restricted to the exact configured public Workday hostname. Generic crawling is restricted to the exact configured career-page hostname. Credentialed URLs, localhost, private/reserved IP literals, cross-domain redirects, and DNS results containing non-public addresses are blocked by the production HTTP client.
+- **Allowed-domain and SSRF controls:** Greenhouse, Lever, and Ashby API requests use fixed exact-domain allowlists. Workday, SAP SuccessFactors, Oracle Cloud HCM, iCIMS, Avature, Eightfold, Taleo, Dayforce, Talemetry / TTC Portals, Jobvite, UKG Pro / UltiPro, PeopleAdmin, Radancy / TalentBrew, Amazon Jobs, and Branded Requisition Portal requests are restricted to the exact configured public career-site hostname. Generic crawling is restricted to the exact configured career-page hostname. Credentialed URLs, localhost, private/reserved IP literals, cross-domain redirects, and DNS results containing non-public addresses are blocked by the production HTTP client.
 - **Bounded HTTP:** source timeouts are clamped to 1–30 seconds. JSON responses default to 4 MiB, HTML pages to 5 MiB, and no configured response limit may exceed 10 MiB. Declared `Content-Length` and streamed bytes are both checked.
 - **Redirect limits:** requests allow three redirects by default and at most five. Every redirect target is revalidated against the source allowlist and public-address policy.
 - **HTML sanitization:** externally supplied HTML fragments are converted to bounded plain text. Script, style, template, iframe, object, SVG, control-character, and markup content is not persisted as a job description or displayed as executable HTML.
-- **Robots and source policy:** generic crawling cannot disable robots checks. Greenhouse, Lever, Ashby, and Workday use public posting endpoints; Ashby unlisted records and Workday records that explicitly report `canApply=false` are rejected.
+- **Robots and source policy:** generic crawling cannot disable robots checks. Greenhouse, Lever, Ashby, Workday, SAP SuccessFactors, Oracle Cloud HCM, iCIMS, SmartRecruiters, Avature, Eightfold, Taleo, Dayforce, Talemetry / TTC Portals, Jobvite, UKG Pro / UltiPro, PeopleAdmin, Amazon Jobs, and Branded Requisition Portal use public posting endpoints or public career-site pages; Ashby unlisted records and Workday records that explicitly report `canApply=false` are rejected.
 - **Per-company rate limiting:** all requests are spaced by owner/company key, including robots and detail-page requests. `min_request_interval_seconds` is bounded from zero to sixty seconds.
 - **Stable identity:** every description receives a SHA-256 fingerprint; URLs are normalized for scheme/host/default ports, dot segments, tracking parameters, query ordering, and fragments.
 - **Deduplication:** records merge transitively by `(source_id, external_job_id)`, canonical URL, or a non-trivial identical content fingerprint.
 - **Conservative deactivation:** postings deactivate only after several consecutive successful scans omit them; a reappearing posting is reactivated and its miss counter resets.
-- **No automatic submission:** the MVP can save/ignore a result or explicitly create an internal Application Workspace. It has no employer-form submission, document upload, or auto-apply capability.
+- **No automatic submission:** Career Bridge can save or ignore a result, or explicitly create an internal Application Workspace. It has no employer-form submission, document upload, or auto-apply capability.
 
 Useful bounded source options are:
 
@@ -150,11 +192,11 @@ Public company postings are shared across users so equivalent company sources ar
 
 The browser and external scheduler both use the same flow:
 
-1. Canonicalize the public source. Equivalent Greenhouse, Lever, Ashby, Workday, or JSON-LD configurations resolve to one stable source key. Workday locale URL variants such as `/External` and `/en-US/External` resolve to the same tenant/site catalog.
-2. Reuse the shared catalog while it is fresh. Defaults are six hours for Greenhouse, Lever, and Ashby; twelve hours for Workday; and twenty-four hours for generic JSON-LD pages.
+1. Canonicalize the public source. Equivalent Greenhouse, Lever, Ashby, Workday, SAP SuccessFactors, Oracle Cloud HCM, iCIMS, SmartRecruiters, Avature, Eightfold, Taleo, Dayforce, Talemetry / TTC Portals, Jobvite, UKG Pro / UltiPro, PeopleAdmin, Amazon Jobs, Branded Requisition Portal, or JSON-LD configurations resolve to one stable source key. Workday locale URL variants such as `/External` and `/en-US/External` resolve to the same tenant/site catalog.
+2. Reuse the shared catalog while it is fresh. Defaults are six hours for Greenhouse, Lever, and Ashby; twelve hours for Workday, SAP SuccessFactors, Oracle Cloud HCM, iCIMS, Avature, Eightfold, Taleo, Dayforce, Talemetry / TTC Portals, Jobvite, UKG Pro / UltiPro, and PeopleAdmin; six hours for SmartRecruiters and Amazon Jobs; twelve hours for Branded Requisition Portal; and twenty-four hours for generic JSON-LD pages.
 3. Acquire a source-level DynamoDB refresh lock before making external requests. Another user receives the existing public jobs instead of starting a duplicate scan. Locks expire automatically and use token-checked release.
 4. Store normalized postings once under the reserved public catalog partition. Owner-scoped posting records are materialized from those public records, preserving private job IDs and state.
-5. When a user opens Job Discovery, a newer shared catalog is copied into that user's discovery records without any external HTTP request.
+5. Job Discovery renders immediately from the user's durable result records. After rendering, a separate CSRF-protected request copies any newer shared catalog records into that user's discovery records without external HTTP access; the browser reloads only when those records changed.
 
 A source can override the bounded freshness interval with `public_cache_ttl_seconds`, or opt out with `public_catalog_enabled=false`. Public sharing is enabled by default for supported public career sources. Interactive Workday scans remain intentionally partial; partial scans merge new/updated postings without deactivating catalog records that were outside the browser request budget. Full scheduled scans retain the normal conservative missed-scan deactivation policy.
 
@@ -165,6 +207,9 @@ Production discovery storage uses `DynamoDBDiscoveryStore` and a table separate 
 ```text
 CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND=dynamodb
 CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME=career-bridge-job-discovery
+JOB_DISCOVERY_AI_MODEL=gpt-5-nano
+JOB_DISCOVERY_AI_REASONING_EFFORT=minimal
+JOB_DISCOVERY_AI_MAX_OUTPUT_TOKENS=4800
 ```
 
 The table uses:
@@ -192,7 +237,7 @@ PUBLIC#JOB#<canonical_source_key>#<public_job_id>
 PUBLIC#LOCK#<canonical_source_key>
 ```
 
-The `RESULT` records are a materialized read model. Opening a valid cached result page performs one summary `GetItem` and one bounded sort-key range query for exactly the requested 10, 20, or 50 cards. It no longer queries every `JOB`, `STATE`, and `FIT` item on every page load. Job, state, fit, source, or search-preference writes replace the owner revision token, making the current materialized index stale. The next result request rebuilds it once, then subsequent tab and page requests use the compact records. The index fingerprint includes its schema version, candidate evidence, search preferences, posting-age rule, minimum Job Fit, selected confidence tiers, recommendation filter, and sort mode. This prevents a pre-ranked page built for one result policy from being reused for another. Old materialized records are removed when a replacement index is committed. Full descriptions and evidence remain only in the canonical job and fit records and are loaded on demand by **View analysis** or workspace creation. On cached pages, Application Workspace records are also hydrated only for visible cards that contain an `application_id`; the route no longer lists every application for the owner on each result-page request.
+The `RESULT` records are a materialized read model. Opening a valid cached result page performs one summary `GetItem` and one bounded sort-key range query for exactly the requested 10, 20, or 50 cards. It no longer queries every `JOB`, `STATE`, and `FIT` item on every page load. Job, state, fit, source, or search-preference writes replace the owner revision token, making the current materialized index stale. The initial `GET /job-discovery` never rebuilds that index: it immediately serves the current materialized page, or the last materialized page with an updating marker. A separate CSRF-protected prebuild request performs the full job/state/fit scan and reloads after the durable index is ready. Shared-catalog hydration prebuilds the default result policy before it reports a change; browser-driven multi-source refresh and multi-job assessment prebuild once after the entire run instead of once per source or assessed job. Save, ignore, preference, and no-JavaScript mutation flows also prebuild before redirecting. The index fingerprint includes its schema version, candidate evidence, search preferences, posting-age rule, minimum Job Fit, selected confidence tiers, recommendation filter, allowed source IDs, and sort mode. This prevents a pre-ranked page built for one result policy from being reused for another. Old materialized records are removed when a replacement index is committed. Full descriptions and evidence remain only in the canonical job and fit records and are loaded on demand by **View analysis** or workspace creation. On cached pages, Application Workspace records are also hydrated only for visible cards that contain an `application_id`; the route no longer lists every application for the owner on each result-page request.
 
 This read model uses the existing `owner_id` and `storage_key` keys, so it requires no GSI, table recreation, or data migration.
 
@@ -219,11 +264,11 @@ Development and tests can use `InMemoryDiscoveryStore` or `JsonFileDiscoveryStor
 
 Job Discovery is a dedicated destination under **Build Your Application**, immediately before **Job Applications**. The route is `/applications/job-discovery`; Job Applications remains focused on workspaces already selected for pursuit. The catalog is now shared across the product:
 
-- administrators and configured job curators add Greenhouse, Lever, Ashby, Workday, and manual JSON-LD company sources;
+- administrators and configured job curators add Greenhouse, Lever, Ashby, Workday, SAP SuccessFactors, Oracle Cloud HCM, iCIMS, and manual JSON-LD company sources;
 - the same privileged users edit, enable, disable, or remove sources and control the shared manual/daily/weekly external schedule;
 - one refresh publishes the collected postings to every user, regardless of companies an individual follows or saves;
 - regular users cannot trigger source scans or alter the catalog;
-- each user privately saves desired-title, location, remote/hybrid/onsite, employment-type, salary, preferred-keyword, required-keyword, excluded-term, and posting-age preferences;
+- each user privately saves desired-title, location, remote/hybrid/onsite, employment-type, salary, preferred-keyword, required-keyword, posting-wide excluded-term, job-title-only excluded-term, and posting-age preferences;
 - preferred keywords remain a transparent Preference Fit component;
 - required keywords and other mandatory preferences hide postings before an AI call; and
 - Job Fit, saved/ignored state, and Application Workspace links remain owner-scoped.
@@ -245,11 +290,12 @@ Every active posting is evaluated locally using the candidate's configured prefe
 - accepted remote, hybrid, or onsite arrangements;
 - employment type;
 - advertised salary bounds when available;
-- excluded terms;
+- excluded terms anywhere in the posting;
+- excluded job-title terms, which only match the normalized title;
 - explicit work-authorization, sponsorship, citizenship, clearance, or license blockers; and
 - deterministic overlap with verified skills.
 
-A preference only hides a job when it is configured as mandatory, except excluded terms, an advertised salary maximum below the configured minimum, a rejected remote arrangement, and explicit eligibility contradictions. Hidden jobs remain stored as `DiscoveredJob` records but do not trigger an AI request. Jobs explicitly marked `ignored` are also stopped at Stage 1 on later refreshes, so ignoring a posting does not generate additional AI analysis. `DiscoveryResult.filtered_jobs` exposes the rejection reasons for the UI.
+A preference only hides a job when it is configured as mandatory, except both exclusion fields, an advertised salary maximum below the configured minimum, a rejected remote arrangement, and explicit eligibility contradictions. Posting-wide exclusions inspect the title, company, and description; title-only exclusions inspect only the job title. Hidden jobs remain stored as `DiscoveredJob` records but do not trigger an AI request. Jobs explicitly marked `ignored` are also stopped at Stage 1 on later refreshes, so ignoring a posting does not generate additional AI analysis. `DiscoveryResult.filtered_jobs` exposes the rejection reasons for the UI.
 
 Stage 1 also calculates a separate **Preference Fit** score. It uses only configured search preferences:
 
@@ -263,7 +309,7 @@ The score is normalized across only the configured and scoreable preference comp
 
 ### Stage 2: evidence-grounded assessment
 
-Only jobs that pass Stage 1 continue. The default analyzer uses `ResumeAI` with `JOB_DISCOVERY_AI_MODEL`, falling back to the configured fast model. Because it is the existing `ResumeAI` service, its normal cost controls and response cache still apply.
+Only jobs that pass Stage 1 continue. The default analyzer uses `ResumeAI` with `JOB_DISCOVERY_AI_MODEL`. When that variable is not set, Job Discovery uses `gpt-5-nano`, independently of the application's general `AI_MODEL_FAST` setting. Job Discovery explicitly defaults to `JOB_DISCOVERY_AI_REASONING_EFFORT=minimal` because requirement extraction is a latency-sensitive classification task, and it reserves a separate `JOB_DISCOVERY_AI_MAX_OUTPUT_TOKENS=4800` budget so internal reasoning cannot consume the entire structured-output allowance. These values remain configurable without changing the resume workflow's token limits.
 
 1. `ResumeAI.analyze_job(description, title)` extracts structured requirements.
 2. Each requirement is matched only to candidate-owned Career Profile records and candidate-confirmed or document-verified Evidence Library records.
@@ -394,26 +440,60 @@ Deleting the linked application removes this duplicate-prevention link. It does 
 ### Administrator refresh of the shared catalog
 
 The dedicated Job Discovery page provides **Refresh jobs for everyone** only to
-administrators and configured Job Catalog Managers. It submits a CSRF-protected
-POST request to `/applications/discovery/refresh` and runs one central catalog
-scan in that explicit web request. The refresh:
+administrators and configured Job Catalog Managers. The browser submits one
+CSRF-protected request per enabled company to
+`/applications/discovery/refresh/source` and displays live progress. It does not
+hold one gateway request open while dozens of external career sites are scanned.
+Each Company Sources card can call that same endpoint through **Scan this source**,
+while the legacy `/applications/discovery/refresh` form route remains as a
+no-JavaScript fallback and intentionally refreshes only one company per submission.
 
-1. verifies the actor has catalog-management permission;
-2. loads enabled `CompanySource` records owned by the built-in shared catalog;
-3. fetches and normalizes public postings through the configured source adapters;
+The progressive refresh:
+
+1. verifies the actor has catalog-management permission for every request;
+2. loads one enabled `CompanySource` owned by the built-in shared catalog;
+3. reuses a fresh shared catalog or fetches and normalizes that company's public postings;
 4. synchronizes the shared public catalog without using any individual user's profile;
-5. publishes the collected postings for every user to browse; and
-6. preserves each user's private filters, saved/ignored state, fit snapshots, and Application Workspaces.
+5. publishes the collected postings for every user to browse;
+6. continues to the next company even when one source reports an issue; and
+7. preserves each user's private filters, saved/ignored state, fit snapshots, and Application Workspaces.
+
+Interactive Workday requests retain their listing/detail/deadline limits. Manual
+JSON-LD requests are temporarily limited to three pages, four-second requests,
+and short request spacing. These temporary limits do not change the saved source
+configuration, and the external scheduler can still perform complete scans.
+The progress panel supports stopping after the current company. Restarting is
+safe because recently refreshed sources are reused from the shared catalog.
 
 The page shows the number of centrally enabled sources and the latest successful
 catalog check time. If no source is enabled, the action returns a visible warning
 and performs no network or AI work. Ordinary users cannot invoke source CRUD,
 scheduling, or refresh routes even by sending those requests directly.
 
-Fit analysis remains user-specific. Opening **View analysis** assesses the already
-materialized posting against that user's verified Career Profile and Evidence
-Library without fetching the company source again. Unchanged analysis and fit
-snapshots are reused.
+### User-specific assessment of collected postings
+
+Collection and assessment are intentionally separate. Every signed-in user can
+choose **Assess pending jobs for me** beneath the shared-catalog refresh action.
+The browser calls `/applications/discovery/assess/pending` repeatedly in bounded
+batches, without fetching any employer site. Each request scores only postings
+that are still eligible, active, visible under mandatory preferences, and missing
+a fit snapshot for the current Career Profile fingerprint.
+
+One click assesses up to 25 postings by default, then reloads the page so the user
+can immediately see **Recommended**, **Possible matches**, and **Low matches**.
+The limit can be changed with
+`CAREER_BRIDGE_DISCOVERY_ASSESSMENT_RUN_LIMIT` (maximum 100). Individual HTTP
+requests process exactly one posting. This keeps each AI-backed response below
+the web gateway timeout while the browser still continues through up to 25 jobs.
+`JOB_DISCOVERY_AI_TIMEOUT_SECONDS` defaults to 20 seconds and is bounded between
+5 and 25 seconds; Job Discovery uses one provider attempt per posting. A slow or
+failing posting is isolated, reported in the progress panel, skipped for the rest
+of the current run, and can be retried later without losing completed assessments.
+
+Fit analysis remains user-specific. Opening **View analysis** can still assess one
+already-materialized posting on demand against that user's verified Career Profile
+and Evidence Library without fetching the company source again. Unchanged analysis
+and fit snapshots are reused.
 
 No scheduler, worker thread, or timer runs inside Flask or Gunicorn.
 
@@ -467,11 +547,35 @@ Keeping scheduling external prevents duplicate scans across Gunicorn workers,
 missed schedules during web redeployment, and coupling scan ownership to one
 container instance.
 
+
+## Page-load timing diagnostics
+
+Every `GET /applications/job-discovery` response includes a `Server-Timing`
+header so the browser network panel can show where server time was spent. The
+metrics are prefixed with `jd_` and cover request context, workflow and reusable
+profile loading, company-source and preference reads, candidate-profile
+construction, materialized result-index access, template rendering, workflow
+persistence, and the complete request total.
+
+The server also writes one structured timing log per page request. It contains
+the request reference, results/settings view, HTTP status, a hashed owner scope,
+result-index state, total duration, and each phase duration. Requests at or above
+`CAREER_BRIDGE_JOB_DISCOVERY_SLOW_REQUEST_MS` are logged at warning level; the
+default threshold is `1000` milliseconds. Faster requests are logged at info
+level. No user email address or raw owner identifier is written to this timing
+log.
+
+Example response header:
+
+```text
+Server-Timing: jd_context;dur=1.25;desc="Request context", jd_result_index;dur=8.40;desc="Result index read", jd_total;dur=24.73;desc="Job Discovery total"
+```
+
 ## Required discovery test coverage
 
 The discovery suite includes explicit tests for:
 
-- one shared `JobSource` connector contract across Greenhouse, Lever, Ashby, Workday, and fixture-based generic JSON-LD pages;
+- one shared `JobSource` connector contract across Greenhouse, Lever, Ashby, Workday, SAP SuccessFactors, Oracle Cloud HCM, iCIMS, and fixture-based generic JSON-LD pages;
 - normalization across the different public source formats;
 - deduplication by source identity, canonical URL, and content fingerprint;
 - changed-description reanalysis and unchanged-description/profile cache reuse;
@@ -493,3 +597,73 @@ python -m unittest -v \
   tests.unit.test_job_discovery_application_conversion \
   tests.integration.test_job_discovery_flask_persistence
 ```
+
+
+### SAP SuccessFactors source
+
+Choose **SAP SuccessFactors** and paste the employer's public career-site URL. The ATS site identifier is optional. The connector supports SAP-hosted Career Site Builder domains such as `*.jobs.hr.cloud.sap`, older `jobs2web.com` sites, and employer-owned custom domains. It normalizes root and `/search/` URLs to one shared-catalog identity, follows bounded public search pagination, extracts schema.org `JobPosting` data from detail pages, and defers excess detail requests during interactive refreshes to remain below the gateway timeout. No tenant credentials or authenticated SuccessFactors APIs are used.
+
+### Oracle Cloud HCM source
+
+Choose **Oracle Cloud HCM** and paste the employer's public Candidate Experience jobs page, for example `https://careers.oracle.com/en/sites/jobsearch/jobs` or `https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs`. The ATS site identifier is not used. The URL is normalized to the site's jobs collection so a jobs URL and a job-detail URL share one public-catalog identity. The connector first requests the bounded, unauthenticated Candidate Experience requisition collection and detail resources used by the career site. Oracle labels those CE resources as internal-use interfaces, so the connector treats them as a best-effort public-site contract rather than a supported customer integration. It sends the configured language, keeps all requests on the exact configured hostname, observes robots policy, and limits pages, records, detail requests, response sizes, redirects, request rate, and browser refresh time. Older deployments or vanity domains that do not expose those resources fall back to public HTML, embedded Oracle job records, and schema.org `JobPosting` data.
+
+
+### iCIMS source
+
+Choose **iCIMS** and paste the employer's public iCIMS jobs page, for example `https://careers-company.icims.com/jobs/search`. The ATS site identifier is not used. Classic portals and newer branded paths are normalized to a stable listing URL, and equivalent listing/job URLs share the public catalog when the listing path can be derived. The connector observes robots policy, stays on the exact configured `icims.com` hostname, follows bounded pagination, and extracts public listing-card fields plus schema.org `JobPosting` detail data. Interactive refreshes use the same temporary page, job, detail-request, timeout, and overall fetch-budget limits as the other URL-driven connectors.
+
+
+### SmartRecruiters source
+
+Choose **SmartRecruiters** and paste a public company career page such as `https://careers.smartrecruiters.com/ServiceNow`. The connector derives the company identifier and uses SmartRecruiters' unauthenticated public postings endpoints for bounded listing and detail retrieval. It maps public descriptions, qualifications, locations, employment type, department, dates, compensation when exposed, and apply URLs. No customer token or candidate API is used.
+
+### Avature source
+
+Choose **Avature** and paste a public hosted career-site URL such as `https://careers.avature.net/en_US/main/SearchJobs`. The connector normalizes dashboard, search, feed, and job-detail URLs to one site identity, reads the public search feed with bounded offsets, and enriches jobs from same-host public detail pages and schema.org `JobPosting` data. It does not use tenant credentials.
+
+### Eightfold source
+
+Choose **Eightfold** and paste either the standard public career URL, commonly `https://app.eightfold.ai/careers?domain=<company-domain>`, or an employer-owned Eightfold vanity URL such as `https://careers.costco.com/jobs`. Standard URLs preserve the public domain selector. Vanity job, category, location, and localized URLs normalize to the same employer-owned `/jobs` or `/careers` catalog, and every request remains restricted to that exact hostname. The connector parses public embedded position data and job links, follows bounded pagination, and enriches same-host public job pages. Eightfold's authenticated platform API is not used.
+
+### Taleo source
+
+Choose **Taleo** and paste a public Oracle Taleo Enterprise career-section URL containing `/careersection/<section>/`, such as `https://company.taleo.net/careersection/external/jobsearch.ftl`. Direct `jobdetail.ftl` URLs are normalized to the career section's search page. Discovery stays on the configured Taleo hostname, honors robots policy, and extracts public job links plus structured detail data.
+
+### Dayforce source
+
+Choose **Dayforce** and paste a public Dayforce Job Board URL such as `https://jobs.dayforcehcm.com/en-US/company/CAREERS`. The connector parses the public career portal and embedded structured job data with bounded pagination and detail retrieval. It does not use the authenticated Dayforce `JobFeeds` web service or require customer credentials.
+
+### Talemetry / TTC Portals source
+
+Choose **Talemetry / TTC Portals** and paste a public TalentTech/Talemetry Career Sites URL on `*.ttcportals.com`, such as `https://companycareers.ttcportals.com/search/jobs`. Root URLs, filtered search URLs, `/jobs/search`, and individual `/jobs/<job-id>-<slug>` links are normalized to the company's public jobs listing.
+
+The connector reads the platform's paged public JSON listing at `/search/jobs.json?page=<n>` using an `application/json` request and the tenant's `/jobs` page as the referrer. It uses `talemetry_job_id` as the durable external ID, stores title and location directly from the listing envelope, and enriches a bounded number of jobs from the canonical detail pages. TTC defaults to one request per second, at most 50 listing pages, and ten detail-page enrichments per refresh unless the source explicitly overrides those limits. Remaining postings are still stored and can receive full descriptions through the existing on-demand detail lookup.
+
+Some TTC edge configurations return HTTP 403 to server-side listing and detail requests. When that happens, the connector does not retry with browser impersonation or ignore the response. For **First Tech Federal Credit Union**, Career Bridge first reads the fixed, allow-listed employer page on the Partners in Diversity Career Center. That page publishes First Tech's current job links, posting metadata, and full descriptions as ordinary public HTML, so the normal refresh path no longer depends on OpenAI hosted search. The saved company source remains the official `firsttechfedcareers.ttcportals.com` Talemetry/TTC source; no deletion or recreation is required. Syndicated records are tagged `verified_employer_syndication`, constrained to `jobs.partnersindiversity.org`, and treated as a **partial scan** so a short publication delay cannot deactivate previously collected jobs. The fallback is enabled by default and can be disabled globally with `JOB_DISCOVERY_VERIFIED_SYNDICATION_FALLBACK=false` or per source with `verified_syndication_fallback=false`.
+
+For other blocked TTC tenants, the domain-restricted hosted search fallback still accepts only exact official `/jobs/<numeric-id>-<slug>` URLs on the **same configured TTC hostname** and stores compact indexed metadata for confirmed open postings: title, location, posting date, and a factual role/requirements summary. It does not immediately reopen blocked detail URLs. A deterministic title derived from the official URL slug is used only when the hosted index omits a title. Indexed discovery is also marked as a partial scan. It can be disabled globally with `JOB_DISCOVERY_INDEXED_SEARCH_FALLBACK=false` or per source with `indexed_search_fallback=false`.
+
+### UKG Pro / UltiPro source
+
+Choose **UKG Pro / UltiPro** and paste the public JobBoard URL, such as `https://recruiting2.ultipro.com/WAS1000WTB/JobBoard/cb002c76-8419-4941-9c78-d28ae4e9c89e`. The connector extracts the tenant code and board UUID, calls the public `JobBoardView/LoadSearchResults` endpoint with bounded `Top`/`Skip` pagination, and enriches selected records from the public `OpportunityDetail?opportunityId=...` page. It supports `recruiting.ultipro.com`, numbered recruiting hosts such as `recruiting2.ultipro.com`, and equivalent `.ultipro.ca` recruiting hosts.
+
+The integration uses only public candidate-facing pages, requires no UKG customer credentials, respects `robots.txt`, and applies the same hostname, redirect, timeout, response-size, rate-limit, and browser refresh limits as other URL-driven connectors. If a board blocks or changes the listing request, the source scan records the exact issue message and may fall back to public HTML or JSON-LD exposed by that same board.
+
+### PeopleAdmin source
+
+Choose **PeopleAdmin** and paste a public board URL such as `https://unc.peopleadmin.com/postings/search`, an individual posting such as `https://unc.peopleadmin.com/postings/123456`, or an institution-branded board such as `https://jobs.hrc.pdx.edu/`. The connector normalizes these forms to `/postings/search`, follows bounded `page=` pagination, extracts public posting links under `/postings/<numeric-id>`, and enriches them from the public detail page.
+
+Choose **Radancy / TalentBrew** and paste an employer-branded public career URL such as `https://jobs.boeing.com/search-jobs`, a filtered location/category page, or an individual job URL such as `https://example.com/job/portland/data-engineer/123/987654321`. The connector normalizes the URL to the same-host `/search-jobs` page (preserving a locale prefix such as `/en/`), follows bounded pagination, and enriches each posting from its public detail page.
+
+### Amazon Jobs source
+
+Choose **Amazon Jobs** and paste an official URL such as `https://www.amazon.jobs/en/search?country=USA` or an individual posting under `https://www.amazon.jobs/en/jobs/<job-id>/<slug>`. The connector canonicalizes these forms to the official locale search page, retains public filters such as country or region, pages through recent public results with bounded offsets, and retrieves full descriptions from the corresponding official job pages. This is a company-specific connector for Amazon’s corporate career catalog; it does not cover internal employee postings or the separate `hiring.amazon.com` hourly workflow.
+
+PeopleAdmin is commonly used by higher-education institutions, but the connector is intentionally limited to candidate-facing pages. When `robots.txt` blocks only the configured listing route, the connector can use OpenAI's hosted web-search index to discover official detail URLs on the **exact configured career-site hostname**. The application does not directly request the blocked `/postings/search` route. Instead, the first hosted-search strategy reads the search provider's indexed copy of that exact official listing page; a second compact `site:<host>` query runs only when the indexed listing is thin or temporarily unavailable. Career Bridge accepts only `/postings/<numeric-id>` URLs and still performs the normal robots check before reading each detail page. Indexed discovery is explicitly marked as a **partial scan**, so previously collected jobs are preserved instead of being deactivated merely because a search index did not return every posting. If the index is unavailable, returns no official URLs, or the detail pages are also blocked, Discovery retains cached jobs and reports the bounded fallback issue.
+
+The fallback is enabled by default when `OPENAI_API_KEY` is present. Set `JOB_DISCOVERY_INDEXED_SEARCH_FALLBACK=false` to disable it globally, or set the source filter `indexed_search_fallback=false` for a specific board. `JOB_DISCOVERY_WEB_SEARCH_MODEL` defaults to `gpt-5-mini`. `JOB_DISCOVERY_WEB_SEARCH_TIMEOUT_SECONDS` is a total two-strategy budget that defaults to 50 seconds and is bounded to at least 45 seconds, so an older deployed value of 20 seconds no longer causes both hosted-search attempts to expire prematurely. `JOB_DISCOVERY_WEB_SEARCH_ATTEMPTS` defaults to two and is capped at two. `indexed_search_max_results` can cap results for a specific source. Each hosted-search request uses low search context, minimal reasoning, at most two tool calls for the direct indexed-listing strategy and one for the secondary site search. The connector stays on the exact configured hostname, ignores application and `pre_apply` routes, applies the standard redirect, response-size, request-rate, and interactive-refresh limits, and requires no PeopleAdmin customer credentials. Equivalent root, search, and detail URLs share one public-catalog identity.
+
+
+### Branded Requisition Portal source
+
+Choose **Branded Requisition Portal** for a public employer career site whose visible listing is available at `/search-jobs`, whose secondary public feed is available at `/api/requisitions/search`, and whose posting details use `/job/<id>/<slug>`. For Heritage Bank, use `https://careers.heritagebanknw.com/search-jobs`. The connector scans the visible HTML listing first, retries transient failures with bounded delays in the external runner, falls back to the public requisition endpoint, preserves the latest successful catalog on failure, and retrieves full public descriptions without accessing candidate accounts.

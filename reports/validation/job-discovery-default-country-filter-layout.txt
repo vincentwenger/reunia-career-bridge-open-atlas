@@ -1,0 +1,13 @@
+JOB DISCOVERY DEFAULT COUNTRY AND FILTER LAYOUT VALIDATION
+
+Implemented
+- Public Job Discovery defaults Country to United States on the first visit.
+- An explicitly selected All countries value remains supported and is not overwritten.
+- Match filters are separated from Location and order controls.
+- Desktop controls use balanced rows; tablet and mobile layouts reflow cleanly.
+- U.S. state is enabled only when Country is United States and is cleared for other countries.
+
+Validation
+- JavaScript syntax check: passed.
+- Python compile check: passed.
+- Job Discovery test suite: 144 passed, 1 skipped, 16 subtests passed.

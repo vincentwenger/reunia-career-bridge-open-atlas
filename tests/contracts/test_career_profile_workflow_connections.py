@@ -3,7 +3,11 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from career_bridge.profile_context import ReusableCareerProfile
+from career_bridge.profile_context import (
+    ReusableCareerProfile,
+    text_not_already_in_profile,
+    values_not_already_in_profile,
+)
 from job_discovery.ranking import CandidateJobProfile
 from products.resume_taylor.resume_tailor.interview_preparation import (
     VerifiedEvidenceBundle,
@@ -21,6 +25,8 @@ from products.resume_taylor.resume_tailor.resume_findings import ResumeFindingsS
 
 ROOT = Path(__file__).resolve().parents[2]
 APP_SOURCE = ROOT / "products/resume_taylor/app.py"
+BUILDER_TEMPLATE = ROOT / "products/resume_taylor/templates/application_builder/index.html"
+CAREER_TRANSLATION_TEMPLATE = ROOT / "products/resume_taylor/templates/application_builder/career_translation.html"
 MOCK_SOURCE = ROOT / "products/reunia/meeting_assistant/services/mock_interview_service.py"
 LIVE_QA_SOURCE = ROOT / "products/reunia/meeting_assistant/services/live_qa_service.py"
 KNOWLEDGE_SEARCH_SOURCE = ROOT / "products/reunia/meeting_assistant/services/knowledge_search_service.py"
@@ -94,6 +100,47 @@ class CareerProfileWorkflowConnectionTests(unittest.TestCase):
         self.assertIn("French engineering degree", background.international_credentials)
         self.assertEqual(self.profile.fingerprint, background.career_profile_fingerprint)
         self.assertTrue(background.has_context())
+
+    def test_application_context_only_keeps_values_missing_from_profile(self) -> None:
+        self.assertEqual(
+            ["Singapore", "Insurance"],
+            values_not_already_in_profile(
+                ["France", "Singapore", "Banking", "Insurance"],
+                ["France", "Banking"],
+            ),
+        )
+        self.assertEqual(
+            "",
+            text_not_already_in_profile(
+                "Eight years in U.S. financial technology",
+                "Eight years in U.S. financial technology",
+            ),
+        )
+        self.assertEqual(
+            "Additional U.S. banking context",
+            text_not_already_in_profile(
+                "Additional U.S. banking context",
+                "Eight years in U.S. financial technology",
+            ),
+        )
+
+    def test_career_translation_is_reusable_and_does_not_repeat_profile_fields(self) -> None:
+        source = CAREER_TRANSLATION_TEMPLATE.read_text(encoding="utf-8")
+        self.assertIn("Career Foundation · One-time setup", source)
+        self.assertIn("A job description is not needed here", source)
+        self.assertNotIn("Connected Career Profile", source)
+        self.assertNotIn("Reusable career context", source)
+        self.assertNotIn("Update Career Profile", source)
+        self.assertNotIn("reusable_career_profile", source)
+        self.assertIn("Target country", source)
+        self.assertNotIn('name="job_description"', source)
+        self.assertNotIn('id="job-description"', source)
+
+        builder_source = BUILDER_TEMPLATE.read_text(encoding="utf-8")
+        self.assertIn("application-specific exceptions", builder_source)
+        self.assertIn("Target country for this application", builder_source)
+        self.assertIn("career_background_additions.countries_worked", builder_source)
+        self.assertNotIn(">Countries where you worked<", builder_source)
 
     def test_job_discovery_uses_preferences_without_unverified_evidence(self) -> None:
         resume = CandidateProfile(

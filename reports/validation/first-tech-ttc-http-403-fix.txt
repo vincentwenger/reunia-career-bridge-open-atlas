@@ -1,0 +1,56 @@
+First Tech Talemetry/TTC HTTP 403 fix
+=====================================
+
+Problem
+-------
+The saved First Tech source correctly uses:
+https://firsttechfedcareers.ttcportals.com/search/jobs
+
+The TTC tenant returns HTTP 403 to the Career Bridge server for both the paged
+JSON listing and, in some deployments, individual detail pages. The first
+fallback discovered official indexed URLs but then discarded all of them when
+the same server could not reopen those URLs, producing:
+"Indexed URLs were found, but no official detail page was readable."
+
+Root cause
+----------
+The indexed-search result was treated only as URL discovery. Career Bridge still
+required a second direct HTTP request to obtain the title. In production, some
+OpenAI web-search responses exposed the official URL in source annotations but
+did not repeat the exact URL/title pair in the model JSON. The direct TTC detail
+request then returned 403, leaving the candidate without a title and causing it
+to be skipped.
+
+Changes
+-------
+1. Hosted indexed search now returns and validates compact posting metadata:
+   URL, title, location, posting date, factual role/requirements summary, and
+   active status.
+2. Results are restricted to HTTPS, the exact configured TTC hostname, and the
+   connector's official numeric job-detail URL pattern.
+3. Explicitly closed/expired/inactive results are rejected.
+4. When the JSON listing returns 403, the TTC connector creates partial job
+   records directly from indexed metadata and sets detail_fetch_limit=0. It no
+   longer reopens detail pages that are known to be blocked from the server.
+5. If the provider returns only URL source annotations, a deterministic title is
+   derived from the official URL slug. This prevents valid exact-host results
+   from disappearing solely because the title field was omitted.
+6. Indexed records are tagged discovery_mode=indexed_metadata_fallback,
+   detail_status=indexed (or indexed_summary_missing), and scan_completeness=partial.
+7. Partial scans preserve previously collected active jobs instead of marking
+   them missing or inactive.
+8. The direct TTC JSON and HTML paths remain preferred whenever they are readable.
+
+Safety and scope
+----------------
+- No browser impersonation, CAPTCHA solving, proxy rotation, TLS-fingerprint
+  spoofing, or Cloudflare bypass was added.
+- Exact-host SSRF restrictions, redirect limits, timeouts, response limits, rate
+  controls, and no-auto-apply behavior remain enforced.
+- The change applies to Talemetry/TTC sources generally and requires no manual
+  deletion or recreation of the saved First Tech company source.
+
+Validation
+----------
+Focused indexed-search, Talemetry/TTC, and PeopleAdmin tests passed.
+Full suite: 483 passed, 36 skipped, 149 subtests passed.
