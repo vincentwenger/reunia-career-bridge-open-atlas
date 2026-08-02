@@ -15,13 +15,12 @@
 >
     {{ page_hero(
         'Career Action Plan',
-        'Turn resume gaps, evidence findings, interview feedback, upcoming interviews, and follow-up dates into an application-specific plan.'
+        'See the next actions, deadlines, and follow-ups for each job application.'
     ) }}
 
     <section class="action-command-bar" aria-label="Career Action Plan controls">
         <div class="action-command-copy">
-            <span class="action-command-kicker">Application-linked execution</span>
-            <strong>Know what to do next for every job application.</strong>
+            <strong>Next actions</strong>
             <span id="action-storage-status">Building your plan from Career Bridge data…</span>
         </div>
         <button class="action-primary-button" id="add-action-button" type="button">
@@ -49,24 +48,24 @@
         </button>
     </section>
 
-    <section class="action-application-overview" aria-labelledby="action-application-overview-title">
+    <details class="action-application-overview" aria-labelledby="action-application-overview-title">
+        <summary>
+            <span id="action-application-overview-title">Application priorities</span>
+            <span>View applications</span>
+        </summary>
         <header>
-            <div>
-                <span class="action-section-kicker">Application priorities</span>
-                <h2 id="action-application-overview-title">Your job applications</h2>
-            </div>
+            <p>Review action urgency by application.</p>
             <a class="action-secondary-link" href="/applications/?tab=applications">Manage applications</a>
         </header>
         <div class="action-application-strip" id="action-application-strip" aria-live="polite">
             <div class="action-application-placeholder">Loading applications…</div>
         </div>
-    </section>
+    </details>
 
     <section class="action-workspace">
         <header class="action-workspace-header">
             <div>
-                <span class="action-section-kicker">Career actions</span>
-                <h2>Application action plan</h2>
+                <h2>Actions</h2>
                 <p id="action-results-summary" aria-live="polite">Loading actions…</p>
             </div>
             <div class="action-view-toggle" role="group" aria-label="Quick views">

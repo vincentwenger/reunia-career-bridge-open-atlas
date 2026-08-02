@@ -8,19 +8,15 @@
 
 {% if preparation_view == 'materials' %}
     {% set page_title = 'Application Materials' %}
-    {% set page_eyebrow = 'Interview Preparation' %}
     {% set page_description = 'Choose library files or temporary documents for this application.' %}
 {% elif preparation_view == 'context' %}
     {% set page_title = 'Career Profile' %}
-    {% set page_eyebrow = 'Interview Preparation' %}
     {% set page_description = 'Store professional background, accomplishments, preferences, and constraints used across applications.' %}
 {% elif preparation_view == 'search' %}
     {% set page_title = 'Interview Preparation' %}
-    {% set page_eyebrow = 'Selected job application' %}
     {% set page_description = 'Prepare for the company, target role, interviewers, and likely questions using verified career evidence.' %}
 {% else %}
     {% set page_title = 'Career Evidence Library' %}
-    {% set page_eyebrow = 'Interview Preparation' %}
     {% set page_description = 'Upload verified projects, achievements, work samples, and career documents.' %}
 {% endif %}
 
@@ -71,7 +67,6 @@
     <header class="page-hero knowledge-hero">
         <div class="page-hero-layout">
             <div class="page-hero-copy">
-                <p class="knowledge-hero-eyebrow">{{ page_eyebrow }}</p>
                 <h1>{{ page_title }}</h1>
                 <p>{{ page_description }}</p>
             </div>
@@ -88,7 +83,7 @@
                 </a>
                 {% elif preparation_view == 'context' %}
                 <span class="context-button-status" id="contextStatusBadge">Optional</span>
-                <button class="btn knowledge-hero-button knowledge-hero-button-primary" type="submit" form="assistantContextForm">
+                <button class="btn knowledge-hero-button knowledge-hero-button-primary" id="saveContextButton" type="submit" form="assistantContextForm" disabled aria-disabled="true">
                     Save Career Profile
                 </button>
                 {% else %}
@@ -151,19 +146,14 @@
                     New Collection
                 </button>
 
-                <div class="library-help-card">
-                    <strong>Permanent storage</strong>
-                    <p>Files in this library can be reused across job applications and selected from Application Materials.</p>
-                </div>
             </aside>
 
             <main class="knowledge-main">
                 <section class="files-panel" aria-labelledby="documentLibraryTitle">
                     <div class="files-panel-header">
                         <div>
-                            <p class="section-eyebrow">Career evidence</p>
-                            <h2 id="documentLibraryTitle">My Documents</h2>
-                            <p id="selectedCollectionDescription">All permanent files in your document library</p>
+                            <h2 id="documentLibraryTitle">Documents</h2>
+                            <p id="selectedCollectionDescription">Reusable files available across job applications</p>
                         </div>
                     </div>
 
@@ -413,27 +403,22 @@
         <form id="assistantContextForm">
             <div class="context-layout career-profile-layout">
                 <main class="context-main-column">
-                    <section class="workspace-card career-profile-intro-card" aria-labelledby="aiContextTitle">
-                        <div class="workspace-card-header context-card-heading">
-                            <div>
-                                <p class="section-eyebrow">Reusable career foundation</p>
-                                <h2 id="aiContextTitle">Your professional profile</h2>
-                                <p>Enter information that stays true across job applications. Target companies, job postings, interviewers, and application-specific instructions belong in the Application Workspace.</p>
-                            </div>
-                            <label class="context-enabled">
-                                <input type="checkbox" id="useAssistantContext" name="use_context" value="true" {% if assistant_context_enabled | default(true) %}checked{% endif %}>
-                                <span>Use this profile in Career Bridge AI features</span>
-                            </label>
+                    <div class="career-profile-control-bar" aria-labelledby="aiContextTitle">
+                        <div>
+                            <h2 id="aiContextTitle">Reusable professional information</h2>
+                            <p>Keep only details that apply across job applications.</p>
                         </div>
-                    </section>
+                        <label class="context-enabled">
+                            <input type="checkbox" id="useAssistantContext" name="use_context" value="true" {% if assistant_context_enabled | default(true) %}checked{% endif %}>
+                            <span>Use in Career Bridge</span>
+                        </label>
+                    </div>
 
-                    <section class="workspace-card career-profile-section" aria-labelledby="professionalIdentityTitle">
-                        <div class="workspace-card-header">
-                            <div>
-                                <h2 id="professionalIdentityTitle">Professional identity</h2>
-                                <p>Used to understand your level, professional direction, and the roles and industries that fit your background.</p>
-                            </div>
-                        </div>
+                    <details class="workspace-card career-profile-section" open>
+                        <summary class="career-profile-section-summary">
+                            <span><strong id="professionalIdentityTitle">Professional identity</strong><small>Your role, experience, location, industries, and target roles.</small></span>
+                            <i aria-hidden="true">+</i>
+                        </summary>
                         <div class="form-grid context-form-grid">
                             <label class="form-field context-full-width-field">
                                 <span>Professional headline</span>
@@ -466,15 +451,13 @@
                                 <small>Used later for job discovery, fit ranking, career translation, and interview preparation.</small>
                             </label>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="workspace-card career-profile-section" aria-labelledby="skillsEvidenceTitle">
-                        <div class="workspace-card-header">
-                            <div>
-                                <h2 id="skillsEvidenceTitle">Skills and career evidence</h2>
-                                <p>Capture reusable strengths. Detailed proof, documents, and source records should still be stored in the Career Evidence Library.</p>
-                            </div>
-                        </div>
+                    <details class="workspace-card career-profile-section">
+                        <summary class="career-profile-section-summary">
+                            <span><strong id="skillsEvidenceTitle">Skills and career evidence</strong><small>Reusable strengths and verified achievements.</small></span>
+                            <i aria-hidden="true">+</i>
+                        </summary>
                         <div class="form-grid context-form-grid">
                             <label class="form-field context-full-width-field">
                                 <span>Core skills, tools, and domain knowledge</span>
@@ -487,15 +470,13 @@
                                 <small>Used to identify relevant evidence for resumes and interviews; it is not treated as verified unless supported by your records.</small>
                             </label>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="workspace-card career-profile-section" aria-labelledby="internationalBackgroundTitle">
-                        <div class="workspace-card-header">
-                            <div>
-                                <h2 id="internationalBackgroundTitle">International career background</h2>
-                                <p>Used by the Baseline Resume workflow to explain unfamiliar titles, credentials, terminology, and experience across countries.</p>
-                            </div>
-                        </div>
+                    <details class="workspace-card career-profile-section">
+                        <summary class="career-profile-section-summary">
+                            <span><strong id="internationalBackgroundTitle">International career background</strong><small>Countries, languages, credentials, and terminology.</small></span>
+                            <i aria-hidden="true">+</i>
+                        </summary>
                         <div class="form-grid context-form-grid">
                             <label class="form-field">
                                 <span>Countries where you have worked</span>
@@ -507,7 +488,16 @@
                             </label>
                             <label class="form-field">
                                 <span>Target country or job market</span>
-                                <input type="text" id="profileTargetCountry" name="target_country" value="{{ assistant_context_target_country | default('') }}" placeholder="Example: United States">
+                                {% set selected_target_country = assistant_context_target_country | default('') %}
+                                <select id="profileTargetCountry" name="target_country">
+                                    <option value="" {% if not selected_target_country %}selected{% endif %}>Select a country</option>
+                                    {% if selected_target_country and selected_target_country not in country_options %}
+                                        <option value="{{ selected_target_country }}" selected>{{ selected_target_country }} (current value)</option>
+                                    {% endif %}
+                                    {% for country in country_options %}
+                                        <option value="{{ country }}" {% if selected_target_country == country %}selected{% endif %}>{{ country }}</option>
+                                    {% endfor %}
+                                </select>
                                 <small>The market where your background needs to be understood and translated.</small>
                             </label>
                             <label class="form-field">
@@ -532,15 +522,13 @@
                                 <textarea id="profileCareerTransition" name="career_transition" rows="4" placeholder="Explain any career change, employment gap, return to work, or transition between countries that should be interpreted carefully.">{{ assistant_context_career_transition | default('') }}</textarea>
                             </label>
                         </div>
-                    </section>
+                    </details>
 
-                    <section class="workspace-card career-profile-section" aria-labelledby="preferencesConstraintsTitle">
-                        <div class="workspace-card-header">
-                            <div>
-                                <h2 id="preferencesConstraintsTitle">Career preferences and constraints</h2>
-                                <p>Used to avoid recommendations that do not fit your practical circumstances or longer-term direction.</p>
-                            </div>
-                        </div>
+                    <details class="workspace-card career-profile-section">
+                        <summary class="career-profile-section-summary">
+                            <span><strong id="preferencesConstraintsTitle">Career preferences and constraints</strong><small>Work arrangement, relocation, authorization, goals, and limits.</small></span>
+                            <i aria-hidden="true">+</i>
+                        </summary>
                         <div class="form-grid context-form-grid">
                             <label class="form-field">
                                 <span>Work arrangement preferences</span>
@@ -569,29 +557,23 @@
                                 <textarea id="profileConstraints" name="constraints" rows="4" placeholder="Example: travel limits, schedule constraints, industries to avoid, confidentiality considerations, or accessibility needs">{{ assistant_context_constraints | default('') }}</textarea>
                             </label>
                         </div>
-                    </section>
+                    </details>
                 </main>
 
                 <aside class="context-preview-card career-profile-summary-card" aria-labelledby="effectiveContextTitle">
                     <div class="context-preview-header">
-                        <span class="context-preview-icon" aria-hidden="true">✦</span>
-                        <div>
-                            <p class="section-eyebrow">Reusable profile</p>
-                            <h2 id="effectiveContextTitle">Profile summary</h2>
-                        </div>
+                        <h2 id="effectiveContextTitle">Profile summary</h2>
                     </div>
                     <p class="context-preview-description">Review what Career Bridge will reuse across applications. Blank fields are simply ignored.</p>
                     <div class="context-preview-status" id="effectiveContextStatus">Profile is enabled</div>
                     <div class="context-preview-chips" id="effectiveContextChips"></div>
                     <dl class="context-preview-list" id="effectiveContextPreview"></dl>
-                    <div class="context-priority-note career-profile-usage-note">
-                        <strong>How this profile is intended to be used</strong>
-                        <span><b>Job Discovery:</b> preferred roles, industries, location, and work preferences.</span>
-                        <span><b>Baseline Resume:</b> countries, credentials, unfamiliar titles, languages, and transition context.</span>
-                        <span><b>Resume and interviews:</b> professional identity, skills, accomplishments, goals, and constraints.</span>
-                        <span>Target company, job posting, recruiter, and interview-specific details remain application-specific.</span>
-                    </div>
-                    <button class="btn btn-primary context-save-button" type="submit" id="saveContextButton" disabled aria-disabled="true">Save Career Profile</button>
+                    <details class="context-priority-note career-profile-usage-note">
+                        <summary>Where this information is used</summary>
+                        <span><b>Job Discovery:</b> roles, industries, location, and work preferences.</span>
+                        <span><b>Baseline Resume:</b> countries, credentials, titles, languages, and transition context.</span>
+                        <span><b>Applications and interviews:</b> identity, skills, accomplishments, goals, and constraints.</span>
+                    </details>
                 </aside>
             </div>
         </form>

@@ -1,0 +1,14 @@
+Version 213 consistent blue workspace validation
+
+Implemented:
+- Career Profile progressive disclosure and one save action
+- Career Evidence Library reduced guidance and decorative UI
+- Adaptive Mock Interview compact setup
+- Interview Review compact tabs/sidebar/cards
+- Career Action Plan compact metrics and collapsed application overview
+- Product-wide authenticated blue primary actions and dashboard/card styling
+
+Validation:
+- 537 tests passed
+- 36 optional dependency skips
+- Jinja parse passed for 46 templates

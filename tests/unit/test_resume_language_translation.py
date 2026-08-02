@@ -25,6 +25,7 @@ from products.resume_taylor.resume_tailor.resume_language import (
     restore_translation_protected_fields,
     resume_format_headings,
     resume_labels,
+    translated_profile_fingerprint,
     validate_translated_profile,
 )
 from products.resume_taylor.resume_tailor.models import JobAnalysis
@@ -308,6 +309,20 @@ class ResumeLanguageTranslationTests(unittest.TestCase):
         self.assertIsNotNone(restored.original_source_profile)
         self.assertIn("Ingénieure", restored.original_source_profile.current_summary)
         self.assertIn("Software engineer", restored.source_profile.current_summary)
+
+    def test_translation_fingerprint_changes_with_target_market(self) -> None:
+        profile = french_profile()
+        us_fingerprint = translated_profile_fingerprint(
+            profile, "English", "United States"
+        )
+        uk_fingerprint = translated_profile_fingerprint(
+            profile, "English", "United Kingdom"
+        )
+        self.assertNotEqual(us_fingerprint, uk_fingerprint)
+        self.assertEqual(
+            us_fingerprint,
+            translated_profile_fingerprint(profile, "en", "  United States  "),
+        )
 
     def test_career_translation_form_has_language_control_and_localized_resume_labels(self) -> None:
         for path in (BUILDER_TEMPLATE,):

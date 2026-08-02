@@ -142,3 +142,51 @@ Reduce visual and cognitive clutter while keeping every core workflow and admini
 - Dependency-light final integration checks pass.
 - Flask-backed and Playwright phases remain blocked only because Flask, Redis, OpenAI, xlrd, and browser runtime dependencies are unavailable in the execution image.
 
+
+## Version 213 follow-up — consistent compact blue workspaces
+
+### Shared visual direction
+
+- Retained navy blue as the structural product color and teal for active/progress states.
+- Consolidated authenticated primary buttons onto the shared navy-blue treatment instead of layering a second page-specific override.
+- Restored a blue gradient header to the simplified dashboard and added subtle blue structure to application, progress, and dashboard cards.
+- Kept orange available only as a secondary attention/deadline token rather than the normal workspace CTA.
+
+### Career Profile
+
+- Removed the redundant introductory card and kept one compact profile-enabled control.
+- Uses one Save Career Profile action instead of duplicate save buttons.
+- Keeps Professional identity open and places the three longer sections in expandable panels.
+- Simplified the Profile summary header and collapsed the detailed usage explanation.
+
+### Career Evidence Library
+
+- Removed the permanent-storage explanation card and redundant section eyebrow.
+- Simplified the main heading to Documents and removed decorative collection icons.
+- Uses the same pale-blue card headers, navy borders, and compact shadows as the rest of Career Bridge.
+
+### Adaptive Mock Interview
+
+- Shortened the page and setup explanations.
+- Removed the duplicate Open Application Builder shortcut.
+- Compacted interview-format choices into a two-column layout with blue selected states.
+- Standardized setup, question, and session surfaces with the shared blue system.
+
+### Interview Review
+
+- Shortened tabs to Summary, Scorecard, Transcript, and Ask AI.
+- Reduced the sidebar width and shortened its search and guidance text.
+- Replaced oversized rounded panels and shadows with the compact shared card treatment.
+
+### Career Action Plan
+
+- Reduced the command bar to status plus Add action.
+- Converted four large KPI cards into a compact summary row.
+- Collapsed the secondary application-priority overview.
+- Made the Actions table the primary page workspace and kept advanced filters collapsed.
+
+### Validation
+
+- Full discoverable suite: **537 passed, 36 optional dependency skips**.
+- All modified Jinja templates parse successfully.
+- New consistency contracts cover the five updated pages and the shared blue workspace treatment.

@@ -20,16 +20,18 @@
     data-loading-title="Building the Baseline Resume…"
     data-loading-message="The Imported Resume is being preserved while a destination-language baseline is generated."
     data-loading-steps="Reading the imported resume|Resolving the destination language|Translating resume content consistently|Checking for mixed-language sections|Saving the Baseline Resume"
-    data-loading-step-details="Extracting only documented resume facts.|Using the selected country and optional language override.|Translating resume content while preserving proper names.|Rejecting incomplete mixed-language output.|Keeping the baseline separate from job applications."
+    data-loading-step-details="Extracting only documented resume facts.|Using the Career Profile country and optional language override.|Translating resume content while preserving proper names.|Rejecting incomplete mixed-language output.|Keeping the baseline separate from job applications."
   >
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="return_to" value="career_translation">
 
+    <p class="caption career-translation-profile-source">
+      Target country from Career Profile:
+      <strong>{{ reusable_career_profile.target_country or 'Not set' }}</strong>
+      · <a class="text-link" href="/career-profile">Change in Career Profile</a>
+    </p>
+
     <div class="field-grid two career-translation-target-fields">
-      <div>
-        <label for="foundation-target-country">Target country</label>
-        <input id="foundation-target-country" name="target_country" value="{{ career_background.target_country }}" placeholder="United States" data-target-country>
-      </div>
       <div>
         <label for="foundation-resume-language">Resume language</label>
         <select id="foundation-resume-language" name="resume_language">
@@ -46,7 +48,7 @@
       <div>
         <label for="foundation-profile-file">Resume file</label>
         <input id="foundation-profile-file" type="file" name="profile_file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,.md,application/json,.json" {% if not state.profile_upload_name %}required{% endif %}>
-        <p class="caption">Leave blank to regenerate the existing resume after changing country or language.</p>
+        <p class="caption">Leave blank to regenerate the existing resume after changing the language or updating Career Profile.</p>
       </div>
     </div>
 

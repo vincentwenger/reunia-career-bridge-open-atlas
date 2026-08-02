@@ -2726,3 +2726,152 @@
 }
 
 /* Guided meeting flow */
+
+/* Career Bridge consistency pass: compact blue workspace styling. */
+.knowledge-page[data-active-view="context"] {
+    width: min(1220px, calc(100% - 48px));
+}
+
+.knowledge-page .page-hero {
+    margin-bottom: 18px;
+}
+
+.knowledge-page .collections-panel,
+.knowledge-page .files-panel,
+.knowledge-page .workspace-card,
+.knowledge-page .context-preview-card {
+    border-color: #d7e3ed;
+    border-radius: 15px;
+    box-shadow: 0 8px 24px rgba(20, 58, 90, 0.07);
+}
+
+.knowledge-page .collections-panel,
+.knowledge-page .files-panel-header,
+.knowledge-page .workspace-card-header,
+.knowledge-page .context-preview-header {
+    background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+}
+
+.knowledge-page .collections-panel {
+    padding: 15px 12px;
+}
+
+.knowledge-page .collection-icon {
+    display: none;
+}
+
+.knowledge-page .new-collection-button {
+    margin-top: 10px;
+}
+
+.career-profile-control-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 16px 18px;
+    border: 1px solid #cbddeb;
+    border-left: 4px solid var(--career-primary, #1d4e78);
+    border-radius: 14px;
+    background: var(--career-primary-soft, #eaf2f8);
+}
+
+.career-profile-control-bar h2 {
+    margin: 0;
+    color: var(--career-primary-dark, #143a5a);
+    font-size: 1rem;
+}
+
+.career-profile-control-bar p {
+    margin: 4px 0 0;
+    color: #5c7185;
+    font-size: .78rem;
+}
+
+.career-profile-section {
+    padding: 0;
+    overflow: hidden;
+}
+
+.career-profile-section > summary {
+    list-style: none;
+}
+
+.career-profile-section > summary::-webkit-details-marker {
+    display: none;
+}
+
+.career-profile-section-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 17px 19px;
+    cursor: pointer;
+    background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%);
+}
+
+.career-profile-section-summary span {
+    display: grid;
+    gap: 4px;
+}
+
+.career-profile-section-summary strong {
+    color: var(--career-primary-dark, #143a5a);
+    font-size: .96rem;
+}
+
+.career-profile-section-summary small {
+    color: #6b7f92;
+    font-size: .75rem;
+    line-height: 1.4;
+}
+
+.career-profile-section-summary i {
+    color: var(--career-primary, #1d4e78);
+    font-size: 1.25rem;
+    font-style: normal;
+    transition: transform .18s ease;
+}
+
+.career-profile-section[open] .career-profile-section-summary {
+    border-bottom: 1px solid #dce6ef;
+    background: var(--career-primary-soft, #eaf2f8);
+}
+
+.career-profile-section[open] .career-profile-section-summary i {
+    transform: rotate(45deg);
+}
+
+.career-profile-section > .context-form-grid {
+    margin: 0;
+    padding: 18px 19px 20px;
+}
+
+.career-profile-summary-card {
+    border-top: 4px solid var(--career-primary, #1d4e78);
+}
+
+.career-profile-summary-card .context-preview-header {
+    margin: -22px -22px 0;
+    padding: 17px 20px;
+    border-bottom: 1px solid #dce6ef;
+}
+
+.career-profile-usage-note > summary {
+    color: var(--career-primary, #1d4e78);
+    font-size: .75rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.career-profile-usage-note[open] > summary {
+    margin-bottom: 8px;
+}
+
+@media (max-width: 760px) {
+    .career-profile-control-bar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

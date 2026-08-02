@@ -131,8 +131,11 @@ class CareerProfileWorkflowConnectionTests(unittest.TestCase):
         self.assertNotIn("Connected Career Profile", source)
         self.assertNotIn("Reusable career context", source)
         self.assertNotIn("Update Career Profile", source)
-        self.assertNotIn("reusable_career_profile", source)
-        self.assertIn("Target country", source)
+        self.assertIn("Target country from Career Profile", source)
+        self.assertIn("Change in Career Profile", source)
+        self.assertIn("reusable_career_profile.target_country", source)
+        self.assertNotIn('name="target_country"', source)
+        self.assertNotIn('id="foundation-target-country"', source)
         self.assertNotIn('name="job_description"', source)
         self.assertNotIn('id="job-description"', source)
 

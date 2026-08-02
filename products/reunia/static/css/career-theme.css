@@ -4,7 +4,7 @@
  * 60% canvas: white and cool near-white surfaces keep document-heavy screens calm.
  * 30% anchor: navy/slate establishes credibility, privacy, and professional trust.
  * 10% action: teal/emerald communicates progress; warm orange is reserved for
- *             the most important user actions. Semantic colors remain distinct.
+ *             deadlines and attention states. Semantic colors remain distinct.
  */
 :root {
     color-scheme: light;
@@ -111,7 +111,7 @@ progress::-moz-progress-bar {
     background: linear-gradient(90deg, var(--career-teal), var(--career-emerald));
 }
 
-/* Orange is deliberately limited to primary, high-intent actions. */
+/* Navy is the consistent primary-action color across authenticated workspaces. */
 .button.primary,
 .btn-primary,
 .submit-btn,
@@ -127,10 +127,10 @@ progress::-moz-progress-bar {
 .mock-button-primary,
 .interview-generate-button,
 .application-builder-content .button.primary {
-    border-color: var(--career-cta) !important;
+    border-color: var(--career-primary) !important;
     color: #ffffff !important;
-    background: linear-gradient(135deg, var(--career-cta), #d05a18) !important;
-    box-shadow: 0 10px 24px rgba(194, 65, 12, 0.24) !important;
+    background: linear-gradient(135deg, var(--career-primary-dark), var(--career-primary-bright)) !important;
+    box-shadow: 0 8px 20px rgba(29, 78, 120, 0.20) !important;
 }
 
 .button.primary:hover:not(:disabled),
@@ -148,10 +148,10 @@ progress::-moz-progress-bar {
 .mock-button-primary:hover:not(:disabled),
 .interview-generate-button:hover:not(:disabled),
 .application-builder-content .button.primary:hover:not(:disabled) {
-    border-color: var(--career-cta-dark) !important;
+    border-color: var(--career-primary-dark) !important;
     color: #ffffff !important;
-    background: linear-gradient(135deg, var(--career-cta-dark), var(--career-cta)) !important;
-    box-shadow: 0 14px 30px rgba(154, 52, 18, 0.30) !important;
+    background: linear-gradient(135deg, #102f4a, var(--career-primary)) !important;
+    box-shadow: 0 10px 24px rgba(20, 58, 90, 0.26) !important;
 }
 
 .button.primary:focus-visible,
@@ -166,7 +166,7 @@ progress::-moz-progress-bar {
 .context-save-button:focus-visible,
 .mock-button-primary:focus-visible,
 .interview-generate-button:focus-visible {
-    outline: 3px solid rgba(194, 65, 12, 0.30);
+    outline: 3px solid rgba(29, 78, 120, 0.28);
     outline-offset: 3px;
 }
 
@@ -219,4 +219,82 @@ progress::-moz-progress-bar {
     *::after {
         scroll-behavior: auto !important;
     }
+}
+
+/*
+ * Product-wide visual consistency pass.
+ * Authenticated workspaces use navy blue for structure and primary actions,
+ * teal for selected/progress states, and pale blue for section orientation.
+ */
+body[data-authenticated="true"] .home-header {
+    padding: 22px 24px;
+    border-radius: 18px;
+    color: #ffffff;
+    background:
+        radial-gradient(circle at 90% 0%, rgba(15, 118, 110, .28), transparent 34%),
+        linear-gradient(135deg, var(--career-primary-dark), var(--career-primary) 58%, var(--career-primary-bright));
+    box-shadow: 0 12px 28px rgba(20, 58, 90, .18);
+}
+
+body[data-authenticated="true"] .home-header-copy h1,
+body[data-authenticated="true"] .home-header-copy p,
+body[data-authenticated="true"] .home-smart-status {
+    color: #ffffff;
+}
+
+body[data-authenticated="true"] .home-header-copy p,
+body[data-authenticated="true"] .home-smart-status {
+    opacity: .88;
+}
+
+body[data-authenticated="true"] .home-header .home-button-primary {
+    color: var(--career-primary-dark) !important;
+    background: #ffffff !important;
+    box-shadow: 0 8px 20px rgba(8, 28, 45, .18);
+}
+
+body[data-authenticated="true"] :is(
+    .home-card,
+    .application-builder-content .card,
+    .impact-toolbar,
+    .impact-metric-card,
+    .impact-panel,
+    .impact-integrity
+) {
+    border-color: #d7e3ed;
+    box-shadow: 0 8px 24px rgba(20, 58, 90, .06);
+}
+
+body[data-authenticated="true"] :is(
+    .home-card-heading,
+    .application-card-header,
+    .impact-panel-header
+) h2,
+body[data-authenticated="true"] :is(
+    .home-card-heading,
+    .application-card-header,
+    .impact-panel-header
+) h3 {
+    color: var(--career-primary-dark);
+}
+
+body[data-authenticated="true"] .home-card {
+    overflow: hidden;
+    border-top: 3px solid var(--career-primary);
+}
+
+body[data-authenticated="true"] .home-foundation-list small,
+body[data-authenticated="true"] .impact-count-badge,
+body[data-authenticated="true"] .application-status {
+    color: var(--career-primary);
+    background: var(--career-primary-soft);
+}
+
+body[data-authenticated="true"] :is(
+    .home-card-heading > a,
+    .home-text-link,
+    .home-action-list i,
+    .impact-panel-header a
+) {
+    color: var(--career-primary);
 }

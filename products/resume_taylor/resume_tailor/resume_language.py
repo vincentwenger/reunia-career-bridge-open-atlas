@@ -451,11 +451,16 @@ def resume_labels(language: str) -> dict[str, str]:
     return dict(_RESUME_LABELS.get(code, _RESUME_LABELS["en"]))
 
 
-def translated_profile_fingerprint(profile: CandidateProfile, language: str) -> str:
+def translated_profile_fingerprint(
+    profile: CandidateProfile,
+    language: str,
+    target_country: str = "",
+) -> str:
     payload = {
         "profile": profile.model_dump(mode="json"),
         "language": normalize_language(language) or "en",
-        "translation_schema": 3,
+        "target_country": " ".join(str(target_country or "").split()).casefold(),
+        "translation_schema": 4,
     }
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()

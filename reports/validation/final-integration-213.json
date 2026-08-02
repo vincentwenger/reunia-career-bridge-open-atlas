@@ -1,0 +1,115 @@
+[
+  {
+    "name": "Direct resume-findings and scorecard-to-action integrations",
+    "status": "passed",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "-m",
+      "unittest",
+      "-v",
+      "tests.integration.test_product_quality"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "test_scorecard_findings_generate_expected_application_actions (tests.integration.test_product_quality.InterviewScorecardActionIntegrationTests.test_scorecard_findings_generate_expected_application_actions) ... ok\ntest_all_structured_resume_findings_reach_interview_prompt (tests.integration.test_product_quality.ResumeFindingsPromptIntegrationTests.test_all_structured_resume_findings_reach_interview_prompt) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.972s\n\nOK\n",
+    "reason": ""
+  },
+  {
+    "name": "Six international profile regressions",
+    "status": "passed",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "tests/validators/validate_international_career_profiles.py"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "test_application_fit_flags_mandatory_unsupported_requirements (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_application_fit_flags_mandatory_unsupported_requirements) ... ok\ntest_background_context_never_becomes_verified_interview_evidence (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_background_context_never_becomes_verified_interview_evidence) ... ok\ntest_every_fixture_is_schema_valid_and_normalized (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_every_fixture_is_schema_valid_and_normalized) ... ok\ntest_expected_translation_and_gap_findings_are_preserved (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_expected_translation_and_gap_findings_are_preserved) ... ok\ntest_interview_workspace_removes_unverified_evidence_references (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_interview_workspace_removes_unverified_evidence_references) ... ok\ntest_invented_translation_with_valid_evidence_id_is_downgraded (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_invented_translation_with_valid_evidence_id_is_downgraded) ... ok\ntest_safe_fixture_proposals_pass_deterministic_validation (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_safe_fixture_proposals_pass_deterministic_validation) ... ok\ntest_suite_contains_all_required_international_scenarios (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_suite_contains_all_required_international_scenarios) ... ok\ntest_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok\n\n----------------------------------------------------------------------\nRan 9 tests in 0.089s\n\nOK\n",
+    "reason": ""
+  },
+  {
+    "name": "No-invented-experience regressions",
+    "status": "passed",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "tests/validators/validate_no_invented_experience.py"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "test_every_international_profile_rejects_invented_bullet_responsibilities (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_every_international_profile_rejects_invented_bullet_responsibilities) ... ok\ntest_every_international_profile_rejects_invented_summary_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_every_international_profile_rejects_invented_summary_claims) ... ok\ntest_generation_repair_removes_unsupported_summary_and_bullet_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_generation_repair_removes_unsupported_summary_and_bullet_claims) ... ok\ntest_interview_preparation_rejects_valid_ids_attached_to_invented_claims (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_interview_preparation_rejects_valid_ids_attached_to_invented_claims) ... ok\ntest_legacy_interview_actions_do_not_republish_invented_experience (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_legacy_interview_actions_do_not_republish_invented_experience) ... skipped 'Flask runtime dependencies are not installed'\ntest_mock_interview_sample_answer_is_sanitized_before_scorecard_use (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_mock_interview_sample_answer_is_sanitized_before_scorecard_use) ... skipped 'Flask runtime dependencies are not installed'\ntest_resume_report_contains_deterministic_grounding_result (tests.regression.test_no_invented_experience.NoInventedExperienceRegressionTests.test_resume_report_contains_deterministic_grounding_result) ... ok\ntest_application_fit_flags_mandatory_unsupported_requirements (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_application_fit_flags_mandatory_unsupported_requirements) ... ok\ntest_background_context_never_becomes_verified_interview_evidence (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_background_context_never_becomes_verified_interview_evidence) ... ok\ntest_every_fixture_is_schema_valid_and_normalized (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_every_fixture_is_schema_valid_and_normalized) ... ok\ntest_expected_translation_and_gap_findings_are_preserved (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_expected_translation_and_gap_findings_are_preserved) ... ok\ntest_interview_workspace_removes_unverified_evidence_references (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_interview_workspace_removes_unverified_evidence_references) ... ok\ntest_invented_translation_with_valid_evidence_id_is_downgraded (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_invented_translation_with_valid_evidence_id_is_downgraded) ... ok\ntest_safe_fixture_proposals_pass_deterministic_validation (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_safe_fixture_proposals_pass_deterministic_validation) ... ok\ntest_suite_contains_all_required_international_scenarios (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_suite_contains_all_required_international_scenarios) ... ok\ntest_untraceable_model_translation_is_downgraded_to_clarification (tests.regression.test_international_career_profiles.InternationalCareerProfileTests.test_untraceable_model_translation_is_downgraded_to_clarification) ... ok\n\n----------------------------------------------------------------------\nRan 16 tests in 0.347s\n\nOK (skipped=2)\n",
+    "reason": ""
+  },
+  {
+    "name": "Application Builder AI cost-control contract",
+    "status": "passed",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "tests/validators/validate_application_builder_ai_cost_controls.py"
+    ],
+    "returncode": 0,
+    "stdout": "PASS: shared budget reservation\nPASS: actual usage settlement\nPASS: bounded structured output\nPASS: shared response cache\nPASS: user-scoped cache key\nPASS: retry ceiling\nPASS: resume import token limit\nPASS: job analysis token limit\nPASS: tailoring token limit\nPASS: evidence-review token limit\nPASS: interview-preparation token limit\nPASS: cache TTL configuration\nPASS: selected-model pricing\nAll 13 Application Builder AI cost-control checks passed.\n",
+    "stderr": "",
+    "reason": ""
+  },
+  {
+    "name": "Workspace loading, empty, and error-state contract",
+    "status": "passed",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "-m",
+      "unittest",
+      "-v",
+      "tests.contracts.test_workspace_states"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "test_async_error_states_have_wired_retry_controls (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_async_error_states_have_wired_retry_controls) ... ok\ntest_every_major_workspace_declares_loading_empty_and_error_states (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_every_major_workspace_declares_loading_empty_and_error_states) ... ok\ntest_shared_component_supports_all_three_states (tests.contracts.test_workspace_states.WorkspaceStateContractTests.test_shared_component_supports_all_three_states) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\n",
+    "reason": ""
+  },
+  {
+    "name": "Reduced global navigation contract",
+    "status": "passed",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "-m",
+      "unittest",
+      "-v",
+      "tests.contracts.test_reduced_navigation"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "test_active_groups_cover_hidden_application_specific_pages (tests.contracts.test_reduced_navigation.ReducedNavigationContractTests.test_active_groups_cover_hidden_application_specific_pages) ... ok\ntest_ai_configuration_remains_in_the_admin_account_menu (tests.contracts.test_reduced_navigation.ReducedNavigationContractTests.test_ai_configuration_remains_in_the_admin_account_menu) ... ok\ntest_application_builder_uses_the_single_shared_navbar (tests.contracts.test_reduced_navigation.ReducedNavigationContractTests.test_application_builder_uses_the_single_shared_navbar) ... ok\ntest_homepage_remains_a_minimal_action_dashboard (tests.contracts.test_reduced_navigation.ReducedNavigationContractTests.test_homepage_remains_a_minimal_action_dashboard) ... ok\ntest_job_discovery_precedes_applications (tests.contracts.test_reduced_navigation.ReducedNavigationContractTests.test_job_discovery_precedes_applications) ... ok\ntest_live_assistance_never_reappears_in_candidate_navigation (tests.contracts.test_reduced_navigation.ReducedNavigationContractTests.test_live_assistance_never_reappears_in_candidate_navigation) ... ok\ntest_navbar_exposes_exactly_four_compact_groups (tests.contracts.test_reduced_navigation.ReducedNavigationContractTests.test_navbar_exposes_exactly_four_compact_groups) ... ok\ntest_new_group_names_are_available_in_french (tests.contracts.test_reduced_navigation.ReducedNavigationContractTests.test_new_group_names_are_available_in_french) ... ok\ntest_only_global_destinations_are_in_primary_navigation (tests.contracts.test_reduced_navigation.ReducedNavigationContractTests.test_only_global_destinations_are_in_primary_navigation) ... ok\n\n----------------------------------------------------------------------\nRan 9 tests in 0.005s\n\nOK\n",
+    "reason": ""
+  },
+  {
+    "name": "Full Flask runtime integration suites",
+    "status": "blocked",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "-m",
+      "unittest",
+      "-v",
+      "tests.integration.test_application_builder",
+      "tests.integration.test_resume_ai_cost_controls",
+      "tests.regression.test_no_invented_experience"
+    ],
+    "returncode": null,
+    "stdout": "",
+    "stderr": "",
+    "reason": "Required deployment/runtime dependencies are unavailable in this execution image: flask, redis, openai, xlrd"
+  },
+  {
+    "name": "Six-profile Playwright browser journey",
+    "status": "blocked",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "-m",
+      "unittest",
+      "-v",
+      "tests.browser.test_international_profile_journey"
+    ],
+    "returncode": null,
+    "stdout": "",
+    "stderr": "",
+    "reason": "Required deployment/runtime dependencies are unavailable in this execution image: flask, redis, openai, xlrd"
+  }
+]

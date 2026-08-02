@@ -566,7 +566,9 @@ def _ensure_target_language_profile(
         state.original_source_profile = state.source_profile.model_copy(deep=True)
     original = state.original_source_profile
     choice = _resolved_resume_language(state)
-    fingerprint = translated_profile_fingerprint(original, choice.code)
+    fingerprint = translated_profile_fingerprint(
+        original, choice.code, choice.country
+    )
     if (
         state.source_profile_translation_fingerprint == fingerprint
         and state.source_profile_language == choice.code
@@ -5612,8 +5614,11 @@ def _register_application_builder_routes() -> None:
         current = state()
 
         if is_career_translation:
-            current.career_background.target_country = " ".join(
-                str(request.form.get("target_country") or "").split()
+            reusable_profile = getattr(
+                g, "reusable_career_profile", ReusableCareerProfile()
+            )
+            current.career_background.target_country = (
+                reusable_profile.target_country if reusable_profile.enabled else ""
             )
             current.career_background.resume_language = " ".join(
                 str(request.form.get("resume_language") or "").split()
@@ -7331,6 +7336,15 @@ def _register_application_builder_routes() -> None:
         """Open the reusable, job-independent Career Translation foundation."""
 
         current = state()
+        reusable_profile = getattr(
+            g, "reusable_career_profile", ReusableCareerProfile()
+        )
+        # Career Profile is the single source of truth for the reusable
+        # Baseline Resume market. This also migrates older foundation records
+        # that stored a second editable target-country value.
+        current.career_background.target_country = (
+            reusable_profile.target_country if reusable_profile.enabled else ""
+        )
         source_profile = current.source_profile
         language_choice = _resolved_resume_language(current)
         background = _effective_career_background(current)
@@ -7343,10 +7357,15 @@ def _register_application_builder_routes() -> None:
             "skills": len(source_profile.all_verified_skills()),
             "education": len(source_profile.education),
         }
+        original_profile = current.original_source_profile or source_profile
+        expected_translation_fingerprint = translated_profile_fingerprint(
+            original_profile, language_choice.code, language_choice.country
+        )
         translation_ready = bool(
             source_profile.all_source_text().strip()
             and current.source_profile_language == language_choice.code
             and current.source_profile_translation_fingerprint
+            == expected_translation_fingerprint
         )
         preview_language_code = language_choice.code
         preview_language_name = language_choice.name

@@ -47,6 +47,11 @@ class CareerProfileFormContractTests(unittest.TestCase):
         ):
             self.assertIn(heading, source)
 
+        self.assertIn('<select id="profileTargetCountry" name="target_country">', source)
+        self.assertIn("Select a country", source)
+        self.assertIn("{% for country in country_options %}", source)
+        self.assertNotIn('type="text" id="profileTargetCountry"', source)
+
     def test_application_specific_and_live_response_fields_are_not_in_profile_form(self) -> None:
         source = TEMPLATE.read_text(encoding="utf-8")
         for removed_id in (
@@ -96,6 +101,8 @@ class CareerProfileFormContractTests(unittest.TestCase):
         ):
             self.assertIn(f'"{field}"', service_source)
             self.assertIn(f'context["{field}"]', route_source)
+        self.assertIn("COUNTRY_OPTIONS", route_source)
+        self.assertIn("country_options=COUNTRY_OPTIONS", route_source)
 
     def test_removed_ai_coaching_helpers_do_not_block_profile_initialization(self) -> None:
         source = JAVASCRIPT.read_text(encoding="utf-8")

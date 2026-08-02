@@ -18,15 +18,14 @@
 >
     {{ page_hero(
         'Adaptive Mock Interview',
-        'Practice with adaptive AI questions or a reusable list of your own questions. Réunia listens to each answer, evaluates the evidence, and generates a complete interview review.'
+        'Practice job-specific interview questions and receive evidence-based coaching after each answer.'
     ) }}
 
     <section class="mock-setup-card" id="mockSetupPanel" aria-labelledby="mock-setup-title">
         <div class="mock-card-heading">
             <div>
-                <span class="mock-eyebrow">New practice session</span>
-                <h2 id="mock-setup-title">Configure your interview</h2>
-                <p>Choose an adaptive format or practice an exact saved question list. The interviewer can also use the target job application and your verified career context when available.</p>
+                <h2 id="mock-setup-title">Set up a practice session</h2>
+                <p>Select an application, interview format, and session length.</p>
             </div>
             <span class="mock-status-badge" id="mockStatusBadge" data-state="ready"><i aria-hidden="true"></i><span id="mockStatusText">Ready</span></span>
         </div>
@@ -133,7 +132,6 @@
         </div>
 
         <div class="mock-setup-actions">
-            <a class="mock-link-button" href="{{ request.script_root }}/applications/">Open Application Builder</a>
             <button class="mock-button mock-button-primary" id="startMockInterviewButton" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7Z"></path></svg>
                 Start mock interview

@@ -53,7 +53,7 @@
 
 .home-button-primary {
     color: #fff;
-    background: var(--career-cta, #c2410c);
+    background: linear-gradient(135deg, var(--career-primary-dark, #143a5a), var(--career-primary-bright, #2f6f9f));
 }
 
 .home-button-secondary {

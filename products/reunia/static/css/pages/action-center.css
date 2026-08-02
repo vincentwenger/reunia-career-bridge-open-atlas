@@ -1079,3 +1079,117 @@
 }
 
 .action-error-state{margin-top:14px}.action-loading-state,.action-empty-state{margin-top:14px}
+
+/* Compact blue Career Action Plan workspace. */
+.action-command-bar,
+.action-workspace,
+.action-kpi-card,
+.action-application-overview {
+    border-color: #d7e3ed;
+    box-shadow: 0 8px 24px rgba(20, 58, 90, .07);
+}
+
+.action-command-bar {
+    padding: 16px 18px;
+    border-left: 4px solid var(--career-primary, #1d4e78);
+    border-radius: 14px;
+    background: var(--career-primary-soft, #eaf2f8);
+}
+
+.action-command-copy strong {
+    color: var(--career-primary-dark, #143a5a);
+}
+
+.action-kpi-grid {
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.action-kpi-card {
+    min-height: 72px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    box-shadow: none;
+}
+
+.action-kpi-icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    border-radius: 9px;
+    font-size: 15px;
+}
+
+.action-kpi-card strong {
+    font-size: 21px;
+}
+
+.action-kpi-card em {
+    display: none;
+}
+
+.action-application-overview {
+    margin-bottom: 14px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #d7e3ed;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.action-application-overview > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 17px;
+    color: var(--career-primary-dark, #143a5a);
+    background: var(--career-primary-soft, #eaf2f8);
+    font-size: 13px;
+    font-weight: 850;
+    cursor: pointer;
+    list-style: none;
+}
+
+.action-application-overview > summary::-webkit-details-marker {
+    display: none;
+}
+
+.action-application-overview > summary span:last-child {
+    color: var(--career-primary, #1d4e78);
+    font-size: 11px;
+}
+
+.action-application-overview > header {
+    padding: 14px 17px 8px;
+    border: 0;
+}
+
+.action-application-overview > header p {
+    margin: 0;
+    color: var(--action-muted);
+    font-size: 12px;
+}
+
+.action-application-overview .action-application-strip {
+    padding: 8px 17px 17px;
+}
+
+.action-workspace {
+    border-radius: 15px;
+}
+
+.action-workspace-header {
+    padding: 17px 19px 14px;
+    background: var(--career-primary-soft, #eaf2f8);
+}
+
+.action-workspace-header h2 {
+    color: var(--career-primary-dark, #143a5a);
+    font-size: 19px;
+}
+
+.action-filter-bar {
+    padding: 14px 17px;
+    background: #f9fbfd;
+}

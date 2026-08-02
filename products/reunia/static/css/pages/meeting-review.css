@@ -2915,3 +2915,81 @@ button.meeting-topic-chip:focus-visible,
         flex-direction: column;
     }
 }
+
+/* Compact blue interview-review workspace. */
+.dashboard-container {
+    width: min(1320px, calc(100% - 48px));
+}
+
+.content-grid {
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 18px;
+}
+
+.panel,
+.section-card,
+.summary-card,
+.tab-shell {
+    border-color: #d7e3ed;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(20, 58, 90, .08);
+}
+
+.panel-header,
+.section-header,
+.tab-nav {
+    border-color: #dce6ef;
+    background: var(--career-primary-soft, #eaf2f8);
+}
+
+.panel-header h2,
+.section-header h3,
+.summary-title {
+    color: var(--career-primary-dark, #143a5a);
+}
+
+.search-wrapper {
+    padding: 13px;
+}
+
+.search-input,
+.transcript-search-input {
+    padding: 11px 12px;
+    border-color: #d7e3ed;
+    border-radius: 9px;
+}
+
+.meeting-list-item.selected-row {
+    background: var(--career-primary-soft, #eaf2f8);
+    box-shadow: inset 4px 0 0 var(--career-primary, #1d4e78);
+}
+
+.meeting-row {
+    padding: 14px;
+}
+
+.tab-nav {
+    padding: 10px 12px;
+}
+
+.tab-button {
+    padding: 8px 12px;
+    border-radius: 9px;
+    font-size: 12.5px;
+}
+
+.tab-button.active {
+    border-color: var(--career-primary, #1d4e78);
+    background: var(--career-primary, #1d4e78);
+    box-shadow: none;
+}
+
+.tab-content {
+    padding: 20px;
+}
+
+@media (max-width: 980px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}

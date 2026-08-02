@@ -11,6 +11,7 @@ from meeting_assistant.services.meeting_materials_service import MeetingMaterial
 from meeting_assistant.services.admin_analytics_service import UsageMetricsService
 from meeting_assistant.services.user_service import UserService
 from meeting_assistant.utils.authentication import api_auth_required, login_required
+from career_bridge.countries import COUNTRY_OPTIONS
 
 
 @knowledge_bp.get("/interview-preparation")
@@ -63,6 +64,7 @@ def view_knowledge():
         assistant_context_work_authorization=context["work_authorization"],
         assistant_context_career_goals=context["career_goals"],
         assistant_context_constraints=context["constraints"],
+        country_options=COUNTRY_OPTIONS,
         assistant_context_company=context["company"],
         assistant_context_reference_link=context["reference_link"],
         assistant_context_role=context["role"],
