@@ -1,0 +1,18 @@
+Foundation navbar order update
+==============================
+
+Requested order:
+1. Baseline Resume
+2. Career Profile
+3. Evidence Library
+
+Implementation:
+- Reordered links in products/reunia/templates/navbar.html.
+- Updated the canonical Foundation description to use the same conceptual order.
+- Added test_foundation_starts_with_baseline_resume to the reduced-navigation contract suite.
+
+Validation:
+- python -m unittest tests.contracts.test_reduced_navigation -v
+- 10 tests passed.
+- Python compileall completed successfully.
+- Direct source-order assertion passed.

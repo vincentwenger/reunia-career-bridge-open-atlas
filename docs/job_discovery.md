@@ -486,9 +486,14 @@ The limit can be changed with
 requests process exactly one posting. This keeps each AI-backed response below
 the web gateway timeout while the browser still continues through up to 25 jobs.
 `JOB_DISCOVERY_AI_TIMEOUT_SECONDS` defaults to 20 seconds and is bounded between
-5 and 25 seconds; Job Discovery uses one provider attempt per posting. A slow or
+5 and 25 seconds; Job Discovery uses one provider attempt per posting. The browser
+automatically retries transient HTTP 502, 503, and 504 gateway responses twice.
+Progress is reconciled from the durable pending queue after each response, so a
+lost response cannot cause the requested run limit to be exceeded. A slow or
 failing posting is isolated, reported in the progress panel, skipped for the rest
 of the current run, and can be retried later without losing completed assessments.
+If the gateway remains unavailable after retries, the run is shown as paused and
+all completed assessments remain preserved.
 
 Fit analysis remains user-specific. Opening **View analysis** can still assess one
 already-materialized posting on demand against that user's verified Career Profile

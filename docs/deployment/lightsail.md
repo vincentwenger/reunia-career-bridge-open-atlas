@@ -46,6 +46,9 @@ deployment validation:
   "application_builder": {
     "workflow_storage": "dynamodb",
     "application_storage": "dynamodb",
+    "job_discovery_storage": "dynamodb",
+    "job_discovery_table": "careerbridge_job_discovery",
+    "job_discovery_durability": "persistent",
     "document_storage": "s3",
     "durability": "persistent",
     "multi_worker_safe": true,
@@ -61,8 +64,8 @@ Operational policy:
 
 | Storage mode | Lightsail scale | Gunicorn workers |
 |---|---:|---:|
-| Durable DynamoDB/DynamoDB/S3 | 1 or greater | 1 or greater |
-| Non-durable validation memory/DynamoDB/local | exactly 1 | exactly 1 |
+| Durable DynamoDB/DynamoDB/S3 plus DynamoDB Job Discovery | 1 or greater | 1 or greater |
+| Non-durable validation memory/DynamoDB/local, or any other memory/local Career Bridge store | exactly 1 | exactly 1 |
 
 Leaving the Lightsail **Command** field empty remains recommended in both modes
 so the deployed, reviewed image controls the complete startup command.
@@ -150,9 +153,11 @@ persistence gate with:
 CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=true
 ```
 
-The override is intentionally narrow: Redis, S3 recorder storage, DynamoDB
-actions/analytics/support/knowledge storage, secrets, and every other existing
-Réunia production safeguard are still required. Startup logs a prominent unsafe
+The override is intentionally narrow: it may relax workflow and document
+storage only. Job Discovery must still use DynamoDB with an explicit table so
+postings, fit snapshots, and assessment progress survive replacement. Redis, S3
+recorder storage, DynamoDB actions/analytics/support/knowledge storage, secrets,
+and every other existing Réunia production safeguard are still required. Startup logs a prominent unsafe
 non-durable-storage warning. Such a deployment must remain at one Gunicorn worker and
 one Lightsail node and can lose records during redeployment or replacement. Do
 not use the override for normal production traffic.
@@ -307,8 +312,9 @@ not place credentials in object metadata or object keys.
 
 ## Conditional deployment policy
 
-The explicit non-durable validation configuration (`memory` + `dynamodb` + `local`) keeps
-workflow state and documents process-local or container-local. Only that
+The explicit non-durable validation configuration (`memory` workflow + `dynamodb`
+applications + `local` documents) keeps workflow state and documents process-local
+or container-local. Job Discovery remains DynamoDB-backed in every production mode. Only that
 configuration requires the complete
 single-process deployment invariant:
 
@@ -365,8 +371,9 @@ the deployment.
 
 Run the standalone validator after the Lightsail deployment is active. It verifies:
 
-1. `/health` returns HTTP 200 with persistent DynamoDB/S3 storage metadata, or
-   non-durable metadata only when explicitly allowed;
+1. `/health` returns HTTP 200 with persistent DynamoDB storage for applications,
+   workflows, and Job Discovery plus S3 document storage; non-durable metadata is
+   accepted only when explicitly allowed;
 2. non-durable storage is constrained to Lightsail scale `1` and one Gunicorn worker,
    while persistent storage accepts any positive scale and worker count;
 3. the public application container has no Lightsail command override and the

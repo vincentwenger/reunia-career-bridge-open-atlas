@@ -2788,6 +2788,55 @@
     font-size: .78rem;
 }
 
+.career-profile-source-notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 17px 18px;
+    border: 1px solid #cfe0ec;
+    border-radius: 14px;
+    background: #f8fbfd;
+}
+
+.career-profile-source-notice-copy {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+
+.career-profile-source-icon {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    color: var(--career-primary-dark, #143a5a);
+    background: var(--career-primary-soft, #eaf2f8);
+    font-size: 1rem;
+    font-weight: 900;
+}
+
+.career-profile-source-notice h3 {
+    margin: 0;
+    color: var(--career-primary-dark, #143a5a);
+    font-size: .9rem;
+}
+
+.career-profile-source-notice p {
+    margin: 5px 0 0;
+    color: #5c7185;
+    font-size: .76rem;
+    line-height: 1.5;
+}
+
+.career-profile-source-link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
 .career-profile-section {
     padding: 0;
     overflow: hidden;
@@ -2870,8 +2919,186 @@
 }
 
 @media (max-width: 760px) {
-    .career-profile-control-bar {
+    .career-profile-control-bar,
+    .career-profile-source-notice {
         align-items: flex-start;
         flex-direction: column;
     }
+
+    .career-profile-source-link {
+        width: 100%;
+        white-space: normal;
+    }
+}
+
+/* Reusable structured confirmation evidence */
+.reusable-evidence-panel {
+    margin: 0 0 22px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--panel-bg);
+    box-shadow: var(--shadow);
+}
+
+.reusable-evidence-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 16px;
+}
+
+.reusable-evidence-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.reusable-evidence-header p:not(.section-eyebrow) {
+    margin: 6px 0 0;
+    color: var(--muted);
+}
+
+.reusable-evidence-count {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--primary-soft);
+    color: var(--primary-dark);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.reusable-evidence-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.reusable-evidence-table {
+    width: 100%;
+    min-width: 980px;
+    border-collapse: collapse;
+}
+
+.reusable-evidence-table th,
+.reusable-evidence-table td {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+}
+
+.reusable-evidence-table th {
+    background: #f8fafc;
+    color: var(--muted);
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.reusable-evidence-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.reusable-evidence-table textarea,
+.reusable-evidence-table input,
+.reusable-evidence-table select {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+}
+
+.reusable-evidence-table textarea,
+.reusable-evidence-table input {
+    padding: 9px 10px;
+}
+
+.reusable-evidence-table select {
+    margin-bottom: 8px;
+    padding: 8px 10px;
+}
+
+.reusable-question-cell {
+    width: 34%;
+}
+
+.reusable-question-cell strong,
+.reusable-question-cell small,
+.reusable-evidence-table td > small {
+    display: block;
+}
+
+.reusable-question-cell small,
+.reusable-evidence-table td > small {
+    margin-top: 6px;
+    color: var(--muted);
+    line-height: 1.35;
+}
+
+.reusable-evidence-actions {
+    width: 236px;
+}
+
+.reusable-evidence-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.reusable-evidence-actions .btn {
+    min-height: 36px;
+    margin: 0;
+    padding: 0 12px;
+}
+
+.reusable-evidence-actions .danger-action {
+    color: var(--danger);
+}
+
+.reusable-evidence-empty {
+    padding: 18px;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.reusable-evidence-empty p {
+    margin: 6px 0 0;
+    color: var(--muted);
+}
+
+.optional-label {
+    color: var(--muted);
+    font-weight: 500;
+}
+
+@media (max-width: 760px) {
+    .reusable-evidence-panel {
+        padding: 16px;
+    }
+
+    .reusable-evidence-header {
+        display: block;
+    }
+
+    .reusable-evidence-count {
+        display: inline-flex;
+        margin-top: 12px;
+    }
+
+    .reusable-evidence-actions {
+        width: auto;
+    }
+
+    .reusable-evidence-action-row {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
 }

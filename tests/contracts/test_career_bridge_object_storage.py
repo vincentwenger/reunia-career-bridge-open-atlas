@@ -177,7 +177,10 @@ class CareerBridgeObjectStorageTests(unittest.TestCase):
         persist_start = builder.index("def _persist_workflow_documents(")
         persist_end = builder.index("def _hydrate_workflow_documents(", persist_start)
         helper = builder[persist_start:persist_end]
-        after_start = builder.index("@application_builder_bp.after_request")
+        save_start = builder.index("def _persist_workflow_state_now(")
+        save_end = builder.index("@application_builder_bp.after_request", save_start)
+        save_helper = builder[save_start:save_end]
+        after_start = builder.index("@application_builder_bp.after_request", save_end)
         after_end = builder.index("@application_builder_bp.context_processor", after_start)
         after_request = builder[after_start:after_end]
         self.assertIn('"final_resume_bytes"', helper)
@@ -186,9 +189,10 @@ class CareerBridgeObjectStorageTests(unittest.TestCase):
         self.assertIn('"original-resume"', builder)
         self.assertIn("original_resume_key=source_object_key", builder)
         self.assertLess(
-            after_request.index("_persist_workflow_documents("),
-            after_request.index("saved = store.save("),
+            save_helper.index("_persist_workflow_documents("),
+            save_helper.index("saved = store.save("),
         )
+        self.assertIn("_persist_workflow_state_now()", after_request)
 
     def test_invalid_document_backend_is_rejected(self) -> None:
         with self.assertRaises(self.configuration_error):

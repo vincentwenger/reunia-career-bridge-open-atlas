@@ -19,10 +19,11 @@ ACTION_CSS = ROOT / "products/reunia/static/css/pages/action-center.css"
 class ConsistentBlueWorkspaceUIContractTests(unittest.TestCase):
     def test_career_profile_uses_progressive_disclosure_and_one_save_action(self) -> None:
         template = KNOWLEDGE.read_text(encoding="utf-8")
-        self.assertEqual(4, template.count('class="workspace-card career-profile-section"'))
+        self.assertEqual(3, template.count('class="workspace-card career-profile-section"'))
         self.assertIn('class="workspace-card career-profile-section" open', template)
         self.assertEqual(1, template.count('id="saveContextButton"'))
         self.assertNotIn('class="library-help-card"', template)
+        self.assertIn('career-profile-source-notice', template)
         self.assertIn('career-profile-section-summary', KNOWLEDGE_CSS.read_text(encoding="utf-8"))
 
     def test_mock_interview_setup_is_compact_and_application_link_is_removed(self) -> None:

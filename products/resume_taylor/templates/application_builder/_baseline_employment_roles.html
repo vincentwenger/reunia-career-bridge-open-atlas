@@ -1,0 +1,119 @@
+<section class="card reusable-evidence-panel employment-roles-panel baseline-structured-evidence" id="employment-roles" data-career-roles-endpoint="{{ url_for('application_builder.career_translation_workspace') }}/roles" aria-labelledby="employmentRolesTitle">
+    <div class="reusable-evidence-header">
+        <div>
+            <p class="section-eyebrow">Baseline Resume information</p>
+            <h2 id="employmentRolesTitle">Employment roles and job titles</h2>
+            <p>{% if baseline_creation_method == 'manual' %}Add your employment history directly. Roles are ordered by date, with the most recent first.{% else %}Review the roles populated from the resume and add any missing employment history. Roles are ordered by date, with the most recent first.{% endif %}</p>
+            <p class="caption">Saving source facts automatically updates the Baseline Resume. Target-market title, explanation, and review status remain reusable evidence metadata.</p>
+        </div>
+        <span class="reusable-evidence-count employment-role-count">{{ career_roles | default([]) | length }} role{% if career_roles | default([]) | length != 1 %}s{% endif %}</span>
+    </div>
+
+    <details class="baseline-add-record" data-baseline-role-add>
+        <summary>Add employment role</summary>
+        <form class="baseline-add-record-form" data-add-career-role-form>
+            <div class="baseline-add-record-grid baseline-add-role-grid">
+                <div>
+                    <label for="new-role-title">Official job title</label>
+                    <input id="new-role-title" name="official_title" maxlength="240" required placeholder="Software Engineer">
+                </div>
+                <div>
+                    <label for="new-role-employer">Employer</label>
+                    <input id="new-role-employer" name="employer" maxlength="240" required placeholder="Nasdaq">
+                </div>
+                <div>
+                    <label for="new-role-dates">Dates <span class="optional-label">Optional</span></label>
+                    <input id="new-role-dates" name="dates" maxlength="160" placeholder="September 2013 – May 2025">
+                </div>
+                <div>
+                    <label for="new-role-location">Location <span class="optional-label">Optional</span></label>
+                    <input id="new-role-location" name="location" maxlength="240" placeholder="Portland, Oregon">
+                </div>
+                <div class="baseline-add-record-wide">
+                    <label for="new-role-responsibilities">Responsibilities and accomplishments</label>
+                    <textarea id="new-role-responsibilities" name="responsibilities" rows="6" maxlength="10000" placeholder="Enter one resume bullet per line."></textarea>
+                    <small>Each non-empty line becomes a traceable Baseline Resume bullet.</small>
+                </div>
+            </div>
+            <div class="baseline-structured-action-row">
+                <button class="btn btn-primary" type="submit">Add employment role</button>
+            </div>
+        </form>
+    </details>
+
+    {% if career_roles | default([]) %}
+    <div class="reusable-evidence-table-wrapper employment-role-table-wrapper">
+        <table class="reusable-evidence-table employment-role-table">
+            <thead>
+                <tr>
+                    <th scope="col">Baseline Resume role</th>
+                    <th scope="col">Target-market interpretation</th>
+                    <th scope="col" class="employment-role-responsibilities-heading">Responsibilities and explanation</th>
+                    <th scope="col" class="employment-role-status-heading">Review status</th>
+                    <th scope="col"><span class="sr-only">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for role in career_roles %}
+                <tr data-career-role-row data-role-id="{{ role.role_id }}"{% if not role.source_active %} class="source-inactive"{% endif %}>
+                    <td class="employment-role-source-cell">
+                        <label for="role-title-{{ role.role_id }}">Official job title</label>
+                        <input id="role-title-{{ role.role_id }}" name="official_title" form="career-role-form-{{ role.role_id }}" maxlength="240" required value="{{ role.official_title }}">
+                        <label for="role-employer-{{ role.role_id }}">Employer</label>
+                        <input id="role-employer-{{ role.role_id }}" name="employer" form="career-role-form-{{ role.role_id }}" maxlength="240" required value="{{ role.employer }}">
+                        <div class="employment-role-inline-fields">
+                            <div>
+                                <label for="role-dates-{{ role.role_id }}">Dates</label>
+                                <input id="role-dates-{{ role.role_id }}" name="dates" form="career-role-form-{{ role.role_id }}" maxlength="160" value="{{ role.dates }}">
+                            </div>
+                            <div>
+                                <label for="role-location-{{ role.role_id }}">Location</label>
+                                <input id="role-location-{{ role.role_id }}" name="location" form="career-role-form-{{ role.role_id }}" maxlength="240" value="{{ role.location }}">
+                            </div>
+                        </div>
+                        <small>Source: {{ 'Manual entry' if role.source_experience_id.startswith('MAN-EXP-') else 'Imported resume' }} · {{ role.source_experience_id }}</small>
+                        {% if not role.source_active %}<small class="source-inactive-note">This role is no longer present in the current Baseline Resume and will not be reused automatically.</small>{% endif %}
+                    </td>
+                    <td>
+                        <label for="role-target-title-{{ role.role_id }}">Closest target-market title</label>
+                        <input id="role-target-title-{{ role.role_id }}" name="target_market_title" form="career-role-form-{{ role.role_id }}" maxlength="240" required value="{{ role.target_market_title or role.official_title }}">
+                        <small>Keep the official title unchanged. Use this field only to explain the closest commonly understood equivalent.</small>
+                        {% if role.target_market %}<small>Target market: {{ role.target_market }}</small>{% endif %}
+                    </td>
+                    <td class="employment-role-responsibilities-cell">
+                        <label for="role-responsibilities-{{ role.role_id }}">Key responsibilities</label>
+                        <textarea id="role-responsibilities-{{ role.role_id }}" name="responsibilities" form="career-role-form-{{ role.role_id }}" rows="6" maxlength="10000" placeholder="Summarize the factual responsibilities that establish what this role involved.">{{ role.responsibilities }}</textarea>
+                        <label for="role-explanation-{{ role.role_id }}">Recruiter explanation <span class="optional-label">Optional</span></label>
+                        <textarea id="role-explanation-{{ role.role_id }}" name="recruiter_explanation" form="career-role-form-{{ role.role_id }}" rows="4" maxlength="2000" placeholder="Example: No translation is required because Software Engineer is already a standard U.S. title.">{{ role.recruiter_explanation }}</textarea>
+                    </td>
+                    <td class="employment-role-status-cell">
+                        <label for="role-status-{{ role.role_id }}">Status</label>
+                        <select id="role-status-{{ role.role_id }}" name="status" form="career-role-form-{{ role.role_id }}">
+                            <option value="needs_review" {% if role.status == 'needs_review' %}selected{% endif %}>Needs review</option>
+                            <option value="confirmed" {% if role.status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                            <option value="needs_explanation" {% if role.status == 'needs_explanation' %}selected{% endif %}>Needs explanation</option>
+                        </select>
+                        <small data-career-role-updated>Updated {{ role.updated_at }}</small>
+                        {% if role.confirmed_at %}<small data-career-role-confirmed>Confirmed {{ role.confirmed_at }}</small>{% endif %}
+                    </td>
+                    <td class="reusable-evidence-actions employment-role-actions">
+                        <form id="career-role-form-{{ role.role_id }}" data-career-role-form data-role-id="{{ role.role_id }}"></form>
+                        <div class="reusable-evidence-action-row employment-role-action-row">
+                            <button class="btn btn-primary" type="submit" form="career-role-form-{{ role.role_id }}">Save</button>
+                            <button class="btn btn-secondary" type="button" data-confirm-career-role>Confirm as written</button>
+                            <button class="btn btn-secondary danger-action" type="button" data-delete-career-role data-manual-role="{{ 'true' if role.source_experience_id.startswith('MAN-EXP-') else 'false' }}" data-role-label="{{ role.official_title | e }} at {{ role.employer | e }}">{{ 'Remove from baseline' if role.source_experience_id.startswith('MAN-EXP-') else 'Remove review record' }}</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="reusable-evidence-empty employment-role-empty">
+        <strong>No employment roles have been added yet.</strong>
+        <p>Use <b>Add employment role</b> above, or import a resume to populate this section automatically.</p>
+    </div>
+    {% endif %}
+    <div class="baseline-role-feedback" data-baseline-role-feedback role="status" aria-live="polite" hidden></div>
+</section>

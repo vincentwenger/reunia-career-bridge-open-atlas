@@ -1,0 +1,27 @@
+Career Bridge 257 — Better Target-Market Review behavior
+
+Implemented
+- Replaced the mixed "items to review" list with three natural action groups:
+  1. Evidence already found
+  2. Confirmation needed
+  3. No evidence found
+- Only factual confirmation questions remain expanded and action-required.
+- Evidence-backed findings are grouped in a green, expandable section.
+- Unsupported requirements are grouped in a collapsed "No evidence found — no action required" section.
+- Removed repeated unsupported-evidence rationale/action paragraphs from each unsupported card.
+- The no-evidence card now states once that the requirement stays outside the resume and requires no action unless the candidate wants to add verified experience.
+
+Evidence routing improvements
+- Added conservative deterministic evidence recognition for broad, unqualified requirements involving:
+  - data architecture principles
+  - process improvement and automation
+  - analytical thinking / complex data problem solving
+  - platform resiliency and performance tuning
+- Domain-specific AML platform operations are not inferred from general regulatory-reporting experience.
+- Composite code-review/testing requirements remain confirmation questions when code-review responsibility is not verified.
+
+Validation
+- 654 automated tests passed.
+- 46 optional dependency tests skipped.
+- Final integration checks passed.
+- Python and Jinja syntax checks passed.

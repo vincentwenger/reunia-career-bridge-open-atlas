@@ -22,6 +22,13 @@ class MinimalUIConsolidationContractTests(unittest.TestCase):
         self.assertNotIn("Save only", text)
         self.assertIn('name="start_builder" value="1"', text)
 
+    def test_application_cards_span_the_full_job_applications_workspace(self) -> None:
+        styles = (ROOT / "products/resume_taylor/static/styles.css").read_text(encoding="utf-8")
+        bridge = (ROOT / "products/resume_taylor/static/career_bridge.css").read_text(encoding="utf-8")
+        self.assertIn(".application-dashboard-grid { grid-template-columns: minmax(0, 1fr); }", styles)
+        self.assertIn(".application-dashboard-grid {\n  grid-template-columns: minmax(0, 1fr);", bridge)
+        self.assertNotIn(".application-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }", styles)
+
     def test_action_plan_keeps_search_and_status_visible_and_collapses_advanced_filters(self) -> None:
         text = (ROOT / "products/reunia/templates/action-center.html").read_text(encoding="utf-8")
         details_start = text.index('class="action-advanced-filters"')

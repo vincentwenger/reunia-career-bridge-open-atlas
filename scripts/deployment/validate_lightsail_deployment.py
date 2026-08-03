@@ -37,6 +37,9 @@ EXPECTED_REDEPLOY_WARNING = (
 PERSISTENT_STORAGE_STATUS = {
     "workflow_storage": "dynamodb",
     "application_storage": "dynamodb",
+    "job_discovery_storage": "dynamodb",
+    "job_discovery_table": "careerbridge_job_discovery",
+    "job_discovery_durability": "persistent",
     "document_storage": "s3",
     "durability": "persistent",
     "multi_worker_safe": True,
@@ -45,10 +48,23 @@ PERSISTENT_STORAGE_STATUS = {
 DEMO_STORAGE_STATUS = {
     "workflow_storage": "memory",
     "application_storage": "dynamodb",
+    "job_discovery_storage": "dynamodb",
+    "job_discovery_table": "careerbridge_job_discovery",
+    "job_discovery_durability": "persistent",
     "document_storage": "local",
     "durability": "mixed",
     "multi_worker_safe": False,
     "multi_node_safe": False,
+}
+PERSISTENT_STORAGE_REQUIREMENTS = {
+    key: value
+    for key, value in PERSISTENT_STORAGE_STATUS.items()
+    if key != "job_discovery_table"
+}
+DEMO_STORAGE_REQUIREMENTS = {
+    key: value
+    for key, value in DEMO_STORAGE_STATUS.items()
+    if key != "job_discovery_table"
 }
 # Backward-compatible name used by contract tests and external imports.
 EXPECTED_STORAGE_STATUS = PERSISTENT_STORAGE_STATUS
@@ -460,18 +476,50 @@ def _validate_health(
             f"Health endpoint status is not 'ok': {payload.get('status')!r}."
         )
     storage_status = payload.get("application_builder")
-    if storage_status == PERSISTENT_STORAGE_STATUS:
+    if not isinstance(storage_status, dict):
+        raise ValidationFailure(
+            "Health endpoint does not expose Application Builder storage metadata."
+        )
+
+    persistent_match = all(
+        storage_status.get(key) == value
+        for key, value in PERSISTENT_STORAGE_REQUIREMENTS.items()
+    )
+    discovery_table = str(
+        storage_status.get("job_discovery_table") or ""
+    ).strip()
+    if persistent_match and discovery_table:
         return payload
-    if allow_demo_storage and storage_status == DEMO_STORAGE_STATUS:
+
+    demo_match = all(
+        storage_status.get(key) == value
+        for key, value in DEMO_STORAGE_REQUIREMENTS.items()
+    )
+    if storage_status.get("job_discovery_storage") != "dynamodb":
+        raise ValidationFailure(
+            "Health endpoint reports non-persistent Job Discovery storage "
+            f"({storage_status.get('job_discovery_storage')!r}). Production "
+            "validation requires CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND="
+            "dynamodb and a non-empty CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME; "
+            "--allow-demo-storage does not relax this requirement."
+        )
+    if not discovery_table:
+        raise ValidationFailure(
+            "Health endpoint reports DynamoDB Job Discovery storage without a table "
+            "name. Set CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME before deployment."
+        )
+
+    if allow_demo_storage and demo_match:
         return payload
-    if storage_status == DEMO_STORAGE_STATUS:
+    if demo_match:
         raise ValidationFailure(
             "Health endpoint reports mixed-durability Career Bridge storage. Production "
             "validation requires DynamoDB/S3 unless --allow-demo-storage is supplied."
         )
+
     raise ValidationFailure(
-        "Health endpoint does not expose a recognized persistent Application Builder "
-        "storage configuration."
+        "Health endpoint does not expose a recognized persistent Career Bridge "
+        "storage configuration, including Job Discovery durability."
     )
 
 

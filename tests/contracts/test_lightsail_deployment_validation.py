@@ -145,6 +145,28 @@ class _DemoHealthOpener:
         return _Response(json.dumps(payload), url=request.full_url)
 
 
+class _MemoryDiscoveryHealthOpener:
+    def open(self, request, timeout):
+        del timeout
+        storage = dict(validator.PERSISTENT_STORAGE_STATUS)
+        storage.update(
+            {
+                "job_discovery_storage": "memory",
+                "job_discovery_table": "",
+                "job_discovery_durability": "ephemeral",
+                "durability": "mixed",
+                "multi_worker_safe": False,
+                "multi_node_safe": False,
+            }
+        )
+        payload = {
+            "status": "ok",
+            "services": ["reunia", "application-builder"],
+            "application_builder": storage,
+        }
+        return _Response(json.dumps(payload), url=request.full_url)
+
+
 class LightsailDeploymentValidationTests(unittest.TestCase):
     def test_script_and_windows_wrapper_exist(self) -> None:
         self.assertTrue(VALIDATOR_PATH.is_file())
@@ -216,6 +238,24 @@ class LightsailDeploymentValidationTests(unittest.TestCase):
             )
         self.assertEqual(payload["status"], "ok")
         self.assertTrue(payload["application_builder"]["multi_worker_safe"])
+
+    def test_health_rejects_in_memory_job_discovery_even_when_other_stores_are_durable(self) -> None:
+        for allow_demo_storage in (False, True):
+            with self.subTest(allow_demo_storage=allow_demo_storage):
+                with patch.object(
+                    validator,
+                    "build_opener",
+                    return_value=_MemoryDiscoveryHealthOpener(),
+                ):
+                    with self.assertRaisesRegex(
+                        validator.ValidationFailure,
+                        "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND=dynamodb",
+                    ):
+                        validator._validate_health(
+                            "https://career.example",
+                            timeout=1,
+                            allow_demo_storage=allow_demo_storage,
+                        )
 
     def test_workspace_smoke_validation_checks_all_navbar_routes(self) -> None:
         opener = _SmokeOpener()

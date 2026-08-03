@@ -247,6 +247,7 @@ def validate_candidate_claim(
     context_texts: Iterable[str] = (),
     allow_gap_context: bool = False,
     require_overlap: bool = True,
+    block_single_unsupported: bool = False,
 ) -> list[GroundingFinding]:
     """Return deterministic evidence-grounding findings for candidate-facing text.
 
@@ -351,7 +352,12 @@ def validate_candidate_claim(
         # A single unsupported paraphrase is tolerated when the rest of the claim
         # is traceable. Two or more unsupported factual terms with weak overlap are
         # blocked as a likely invented responsibility/accomplishment.
-        if require_overlap and len(unsupported) >= 2 and coverage < 0.5:
+        if (
+            require_overlap
+            and unsupported
+            and (block_single_unsupported or len(unsupported) >= 2)
+            and coverage < 0.5
+        ):
             findings.append(
                 GroundingFinding(
                     code="insufficient_evidence_overlap",

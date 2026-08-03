@@ -528,7 +528,7 @@
     form.addEventListener('submit', (event) => {
       if (event.defaultPrevented || !form.checkValidity()) return;
       const submitter = event.submitter;
-      if (submitter?.disabled) return;
+      if (submitter?.disabled || submitter?.dataset.skipLoading === 'true') return;
       resetLoadingOverlay();
       if (loadingTitle) loadingTitle.textContent = submitter?.dataset.loadingTitle || form.dataset.loadingTitle || 'Processing…';
       if (loadingMessage) loadingMessage.textContent = submitter?.dataset.loadingMessage || form.dataset.loadingMessage || 'The requested operation is running.';
@@ -1253,6 +1253,60 @@ const loadDiscoveryResults = async (
   };
   showStoredSummary();
 
+  const transientAssessmentStatuses = new Set([502, 503, 504]);
+  const maxTransientAssessmentRetries = 2;
+  const waitForAssessmentRetry = (attempt) => new Promise((resolve) => {
+    window.setTimeout(resolve, 750 * Math.max(1, attempt));
+  });
+
+  const requestAssessmentBatch = async (payload) => {
+    let lastNetworkError = null;
+    for (let retryIndex = 0; retryIndex <= maxTransientAssessmentRetries; retryIndex += 1) {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            ...(csrf ? { 'X-CSRFToken': csrf } : {}),
+          },
+          body: JSON.stringify(payload),
+        });
+        let result = {};
+        try {
+          result = await response.json();
+        } catch (_error) {
+          result = { message: `The server returned HTTP ${response.status}.` };
+        }
+
+        const transientFailure = transientAssessmentStatuses.has(response.status);
+        if (response.ok || !transientFailure || retryIndex >= maxTransientAssessmentRetries) {
+          return { response, result, transientFailure };
+        }
+
+        if (progressTitle) {
+          progressTitle.textContent = 'Temporary server interruption';
+        }
+        if (progressMessage) {
+          progressMessage.textContent = `Retrying the current job assessment (${retryIndex + 1} of ${maxTransientAssessmentRetries})…`;
+        }
+        await waitForAssessmentRetry(retryIndex + 1);
+      } catch (error) {
+        lastNetworkError = error;
+        if (retryIndex >= maxTransientAssessmentRetries) throw error;
+        if (progressTitle) {
+          progressTitle.textContent = 'Temporary network interruption';
+        }
+        if (progressMessage) {
+          progressMessage.textContent = `Retrying the current job assessment (${retryIndex + 1} of ${maxTransientAssessmentRetries})…`;
+        }
+        await waitForAssessmentRetry(retryIndex + 1);
+      }
+    }
+    throw lastNetworkError || new Error('The assessment request failed.');
+  };
+
   let running = false;
   let stopRequested = false;
   stopButton?.addEventListener('click', () => {
@@ -1321,33 +1375,20 @@ const loadDiscoveryResults = async (
     let unresolvedCount = 0;
     let totalCount = initialPendingCount;
     let fatalError = '';
+    let fatalErrorWasTransient = false;
     let completed = false;
 
     while (!stopRequested && !completed && attemptedTotal < runLimit) {
       try {
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            ...(csrf ? { 'X-CSRFToken': csrf } : {}),
-          },
-          body: JSON.stringify({
-            skip_job_keys: skippedJobKeys,
-            // One AI-backed posting per HTTP request keeps each response below
-            // the proxy timeout while the outer loop still handles up to 25 jobs.
-            batch_size: 1,
-          }),
+        const { response, result, transientFailure } = await requestAssessmentBatch({
+          skip_job_keys: skippedJobKeys,
+          // One AI-backed posting per HTTP request keeps each response below
+          // the proxy timeout while the outer loop still handles up to 25 jobs.
+          batch_size: 1,
         });
-        let result = {};
-        try {
-          result = await response.json();
-        } catch (_error) {
-          result = { message: `The server returned HTTP ${response.status}.` };
-        }
         if (!response.ok) {
           fatalError = String(result.message || result.error || `Assessment request failed (${response.status}).`);
+          fatalErrorWasTransient = transientFailure;
           break;
         }
 
@@ -1367,6 +1408,13 @@ const loadDiscoveryResults = async (
             skippedJobKeys.push(normalized);
           }
         }
+        // A gateway can lose the response after the server has already saved a
+        // fit snapshot. Reconcile progress from the durable pending count so a
+        // safe retry does not assess more than the requested run limit.
+        const durableAttemptedCount = Math.max(0, initialPendingCount - remainingCount) + skippedSet.size;
+        attemptedTotal = Math.max(attemptedTotal, durableAttemptedCount);
+        assessedTotal = Math.max(assessedTotal, Math.max(0, initialPendingCount - remainingCount));
+
         const issues = Array.isArray(result.issues) ? result.issues : [];
         issueMessages.push(...issues.map((item) => String(item || '')).filter(Boolean));
         completed = Boolean(result.complete);
@@ -1396,6 +1444,7 @@ const loadDiscoveryResults = async (
         }
       } catch (error) {
         fatalError = error instanceof Error ? error.message : 'The assessment request failed.';
+        fatalErrorWasTransient = true;
         break;
       }
     }
@@ -1411,11 +1460,24 @@ const loadDiscoveryResults = async (
     if (stopButton) stopButton.hidden = true;
 
     if (fatalError) {
-      if (progressTitle) progressTitle.textContent = 'Pending-job assessment stopped';
-      if (progressMessage) progressMessage.textContent = fatalError;
-      if (issuePanel) {
-        issuePanel.hidden = false;
-        issuePanel.textContent = fatalError;
+      if (fatalErrorWasTransient) {
+        const preservedMessage = `${assessedTotal} assessed · ${remainingCount} awaiting assessment · progress preserved`;
+        if (progressTitle) progressTitle.textContent = 'Pending-job assessment paused';
+        if (progressMessage) {
+          progressMessage.textContent = `A temporary gateway interruption remained after automatic retries. ${assessedTotal} completed assessments were preserved. Choose Assess next ${assessmentRunLimit} jobs again to continue.`;
+        }
+        if (progressSummary) progressSummary.textContent = preservedMessage;
+        if (issuePanel) {
+          issuePanel.hidden = false;
+          issuePanel.textContent = fatalError;
+        }
+      } else {
+        if (progressTitle) progressTitle.textContent = 'Pending-job assessment stopped';
+        if (progressMessage) progressMessage.textContent = fatalError;
+        if (issuePanel) {
+          issuePanel.hidden = false;
+          issuePanel.textContent = fatalError;
+        }
       }
       return;
     }

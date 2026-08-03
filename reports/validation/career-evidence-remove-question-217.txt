@@ -1,0 +1,17 @@
+Career Evidence Library — Remove question action
+Build: career_bridge(217)
+Date: 2026-08-02
+
+Implemented:
+- Displays "Remove question" directly beside Save for every reusable confirmation answer.
+- Uses the dedicated owner-scoped DELETE API; it does not submit the edit form.
+- Confirms which question will be removed and warns that future applications may ask it again.
+- Shows a Removing state, updates the saved count, and renders the empty-library state after deleting the final entry.
+- Keeps responsive behavior for narrower screens.
+
+Validation:
+- Contract suite: 281 passed, 5 skipped, 37 subtests passed.
+- Full suite: 537 passed, 39 skipped, 134 subtests passed.
+- JavaScript syntax: passed.
+- Python compilation: passed.
+- Jinja template parsing: passed.

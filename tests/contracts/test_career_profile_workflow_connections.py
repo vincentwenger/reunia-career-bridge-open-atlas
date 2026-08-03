@@ -142,6 +142,11 @@ class CareerProfileWorkflowConnectionTests(unittest.TestCase):
         builder_source = BUILDER_TEMPLATE.read_text(encoding="utf-8")
         self.assertIn("application-specific exceptions", builder_source)
         self.assertIn("Target country for this application", builder_source)
+        self.assertIn('<select id="target-country" name="target_country" data-target-country>', builder_source)
+        self.assertIn("career_background.target_country|trim or 'United States'", builder_source)
+        self.assertIn("{% for country in country_options %}", builder_source)
+        self.assertIn("selected_target_country|trim|lower", builder_source)
+        self.assertNotIn('<input id="target-country"', builder_source)
         self.assertIn("career_background_additions.countries_worked", builder_source)
         self.assertNotIn(">Countries where you worked<", builder_source)
 

@@ -1,0 +1,9 @@
+Baseline Resume — Employment roles and job titles
+
+- Baseline Resume generation synchronizes structured employment roles into the existing knowledge table.
+- Records use career_role#<stable role id> and preserve the Baseline Resume experience id.
+- The editable panel now appears in Baseline Resume because these fields are extracted directly from the imported resume.
+- Career Evidence Library keeps reusable confirmation answers and supporting documents, not duplicate resume-derived role fields.
+- Confirmed interpretations survive unchanged Baseline Resume regeneration.
+- Material source changes return the role to Needs review.
+- Confirmed titles remain reusable across future application reviews.

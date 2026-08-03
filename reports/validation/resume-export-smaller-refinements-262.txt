@@ -1,0 +1,22 @@
+Career Bridge 262 - Word/PDF resume refinement validation
+
+Implemented
+- Employer names are bold rather than underlined in both Word and PDF exports.
+- Mid-career corporate Word export now uses Arial so its font choice matches the PDF runtime family on Windows and the compatible Liberation Sans fallback on Linux.
+- Removed Word-only expanded character spacing and small-caps styling from name, target title, contact, and section headings.
+- Aligned Word line-spacing values with the PDF leading values for header, summary, skills, employer, role, bullets, and education styles.
+- Applied employer-entry spacing per experience: no unnecessary gap before the first employer and a 6-point gap before later employers.
+- Matched PDF bullet and education-detail indentation to Word.
+- Changed the PDF education detail marker from a hyphen to the same bullet glyph used by Word.
+- Widened the PDF education content column to mirror Word's right-tab layout and avoid premature wrapping or single-entry page spillover.
+- Retained right-aligned dates and hyperlink underlining.
+
+Automated validation
+- pytest: 624 passed, 46 skipped, 144 subtests passed.
+- Final integration checks passed; full Flask/browser suites remain blocked only by unavailable optional runtime dependencies.
+- New visual-parity unit tests verify employer emphasis, tracking removal, employer spacing, bullet indentation, line spacing, education marker, and PDF education column width.
+
+Visual validation
+- Rendered Word and PDF from the same representative resume data.
+- Both formats render cleanly on one page for the validation fixture.
+- No clipping, overlap, broken glyphs, or orphaned education credential was observed.

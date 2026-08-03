@@ -1,0 +1,9 @@
+Baseline Resume — Extracted resume information
+
+- Moved Employment roles and job titles from Career Evidence Library to Baseline Resume.
+- The panel continues to edit the same stable role records; no evidence migration or duplication is introduced.
+- The panel is labeled Extracted resume information and explains that the source is the Baseline Resume.
+- Save, Confirm as written, and Remove remain available from Baseline Resume.
+- Added baseline-semantic API aliases under /api/career/baseline/roles while retaining the previous endpoints for compatibility.
+- Confirm Relevant Experience title findings now link to Baseline Resume#employment-roles.
+- Career Evidence Library now focuses on additional and user-confirmed evidence: reusable confirmation answers and supporting documents.

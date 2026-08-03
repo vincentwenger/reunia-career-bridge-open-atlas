@@ -1,0 +1,13 @@
+Baseline Resume re-import refresh fix
+
+Changes
+- Baseline Resume replacement uploads now explicitly persist the new workflow state before redirecting.
+- The previous source resume object is deleted only after the new profile and source key are durably committed.
+- A revision-specific redirect prevents stale Baseline Resume previews after re-import.
+- Career Evidence Library employment-role synchronization runs only after the new baseline has been saved.
+- Shared after-request workflow persistence now reuses the same explicit persistence helper.
+
+Validation
+- 320 unit and contract tests passed.
+- 12 runtime-only tests skipped because Flask/Werkzeug are not installed in the validation container.
+- Python syntax compilation passed for the modified application and test files.

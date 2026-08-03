@@ -1,0 +1,30 @@
+Target-Market Review: generic Application Development evidence fix
+=================================================================
+
+Problem
+-------
+A generic target-job requirement named "Application Development" could be marked
+as "Recommended learning or future action" even when Verified Resume Evidence
+contained documented software-engineering and application-building work. The
+classification depended too heavily on an exact phrase match.
+
+Fix
+---
+- Added a conservative deterministic matcher for unqualified umbrella terms:
+  Application Development, Software Development, Application Engineering, and
+  Software Engineering.
+- Links the requirement only to traceable software-development bullets or
+  confirmed supplemental evidence.
+- Upgrades the evidence matrix from unsupported to supported and removes the
+  stale unsupported-requirement entry and unnecessary confirmation question.
+- Converts an already-saved unsupported Target-Market Review card into a
+  confirmed Transferable Skills item when the evidence is present.
+- Preserves strict evidence protection for qualified requirements. Examples such
+  as Mobile application development and Salesforce application development are
+  not inferred from general software experience.
+
+Validation
+----------
+- Added positive regression coverage for generic Application Development.
+- Added negative regression coverage for Mobile application development.
+- Full test suite: 623 tests passed; 46 skipped.

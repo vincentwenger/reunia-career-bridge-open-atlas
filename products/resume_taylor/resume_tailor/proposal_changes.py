@@ -3,7 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 from .models import CandidateProfile, TailoringProposal
-from .proposal_integrity import repair_missing_bullet_proposals
+from .proposal_integrity import (
+    is_auto_reconciled_exclusion,
+    is_auto_reconciled_inclusion,
+    is_missing_selection_decision,
+    repair_missing_bullet_proposals,
+)
 from .confirmation import is_candidate_confirmed_bullet_id
 from .text_diff import build_word_diff
 from .validation import numeric_tokens, sentence_count, word_count
@@ -707,7 +712,26 @@ def summarize_tailoring_changes(
                 .strip()
             )
 
-        if rewritten_as_id:
+        if is_auto_reconciled_inclusion(item):
+            reasons.append(
+                _reason(
+                    "tailoring_job_aligned_included",
+                    "Included — strong job match",
+                    item.evidence_note,
+                    "included",
+                )
+            )
+        elif is_auto_reconciled_exclusion(item):
+            exclusions += 1
+            reasons.append(
+                _reason(
+                    "tailoring_job_aligned_excluded",
+                    "Not included by Job Alignment",
+                    item.evidence_note,
+                    "excluded",
+                )
+            )
+        elif rewritten_as_id:
             reasons.append(
                 _reason(
                     "tailoring_rewritten",
@@ -722,7 +746,19 @@ def summarize_tailoring_changes(
             )
         elif change["include_changed"] and not item.include:
             exclusions += 1
-            if requirement_labels:
+            if is_missing_selection_decision(item):
+                reasons.append(
+                    _reason(
+                        "tailoring_mapping_restored",
+                        "Verified evidence restored",
+                        (
+                            "Career Bridge restored the source bullet and evaluated it with "
+                            "the deterministic Job Alignment selector."
+                        ),
+                        "excluded",
+                    )
+                )
+            elif requirement_labels:
                 reasons.append(
                     _reason(
                         "tailoring_excluded_with_matches",
@@ -730,9 +766,9 @@ def summarize_tailoring_changes(
                         (
                             "The proposal matched this accomplishment to "
                             + "; ".join(requirement_labels)
-                            + ", but did not select it for the Draft. No more specific "
-                              "exclusion rationale was returned, so the source bullet remains "
-                              "available in the Application Baseline for manual restoration."
+                            + ", but did not select it for the Draft. A specific duplicate, "
+                              "relevance, seniority, evidence-strength, or resume-space reason "
+                              "should be documented; otherwise this exclusion requires review."
                         ),
                         "excluded",
                     )
@@ -743,9 +779,9 @@ def summarize_tailoring_changes(
                         "tailoring_excluded_without_match",
                         "Not selected for the tailored Draft",
                         (
-                            "No job requirement was matched to this accomplishment, so the "
-                            "generated proposal left it out of the Draft. It remains unchanged "
-                            "in the Application Baseline and can be restored manually."
+                            "No job requirement was matched to this accomplishment, so it was "
+                            "ranked after matched evidence. It remains unchanged in the "
+                            "Application Baseline and can be restored manually."
                         ),
                         "excluded",
                     )

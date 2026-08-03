@@ -1,0 +1,6 @@
+Resume body alignment update
+
+- Professional summary paragraphs are left-aligned in DOCX and PDF exports.
+- Experience bullets are left-aligned in DOCX and PDF exports.
+- Employer and education dates remain right-aligned.
+- Headings, skills, and contact layout are unchanged.

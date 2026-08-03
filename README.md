@@ -9,7 +9,7 @@ Réunia Career Bridge is a Flask application for managing a job search from reus
 - **Prepare and Practice** — Interview Preparation and Adaptive Mock Interview.
 - **Progress** — manage the Career Action Plan and review Progress & Outcomes.
 
-Baseline Resume creates a reusable **Baseline Resume**. Each job application then receives its own **Application Baseline**, Job-Aligned Resume, and Final Resume. Generated claims remain constrained to Verified Resume Evidence.
+Baseline Resume creates a reusable **Baseline Resume** either by importing an existing resume or by entering the same structured summary, skills, education, and employment information manually. A later import can replace the manual baseline or merge distinct information for review. Each job application then receives its own **Application Baseline**, Job-Aligned Resume, and Final Resume. Generated claims remain constrained to Verified Resume Evidence.
 
 ## Repository layout
 
@@ -53,7 +53,7 @@ AWS_REGION=us-west-2
 
 Application metadata is stored in DynamoDB. Uploaded resumes, generated DOCX/PDF files, large workflow snapshots, resume findings, interview-preparation snapshots, and progress snapshot details are stored in object storage. Application-linked workflows are retained until explicit deletion; temporary workflows may use a TTL.
 
-The legacy-named `CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION` override permits explicitly non-durable workflow or document storage for controlled validation only. It never permits application records to leave DynamoDB and must not be enabled for a normal production deployment.
+The legacy-named `CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION` override permits explicitly non-durable workflow or document storage for controlled validation only. It never permits application records or Job Discovery assessments to leave DynamoDB and must not be enabled for a normal production deployment.
 
 See [`docs/deployment/lightsail.md`](docs/deployment/lightsail.md) and [`docs/validation/production_storage_migration_check.md`](docs/validation/production_storage_migration_check.md).
 

@@ -172,6 +172,17 @@ def _validate_career_bridge_production_storage(app: Flask) -> None:
             "Application record storage cannot be downgraded by the demo override."
         )
 
+    discovery_backend = str(
+        app.config.get("CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND") or ""
+    ).strip().casefold()
+    if discovery_backend != "dynamodb":
+        raise RuntimeError(
+            "Unsafe Career Bridge production persistence configuration: "
+            "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND must be 'dynamodb'. "
+            "Job Discovery postings, fit snapshots, and assessment progress "
+            "cannot be downgraded by the demo override."
+        )
+
     required_backends = {
         "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
         "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "dynamodb",
@@ -205,6 +216,13 @@ def _validate_career_bridge_production_storage(app: Flask) -> None:
     rendered_details = "; ".join(details)
 
     if _configuration_flag(app.config.get(override_key)):
+        if "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME" in missing_resources:
+            raise RuntimeError(
+                "Unsafe Career Bridge production persistence configuration: "
+                + rendered_details
+                + ". CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME cannot be omitted "
+                "or downgraded by the demo override."
+            )
         logger = getattr(app, "logger", None)
         if logger is not None:
             logger.warning(
@@ -218,8 +236,9 @@ def _validate_career_bridge_production_storage(app: Flask) -> None:
     raise RuntimeError(
         "Unsafe Career Bridge production persistence configuration: "
         + rendered_details
-        + ". Production requires DynamoDB application/workflow storage and S3 "
-        "document storage with explicit table and bucket names. Set "
+        + ". Production requires DynamoDB application/workflow storage, "
+        "DynamoDB Job Discovery storage, and S3 document storage with explicit "
+        "table and bucket names. Set "
         f"{override_key}=true only for an intentional demo deployment that accepts "
         "ephemeral data and single-process limitations."
     )

@@ -126,12 +126,16 @@ Hard constraints:
 1. Professional summary: 50 to 80 words, 3 or 4 sentences.
 2. Skills: aim for {SKILL_TOTAL_RECOMMENDED_MINIMUM}-{SKILL_TOTAL_MAXIMUM} total across the four categories, using only skills that are relevant to the target role and copied verbatim from the candidate profile. Keep each selected skill in its original Verified Resume Evidence category. Aim for Hard Skills {SKILL_CATEGORY_RULES['hard_skills']['minimum']}-{SKILL_CATEGORY_RULES['hard_skills']['maximum']}, Soft Skills {SKILL_CATEGORY_RULES['soft_skills']['minimum']}-{SKILL_CATEGORY_RULES['soft_skills']['maximum']}, Tools & Software {SKILL_CATEGORY_RULES['tools_software']['minimum']}-{SKILL_CATEGORY_RULES['tools_software']['maximum']}, and Industry Knowledge {SKILL_CATEGORY_RULES['industry_knowledge']['minimum']}-{SKILL_CATEGORY_RULES['industry_knowledge']['maximum']}. If the profile does not contain enough relevant verified skills for a range, use the available relevant skills rather than inventing or forcing unrelated ones.
 3. Return exactly one bullet proposal for every source bullet, using its exact source_bullet_id. Never omit the
-   structured record. If you cannot justify an exclusion, include the original source wording by default.
-4. For the most recent experience, include 6 or 7 bullets. For the second experience, include 3 or 4. For the third,
-   include 2 or 3. Keep other experiences at 2 or 3 if any exist.
-   Each included bullet must contain 35 words or fewer, use one sentence or concise clause, begin with an action verb,
-   and contain plain text only. Do not include a bullet glyph, markdown, bold markers, headings, labels, line breaks,
-   sub-bullets, or explanatory sections inside proposed_text.
+   structured record. Your job is to map evidence, not to select bullets: set include=false for every record. Career
+   Bridge uses deterministic code to choose the Job-Aligned Resume bullets after the proposal is validated.
+4. For every bullet, return:
+   - grounded proposed_text using the source accomplishment;
+   - every directly supported matched_requirement_id;
+   - an evidence_note describing the verified evidence basis only.
+   Do not provide inclusion, exclusion, resume-space, or ranking rationales. Each proposed bullet must contain 35 words
+   or fewer, use one sentence or concise clause, begin with an action verb, and contain plain text only. Do not include
+   a bullet glyph, markdown, bold markers, headings, labels, line breaks, sub-bullets, or explanatory sections inside
+   proposed_text.
 5. Each proposed bullet must be supported by its source bullet. It may use a verified skill from elsewhere in the
    profile only when the evidence note explicitly identifies that supporting profile evidence.
 6. Do not add job-posting terminology such as hardware upgrades, employee coaching, user-defined functions, report
@@ -153,10 +157,18 @@ Hard constraints:
     recommended_learning_or_future_action.
     - confirmed_experience requires exact Verified Resume Evidence IDs.
     - reasonable_rephrasing may explain an existing title, credential, term, or accomplishment without changing facts.
+    - Preserve official product, platform, technology, acronym, and proper names exactly as written. When a
+      regional_terminology item is already an exact verified name, classify the name as confirmed_experience;
+      do not invent an explanation or require candidate clarification merely because no explanation is available.
     - user_clarification_required means the context may be useful but cannot be safely claimed yet. Create a candidate
       question when the clarification could materially strengthen this application.
     - unsupported_claim must remain outside the resume and align with unsupported_requirements.
-    - recommended_learning_or_future_action is advice for a genuine gap and must never appear as current experience.
+    - Show each job requirement only once in career_translation_assessment. When a candidate question exists for a
+      requirement, use one missing_evidence finding and do not also add an unsupported_requirement finding for it.
+    - recommended_learning_or_future_action is allowed only after the candidate explicitly confirms that they do not
+      have the experience. In the initial proposal, missing evidence must be user_clarification_required when a useful
+      question exists, or unsupported_claim when it does not. Never infer a learning need merely because the resume
+      does not contain the exact job-description wording.
     Do not treat reusable-profile headlines, roles, year counts, skills, accomplishments, countries, languages,
     credentials, certifications, unfamiliar titles, transitions, work authorization, or target-country experience as
     claim evidence unless the uploaded or candidate-confirmed Verified Resume Evidence independently supports them.
@@ -262,6 +274,8 @@ Rules:
   evidence notes when used.
 - Every affirmative answer is attached to a selected experience and has a candidate-confirmed source bullet such as
   NAS-CONF-01. Return exactly one bullet proposal for every source bullet, including these candidate-confirmed bullets.
+- Synthesize each candidate-confirmed bullet from the complete answer. Prefer concrete actions, techniques, tools, and
+  outcomes from all relevant sentences; do not copy only the opening sentence or retain first-person framing.
 - Honor each answer's placement preference:
   * new_bullet: include the candidate-confirmed source bullet as a distinct bullet.
   * update_existing: strengthen the closest existing bullet in the same experience, cite both the CONF evidence ID and
@@ -280,7 +294,9 @@ Rules:
 - Do not add a confirmed skill to the resume unless the confirmed evidence is specific enough to support it.
 - Recalculate career_translation_assessment after applying the answers. An affirmative answer may upgrade a related
   finding to confirmed_experience only when the updated profile contains a traceable CONF- evidence ID. A negative
-  answer must remain an unsupported_claim or recommended_learning_or_future_action, never a resume claim.
+  answer must remain an unsupported_claim or may become recommended_learning_or_future_action when the candidate has
+  explicitly confirmed the gap, never a resume claim. Keep exactly one finding per requirement; do not retain both an
+  unsupported_requirement finding and a missing_evidence finding for the same requirement.
 
 REUSABLE CAREER PROFILE AND INTERNATIONAL BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
 {background_json}

@@ -1,0 +1,16 @@
+Career Bridge confirmation answer length guidance
+
+Implemented:
+- Added recommended answer length of 60–120 words (about 3–6 sentences) to Additional experience confirmation.
+- Guidance appears at the question-set level and beside narrative answer fields.
+- Guidance asks users to include what they did, how they did it, tools or techniques, and the result.
+- Recommendation is explicitly advisory rather than a strict limit.
+- Targeted follow-up questions retain concise precise-fact guidance.
+- Narrative fields are connected to helper text with aria-describedby.
+
+Validation:
+- 288 contract tests passed; 5 dependency-limited tests skipped.
+- 578 full tests passed; 39 environment-dependent tests skipped.
+- Python compilation passed.
+- Jinja template parsing passed.
+- JavaScript syntax check passed.

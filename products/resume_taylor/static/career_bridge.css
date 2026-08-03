@@ -1198,7 +1198,10 @@ body.application-builder-body {
 .application-metric-grid-minimal .metric-card strong { font-size: 1.45rem; }
 .application-add-card > details > summary { font-weight: 750; }
 .application-add-card > details[open] > summary { margin-bottom: 18px; }
-.application-dashboard-grid { gap: 12px; }
+.application-dashboard-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
 .application-dashboard-card-minimal { padding: 18px !important; }
 .application-dashboard-card-minimal .application-card-header { margin-bottom: 14px; }
 .application-dashboard-card-minimal .application-card-header h3 { margin: 7px 0 2px; }
@@ -1458,4 +1461,476 @@ body.application-builder-body {
   .interview-generation-card { grid-template-columns: 1fr; }
   .interview-generate-form { min-width: 0; }
   .career-translation-source-summary-minimal { grid-template-columns: 1fr; }
+}
+
+.career-translation-contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.career-translation-contact-links a {
+  color: #0f766e;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Baseline Resume — extracted employment roles */
+.baseline-structured-evidence {
+  margin-top: 24px;
+  padding: 22px;
+}
+
+.baseline-structured-evidence .reusable-evidence-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.baseline-structured-evidence .reusable-evidence-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.baseline-structured-evidence .reusable-evidence-header p:not(.section-eyebrow) {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.baseline-structured-evidence .reusable-evidence-count {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.baseline-structured-evidence .reusable-evidence-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.baseline-structured-evidence .reusable-evidence-table {
+  width: 100%;
+  min-width: 1320px;
+  border-collapse: collapse;
+}
+
+.baseline-structured-evidence .reusable-evidence-table th,
+.baseline-structured-evidence .reusable-evidence-table td {
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.baseline-structured-evidence .reusable-evidence-table th {
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.baseline-structured-evidence .reusable-evidence-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.baseline-structured-evidence .reusable-evidence-table textarea,
+.baseline-structured-evidence .reusable-evidence-table input,
+.baseline-structured-evidence .reusable-evidence-table select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.baseline-structured-evidence .reusable-evidence-table textarea,
+.baseline-structured-evidence .reusable-evidence-table input {
+  padding: 9px 10px;
+}
+
+.baseline-structured-evidence .reusable-evidence-table select {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+}
+
+.baseline-structured-evidence .reusable-evidence-table label {
+  display: block;
+  margin: 0 0 5px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.baseline-structured-evidence .reusable-evidence-table label:not(:first-child) {
+  margin-top: 10px;
+}
+
+.baseline-structured-evidence .reusable-evidence-table td > small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.baseline-structured-evidence .employment-role-source-cell {
+  width: 25%;
+}
+
+.baseline-structured-evidence .employment-role-responsibilities-heading,
+.baseline-structured-evidence .employment-role-responsibilities-cell {
+  width: 36%;
+  min-width: 420px;
+}
+
+.baseline-structured-evidence .employment-role-responsibilities-cell textarea {
+  min-height: 118px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.baseline-structured-evidence .employment-role-responsibilities-cell textarea[name="responsibilities"] {
+  min-height: 156px;
+}
+
+.baseline-structured-evidence .employment-role-status-heading,
+.baseline-structured-evidence .employment-role-status-cell {
+  width: 150px;
+  min-width: 150px;
+}
+
+.baseline-structured-evidence .employment-role-status-cell select {
+  width: 100%;
+  max-width: 150px;
+}
+
+.baseline-structured-evidence .employment-role-inline-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.baseline-structured-evidence .reusable-evidence-actions {
+  width: 190px;
+}
+
+.baseline-structured-evidence .reusable-evidence-action-row {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.baseline-structured-evidence .reusable-evidence-actions .btn {
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 12px;
+}
+
+.baseline-structured-evidence .danger-action {
+  color: var(--danger);
+}
+
+.baseline-structured-evidence tr.source-inactive {
+  opacity: 0.72;
+}
+
+.baseline-structured-evidence .source-inactive-note {
+  color: var(--warning-dark, #92400e) !important;
+  font-weight: 700;
+}
+
+.baseline-structured-evidence .reusable-evidence-empty {
+  padding: 18px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.baseline-structured-evidence .reusable-evidence-empty p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.baseline-role-feedback {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.baseline-role-feedback.is-success {
+  background: var(--success-soft, #ecfdf5);
+  color: var(--success-dark, #065f46);
+}
+
+.baseline-role-feedback.is-error {
+  background: var(--danger-soft, #fef2f2);
+  color: var(--danger, #b91c1c);
+}
+
+@media (max-width: 760px) {
+  .baseline-structured-evidence {
+    padding: 16px;
+  }
+
+  .baseline-structured-evidence .reusable-evidence-header {
+    display: block;
+  }
+
+  .baseline-structured-evidence .reusable-evidence-count {
+    display: inline-flex;
+    margin-top: 12px;
+  }
+
+  .baseline-structured-evidence .employment-role-inline-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Baseline Resume — extracted summary and education */
+.baseline-summary-form > label {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.baseline-summary-form textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.baseline-structured-action-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.baseline-education-table {
+  min-width: 1080px !important;
+}
+
+.baseline-education-table td:first-child {
+  width: 26%;
+}
+
+.baseline-education-table td:nth-child(2),
+.baseline-education-table td:nth-child(3) {
+  width: 29%;
+}
+
+.baseline-education-actions {
+  width: 180px !important;
+}
+
+.baseline-structured-feedback {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.baseline-structured-feedback.is-success {
+  background: var(--success-soft, #ecfdf5);
+  color: var(--success-dark, #065f46);
+}
+
+.baseline-structured-feedback.is-error {
+  background: var(--danger-soft, #fef2f2);
+  color: var(--danger, #b91c1c);
+}
+
+/* Baseline Resume — extracted skills */
+.baseline-skills-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.baseline-skills-grid > div:last-child {
+  grid-column: 1 / -1;
+}
+
+.baseline-skills-grid label {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.baseline-skills-grid textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.baseline-skills-grid small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+@media (max-width: 780px) {
+  .baseline-skills-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .baseline-skills-grid > div:last-child {
+    grid-column: auto;
+  }
+}
+
+/* Baseline Resume creation paths and manual record entry */
+.baseline-creation-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, .75fr);
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.baseline-creation-option {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.baseline-creation-option-manual {
+  border-color: #b9ddd5;
+  background: #f7fbfa;
+}
+
+.baseline-creation-option h3 {
+  margin: 2px 0 8px;
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+.baseline-creation-option p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.baseline-manual-feature-list {
+  display: grid;
+  gap: 7px;
+  margin: 16px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+}
+
+.baseline-import-file-field {
+  grid-column: 1 / -1;
+}
+
+.baseline-add-record {
+  margin: 0 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.baseline-add-record > summary {
+  padding: 13px 15px;
+  color: var(--primary-dark);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.baseline-add-record[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.baseline-add-record-form {
+  padding: 16px;
+}
+
+.baseline-add-record-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.baseline-add-record-grid label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text);
+  font-size: .8rem;
+  font-weight: 800;
+}
+
+.baseline-add-record-grid input,
+.baseline-add-record-grid textarea {
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.baseline-add-record-grid textarea {
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.baseline-add-record-grid small {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+}
+
+.baseline-add-record-wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .baseline-creation-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .baseline-add-record-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .baseline-add-record-wide {
+    grid-column: auto;
+  }
 }

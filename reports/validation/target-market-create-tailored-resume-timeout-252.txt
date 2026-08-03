@@ -1,0 +1,22 @@
+Target-Market Review — Create tailored resume 504 fix (build 252)
+
+Root cause
+- POST /applications/confirmation/apply performed two sequential model requests on the initial submission:
+  1. ResumeAI.refine_proposal
+  2. the independent post-confirmation evidence audit
+- Either request could approach the provider timeout; together they could exceed the Lightsail/web gateway deadline and return HTTP 504 before Flask completed the redirect.
+
+Change
+- The interactive confirmation route makes no AI request.
+- Affirmative answers are converted into traceable candidate-confirmed evidence and role bullets.
+- Declined claims restore verified source wording locally when applicable.
+- The existing grounded provisional proposal is repaired, balanced, and reconciled with deterministic evidence and bullet-selection rules.
+- Step 2 completes in one request and opens Review Tailored Resume directly.
+- No new AI-generated follow-up round is created from this route.
+- Resume Report generation remains nonblocking after Step 3 opens.
+- Loading copy now describes bounded local processing rather than a long evidence review.
+
+Validation
+- 644 discoverable tests passed; 46 dependency-aware tests skipped.
+- Final dependency-light integration checks passed.
+- New gateway-timeout contracts verify that the confirmation route contains no ResumeAI, refine_proposal, audit_proposal, or post-confirmation evidence-audit call.

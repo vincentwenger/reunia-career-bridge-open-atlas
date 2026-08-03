@@ -5,7 +5,13 @@ from __future__ import annotations
 import re
 
 from .audit_identity import audit_issue_family
-from .models import AuditIssue, CandidateQuestion, TailoringProposal
+from .models import (
+    AuditIssue,
+    CandidateAnswer,
+    CandidateProfile,
+    CandidateQuestion,
+    TailoringProposal,
+)
 
 MAX_TARGETED_FOLLOW_UP_ROUNDS = 1
 MAX_TARGETED_FOLLOW_UP_QUESTIONS = 3
@@ -205,3 +211,93 @@ def build_targeted_follow_up_questions(
             )
         )
     return questions
+
+
+def apply_final_follow_up_answers_locally(
+    profile: CandidateProfile,
+    proposal: TailoringProposal,
+    questions: list[CandidateQuestion],
+    answers: list[CandidateAnswer],
+) -> TailoringProposal:
+    """Apply the last evidence answers without another model round trip.
+
+    The targeted follow-up is created from an independent audit, so the final
+    submission should only confirm new source evidence or choose a conservative
+    source-backed fallback. Running another rewrite and another audit here made
+    the interactive request vulnerable to gateway timeouts. Affirmative answers
+    are already attached to ``profile`` by ``build_profile_with_candidate_answers``;
+    this helper handles declined claims locally before deterministic validation.
+    """
+    updated = proposal.model_copy(deep=True)
+    answer_lookup = {answer.question_id: answer for answer in answers}
+    source_bullets = profile.bullet_lookup()
+    proposal_bullets = {
+        item.source_bullet_id: item for item in updated.bullet_proposals
+    }
+
+    for question in questions:
+        answer = answer_lookup.get(question.id)
+        if answer is None or answer.yes_no is not False:
+            continue
+
+        source_id = question.source_id.strip()
+        normalized_source_id = source_id.casefold()
+
+        if normalized_source_id in {"summary", "professional_summary"}:
+            updated.professional_summary = profile.current_summary
+            continue
+
+        bullet = proposal_bullets.get(source_id)
+        verified_text = source_bullets.get(source_id, "").strip()
+        if bullet is not None and verified_text:
+            bullet.proposed_text = verified_text
+            bullet.evidence_note = (
+                "The candidate did not confirm the stronger generated wording, "
+                "so the verified source wording was restored."
+            )
+            continue
+
+        evidence_match = next(
+            (
+                item
+                for item in updated.evidence_matches
+                if item.requirement_id == source_id
+            ),
+            None,
+        )
+        if evidence_match is not None:
+            evidence_match.status = "unsupported"
+            evidence_match.evidence_ids = []
+            evidence_match.rationale = (
+                "The candidate did not confirm this requirement during the final "
+                "evidence follow-up."
+            )
+            for item in updated.bullet_proposals:
+                item.matched_requirement_ids = [
+                    requirement_id
+                    for requirement_id in item.matched_requirement_ids
+                    if requirement_id != source_id
+                ]
+            continue
+
+        # Some skill findings use the skill itself as the source identifier. Remove
+        # only an exact skill match; broader cleanup remains deterministic.
+        if normalized_source_id:
+            for field in (
+                "hard_skills",
+                "soft_skills",
+                "tools_software",
+                "industry_knowledge",
+            ):
+                values = getattr(updated.skills, field)
+                setattr(
+                    updated.skills,
+                    field,
+                    [
+                        value
+                        for value in values
+                        if value.casefold() != normalized_source_id
+                    ],
+                )
+
+    return updated

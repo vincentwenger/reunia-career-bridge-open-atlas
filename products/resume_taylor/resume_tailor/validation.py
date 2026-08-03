@@ -3,7 +3,10 @@ from __future__ import annotations
 import re
 from collections import Counter
 
-from .bullet_text import has_bullet_structure_artifacts
+from .bullet_text import (
+    has_bullet_structure_artifacts,
+    normalize_resume_bullet_terminal_punctuation,
+)
 from .grounding import validate_candidate_claim
 from .models import (
     ApprovedResume,
@@ -15,6 +18,7 @@ from .models import (
     TailoringProposal,
 )
 from .skill_rules import SKILL_TOTAL_MAXIMUM
+from .proposal_integrity import selection_consistency_warnings
 
 
 def normalize(value: str) -> str:
@@ -436,6 +440,20 @@ def validate_proposal(
                 section="Evidence Matrix",
                 issue="Duplicate evidence decisions for: " + ", ".join(duplicate_evidence),
                 suggested_fix="Return exactly one evidence decision per requirement.",
+            )
+        )
+
+    for warning in selection_consistency_warnings(profile, analysis, proposal):
+        issues.append(
+            AuditIssue(
+                severity="warning",
+                section="Job Alignment",
+                source_id=", ".join(warning.get("source_ids", [])),
+                issue=warning["detail"],
+                suggested_fix=(
+                    "Review the affected bullet selections. Prefer matched, specific, "
+                    "non-duplicative evidence; document any deliberate exception."
+                ),
             )
         )
 
@@ -1170,7 +1188,9 @@ def build_approved_resume(
         for source_bullet in experience.bullets:
             item = proposal_lookup.get(source_bullet.id)
             if item and item.include:
-                selected.append(item.proposed_text.strip())
+                selected.append(
+                    normalize_resume_bullet_terminal_punctuation(item.proposed_text)
+                )
         bullets_by_experience[experience.id] = selected
 
     return ApprovedResume(

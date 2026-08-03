@@ -190,3 +190,15 @@ Reduce visual and cognitive clutter while keeping every core workflow and admini
 - Full discoverable suite: **537 passed, 36 optional dependency skips**.
 - All modified Jinja templates parse successfully.
 - New consistency contracts cover the five updated pages and the shared blue workspace treatment.
+
+### Extracted resume information placement
+
+- Moved automatically extracted employment roles and job-title interpretations from Career Evidence Library into Baseline Resume.
+- Career Evidence Library now focuses on additional and user-confirmed evidence rather than duplicating fields sourced from the resume.
+- Title clarification links from Confirm Relevant Experience open the relevant Baseline Resume panel directly.
+
+## Career Profile source-of-truth simplification
+
+- Career Profile now contains only Career direction, International and transition context, and Preferences and constraints.
+- Resume-derived facts are managed in Baseline Resume and linked from a prominent source notice.
+- Removed form fields remain backward-compatible in storage but are not cleared or presented as editable Career Profile data.

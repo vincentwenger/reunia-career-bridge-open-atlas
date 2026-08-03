@@ -21,6 +21,7 @@ from products.resume_taylor.resume_tailor.models import (
 from products.resume_taylor.resume_tailor.prompts import build_proposal_prompt
 from products.resume_taylor.resume_tailor.resume_language import (
     build_resume_translation_prompt,
+    detect_text_language,
     resolve_resume_language,
     restore_translation_protected_fields,
     resume_format_headings,
@@ -164,6 +165,24 @@ class ResumeLanguageTranslationTests(unittest.TestCase):
         self.assertEqual("Spanish", choice.name)
         self.assertEqual("user_override", choice.source)
 
+    def test_english_import_is_detected_as_matching_english_target(self) -> None:
+        source_language = detect_text_language(english_translation().all_source_text())
+        target = resolve_resume_language("United States")
+
+        self.assertEqual("en", source_language)
+        self.assertEqual(target.code, source_language)
+
+    def test_same_language_bypass_occurs_before_translation_request(self) -> None:
+        app_source = (ROOT / "products/resume_taylor/app.py").read_text(encoding="utf-8")
+        helper_start = app_source.index("def _ensure_target_language_profile")
+        helper_end = app_source.index("def _backfill_professional_contact_links", helper_start)
+        helper_source = app_source[helper_start:helper_end]
+
+        bypass_position = helper_source.index("if source_language and source_language == choice.code")
+        translation_position = helper_source.index("ai.translate_candidate_profile")
+        self.assertLess(bypass_position, translation_position)
+        self.assertIn("state.source_profile = original.model_copy(deep=True)", helper_source)
+
     def test_translation_prompt_redacts_contact_values(self) -> None:
         profile = french_profile()
         profile.contact.linkedin_url = "https://linkedin.example/marie"
@@ -296,6 +315,7 @@ class ResumeLanguageTranslationTests(unittest.TestCase):
         state = WorkflowState(
             source_profile=english_translation(),
             original_source_profile=french_profile(),
+            source_resume_language="fr",
             source_profile_language="en",
             source_profile_translation_fingerprint="translation-fingerprint",
             career_background=NewcomerCareerProfile(
@@ -304,6 +324,7 @@ class ResumeLanguageTranslationTests(unittest.TestCase):
             ),
         )
         restored = workflow_state_from_json_bytes(workflow_state_json_bytes(state))
+        self.assertEqual("fr", restored.source_resume_language)
         self.assertEqual("en", restored.source_profile_language)
         self.assertEqual("translation-fingerprint", restored.source_profile_translation_fingerprint)
         self.assertIsNotNone(restored.original_source_profile)
@@ -329,7 +350,7 @@ class ResumeLanguageTranslationTests(unittest.TestCase):
             source = path.read_text(encoding="utf-8")
             self.assertIn('name="resume_language"', source)
             self.assertIn("Automatic — {{ resume_language_choice.name }}", source)
-            self.assertIn("Career Bridge translates the complete Application Baseline", source)
+            self.assertIn("Career Bridge generates the Application Resume in the selected target language", source)
             self.assertIn("{{ resume_labels.professional_summary }}", source)
             self.assertIn("{{ resume_labels.experience }}", source)
             self.assertIn("{{ resume_labels.education }}", source)
@@ -340,6 +361,14 @@ class ResumeLanguageTranslationTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("'Baseline Resume' if translation_ready else 'Imported Resume preview'", career_translation_source)
         self.assertIn("translation pending", career_translation_source)
+        self.assertIn("Baseline Resume language", career_translation_source)
+        self.assertIn("language of the uploaded resume is detected automatically", career_translation_source)
+        self.assertIn("Imported resume language", career_translation_source)
+        self.assertIn("No translation needed", career_translation_source)
+
+        application_source = BUILDER_TEMPLATE.read_text(encoding="utf-8")
+        self.assertIn("Application Resume language", application_source)
+        self.assertIn("not the language of the uploaded file", application_source)
 
 
 if __name__ == "__main__":

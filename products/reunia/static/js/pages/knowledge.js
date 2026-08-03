@@ -20,7 +20,8 @@
         context: root.dataset.contextEndpoint || appUrl('/api/career/profile'),
         materials: root.dataset.materialsEndpoint || appUrl('/api/career/application-materials'),
         meetings: appUrl('/api/career/application-workspaces'),
-        activeMeeting: appUrl('/api/career/active-application')
+        activeMeeting: appUrl('/api/career/active-application'),
+        evidenceAnswers: root.dataset.evidenceAnswersEndpoint || appUrl('/api/career/evidence/answers'),
     };
 
     const state = {
@@ -1592,20 +1593,27 @@
         };
     }
 
+    const ACTIVE_CAREER_PROFILE_FIELDS = [
+        'professional_headline',
+        'current_location',
+        'preferred_roles',
+        'industries',
+        'countries_worked',
+        'target_country',
+        'target_country_experience',
+        'titles_needing_translation',
+        'career_transition',
+        'work_preferences',
+        'relocation_preferences',
+        'work_authorization',
+        'career_goals',
+        'constraints'
+    ];
+
     function profileContextForAI(context) {
         const value = normalizeContext(context || {});
-        const keys = [
-            'professional_headline', 'current_role', 'years_experience',
-            'current_location', 'preferred_roles', 'industries', 'core_skills',
-            'key_accomplishments', 'countries_worked', 'languages',
-            'target_country', 'target_country_experience',
-            'international_credentials', 'certifications',
-            'titles_needing_translation', 'career_transition',
-            'work_preferences', 'relocation_preferences', 'work_authorization',
-            'career_goals', 'constraints'
-        ];
         return Object.fromEntries(
-            keys
+            ACTIVE_CAREER_PROFILE_FIELDS
                 .map(key => [key, value[key]])
                 .filter(([, fieldValue]) => String(fieldValue || '').trim())
         );
@@ -1613,32 +1621,8 @@
 
     function hasContextDetails(context) {
         const value = normalizeContext(context || {});
-        return Boolean(
-            value.professional_headline ||
-            value.current_role ||
-            value.years_experience ||
-            value.current_location ||
-            value.preferred_roles ||
-            value.industries ||
-            value.core_skills ||
-            value.key_accomplishments ||
-            value.countries_worked ||
-            value.languages ||
-            value.target_country ||
-            value.target_country_experience ||
-            value.international_credentials ||
-            value.certifications ||
-            value.titles_needing_translation ||
-            value.career_transition ||
-            value.work_preferences ||
-            value.relocation_preferences ||
-            value.work_authorization ||
-            value.career_goals ||
-            value.constraints ||
-            value.role ||
-            value.domain ||
-            value.objective ||
-            value.free_text
+        return ACTIVE_CAREER_PROFILE_FIELDS.some(
+            key => String(value[key] || '').trim()
         );
     }
 
@@ -1650,19 +1634,12 @@
             ...existing,
             enabled: enabled.checked,
             professional_headline: document.getElementById('profileProfessionalHeadline')?.value.trim() || '',
-            current_role: document.getElementById('profileCurrentRole')?.value.trim() || '',
-            years_experience: document.getElementById('profileYearsExperience')?.value.trim() || '',
             current_location: document.getElementById('profileCurrentLocation')?.value.trim() || '',
             preferred_roles: document.getElementById('profilePreferredRoles')?.value.trim() || '',
             industries: document.getElementById('profileIndustries')?.value.trim() || '',
-            core_skills: document.getElementById('profileCoreSkills')?.value.trim() || '',
-            key_accomplishments: document.getElementById('profileKeyAccomplishments')?.value.trim() || '',
             countries_worked: document.getElementById('profileCountriesWorked')?.value.trim() || '',
-            languages: document.getElementById('profileLanguages')?.value.trim() || '',
             target_country: document.getElementById('profileTargetCountry')?.value.trim() || '',
             target_country_experience: document.getElementById('profileTargetCountryExperience')?.value.trim() || '',
-            international_credentials: document.getElementById('profileInternationalCredentials')?.value.trim() || '',
-            certifications: document.getElementById('profileCertifications')?.value.trim() || '',
             titles_needing_translation: document.getElementById('profileTitlesNeedingTranslation')?.value.trim() || '',
             career_transition: document.getElementById('profileCareerTransition')?.value.trim() || '',
             work_preferences: document.getElementById('profileWorkPreferences')?.value || '',
@@ -1873,11 +1850,15 @@
 
         status.textContent = profile.enabled ? 'Profile is enabled' : 'Profile is paused';
         status.classList.toggle('is-paused', !profile.enabled);
+        const firstCompactValue = value => String(value || '')
+            .split(/[\n;,]+/)
+            .map(item => item.trim())
+            .find(Boolean) || '';
         const chipValues = [
-            profile.current_role,
+            firstCompactValue(profile.preferred_roles),
             profile.target_country,
             profile.work_preferences,
-            profile.years_experience
+            profile.current_location
         ].filter(Boolean);
         chips.replaceChildren(...chipValues.map(value => {
             const chip = document.createElement('span');
@@ -1886,29 +1867,26 @@
         }));
 
         const rows = [
-            ['Professional headline', profile.professional_headline],
-            ['Current role', profile.current_role],
+            ['Target headline', profile.professional_headline],
             ['Preferred roles', profile.preferred_roles],
-            ['Industries', profile.industries],
-            ['Core skills', profile.core_skills],
-            ['Key accomplishments', profile.key_accomplishments],
-            ['Countries worked', profile.countries_worked],
-            ['Languages', profile.languages],
+            ['Target industries', profile.industries],
             ['Target country', profile.target_country],
-            ['International credentials', profile.international_credentials],
-            ['Titles needing translation', profile.titles_needing_translation],
+            ['Career goals', profile.career_goals],
+            ['Current location', profile.current_location],
+            ['Countries worked', profile.countries_worked],
+            ['Target-country experience', profile.target_country_experience],
+            ['Other terminology', profile.titles_needing_translation],
             ['Career transition', profile.career_transition],
-            ['Location', profile.current_location],
             ['Work preference', profile.work_preferences],
             ['Relocation', profile.relocation_preferences],
-            ['Career goals', profile.career_goals],
+            ['Work authorization', profile.work_authorization],
             ['Constraints', profile.constraints]
         ].filter(([, value]) => String(value || '').trim());
         preview.replaceChildren();
         if (!rows.length) {
             const empty = document.createElement('div');
             empty.className = 'context-preview-empty';
-            empty.textContent = 'Add professional or international-background details to build your reusable profile.';
+            empty.textContent = 'Add career direction, international context, or practical preferences to build your reusable profile.';
             preview.appendChild(empty);
             return;
         }
@@ -2258,6 +2236,93 @@
         } catch (error) {
             showToast('The answer could not be copied.', true);
         }
+    });
+
+    // Reusable confirmation answers in Career Evidence Library.
+    document.querySelectorAll('[data-evidence-answer-form]').forEach(form => {
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const evidenceId = String(form.dataset.evidenceId || '').trim();
+            if (!evidenceId) return;
+            const row = form.closest('[data-evidence-answer-row]');
+            const submitButton = row?.querySelector(`button[type="submit"][form="${CSS.escape(form.id)}"]`);
+            const data = new FormData(form);
+            const statusValue = String(data.get('yes_no') ?? '');
+            const payload = {
+                yes_no: statusValue === 'true' ? true : statusValue === 'false' ? false : null,
+                answer_text: String(data.get('answer_text') || '').trim()
+            };
+            if (payload.yes_no !== false && !payload.answer_text) {
+                showToast('Add a factual answer before saving.', true);
+                return;
+            }
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Saving…';
+            }
+            try {
+                const response = await fetch(`${endpoints.evidenceAnswers}/${encodeURIComponent(evidenceId)}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.error || result.message || 'The reusable answer could not be saved.');
+                const updatedAt = row?.querySelector('[data-evidence-updated]');
+                if (updatedAt) updatedAt.textContent = `Updated ${result.evidence_answer?.updated_at || 'just now'}`;
+                showToast('Reusable confirmation answer saved.');
+            } catch (error) {
+                showToast(error.message || 'The reusable answer could not be saved.', true);
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Save';
+                }
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-delete-evidence-answer]').forEach(button => {
+        button.addEventListener('click', async () => {
+            const row = button.closest('[data-evidence-answer-row]');
+            const evidenceId = String(row?.dataset.evidenceId || '').trim();
+            if (!evidenceId) return;
+            const question = String(button.dataset.evidenceQuestion || '').trim();
+            const questionLabel = question ? `\n\n“${question}”` : '';
+            const confirmed = window.confirm(
+                `Remove this question and its saved answer from Career Evidence Library?${questionLabel}\n\nFuture applications may ask it again.`
+            );
+            if (!confirmed) return;
+            button.disabled = true;
+            button.textContent = 'Removing…';
+            try {
+                const response = await fetch(`${endpoints.evidenceAnswers}/${encodeURIComponent(evidenceId)}`, {method: 'DELETE'});
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.error || result.message || 'The reusable answer could not be removed.');
+                row?.remove();
+                const remaining = document.querySelectorAll('[data-evidence-answer-row]').length;
+                const count = document.querySelector('.reusable-evidence-count');
+                if (count) count.textContent = `${remaining} saved`;
+                if (remaining === 0) {
+                    const tableWrapper = document.querySelector('.reusable-evidence-table-wrapper');
+                    if (tableWrapper) {
+                        const emptyState = document.createElement('div');
+                        emptyState.className = 'reusable-evidence-empty';
+                        const strong = document.createElement('strong');
+                        strong.textContent = 'No reusable confirmation answers yet.';
+                        const paragraph = document.createElement('p');
+                        paragraph.textContent = 'In an application, answer Confirm Relevant Experience and choose “Save confirmed answers to Career Evidence Library.”';
+                        emptyState.append(strong, paragraph);
+                        tableWrapper.replaceWith(emptyState);
+                    }
+                }
+                showToast('Question removed from Career Evidence Library.');
+            } catch (error) {
+                button.disabled = false;
+                button.textContent = 'Remove question';
+                showToast(error.message || 'The reusable answer could not be removed.', true);
+            }
+        });
     });
 
     // Initialize the active workspace.

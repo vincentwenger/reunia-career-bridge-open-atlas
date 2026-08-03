@@ -1,0 +1,8 @@
+Job Discovery pending-assessment transient gateway recovery
+
+- Keeps one AI-backed job per HTTP request.
+- Retries HTTP 502, 503, and 504 responses up to two times with bounded backoff.
+- Retries network interruptions using the same idempotent pending-assessment route.
+- Reconciles browser progress against the durable remaining queue, preventing a lost response from exceeding the requested run limit.
+- If the gateway remains unavailable after retries, labels the run Paused rather than Stopped and confirms completed assessments were preserved.
+- Does not count a gateway interruption as a job-analysis issue.

@@ -1,0 +1,93 @@
+<section class="card baseline-structured-evidence baseline-education-panel" id="education-credentials" data-baseline-education-endpoint="{{ url_for('application_builder.career_translation_workspace') }}/education" aria-labelledby="educationCredentialsTitle">
+  <div class="reusable-evidence-header">
+    <div>
+      <p class="section-eyebrow">Baseline Resume information</p>
+      <h2 id="educationCredentialsTitle">Education and credentials</h2>
+      <p>{% if baseline_creation_method == 'manual' %}Add education, certificates, and other credentials directly.{% else %}Review the education and credential records populated from the resume, then add anything that is missing.{% endif %}</p>
+      <p class="caption">Saving, adding, or removing a record automatically updates the reusable Baseline Resume.{% if state.profile_upload_name %} The imported resume remains preserved as source evidence.{% else %} Manually entered records are treated as directly confirmed by you.{% endif %}</p>
+    </div>
+    <span class="reusable-evidence-count baseline-education-count">{{ source_profile.education | length }} record{% if source_profile.education | length != 1 %}s{% endif %}</span>
+  </div>
+
+  <details class="baseline-add-record" data-baseline-education-add>
+    <summary>Add education or credential</summary>
+    <form class="baseline-add-record-form" data-add-baseline-education-form>
+      <div class="baseline-add-record-grid baseline-add-education-grid">
+        <div>
+          <label for="new-education-credential">Official credential</label>
+          <input id="new-education-credential" name="credential" maxlength="500" required placeholder="Professional Certificate in Machine Learning and Artificial Intelligence">
+        </div>
+        <div>
+          <label for="new-education-institution">Institution</label>
+          <input id="new-education-institution" name="institution" maxlength="500" required placeholder="UC Berkeley Executive Education">
+        </div>
+        <div>
+          <label for="new-education-date">Date <span class="optional-label">Optional</span></label>
+          <input id="new-education-date" name="date" maxlength="160" placeholder="2024">
+        </div>
+        <div>
+          <label for="new-education-location">Location <span class="optional-label">Optional</span></label>
+          <input id="new-education-location" name="location" maxlength="300" placeholder="Berkeley, California">
+        </div>
+        <div class="baseline-add-record-wide">
+          <label for="new-education-detail">Supporting detail <span class="optional-label">Optional</span></label>
+          <textarea id="new-education-detail" name="detail" rows="3" maxlength="3000" placeholder="Concentration, honors, certificate program, or other factual detail."></textarea>
+        </div>
+      </div>
+      <div class="baseline-structured-action-row">
+        <button class="btn btn-primary" type="submit">Add education record</button>
+      </div>
+    </form>
+  </details>
+
+  {% if source_profile.education %}
+  <div class="reusable-evidence-table-wrapper baseline-education-table-wrapper">
+    <table class="reusable-evidence-table baseline-education-table">
+      <thead>
+        <tr>
+          <th scope="col">Credential</th>
+          <th scope="col">Institution and location</th>
+          <th scope="col">Date and detail</th>
+          <th scope="col"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in source_profile.education %}
+        <tr data-baseline-education-row data-education-index="{{ loop.index0 }}">
+          <td>
+            <label for="education-credential-{{ loop.index0 }}">Official credential</label>
+            <input id="education-credential-{{ loop.index0 }}" name="credential" form="baseline-education-form-{{ loop.index0 }}" maxlength="500" required value="{{ item.credential }}">
+            <small>Source: {{ 'Manual entry' if not state.profile_upload_name else 'Baseline Resume' }} · EDUCATION-{{ loop.index }}</small>
+          </td>
+          <td>
+            <label for="education-institution-{{ loop.index0 }}">Institution</label>
+            <input id="education-institution-{{ loop.index0 }}" name="institution" form="baseline-education-form-{{ loop.index0 }}" maxlength="500" required value="{{ item.institution }}">
+            <label for="education-location-{{ loop.index0 }}">Location <span class="optional-label">Optional</span></label>
+            <input id="education-location-{{ loop.index0 }}" name="location" form="baseline-education-form-{{ loop.index0 }}" maxlength="300" value="{{ item.location }}">
+          </td>
+          <td>
+            <label for="education-date-{{ loop.index0 }}">Date</label>
+            <input id="education-date-{{ loop.index0 }}" name="date" form="baseline-education-form-{{ loop.index0 }}" maxlength="160" value="{{ item.date }}">
+            <label for="education-detail-{{ loop.index0 }}">Detail <span class="optional-label">Optional</span></label>
+            <textarea id="education-detail-{{ loop.index0 }}" name="detail" form="baseline-education-form-{{ loop.index0 }}" rows="4" maxlength="3000" placeholder="Degree concentration, certificate program, honors, or other factual detail.">{{ item.detail }}</textarea>
+          </td>
+          <td class="reusable-evidence-actions baseline-education-actions">
+            <form id="baseline-education-form-{{ loop.index0 }}" data-baseline-education-form data-education-index="{{ loop.index0 }}"></form>
+            <div class="reusable-evidence-action-row">
+              <button class="btn btn-primary" type="submit" form="baseline-education-form-{{ loop.index0 }}">Save</button>
+              <button class="btn btn-secondary danger-action" type="button" data-delete-baseline-education data-education-label="{{ item.credential | e }} at {{ item.institution | e }}">Remove from baseline</button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="reusable-evidence-empty baseline-education-empty">
+    <strong>No education or credentials have been added yet.</strong>
+    <p>Use <b>Add education or credential</b> above, or import a resume to populate this section automatically.</p>
+  </div>
+  {% endif %}
+  <div class="baseline-structured-feedback" data-baseline-education-feedback role="status" aria-live="polite" hidden></div>
+</section>

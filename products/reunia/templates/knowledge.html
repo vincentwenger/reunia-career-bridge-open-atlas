@@ -11,13 +11,13 @@
     {% set page_description = 'Choose library files or temporary documents for this application.' %}
 {% elif preparation_view == 'context' %}
     {% set page_title = 'Career Profile' %}
-    {% set page_description = 'Store professional background, accomplishments, preferences, and constraints used across applications.' %}
+    {% set page_description = 'Set career direction, international context, preferences, and constraints used across applications.' %}
 {% elif preparation_view == 'search' %}
     {% set page_title = 'Interview Preparation' %}
     {% set page_description = 'Prepare for the company, target role, interviewers, and likely questions using verified career evidence.' %}
 {% else %}
     {% set page_title = 'Career Evidence Library' %}
-    {% set page_description = 'Upload verified projects, achievements, work samples, and career documents.' %}
+    {% set page_description = 'Review additional and user-confirmed evidence that can be reused across applications.' %}
 {% endif %}
 
 {% block title %}{{ page_title }} - Réunia{% endblock %}
@@ -33,6 +33,7 @@
     data-active-view="{{ preparation_view }}"
     data-context-endpoint="{{ request.script_root }}/api/career/profile"
     data-materials-endpoint="{{ request.script_root }}/api/career/application-materials"
+    data-evidence-answers-endpoint="{{ request.script_root }}/api/career/evidence/answers"
     data-context-storage-scope="{{ assistant_context_storage_scope | default(session.get('user_id') or 'default') }}"
     data-context-enabled="{{ 'true' if assistant_context_enabled | default(true) else 'false' }}"
     data-profile-professional-headline="{{ assistant_context_professional_headline | default('') | e }}"
@@ -99,6 +100,76 @@
 
     {% if preparation_view == 'library' %}
     <section class="preparation-view" id="document-library-view" aria-labelledby="documentLibraryTitle">
+        <section class="reusable-evidence-panel" aria-labelledby="reusableEvidenceTitle">
+            <div class="reusable-evidence-header">
+                <div>
+                    <p class="section-eyebrow">Additional and confirmed career evidence</p>
+                    <h2 id="reusableEvidenceTitle">Reusable confirmation answers</h2>
+                    <p>Answers saved from Confirm Relevant Experience are checked before future applications ask the same question.</p>
+                </div>
+                <span class="reusable-evidence-count">{{ evidence_answers | default([]) | length }} saved</span>
+            </div>
+
+            {% if evidence_answers | default([]) %}
+            <div class="reusable-evidence-table-wrapper">
+                <table class="reusable-evidence-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Question</th>
+                            <th scope="col">Saved answer</th>
+                            <th scope="col">Role and reuse</th>
+                            <th scope="col"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for answer in evidence_answers %}
+                        <tr data-evidence-answer-row data-evidence-id="{{ answer.evidence_id }}">
+                            <td class="reusable-question-cell">
+                                <strong>{{ answer.question }}</strong>
+                                {% if answer.requirement %}<small>Requirement: {{ answer.requirement }}</small>{% endif %}
+                                {% if answer.source_job_title or answer.source_company %}<small>Last confirmed for {{ answer.source_job_title }}{% if answer.source_company %} at {{ answer.source_company }}{% endif %}</small>{% endif %}
+                            </td>
+                            <td>
+                                <label class="sr-only" for="evidence-status-{{ answer.evidence_id }}">Answer status</label>
+                                <select id="evidence-status-{{ answer.evidence_id }}" name="yes_no" form="evidence-form-{{ answer.evidence_id }}" class="reusable-answer-status">
+                                    <option value="" {% if answer.yes_no is none %}selected{% endif %}>Detailed answer</option>
+                                    <option value="true" {% if answer.yes_no is sameas true %}selected{% endif %}>Yes</option>
+                                    <option value="false" {% if answer.yes_no is sameas false %}selected{% endif %}>No relevant experience</option>
+                                </select>
+                                <label class="sr-only" for="evidence-answer-{{ answer.evidence_id }}">Saved answer</label>
+                                <textarea id="evidence-answer-{{ answer.evidence_id }}" name="answer_text" form="evidence-form-{{ answer.evidence_id }}" rows="3" maxlength="4000" placeholder="Add the factual detail that can be reused">{{ answer.answer_text }}</textarea>
+                            </td>
+                            <td>
+                                <strong>{{ answer.experience_label or 'No role required for this answer' }}</strong>
+                                <small>{{ answer.reuse_count }} future application reuse{% if answer.reuse_count != 1 %}s{% endif %}</small>
+                                <small data-evidence-updated>Updated {{ answer.updated_at }}</small>
+                            </td>
+                            <td class="reusable-evidence-actions">
+                                <form id="evidence-form-{{ answer.evidence_id }}" data-evidence-answer-form data-evidence-id="{{ answer.evidence_id }}"></form>
+                                <div class="reusable-evidence-action-row">
+                                    <button class="btn btn-primary" type="submit" form="evidence-form-{{ answer.evidence_id }}">Save</button>
+                                    <button
+                                        class="btn btn-secondary danger-action"
+                                        type="button"
+                                        data-delete-evidence-answer
+                                        data-evidence-question="{{ answer.question | e }}"
+                                        aria-label="Remove question: {{ answer.question | e }}"
+                                    >Remove question</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="reusable-evidence-empty">
+                <strong>No reusable confirmation answers yet.</strong>
+                <p>In an application, answer Confirm Relevant Experience and choose “Save confirmed answers to Career Evidence Library.”</p>
+            </div>
+            {% endif %}
+        </section>
+
         <div class="knowledge-layout">
             <aside class="collections-panel" aria-label="Document collections">
                 <div class="panel-heading">
@@ -405,8 +476,8 @@
                 <main class="context-main-column">
                     <div class="career-profile-control-bar" aria-labelledby="aiContextTitle">
                         <div>
-                            <h2 id="aiContextTitle">Reusable professional information</h2>
-                            <p>Keep only details that apply across job applications.</p>
+                            <h2 id="aiContextTitle">Career direction and preferences</h2>
+                            <p>Add reusable context that is not already documented in your Baseline Resume.</p>
                         </div>
                         <label class="context-enabled">
                             <input type="checkbox" id="useAssistantContext" name="use_context" value="true" {% if assistant_context_enabled | default(true) %}checked{% endif %}>
@@ -414,77 +485,32 @@
                         </label>
                     </div>
 
+                    <section class="career-profile-source-notice" role="note" aria-labelledby="careerProfileSourceTitle">
+                        <div class="career-profile-source-notice-copy">
+                            <span class="career-profile-source-icon" aria-hidden="true">↗</span>
+                            <div>
+                                <h3 id="careerProfileSourceTitle">Resume facts are managed in Baseline Resume</h3>
+                                <p>Employment history, official job titles, professional summary, skills, languages, education, credentials, certifications, and resume accomplishments are extracted and edited in Baseline Resume.</p>
+                            </div>
+                        </div>
+                        <a class="btn btn-secondary career-profile-source-link" href="{{ request.script_root }}/applications/career-translation#professional-summary">Review extracted resume information</a>
+                    </section>
+
                     <details class="workspace-card career-profile-section" open>
                         <summary class="career-profile-section-summary">
-                            <span><strong id="professionalIdentityTitle">Professional identity</strong><small>Your role, experience, location, industries, and target roles.</small></span>
+                            <span><strong id="careerDirectionTitle">Career direction</strong><small>How you want to position yourself and which opportunities you want to pursue.</small></span>
                             <i aria-hidden="true">+</i>
                         </summary>
                         <div class="form-grid context-form-grid">
                             <label class="form-field context-full-width-field">
-                                <span>Professional headline</span>
+                                <span>Target professional headline</span>
                                 <input type="text" id="profileProfessionalHeadline" name="professional_headline" value="{{ assistant_context_professional_headline | default('') }}" placeholder="Example: Software engineering leader specializing in financial regulatory platforms">
-                                <small>A short reusable description of your professional identity.</small>
-                            </label>
-                            <label class="form-field">
-                                <span>Current or most recent role</span>
-                                <input type="text" id="profileCurrentRole" name="current_role" value="{{ assistant_context_current_role | default('') }}" placeholder="Example: Lead Software Engineer" autocomplete="organization-title">
-                                <small>Helps Career Bridge understand your current career level.</small>
-                            </label>
-                            <label class="form-field">
-                                <span>Years of professional experience</span>
-                                <input type="text" id="profileYearsExperience" name="years_experience" value="{{ assistant_context_years_experience | default('') }}" placeholder="Example: 15 years">
-                                <small>Use an approximate value when your experience spans several fields.</small>
+                                <small>This is your intended positioning, not the professional summary extracted from your resume.</small>
                             </label>
                             <label class="form-field">
                                 <span>Current location</span>
                                 <input type="text" id="profileCurrentLocation" name="current_location" value="{{ assistant_context_current_location | default('') }}" placeholder="Example: Portland, Oregon, United States" autocomplete="address-level2">
-                                <small>Supports location and relocation decisions without tying the profile to one job.</small>
-                            </label>
-                            <label class="form-field">
-                                <span>Industries</span>
-                                <textarea id="profileIndustries" name="industries" rows="3" placeholder="Example: Banking, financial technology, regulatory reporting">{{ assistant_context_industries | default('') }}</textarea>
-                                <small>List industries where you have experience or credible domain knowledge.</small>
-                            </label>
-                            <label class="form-field context-full-width-field">
-                                <span>Preferred roles</span>
-                                <textarea class="context-expanded-textarea" id="profilePreferredRoles" name="preferred_roles" rows="3" placeholder="Example: Lead Software Engineer, Data Platform Engineer, IT Audit Manager">{{ assistant_context_preferred_roles | default('') }}</textarea>
-                                <small>Used later for job discovery, fit ranking, career translation, and interview preparation.</small>
-                            </label>
-                        </div>
-                    </details>
-
-                    <details class="workspace-card career-profile-section">
-                        <summary class="career-profile-section-summary">
-                            <span><strong id="skillsEvidenceTitle">Skills and career evidence</strong><small>Reusable strengths and verified achievements.</small></span>
-                            <i aria-hidden="true">+</i>
-                        </summary>
-                        <div class="form-grid context-form-grid">
-                            <label class="form-field context-full-width-field">
-                                <span>Core skills, tools, and domain knowledge</span>
-                                <textarea id="profileCoreSkills" name="core_skills" rows="5" placeholder="Example: SQL, Python, Oracle, AWS, regulatory reporting, IT controls, technical leadership">{{ assistant_context_core_skills | default('') }}</textarea>
-                                <small>Include only skills you can support through your experience, resume, or evidence.</small>
-                            </label>
-                            <label class="form-field context-full-width-field">
-                                <span>Key accomplishments</span>
-                                <textarea id="profileKeyAccomplishments" name="key_accomplishments" rows="6" placeholder="Add reusable achievements, one per line. Include scope or results when they are verified.">{{ assistant_context_key_accomplishments | default('') }}</textarea>
-                                <small>Used to identify relevant evidence for resumes and interviews; it is not treated as verified unless supported by your records.</small>
-                            </label>
-                        </div>
-                    </details>
-
-                    <details class="workspace-card career-profile-section">
-                        <summary class="career-profile-section-summary">
-                            <span><strong id="internationalBackgroundTitle">International career background</strong><small>Countries, languages, credentials, and terminology.</small></span>
-                            <i aria-hidden="true">+</i>
-                        </summary>
-                        <div class="form-grid context-form-grid">
-                            <label class="form-field">
-                                <span>Countries where you have worked</span>
-                                <textarea id="profileCountriesWorked" name="countries_worked" rows="3" placeholder="Example: France, Luxembourg, Singapore, United States">{{ assistant_context_countries_worked | default('') }}</textarea>
-                            </label>
-                            <label class="form-field">
-                                <span>Professional languages</span>
-                                <textarea id="profileLanguages" name="languages" rows="3" placeholder="Example: French — native; English — professional fluency">{{ assistant_context_languages | default('') }}</textarea>
+                                <small>Supports location and relocation decisions without changing your resume.</small>
                             </label>
                             <label class="form-field">
                                 <span>Target country or job market</span>
@@ -498,24 +524,44 @@
                                         <option value="{{ country }}" {% if selected_target_country == country %}selected{% endif %}>{{ country }}</option>
                                     {% endfor %}
                                 </select>
-                                <small>The market where your background needs to be understood and translated.</small>
+                                <small>The market where your background needs to be understood and positioned.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Preferred roles</span>
+                                <textarea class="context-expanded-textarea" id="profilePreferredRoles" name="preferred_roles" rows="3" placeholder="Example: Lead Software Engineer, Data Platform Engineer, IT Audit Manager">{{ assistant_context_preferred_roles | default('') }}</textarea>
+                                <small>Used for job discovery, fit ranking, application planning, and interview preparation.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Target industries</span>
+                                <textarea id="profileIndustries" name="industries" rows="3" placeholder="Example: Banking, financial technology, regulatory reporting">{{ assistant_context_industries | default('') }}</textarea>
+                                <small>List the industries you want to target. Industries documented in your work history remain in Baseline Resume.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Career goals</span>
+                                <textarea id="profileCareerGoals" name="career_goals" rows="4" placeholder="What roles, responsibilities, industries, or progression are you working toward?">{{ assistant_context_career_goals | default('') }}</textarea>
+                            </label>
+                        </div>
+                    </details>
+
+                    <details class="workspace-card career-profile-section">
+                        <summary class="career-profile-section-summary">
+                            <span><strong id="internationalTransitionTitle">International and transition context</strong><small>Context that cannot always be inferred reliably from the resume alone.</small></span>
+                            <i aria-hidden="true">+</i>
+                        </summary>
+                        <div class="form-grid context-form-grid">
+                            <label class="form-field">
+                                <span>Countries where you have worked</span>
+                                <textarea id="profileCountriesWorked" name="countries_worked" rows="3" placeholder="Example: France, Luxembourg, Singapore, United States">{{ assistant_context_countries_worked | default('') }}</textarea>
+                                <small>Include remote or cross-border experience when a resume location may be ambiguous.</small>
                             </label>
                             <label class="form-field">
                                 <span>Experience in the target country</span>
                                 <textarea id="profileTargetCountryExperience" name="target_country_experience" rows="3" placeholder="Example: 8 years in U.S. financial technology; limited local experience; no local experience yet">{{ assistant_context_target_country_experience | default('') }}</textarea>
                             </label>
                             <label class="form-field context-full-width-field">
-                                <span>International education and credentials</span>
-                                <textarea id="profileInternationalCredentials" name="international_credentials" rows="4" placeholder="List degrees, institutions, professional credentials, and the country where each was earned.">{{ assistant_context_international_credentials | default('') }}</textarea>
-                                <small>The Baseline Resume workflow can identify credentials that may need a local explanation or equivalent.</small>
-                            </label>
-                            <label class="form-field context-full-width-field">
-                                <span>Certifications</span>
-                                <textarea id="profileCertifications" name="certifications" rows="3" placeholder="Example: UC Berkeley Professional Certificate in Machine Learning and AI">{{ assistant_context_certifications | default('') }}</textarea>
-                            </label>
-                            <label class="form-field context-full-width-field">
-                                <span>Job titles or terminology that may need translation</span>
-                                <textarea id="profileTitlesNeedingTranslation" name="titles_needing_translation" rows="4" placeholder="Example: Titles, qualifications, systems, regulations, or regional terms employers may not recognize.">{{ assistant_context_titles_needing_translation | default('') }}</textarea>
+                                <span>Other terminology requiring explanation</span>
+                                <textarea id="profileTitlesNeedingTranslation" name="titles_needing_translation" rows="4" placeholder="Example: Regional qualifications, systems, regulations, or professional terminology employers may not recognize.">{{ assistant_context_titles_needing_translation | default('') }}</textarea>
+                                <small>Job-title interpretations are managed with the employment records in Baseline Resume.</small>
                             </label>
                             <label class="form-field context-full-width-field">
                                 <span>Career transition context</span>
@@ -526,7 +572,7 @@
 
                     <details class="workspace-card career-profile-section">
                         <summary class="career-profile-section-summary">
-                            <span><strong id="preferencesConstraintsTitle">Career preferences and constraints</strong><small>Work arrangement, relocation, authorization, goals, and limits.</small></span>
+                            <span><strong id="preferencesConstraintsTitle">Preferences and constraints</strong><small>Practical requirements that should shape recommendations and application decisions.</small></span>
                             <i aria-hidden="true">+</i>
                         </summary>
                         <div class="form-grid context-form-grid">
@@ -549,10 +595,6 @@
                                 <textarea id="profileWorkAuthorization" name="work_authorization" rows="3" placeholder="Add only information you are comfortable reusing across applications.">{{ assistant_context_work_authorization | default('') }}</textarea>
                             </label>
                             <label class="form-field context-full-width-field">
-                                <span>Career goals</span>
-                                <textarea id="profileCareerGoals" name="career_goals" rows="4" placeholder="What roles, responsibilities, industries, or progression are you working toward?">{{ assistant_context_career_goals | default('') }}</textarea>
-                            </label>
-                            <label class="form-field context-full-width-field">
                                 <span>Other constraints or considerations</span>
                                 <textarea id="profileConstraints" name="constraints" rows="4" placeholder="Example: travel limits, schedule constraints, industries to avoid, confidentiality considerations, or accessibility needs">{{ assistant_context_constraints | default('') }}</textarea>
                             </label>
@@ -564,15 +606,15 @@
                     <div class="context-preview-header">
                         <h2 id="effectiveContextTitle">Profile summary</h2>
                     </div>
-                    <p class="context-preview-description">Review what Career Bridge will reuse across applications. Blank fields are simply ignored.</p>
+                    <p class="context-preview-description">Review the career direction, international context, preferences, and constraints Career Bridge will reuse. Blank fields are ignored.</p>
                     <div class="context-preview-status" id="effectiveContextStatus">Profile is enabled</div>
                     <div class="context-preview-chips" id="effectiveContextChips"></div>
                     <dl class="context-preview-list" id="effectiveContextPreview"></dl>
                     <details class="context-priority-note career-profile-usage-note">
                         <summary>Where this information is used</summary>
-                        <span><b>Job Discovery:</b> roles, industries, location, and work preferences.</span>
-                        <span><b>Baseline Resume:</b> countries, credentials, titles, languages, and transition context.</span>
-                        <span><b>Applications and interviews:</b> identity, skills, accomplishments, goals, and constraints.</span>
+                        <span><b>Job Discovery:</b> preferred roles, target industries, location, and work preferences.</span>
+                        <span><b>Baseline Resume:</b> employment, summary, skills, languages, education, credentials, and resume accomplishments.</span>
+                        <span><b>Applications and interviews:</b> target market, transition context, goals, authorization, and constraints.</span>
                     </details>
                 </aside>
             </div>

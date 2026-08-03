@@ -61,6 +61,21 @@ class ReducedNavigationContractTests(unittest.TestCase):
         ):
             self.assertNotIn(f"<strong>{application_specific_label}</strong>", text)
 
+    def test_foundation_starts_with_baseline_resume(self) -> None:
+        text = NAVBAR.read_text(encoding="utf-8")
+        foundation = text[
+            text.index("<span>Foundation</span>"):
+            text.index("<span>Jobs &amp; Applications</span>")
+        ]
+        self.assertLess(
+            foundation.index("<strong>Baseline Resume</strong>"),
+            foundation.index("<strong>Career Profile</strong>"),
+        )
+        self.assertLess(
+            foundation.index("<strong>Career Profile</strong>"),
+            foundation.index("<strong>Evidence Library</strong>"),
+        )
+
     def test_job_discovery_precedes_applications(self) -> None:
         text = NAVBAR.read_text(encoding="utf-8")
         jobs = text[text.index("<span>Jobs &amp; Applications</span>"):text.index("<span>Interviews</span>")]

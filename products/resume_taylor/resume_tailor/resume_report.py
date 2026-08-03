@@ -23,8 +23,13 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.parts.hdrftr import FooterPart, HeaderPart
 
+from .bullet_text import (
+    bullet_has_multiple_complete_sentences,
+    normalize_resume_bullet_terminal_punctuation,
+)
 from .docx_export import export_resume_docx
 from .docx_styles import normalize_career_stage, normalize_resume_format
+from .resume_pagination import estimate_resume_pagination
 from .validation import adjacent_repeated_words, validate_proposal
 from .models import (
     ApprovedResume,
@@ -1831,8 +1836,14 @@ def _writing_style_subsection(
         {match.group(0).casefold() for item in selected for match in _PERSONAL_PRONOUN_PATTERN.finditer(item.proposed_text)}
         | {match.group(0).casefold() for match in _PERSONAL_PRONOUN_PATTERN.finditer(proposal.professional_summary)}
     )
-    punctuation_endings = [item.proposed_text.strip()[-1] in ".;" for item in selected]
-    punctuation_consistent = not punctuation_endings or all(punctuation_endings) or not any(punctuation_endings)
+    terminal_period_violations = [
+        item.source_bullet_id
+        for item in selected
+        if item.proposed_text.strip().endswith(".")
+        and normalize_resume_bullet_terminal_punctuation(item.proposed_text)
+        != item.proposed_text.strip()
+        and not bullet_has_multiple_complete_sentences(item.proposed_text)
+    ]
     non_action_openers: list[str] = []
     tense_issues: list[str] = []
     experience_by_bullet = {
@@ -1864,11 +1875,13 @@ def _writing_style_subsection(
                 else "Remove personal pronouns such as: " + ", ".join(personal_pronouns) + ".",
             ),
             ReportCheck(
-                "Bullet punctuation is consistent",
-                "pass" if punctuation_consistent else "warning",
-                "Selected bullets consistently use or omit ending punctuation."
-                if punctuation_consistent
-                else "Some bullets end with punctuation while others do not. Use one convention throughout.",
+                "Single-sentence bullets omit terminal periods",
+                "pass" if not terminal_period_violations else "warning",
+                "All single-sentence bullets use the clean no-period resume style."
+                if not terminal_period_violations
+                else "Remove optional terminal periods from: "
+                + ", ".join(terminal_period_violations[:8])
+                + ". Multi-sentence bullets and intrinsic abbreviation periods may retain them.",
             ),
             ReportCheck(
                 "Bullets use a parallel action-led structure",
@@ -2000,7 +2013,9 @@ def _approved_resume_for_report(
     bullets_by_experience: dict[str, list[str]] = {}
     for experience in profile.experiences:
         bullets_by_experience[experience.id] = [
-            proposal_lookup[bullet.id].proposed_text.strip()
+            normalize_resume_bullet_terminal_punctuation(
+                proposal_lookup[bullet.id].proposed_text
+            )
             for bullet in experience.bullets
             if bullet.id in proposal_lookup
             and proposal_lookup[bullet.id].include
@@ -2632,6 +2647,10 @@ def _formatting_sections(
     )
     page_count, page_count_method = _rendered_page_count(document, exact=exact_page_count)
     page_count_status: ReportStatus = "pass" if page_count <= page_limit else "fail"
+    pagination_balance = estimate_resume_pagination(document)
+    orphan_page_status: ReportStatus = (
+        "fail" if pagination_balance.has_orphan_final_page else "pass"
+    )
 
     page_setup_checks = [
         ReportCheck(
@@ -2670,6 +2689,20 @@ def _formatting_sections(
                 else f"It exceeds the configured {page_limit}-page maximum by {page_count - page_limit} page(s). Prune lower-priority content or tighten spacing without reducing readability."
             )
             + (" Install or enable a compatible document renderer for an exact count." if page_count_method == "estimated" else ""),
+        ),
+        ReportCheck(
+            "The final page is not nearly empty",
+            orphan_page_status,
+            (
+                "No orphan final page was detected."
+                if not pagination_balance.has_orphan_final_page
+                else (
+                    f"The estimated final page contains {pagination_balance.last_page_substantive_lines} "
+                    f"substantive line(s) and uses approximately {pagination_balance.last_page_fill_ratio:.0%} "
+                    "of the available page height. Rebalance spacing or move a logical section so the "
+                    "resume is either one page or a meaningful multi-page document."
+                )
+            ),
         ),
     ]
 

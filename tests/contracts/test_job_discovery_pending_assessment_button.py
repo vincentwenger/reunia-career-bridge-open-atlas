@@ -55,6 +55,12 @@ class JobDiscoveryPendingAssessmentButtonContractTests(unittest.TestCase):
         self.assertIn("batch_size: 1", javascript)
         self.assertNotIn("Math.min(3, runLimit - attemptedTotal)", javascript)
         self.assertIn("Stop after current batch", javascript)
+        self.assertIn("transientAssessmentStatuses = new Set([502, 503, 504])", javascript)
+        self.assertIn("maxTransientAssessmentRetries = 2", javascript)
+        self.assertIn("requestAssessmentBatch", javascript)
+        self.assertIn("Pending-job assessment paused", javascript)
+        self.assertIn("completed assessments were preserved", javascript)
+        self.assertIn("durableAttemptedCount", javascript)
         self.assertIn("window.location.reload()", javascript)
 
 

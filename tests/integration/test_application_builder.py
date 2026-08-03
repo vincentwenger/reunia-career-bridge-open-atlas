@@ -666,6 +666,9 @@ class ApplicationBuilderIntegrationTests(unittest.TestCase):
                 "application_builder": {
                     "workflow_storage": "memory",
                     "application_storage": "dynamodb",
+                    "job_discovery_storage": "memory",
+                    "job_discovery_table": "",
+                    "job_discovery_durability": "ephemeral",
                     "document_storage": "local",
                     "durability": "mixed",
                     "multi_worker_safe": False,
@@ -682,6 +685,8 @@ class ApplicationBuilderIntegrationTests(unittest.TestCase):
         self.assertIn("Application Builder storage configured", warning)
         self.assertIn("workflow=memory", warning)
         self.assertIn("applications=dynamodb", warning)
+        self.assertIn("job_discovery=memory", warning)
+        self.assertIn("job_discovery_table=<none>", warning)
         self.assertIn("documents=local", warning)
         self.assertIn("not fully durable", warning)
 

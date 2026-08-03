@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 
 class StrictModel(BaseModel):
@@ -352,6 +353,18 @@ class BulletProposal(StrictModel):
     proposed_text: str
     matched_requirement_ids: list[str] = Field(default_factory=list)
     evidence_note: str
+    # Deterministic Job Alignment metadata. The AI never controls these fields;
+    # they are populated after selection so the UI can explain which bullets won
+    # the available resume space and why.
+    # These fields are populated only by deterministic application logic after
+    # the AI response has been parsed. Excluding them from the generated JSON
+    # schema prevents OpenAI structured-output validation from treating internal
+    # comparison metadata as model-generated response fields. They remain normal
+    # Pydantic fields for persistence, rendering, and manual overrides.
+    selected_instead_ids: SkipJsonSchema[list[str]] = Field(default_factory=list)
+    selection_comparison_reasons: SkipJsonSchema[dict[str, list[str]]] = Field(
+        default_factory=dict
+    )
 
 
 QuestionAnswerType = Literal[
@@ -384,6 +397,8 @@ class CandidateAnswer(StrictModel):
     text: str = ""
     experience_id: str = ""
     placement: ConfirmationPlacement = "auto"
+    reused_from_library: bool = False
+    library_evidence_id: str = ""
 
 
 class TailoringProposal(StrictModel):

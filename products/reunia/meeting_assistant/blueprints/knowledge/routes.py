@@ -41,6 +41,7 @@ def view_knowledge():
         route_view=route_view,
         files=library["files"],
         collections=library["collections"],
+        evidence_answers=library.get("evidence_answers", []),
         assistant_context_storage_scope=session["user_id"],
         assistant_context_enabled=context["enabled"],
         assistant_context_professional_headline=context["professional_headline"],
@@ -92,6 +93,61 @@ def ask_knowledge():
 def list_knowledge_files():
     files = KnowledgeService().list_files(g.current_user_id)
     return jsonify({"evidence_items": files, "files": files})
+
+
+@knowledge_bp.get("/api/career/evidence/answers")
+@api_auth_required
+def list_reusable_evidence_answers():
+    answers = KnowledgeService().list_evidence_answers(g.current_user_id)
+    return jsonify({"evidence_answers": answers})
+
+
+@knowledge_bp.put("/api/career/evidence/answers/<evidence_id>")
+@api_auth_required
+def update_reusable_evidence_answer(evidence_id: str):
+    answer = KnowledgeService().update_evidence_answer(
+        g.current_user_id,
+        evidence_id,
+        request.get_json(silent=True) or {},
+    )
+    return jsonify({"success": True, "evidence_answer": answer})
+
+
+@knowledge_bp.delete("/api/career/evidence/answers/<evidence_id>")
+@api_auth_required
+def delete_reusable_evidence_answer(evidence_id: str):
+    deleted = KnowledgeService().delete_evidence_answer(
+        g.current_user_id, evidence_id
+    )
+    return jsonify({"success": True, "evidence_answer": deleted})
+
+
+@knowledge_bp.get("/api/career/baseline/roles")
+@knowledge_bp.get("/api/career/evidence/roles")
+@api_auth_required
+def list_career_roles():
+    roles = KnowledgeService().list_career_roles(g.current_user_id)
+    return jsonify({"career_roles": roles})
+
+
+@knowledge_bp.put("/api/career/baseline/roles/<role_id>")
+@knowledge_bp.put("/api/career/evidence/roles/<role_id>")
+@api_auth_required
+def update_career_role(role_id: str):
+    role = KnowledgeService().update_career_role(
+        g.current_user_id,
+        role_id,
+        request.get_json(silent=True) or {},
+    )
+    return jsonify({"success": True, "career_role": role})
+
+
+@knowledge_bp.delete("/api/career/baseline/roles/<role_id>")
+@knowledge_bp.delete("/api/career/evidence/roles/<role_id>")
+@api_auth_required
+def delete_career_role(role_id: str):
+    deleted = KnowledgeService().delete_career_role(g.current_user_id, role_id)
+    return jsonify({"success": True, "career_role": deleted})
 
 
 @knowledge_bp.post("/api/career/evidence")

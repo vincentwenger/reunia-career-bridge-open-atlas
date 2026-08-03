@@ -17,6 +17,56 @@ _ANSWER_TYPE_RANK = {
     "short_text": 4,
     "long_text": 5,
 }
+_INITIAL_QUESTION_ID = re.compile(r"^Q[\s_-]*(\d+)(?:\D.*)?$", re.IGNORECASE)
+_FOLLOW_UP_QUESTION_ID = re.compile(
+    r"^FQ[\s_-]*(?:(\d+)[\s_-]+)?(\d+)$", re.IGNORECASE
+)
+
+
+def candidate_question_display_sort_key(
+    question: CandidateQuestion,
+) -> tuple[int, int, int, str]:
+    """Sort question identifiers naturally for the candidate-facing form.
+
+    AI generation and priority filtering can leave identifiers such as Q2 and Q6
+    while omitting Q5.  The internal identifiers must remain stable for form
+    fields and saved evidence, but the visible question list should follow the
+    original numeric sequence rather than priority rank.
+    """
+
+    identifier = question.id.strip()
+    initial_match = _INITIAL_QUESTION_ID.match(identifier)
+    if initial_match:
+        return (0, int(initial_match.group(1)), 0, identifier.casefold())
+
+    follow_up_match = _FOLLOW_UP_QUESTION_ID.match(identifier)
+    if follow_up_match:
+        round_number = int(follow_up_match.group(1) or 0)
+        question_number = int(follow_up_match.group(2))
+        return (1, round_number, question_number, identifier.casefold())
+
+    numeric_part = re.search(r"\d+", identifier)
+    if numeric_part:
+        return (2, int(numeric_part.group()), 0, identifier.casefold())
+    return (3, 0, 0, identifier.casefold())
+
+
+def order_candidate_questions_for_display(
+    questions: list[CandidateQuestion],
+) -> list[CandidateQuestion]:
+    """Return questions in natural numeric order without changing their IDs."""
+
+    return sorted(questions, key=candidate_question_display_sort_key)
+
+
+def candidate_question_display_label(
+    question: CandidateQuestion, position: int
+) -> str:
+    """Return a consecutive candidate-facing label while preserving internal IDs."""
+
+    if question.id.strip().upper().startswith("FQ"):
+        return question.id
+    return f"Q{max(1, position)}"
 
 
 def _normalized_question(value: str) -> str:
@@ -76,7 +126,10 @@ def prioritize_candidate_questions(
         ranked.append((rank, question))
 
     ranked.sort(key=lambda item: item[0])
-    updated.candidate_questions = [
+    selected_questions = [
         question.model_copy(deep=True) for _, question in ranked[:maximum]
     ]
+    updated.candidate_questions = order_candidate_questions_for_display(
+        selected_questions
+    )
     return updated

@@ -18,6 +18,8 @@ class ApplicationBuilderPersistenceWarningContractTests(unittest.TestCase):
         self.assertIn("Application Builder storage configured", self.builder_text)
         self.assertIn("workflow=%s", self.builder_text)
         self.assertIn("applications=%s", self.builder_text)
+        self.assertIn("job_discovery=%s", self.builder_text)
+        self.assertIn("job_discovery_table=%s", self.builder_text)
         self.assertIn("documents=%s%s", self.builder_text)
         self.assertIn("not fully durable", self.builder_text)
 

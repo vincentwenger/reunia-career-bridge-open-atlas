@@ -6,64 +6,119 @@
 <span class="sr-only">Career Foundation · One-time setup. A job description is not needed here. Imported Resume · Verified Resume Evidence · Baseline Resume</span>
 <section class="card" id="career-translation-setup" aria-labelledby="career-translation-setup-title">
   <div class="section-heading compact-section-heading">
-    <div><h2 id="career-translation-setup-title">Baseline Resume</h2></div>
+    <div>
+      <h2 id="career-translation-setup-title">Baseline Resume</h2>
+      <p>Create the reusable resume foundation by importing an existing resume or entering the same information manually. Both paths use the same fields and can be reviewed before applications use them.</p>
+    </div>
     <span class="resume-import-status {{ 'is-ready' if translation_ready else 'is-pending' }}">
-      {{ 'Ready' if translation_ready else ('Needs review' if state.profile_upload_name else 'Resume needed') }}
+      {{ 'Ready' if translation_ready else ('Needs review' if baseline_has_content or baseline_creation_method == 'manual' else 'Not started') }}
     </span>
   </div>
 
-  <form
-    action="{{ url_for('application_builder.upload_profile') }}"
-    method="post"
-    enctype="multipart/form-data"
-    class="stack-form loading-form career-translation-foundation-form"
-    data-loading-title="Building the Baseline Resume…"
-    data-loading-message="The Imported Resume is being preserved while a destination-language baseline is generated."
-    data-loading-steps="Reading the imported resume|Resolving the destination language|Translating resume content consistently|Checking for mixed-language sections|Saving the Baseline Resume"
-    data-loading-step-details="Extracting only documented resume facts.|Using the Career Profile country and optional language override.|Translating resume content while preserving proper names.|Rejecting incomplete mixed-language output.|Keeping the baseline separate from job applications."
-  >
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="return_to" value="career_translation">
+  <p class="caption career-translation-profile-source">
+    Target country from Career Profile:
+    <strong>{{ reusable_career_profile.target_country or 'Not set' }}</strong>
+    · <a class="text-link" href="/career-profile">Change in Career Profile</a>
+    {% if baseline_creation_method %} · Source: <strong>{{ baseline_source_label }}</strong>{% endif %}
+  </p>
 
-    <p class="caption career-translation-profile-source">
-      Target country from Career Profile:
-      <strong>{{ reusable_career_profile.target_country or 'Not set' }}</strong>
-      · <a class="text-link" href="/career-profile">Change in Career Profile</a>
-    </p>
+  <p class="baseline-creation-question"><strong>How would you like to create your Baseline Resume?</strong></p>
 
-    <div class="field-grid two career-translation-target-fields">
+  <div class="baseline-creation-options">
+    <article class="baseline-creation-option" aria-labelledby="importBaselineTitle">
       <div>
-        <label for="foundation-resume-language">Resume language</label>
-        <select id="foundation-resume-language" name="resume_language">
-          <option value="">Automatic — {{ resume_language_choice.name }}{% if resume_language_choice.country %} for {{ resume_language_choice.country }}{% endif %}</option>
-          {% for language_code, language_label in resume_language_options %}
-            <option value="{{ language_label }}" {% if selected_resume_language|lower == language_label|lower %}selected{% endif %}>{{ language_label }}</option>
-          {% endfor %}
-        </select>
+        <p class="section-eyebrow">Option 1</p>
+        <h3 id="importBaselineTitle">Import an existing resume</h3>
+        <p>Upload a Word, PDF, text, Markdown, or Verified Resume Evidence JSON file. Career Bridge will extract and populate the Baseline Resume fields for review.</p>
       </div>
-      <div>
-        <label for="foundation-target-role">General target role <span class="optional-label">Optional</span></label>
-        <input id="foundation-target-role" name="target_role" value="{{ career_background.target_role }}" placeholder="Data Platform Engineer">
-      </div>
-      <div>
-        <label for="foundation-profile-file">Resume file</label>
-        <input id="foundation-profile-file" type="file" name="profile_file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,.md,application/json,.json" {% if not state.profile_upload_name %}required{% endif %}>
-        <p class="caption">Leave blank to regenerate the existing resume after changing the language or updating Career Profile.</p>
-      </div>
-    </div>
+      <form
+        action="{{ url_for('application_builder.upload_profile') }}"
+        method="post"
+        enctype="multipart/form-data"
+        class="stack-form loading-form career-translation-foundation-form"
+        data-loading-title="Building the Baseline Resume…"
+        data-loading-message="The Imported Resume is being preserved while a destination-language baseline is generated."
+        data-loading-steps="Reading the imported resume|Resolving the destination language|Translating resume content consistently|Checking for mixed-language sections|Saving the Baseline Resume"
+        data-loading-step-details="Extracting only documented resume facts.|Using the Career Profile country and optional language override.|Translating resume content while preserving proper names.|Rejecting incomplete mixed-language output.|Keeping the baseline separate from job applications."
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="return_to" value="career_translation">
 
-    {% if state.profile_upload_name %}
-      <div class="career-translation-source-summary career-translation-source-summary-minimal">
-        <div><span>Imported file</span><strong>{{ state.profile_upload_name }}</strong></div>
-        <div><span>Baseline language</span><strong>{{ resume_language_choice.name if translation_ready else preview_language_name ~ ' → ' ~ resume_language_choice.name }}</strong></div>
-      </div>
-    {% endif %}
+        <div class="field-grid two career-translation-target-fields">
+          <div>
+            <label for="foundation-resume-language">Baseline Resume language</label>
+            <select id="foundation-resume-language" name="resume_language" aria-describedby="foundation-resume-language-help">
+              <option value="">Automatic — {{ resume_language_choice.name }}{% if resume_language_choice.country %} for {{ resume_language_choice.country }}{% endif %}</option>
+              {% for language_code, language_label in resume_language_options %}
+                <option value="{{ language_label }}" {% if selected_resume_language|lower == language_label|lower %}selected{% endif %}>{{ language_label }}</option>
+              {% endfor %}
+            </select>
+            <p class="caption" id="foundation-resume-language-help">This is the target language of the generated Baseline Resume. The language of the uploaded resume is detected automatically.</p>
+          </div>
+          <div>
+            <label for="foundation-target-role">General target role <span class="optional-label">Optional</span></label>
+            <input id="foundation-target-role" name="target_role" value="{{ career_background.target_role }}" placeholder="Data Platform Engineer">
+          </div>
+          <div class="baseline-import-file-field">
+            <label for="foundation-profile-file">Resume file</label>
+            <input id="foundation-profile-file" type="file" name="profile_file" accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,text/plain,.txt,.md,application/json,.json" {% if not state.profile_upload_name %}required{% endif %}>
+            <p class="caption">Leave blank only to regenerate an already imported resume after changing its language.</p>
+          </div>
+          {% if manual_baseline_requires_import_choice %}
+          <div>
+            <label for="baseline-import-strategy">How should this import affect manual information?</label>
+            <select id="baseline-import-strategy" name="import_strategy">
+              <option value="">Choose an option</option>
+              <option value="replace">Replace the current Baseline Resume</option>
+              <option value="merge">Merge new information for review</option>
+            </select>
+            <p class="caption">Merge keeps manually entered facts first and adds distinct imported records. Replace starts again from the uploaded resume.</p>
+          </div>
+          {% endif %}
+        </div>
 
-    <div class="button-row">
-      <button class="button primary" type="submit">{{ 'Regenerate baseline' if state.profile_upload_name else 'Import and generate' }}</button>
-    </div>
-  </form>
+        {% if state.profile_upload_name %}
+          <div class="career-translation-source-summary career-translation-source-summary-minimal">
+            <div><span>Imported file</span><strong>{{ state.profile_upload_name }}</strong></div>
+            <div><span>Imported resume language</span><strong>{{ source_resume_language_name }}</strong></div>
+            <div><span>Baseline Resume language</span><strong>{{ resume_language_choice.name }}</strong></div>
+            {% if translation_ready and no_translation_needed %}<div><span>Language processing</span><strong>No translation needed</strong></div>{% endif %}
+          </div>
+        {% endif %}
+
+        <div class="button-row">
+          <button class="button primary" type="submit">{{ 'Import another resume' if baseline_has_content else 'Import and populate fields' }}</button>
+        </div>
+      </form>
+    </article>
+
+    <article class="baseline-creation-option baseline-creation-option-manual" aria-labelledby="manualBaselineTitle">
+      <div>
+        <p class="section-eyebrow">Option 2</p>
+        <h3 id="manualBaselineTitle">Build my Baseline Resume manually</h3>
+        <p>Enter a professional summary, skills, education, and employment history without uploading a file. Each saved fact is treated as directly confirmed by you.</p>
+        <ul class="baseline-manual-feature-list">
+          <li>Save one section at a time</li>
+          <li>Add education and employment records</li>
+          <li>Use the same preview and application workflow</li>
+        </ul>
+      </div>
+      <form action="{{ url_for('application_builder.start_manual_baseline') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="button secondary" type="submit">{{ 'Edit fields manually' if baseline_has_content else 'Start manually' }}</button>
+      </form>
+    </article>
+  </div>
 </section>
+{% if baseline_creation_method or baseline_has_content %}
+{% include 'application_builder/_baseline_summary.html' %}
+
+{% include 'application_builder/_baseline_skills.html' %}
+
+{% include 'application_builder/_baseline_education.html' %}
+
+{% include 'application_builder/_baseline_employment_roles.html' %}
+{% endif %}
 
 {% if source_profile.all_source_text().strip() %}
 <section class="card career-translation-resume-preview" id="initial-resume" aria-labelledby="initial-resume-title">
@@ -71,7 +126,7 @@
     <div>
       <h2 id="initial-resume-title">{{ 'Baseline Resume' if translation_ready else 'Imported Resume preview' }} · {{ resume_language_choice.name if translation_ready else preview_language_name }}</h2>
     </div>
-    <span class="resume-import-status {{ 'is-ready' if translation_ready else 'is-pending' }}">{{ 'Ready' if translation_ready else 'translation pending' }}</span>
+    <span class="resume-import-status {{ 'is-ready' if translation_ready else 'is-pending' }}">{{ 'Ready · no translation needed' if translation_ready and no_translation_needed else ('Ready' if translation_ready else 'translation pending') }}</span>
   </div>
 
   <article class="career-translation-resume-sheet" aria-label="{{ 'Baseline Resume' if translation_ready else 'Imported Resume preview while translation is pending' }}">
@@ -80,8 +135,19 @@
       <p>
         {% if source_profile.contact.location %}{{ source_profile.contact.location }}{% endif %}
         {% if source_profile.contact.email %}{% if source_profile.contact.location %} · {% endif %}{{ source_profile.contact.email }}{% endif %}
-        {% if source_profile.contact.phone %} · {{ source_profile.contact.phone }}{% endif %}
+        {% if source_profile.contact.phone %}{% if source_profile.contact.location or source_profile.contact.email %} · {% endif %}{{ source_profile.contact.phone }}{% endif %}
       </p>
+      {% if source_profile.contact.linkedin_url or source_profile.contact.github_url %}
+        <p class="career-translation-contact-links" aria-label="Professional profile links">
+          {% if source_profile.contact.linkedin_url %}
+            <a href="{{ source_profile.contact.linkedin_url }}" target="_blank" rel="noopener noreferrer">{{ source_profile.contact.linkedin_label or 'LinkedIn' }}</a>
+          {% endif %}
+          {% if source_profile.contact.github_url %}
+            {% if source_profile.contact.linkedin_url %}<span aria-hidden="true">·</span>{% endif %}
+            <a href="{{ source_profile.contact.github_url }}" target="_blank" rel="noopener noreferrer">{{ source_profile.contact.github_label or 'GitHub' }}</a>
+          {% endif %}
+        </p>
+      {% endif %}
     </header>
 
     {% if source_profile.current_summary %}
@@ -129,4 +195,9 @@
   </article>
 </section>
 {% endif %}
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('application_builder.static', filename='baseline_resume_fields.js') }}" defer></script>
+<script src="{{ url_for('application_builder.static', filename='baseline_resume_roles.js') }}" defer></script>
 {% endblock %}

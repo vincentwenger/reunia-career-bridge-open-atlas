@@ -81,10 +81,8 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
             self.validate(app)
 
         message = str(raised.exception)
-        self.assertIn("CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", message)
         self.assertIn("CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", message)
-        self.assertIn("CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", message)
-        self.assertIn("CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION=true", message)
+        self.assertIn("cannot be downgraded by the demo override", message)
 
     def test_application_backend_cannot_be_downgraded_by_demo_override(self) -> None:
         app = _app(
@@ -123,12 +121,13 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
         self.assertIn("CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME", message)
         self.assertIn("CAREER_BRIDGE_DOCUMENTS_BUCKET", message)
 
-    def test_explicit_demo_override_allows_ephemeral_backends_and_warns(self) -> None:
+    def test_explicit_demo_override_allows_ephemeral_workflow_and_documents_and_warns(self) -> None:
         app = _app(
             {
                 "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
                 "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory",
-                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "memory",
+                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "dynamodb",
+                "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME": "career-bridge-job-discovery",
                 "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "local",
                 "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION": "true",
             }
@@ -139,6 +138,22 @@ class CareerBridgeProductionStorageValidationTests(unittest.TestCase):
         self.assertEqual(len(app.logger.warnings), 1)
         self.assertIn("DEMO STORAGE OVERRIDE ENABLED", app.logger.warnings[0])
         self.assertIn("one worker and one node", app.logger.warnings[0])
+
+    def test_demo_override_cannot_downgrade_job_discovery(self) -> None:
+        app = _app(
+            {
+                "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
+                "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "memory",
+                "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "memory",
+                "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "local",
+                "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION": "true",
+            }
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError, "Job Discovery postings, fit snapshots, and assessment progress"
+        ):
+            self.validate(app)
 
     def test_false_override_does_not_bypass_validation(self) -> None:
         app = _app(

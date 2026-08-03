@@ -1,0 +1,34 @@
+
+[PASSED] Direct resume-findings and scorecard-to-action integrations
+
+[PASSED] Six international profile regressions
+
+[PASSED] No-invented-experience regressions
+
+[PASSED] Application Builder AI cost-control contract
+PASS: shared budget reservation
+PASS: actual usage settlement
+PASS: bounded structured output
+PASS: shared response cache
+PASS: user-scoped cache key
+PASS: retry ceiling
+PASS: resume import token limit
+PASS: job analysis token limit
+PASS: tailoring token limit
+PASS: evidence-review token limit
+PASS: interview-preparation token limit
+PASS: cache TTL configuration
+PASS: selected-model pricing
+All 13 Application Builder AI cost-control checks passed.
+
+[PASSED] Workspace loading, empty, and error-state contract
+
+[PASSED] Reduced global navigation contract
+
+[BLOCKED] Full Flask runtime integration suites
+Required deployment/runtime dependencies are unavailable in this execution image: flask, redis, openai, xlrd
+
+[BLOCKED] Six-profile Playwright browser journey
+Required deployment/runtime dependencies are unavailable in this execution image: flask, redis, openai, xlrd
+
+Wrote JSON results to reports/validation/final-integration-check-results-256.json

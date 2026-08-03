@@ -13,6 +13,9 @@ REUNIA_FACTORY = ROOT / "products" / "reunia" / "meeting_assistant" / "__init__.
 EXPECTED_STORAGE_KEYS = {
     "workflow_storage",
     "application_storage",
+    "job_discovery_storage",
+    "job_discovery_table",
+    "job_discovery_durability",
     "document_storage",
     "durability",
     "multi_worker_safe",
@@ -35,6 +38,9 @@ class ApplicationBuilderHealthStorageContractTests(unittest.TestCase):
         self.assertIn("configured_workflow_backend(current_app.config)", helper_text)
         self.assertIn("configured_application_backend(current_app.config)", helper_text)
         self.assertIn("configured_document_backend(current_app.config)", helper_text)
+        self.assertIn("career_bridge_job_discovery_store", helper_text)
+        self.assertIn("DynamoDBDiscoveryStore", helper_text)
+        self.assertIn("InMemoryDiscoveryStore", helper_text)
         for key in EXPECTED_STORAGE_KEYS:
             with self.subTest(key=key):
                 self.assertIn(repr(key), helper_text)

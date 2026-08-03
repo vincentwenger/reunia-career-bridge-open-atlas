@@ -34,10 +34,16 @@ from flask import (
 )
 from werkzeug.local import LocalProxy
 
+from career_bridge.countries import COUNTRY_OPTIONS
 from career_bridge.profile_context import (
     ReusableCareerProfile,
     text_not_already_in_profile,
     values_not_already_in_profile,
+)
+from career_bridge.reusable_evidence import (
+    find_best_evidence_match,
+    normalize_evidence_text,
+    stored_answer_fully_satisfies,
 )
 from job_discovery.application_conversion import DiscoveredJobApplicationService
 from job_discovery.location_filter import job_matches_location_filters
@@ -111,6 +117,7 @@ from job_discovery.scheduling import next_scheduled_run
 from job_discovery.storage import (
     DiscoveryOptimisticLockError,
     DiscoveryStore,
+    DynamoDBDiscoveryStore,
     InMemoryDiscoveryStore,
 )
 
@@ -155,9 +162,22 @@ from resume_tailor.confirmation import (
     is_candidate_confirmed_bullet_id,
     validate_candidate_answers,
 )
+from resume_tailor.baseline_manual import merge_candidate_profiles
+from resume_tailor.baseline_role_updates import (
+    append_manual_experience,
+    apply_career_role_to_profile,
+)
+from resume_tailor.baseline_profile_updates import (
+    append_baseline_education,
+    apply_baseline_education,
+    apply_baseline_skills,
+    apply_baseline_summary,
+    remove_baseline_education,
+)
 from resume_tailor.career_translation import ensure_career_translation_assessment
 from resume_tailor.confirmation_followup import (
     MAX_TARGETED_FOLLOW_UP_ROUNDS,
+    apply_final_follow_up_answers_locally,
     build_targeted_follow_up_questions,
     partition_targeted_follow_up_issues,
     split_post_confirmation_issues,
@@ -202,20 +222,28 @@ from resume_tailor.models import (
     CandidateQuestion,
     ContactInfo,
     EducationItem,
+    Experience,
     NewcomerCareerProfile,
     ProposalAudit,
     SkillSet,
     TailoringProposal,
     VerifiedSkills,
 )
+from resume_tailor.bullet_text import normalize_resume_bullet_terminal_punctuation
 from resume_tailor.profile_io import (
     candidate_bullet_text,
     load_candidate_profile_bytes,
 )
-from resume_tailor.resume_import import extract_resume_text, resume_extension
+from resume_tailor.resume_import import (
+    extract_resume_text,
+    inherit_professional_contact_urls,
+    restore_professional_contact_urls,
+    resume_extension,
+)
 from resume_tailor.resume_language import (
     detect_text_language,
     language_name,
+    normalize_language,
     resolve_resume_language,
     resume_labels,
     resume_language_options,
@@ -223,12 +251,27 @@ from resume_tailor.resume_language import (
 )
 from resume_tailor.optimization import (
     FINAL_OPTIMIZATION_SECTIONS,
-    final_optimization_actionable_issues,
+    final_optimization_actionable_issue_batches,
     final_optimization_score_guard,
 )
 from resume_tailor.proposal_changes import summarize_tailoring_changes
-from resume_tailor.proposal_integrity import repair_missing_bullet_proposals
-from resume_tailor.question_prioritization import prioritize_candidate_questions
+from resume_tailor.proposal_integrity import (
+    DETERMINISTIC_DUPLICATE_PREFIX,
+    DETERMINISTIC_EXCLUDE_PREFIX,
+    DETERMINISTIC_INCLUDE_PREFIX,
+    DETERMINISTIC_TRANSFERABLE_INCLUDE_PREFIX,
+    is_auto_reconciled_exclusion,
+    is_auto_reconciled_inclusion,
+    is_duplicate_selection_exclusion,
+    is_missing_selection_decision,
+    repair_missing_bullet_proposals,
+    selection_consistency_warnings,
+)
+from resume_tailor.question_prioritization import (
+    candidate_question_display_label,
+    order_candidate_questions_for_display,
+    prioritize_candidate_questions,
+)
 from resume_tailor.skill_rules import (
     SKILL_CATEGORY_RULES,
     SKILL_TOTAL_MAXIMUM,
@@ -308,6 +351,56 @@ try:
     RESUME_PAGE_LIMIT = max(1, int(os.getenv("RESUME_PAGE_LIMIT", "2")))
 except ValueError:
     RESUME_PAGE_LIMIT = 2
+
+
+def _bounded_environment_seconds(
+    name: str,
+    default: float,
+    *,
+    minimum: float,
+    maximum: float,
+) -> float:
+    try:
+        configured = float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        configured = default
+    return min(maximum, max(minimum, configured))
+
+
+# Keep the synchronous Step 3 -> Step 4 request safely below the web gateway
+# timeout. The AI pass is optional: the approved Job-Aligned Resume remains the
+# protected fallback whenever the provider cannot finish inside this budget.
+FINAL_OPTIMIZATION_REQUEST_BUDGET_SECONDS = _bounded_environment_seconds(
+    "CAREER_BRIDGE_FINAL_OPTIMIZATION_REQUEST_BUDGET_SECONDS",
+    50.0,
+    minimum=20.0,
+    maximum=55.0,
+)
+FINAL_OPTIMIZATION_EXPORT_RESERVE_SECONDS = _bounded_environment_seconds(
+    "CAREER_BRIDGE_FINAL_OPTIMIZATION_EXPORT_RESERVE_SECONDS",
+    8.0,
+    minimum=5.0,
+    maximum=15.0,
+)
+FINAL_OPTIMIZATION_AI_TIMEOUT_SECONDS = _bounded_environment_seconds(
+    "CAREER_BRIDGE_FINAL_OPTIMIZATION_AI_TIMEOUT_SECONDS",
+    32.0,
+    minimum=5.0,
+    maximum=40.0,
+)
+
+
+def _final_optimization_ai_timeout_seconds(started_at: float) -> float:
+    """Return the provider time still safe for this interactive request."""
+    elapsed = max(0.0, perf_counter() - started_at)
+    remaining = (
+        FINAL_OPTIMIZATION_REQUEST_BUDGET_SECONDS
+        - FINAL_OPTIMIZATION_EXPORT_RESERVE_SECONDS
+        - elapsed
+    )
+    if remaining < 5.0:
+        return 0.0
+    return min(FINAL_OPTIMIZATION_AI_TIMEOUT_SECONDS, remaining)
 
 
 def resume_template_path(career_stage: str | None) -> Path:
@@ -553,11 +646,28 @@ def _resolved_resume_language(state: WorkflowState):
     )
 
 
+def _source_resume_language_code(state: WorkflowState) -> str:
+    """Return the imported resume language, detecting it for older workflows."""
+
+    stored = normalize_language(getattr(state, "source_resume_language", ""))
+    if stored:
+        return stored
+    original = state.original_source_profile or state.source_profile
+    detected = detect_text_language(original.all_source_text())
+    if detected:
+        state.source_resume_language = detected
+    return detected
+
+
 def _ensure_target_language_profile(
     state: WorkflowState,
     ai: ResumeAI,
 ) -> CandidateProfile:
-    """Translate the Imported Resume once per source/language combination."""
+    """Prepare the Imported Resume once per source/language combination.
+
+    A resume that is already in the requested Baseline Resume language is copied
+    directly from the immutable imported profile. No translation request is made.
+    """
 
     if state.original_source_profile is None:
         # Workflows created before target-language translation was introduced
@@ -575,6 +685,16 @@ def _ensure_target_language_profile(
     ):
         return state.source_profile
 
+    source_language = _source_resume_language_code(state)
+    if source_language and source_language == choice.code:
+        state.source_profile = original.model_copy(deep=True)
+        state.source_profile_language = choice.code
+        state.source_profile_translation_fingerprint = fingerprint
+        # A changed upload or target market can still invalidate cached results,
+        # even when the source and output language are the same.
+        state.clear_results()
+        return state.source_profile
+
     translated = ai.translate_candidate_profile(
         original,
         target_language=choice.code,
@@ -587,6 +707,106 @@ def _ensure_target_language_profile(
     # and tailoring proposals must therefore be rebuilt from the translated text.
     state.clear_results()
     return translated
+
+
+def _backfill_professional_contact_links(
+    state: WorkflowState,
+    document_store: CareerBridgeObjectStore,
+) -> bool:
+    """Repair LinkedIn/GitHub links for resumes imported before hyperlink support.
+
+    Older Word imports discarded the target behind hyperlink labels. The original
+    document is already retained in object storage, so the Baseline Resume page
+    can perform a one-time deterministic backfill without another AI request or
+    requiring the user to upload the same resume again.
+    """
+
+    source_fingerprint = str(state.source_resume_fingerprint or "").strip()
+    if (
+        not state.source_resume_key
+        or not state.profile_upload_name
+        or not source_fingerprint
+        or state.source_resume_contact_links_fingerprint == source_fingerprint
+    ):
+        return False
+
+    # JSON imports already carry their contact fields explicitly and do not need
+    # binary document inspection.
+    if resume_extension(state.profile_upload_name) == ".json":
+        state.source_resume_contact_links_fingerprint = source_fingerprint
+        return False
+
+    try:
+        source_bytes = document_store.get(state.source_resume_key)
+        resume_text = extract_resume_text(source_bytes, state.profile_upload_name)
+    except ObjectNotFoundError:
+        current_app.logger.warning(
+            "Could not backfill resume contact links because the original document is missing: %s",
+            state.source_resume_key,
+        )
+        state.source_resume_contact_links_fingerprint = source_fingerprint
+        return False
+    except Exception:
+        current_app.logger.exception(
+            "Could not backfill professional contact links from the original resume"
+        )
+        return False
+
+    changed = False
+    if state.original_source_profile is not None:
+        restored_original = restore_professional_contact_urls(
+            state.original_source_profile, resume_text
+        )
+        if restored_original.contact.model_dump() != state.original_source_profile.contact.model_dump():
+            state.original_source_profile = restored_original
+            changed = True
+
+    restored_source = restore_professional_contact_urls(state.source_profile, resume_text)
+    if restored_source.contact.model_dump() != state.source_profile.contact.model_dump():
+        state.source_profile = restored_source
+        changed = True
+
+    state.source_resume_contact_links_fingerprint = source_fingerprint
+    return changed
+
+
+def _propagate_professional_contact_links(
+    state: WorkflowState,
+    source_profile: CandidateProfile | None = None,
+) -> bool:
+    """Repair missing professional URLs across application profile snapshots.
+
+    Only blank LinkedIn/GitHub fields are filled. Existing application-specific
+    contact values remain untouched, while older Application Baselines and later
+    workflow snapshots gain links that were present in the verified import.
+    """
+
+    source = source_profile or state.source_profile
+    if not (
+        source.contact.linkedin_url.strip()
+        or source.contact.github_url.strip()
+    ):
+        return False
+
+    changed = False
+
+    def repair(profile: CandidateProfile | None) -> CandidateProfile | None:
+        nonlocal changed
+        if profile is None:
+            return None
+        restored = inherit_professional_contact_urls(profile, source)
+        if restored.contact.model_dump() != profile.contact.model_dump():
+            changed = True
+            return restored
+        return profile
+
+    state.source_profile = repair(state.source_profile) or state.source_profile
+    state.original_source_profile = repair(state.original_source_profile)
+    state.confirmed_profile = repair(state.confirmed_profile)
+    state.final_report_profile = repair(state.final_report_profile)
+    for snapshot in state.workflow_step_snapshots.values():
+        snapshot.profile = repair(snapshot.profile)
+    return changed
 
 
 def _career_background_application_additions(
@@ -750,24 +970,62 @@ CAREER_TRANSLATION_CATEGORY_LABELS = {
     "regional_terminology": "Region-specific professional terminology",
     "hidden_accomplishment": "Accomplishments hidden by unfamiliar language",
     "transferable_skill": "Transferable skills",
-    "unsupported_requirement": "Unsupported target-job requirements",
-    "missing_evidence": "Important evidence missing from the resume",
+    "unsupported_requirement": "Requirements kept outside the resume",
+    "missing_evidence": "Experience questions to answer",
 }
 CAREER_TRANSLATION_CATEGORY_ORDER = tuple(CAREER_TRANSLATION_CATEGORY_LABELS)
 CAREER_EVIDENCE_DISPOSITION_LABELS = {
     "confirmed_experience": "Confirmed experience",
     "reasonable_rephrasing": "Reasonable rephrasing",
-    "user_clarification_required": "User clarification required",
-    "unsupported_claim": "Unsupported claim",
-    "recommended_learning_or_future_action": "Recommended learning or future action",
+    "user_clarification_required": "Evidence question available",
+    "unsupported_claim": "Keep outside resume for now",
+    "recommended_learning_or_future_action": "Confirmed development opportunity",
 }
 CAREER_EVIDENCE_DISPOSITION_DESCRIPTIONS = {
     "confirmed_experience": "Directly supported by traceable resume or confirmed-profile evidence.",
     "reasonable_rephrasing": "Facts stay unchanged while wording is translated for the target market.",
-    "user_clarification_required": "Potentially useful, but the system needs a factual answer before using it.",
-    "unsupported_claim": "Not supported by current evidence and excluded from the resume.",
-    "recommended_learning_or_future_action": "A genuine gap to address later, never presented as current experience.",
+    "user_clarification_required": "A focused question can determine whether this experience may be used.",
+    "unsupported_claim": "No verified evidence is linked yet, so the requirement stays outside the resume.",
+    "recommended_learning_or_future_action": "The candidate explicitly confirmed this as a development area; it is never presented as current experience.",
 }
+
+# Keep routine, already-protected findings available for transparency without
+# making Step 2 feel like a report the user must read line by line. Rephrasings
+# involving titles, credentials, or hidden accomplishments remain visible because
+# they can materially affect how the candidate is understood in the target market.
+CAREER_TRANSLATION_MATERIAL_REPHRASING_CATEGORIES = {
+    "job_title_translation",
+    "credential_explanation",
+    "hidden_accomplishment",
+}
+
+
+def _career_translation_finding_needs_review(
+    category: str,
+    disposition: str,
+) -> bool:
+    """Return whether the candidate must provide information or approve wording.
+
+    Unsupported requirements are deliberately *not* action items. They remain
+    visible under the collapsed ``No evidence found`` section, but the candidate
+    does not need to answer or resolve them unless they choose to add experience.
+    """
+
+    if disposition == "user_clarification_required":
+        return True
+    if disposition == "reasonable_rephrasing":
+        return category in CAREER_TRANSLATION_MATERIAL_REPHRASING_CATEGORIES
+    return False
+
+
+def _career_translation_review_bucket(disposition: str) -> str:
+    """Group findings by the natural action the candidate should take."""
+
+    if disposition in {"confirmed_experience", "reasonable_rephrasing"}:
+        return "evidence_found"
+    if disposition == "user_clarification_required":
+        return "confirmation_needed"
+    return "no_evidence"
 
 
 def career_translation_assessment_view(
@@ -780,24 +1038,59 @@ def career_translation_assessment_view(
         return None
 
     groups: list[dict[str, Any]] = []
+    evidence_found_groups: list[dict[str, Any]] = []
+    confirmation_needed_groups: list[dict[str, Any]] = []
+    no_evidence_groups: list[dict[str, Any]] = []
     counts = {key: 0 for key in CAREER_EVIDENCE_DISPOSITION_LABELS}
+    bucket_counts = {
+        "evidence_found": 0,
+        "confirmation_needed": 0,
+        "no_evidence": 0,
+    }
+    material_rephrasing_count = 0
+
     for category in CAREER_TRANSLATION_CATEGORY_ORDER:
-        findings = []
+        findings: list[dict[str, Any]] = []
+        bucket_rows: dict[str, list[dict[str, Any]]] = {
+            "evidence_found": [],
+            "confirmation_needed": [],
+            "no_evidence": [],
+        }
         for finding in assessment.findings:
             if finding.category != category:
                 continue
             counts[finding.disposition] = counts.get(finding.disposition, 0) + 1
-            findings.append(
-                {
-                    "finding": finding,
-                    "disposition_label": CAREER_EVIDENCE_DISPOSITION_LABELS[
-                        finding.disposition
-                    ],
-                    "disposition_description": CAREER_EVIDENCE_DISPOSITION_DESCRIPTIONS[
-                        finding.disposition
-                    ],
-                }
+            evidence_labels = [
+                (
+                    f"Education credential {evidence_id.removeprefix('EDUCATION-')}"
+                    if evidence_id.startswith("EDUCATION-")
+                    else evidence_id
+                )
+                for evidence_id in finding.evidence_ids
+            ]
+            needs_review = _career_translation_finding_needs_review(
+                category,
+                finding.disposition,
             )
+            if finding.disposition == "reasonable_rephrasing" and needs_review:
+                material_rephrasing_count += 1
+            bucket = _career_translation_review_bucket(finding.disposition)
+            row = {
+                "finding": finding,
+                "evidence_labels": evidence_labels,
+                "disposition_label": CAREER_EVIDENCE_DISPOSITION_LABELS[
+                    finding.disposition
+                ],
+                "disposition_description": CAREER_EVIDENCE_DISPOSITION_DESCRIPTIONS[
+                    finding.disposition
+                ],
+                "needs_review": needs_review,
+                "review_bucket": bucket,
+            }
+            findings.append(row)
+            bucket_rows[bucket].append(row)
+            bucket_counts[bucket] += 1
+
         if findings:
             groups.append(
                 {
@@ -806,11 +1099,44 @@ def career_translation_assessment_view(
                     "findings": findings,
                 }
             )
+        for bucket, target in (
+            ("evidence_found", evidence_found_groups),
+            ("confirmation_needed", confirmation_needed_groups),
+            ("no_evidence", no_evidence_groups),
+        ):
+            if bucket_rows[bucket]:
+                target.append(
+                    {
+                        "key": category,
+                        "label": CAREER_TRANSLATION_CATEGORY_LABELS[category],
+                        "findings": bucket_rows[bucket],
+                    }
+                )
+
+    # Legacy aliases remain available to reports and extensions while the
+    # interactive Target-Market Review uses the three natural action buckets.
+    attention_groups = confirmation_needed_groups
+    reference_groups = evidence_found_groups
+
     return {
         "summary": assessment.summary,
         "target_country": assessment.target_country,
         "target_role": assessment.target_role,
         "groups": groups,
+        "evidence_found_groups": evidence_found_groups,
+        "confirmation_needed_groups": confirmation_needed_groups,
+        "no_evidence_groups": no_evidence_groups,
+        "evidence_found_count": bucket_counts["evidence_found"],
+        "confirmation_needed_count": bucket_counts["confirmation_needed"],
+        "no_evidence_count": bucket_counts["no_evidence"],
+        "attention_groups": attention_groups,
+        "reference_groups": reference_groups,
+        "attention_count": bucket_counts["confirmation_needed"],
+        "reference_count": bucket_counts["evidence_found"],
+        "material_rephrasing_count": material_rephrasing_count,
+        "routine_rephrasing_count": max(
+            0, counts["reasonable_rephrasing"] - material_rephrasing_count
+        ),
         "counts": counts,
         "disposition_labels": CAREER_EVIDENCE_DISPOSITION_LABELS,
         "disposition_descriptions": CAREER_EVIDENCE_DISPOSITION_DESCRIPTIONS,
@@ -899,7 +1225,9 @@ def _approved_resume_from_proposal(
     bullets_by_experience: dict[str, list[str]] = {}
     for experience in profile.experiences:
         bullets_by_experience[experience.id] = [
-            proposal_lookup[bullet.id].proposed_text.strip()
+            normalize_resume_bullet_terminal_punctuation(
+                proposal_lookup[bullet.id].proposed_text
+            )
             for bullet in experience.bullets
             if bullet.id in proposal_lookup
             and proposal_lookup[bullet.id].include
@@ -1469,6 +1797,7 @@ def proposal_view_data(
     bullet_tailoring_details = bullet_tailoring_details or {}
     skill_fix_details = skill_fix_details or {}
     proposal = repair_missing_bullet_proposals(profile, proposal)
+    selection_warnings = selection_consistency_warnings(profile, analysis, proposal)
     if comparison_proposal is not None:
         comparison_source_ids = {
             item.source_bullet_id for item in comparison_proposal.bullet_proposals
@@ -1496,6 +1825,40 @@ def proposal_view_data(
         if not include_comparison_reasons:
             return None
         return {"label": label, "detail": detail}
+
+    def display_evidence_note(note: str) -> str:
+        """Remove the status prefix already rendered by the comparison card."""
+
+        value = note.strip()
+        for prefix in (
+            DETERMINISTIC_INCLUDE_PREFIX,
+            DETERMINISTIC_TRANSFERABLE_INCLUDE_PREFIX,
+            DETERMINISTIC_EXCLUDE_PREFIX,
+            DETERMINISTIC_DUPLICATE_PREFIX,
+        ):
+            if value.startswith(prefix):
+                value = value[len(prefix):].strip()
+                break
+        return re.sub(
+            r"\s*Job relevance \d/3; evidence strength \d/2; unique coverage \d/2\.\s*$",
+            "",
+            value,
+        ).strip()
+
+    def selection_score(note: str) -> dict[str, int] | None:
+        match = re.search(
+            r"Job relevance (\d)/3; evidence strength (\d)/2; unique coverage (\d)/2",
+            note,
+        )
+        if not match:
+            return None
+        relevance, evidence, unique = (int(value) for value in match.groups())
+        return {
+            "relevance": relevance,
+            "evidence_strength": evidence,
+            "unique_coverage": unique,
+            "total": relevance + evidence + unique,
+        }
 
     def compare_skills(reference_items: list[str], current_items: list[str]) -> dict[str, Any]:
         reference_by_key = {item.strip().casefold(): item.strip() for item in reference_items if item.strip()}
@@ -1562,6 +1925,9 @@ def proposal_view_data(
             "excluded_unchanged": 0,
             "restored_missing_included": 0,
             "restored_missing_excluded": 0,
+            "selection_missing": 0,
+            "auto_reconciled_included": 0,
+            "auto_reconciled_excluded": 0,
             "rewritten": 0,
         }
         for source_bullet in experience.bullets:
@@ -1613,6 +1979,43 @@ def proposal_view_data(
             )
             inclusion_status = inclusion.status
             status_label = inclusion.label
+            if is_missing_selection_decision(item):
+                # Defensive legacy fallback. New proposals never expose a missing
+                # model decision because deterministic code owns selection.
+                inclusion_status = "auto_reconciled_excluded"
+                status_label = "Not included — lower priority"
+            elif is_auto_reconciled_inclusion(item):
+                inclusion_status = "auto_reconciled_included"
+                status_label = (
+                    "Included — strong transferable evidence"
+                    if item.evidence_note.startswith(DETERMINISTIC_TRANSFERABLE_INCLUDE_PREFIX)
+                    else "Included — strong job match"
+                )
+            elif is_auto_reconciled_exclusion(item):
+                inclusion_status = "auto_reconciled_excluded"
+                status_label = (
+                    "Not included — similar evidence already selected"
+                    if is_duplicate_selection_exclusion(item)
+                    else "Not included — lower priority"
+                )
+
+            selected_instead = []
+            if not current_include:
+                for selected_id in item.selected_instead_ids:
+                    selected_item = proposal_lookup.get(selected_id)
+                    if selected_item is None or not selected_item.include:
+                        continue
+                    selected_instead.append(
+                        {
+                            "id": selected_id,
+                            "text": selected_item.proposed_text,
+                            "reasons": item.selection_comparison_reasons.get(
+                                selected_id, []
+                            ),
+                            "score": selection_score(selected_item.evidence_note),
+                        }
+                    )
+
             comparison_html, proposed_html = build_word_diff(
                 inclusion.reference_for_diff, inclusion.current_for_diff
             )
@@ -1645,6 +2048,26 @@ def proposal_view_data(
                         "Restored for review",
                         "The workflow restored this source-backed bullet to the structured draft, but it remains excluded from the visible resume.",
                     ),
+                    "selection_missing": (
+                        "Evidence mapping restored",
+                        "Career Bridge restored the verified source bullet and evaluated it with the deterministic Job Alignment selector.",
+                    ),
+                    "auto_reconciled_included": (
+                        "Selected by Job Alignment",
+                        "Career Bridge selected this verified accomplishment using job relevance, evidence strength, unique coverage, and duplication checks.",
+                    ),
+                    "auto_reconciled_excluded": (
+                        "Not selected by Job Alignment",
+                        (
+                            "Career Bridge selected "
+                            + ", ".join(
+                                alternative["id"] for alternative in selected_instead
+                            )
+                            + " instead after comparing job relevance, evidence strength, unique coverage, and duplication within the role's bullet limit."
+                            if selected_instead
+                            else "Career Bridge ranked this verified accomplishment below stronger or less repetitive evidence within the available resume space."
+                        ),
+                    ),
                 }
                 reason_parts = reason_by_status.get(inclusion_status)
                 if reason_parts:
@@ -1669,11 +2092,15 @@ def proposal_view_data(
                     "rewritten_as_id": rewritten_as_id,
                     "rewritten_as_text": rewritten_text,
                     "evidence_note": item.evidence_note,
+                    "evidence_note_display": display_evidence_note(item.evidence_note),
+                    "selected_instead": selected_instead,
+                    "selection_score": selection_score(item.evidence_note),
                     "matched_requirements": [
                         f"{rid}: {requirement_lookup[rid].requirement}"
                         for rid in item.matched_requirement_ids
                         if rid in requirement_lookup
                     ],
+                    "selection_decision_missing": is_missing_selection_decision(item),
                 }
             )
         experiences.append(
@@ -1685,11 +2112,19 @@ def proposal_view_data(
                 "dates": experience.dates,
                 "bullets": bullets,
                 "status_counts": status_counts,
-                "retained_count": status_counts["unchanged"] + status_counts["modified"],
+                "retained_count": (
+                    status_counts["unchanged"]
+                    + status_counts["modified"]
+                    + status_counts["auto_reconciled_included"]
+                ),
                 "rewritten_count": status_counts["rewritten"],
                 "changed_count": status_counts["modified"],
                 "added_count": status_counts["added"],
-                "excluded_count": status_counts["excluded"],
+                "excluded_count": (
+                    status_counts["excluded"]
+                    + status_counts["auto_reconciled_excluded"]
+                ),
+                "selection_missing_count": status_counts["selection_missing"],
                 "restored_count": (
                     status_counts["restored_missing_included"]
                     + status_counts["restored_missing_excluded"]
@@ -1711,6 +2146,7 @@ def proposal_view_data(
         "mutually_excluded_count": sum(
             experience["status_counts"]["excluded_unchanged"] for experience in experiences
         ),
+        "selection_consistency_warnings": selection_warnings,
         "has_comparison": has_comparison,
         "comparison_label": comparison_label,
         "current_label": current_label,
@@ -1772,11 +2208,18 @@ def proposal_from_form(
     )
     rewritten_prefix = "User marked this source bullet as rewritten as "
     for item in updated.bullet_proposals:
+        previous_include = item.include
         item.include = form.get(f"include__{item.source_bullet_id}") == "on"
         item.proposed_text = form.get(
             f"text__{item.source_bullet_id}", item.proposed_text
         ).strip()
-        if item.include and item.evidence_note.startswith(rewritten_prefix):
+        if item.include != previous_include:
+            item.evidence_note = (
+                "Candidate manually included this source-backed accomplishment."
+                if item.include
+                else "Candidate manually excluded this source-backed accomplishment."
+            )
+        elif item.include and item.evidence_note.startswith(rewritten_prefix):
             item.evidence_note = (
                 "Restored after previously being marked as represented by another "
                 "included bullet."
@@ -1857,6 +2300,447 @@ def collect_candidate_answers(
 
 
 
+
+
+def _knowledge_evidence_service():
+    # Imported lazily because this blueprint is registered by the main Réunia app.
+    from meeting_assistant.services.knowledge_service import KnowledgeService
+
+    return KnowledgeService()
+
+
+def _baseline_role_entries(profile: CandidateProfile) -> list[dict[str, str]]:
+    return [
+        {
+            "source_experience_id": experience.id,
+            "official_title": experience.title,
+            "employer": experience.employer,
+            "dates": experience.dates,
+            "location": experience.location,
+            "responsibilities": "\n".join(
+                f"• {bullet.text.strip()}"
+                for bullet in experience.bullets
+                if bullet.text.strip()
+            ),
+        }
+        for experience in profile.experiences
+        if experience.title.strip() and experience.employer.strip()
+    ]
+
+
+def _sync_baseline_roles_to_evidence_library(current: WorkflowState) -> bool:
+    owner_id = str(getattr(g, "application_owner_id", "") or "").strip()
+    if not owner_id or not current.source_profile.experiences:
+        return True
+    try:
+        _knowledge_evidence_service().sync_career_roles_from_baseline(
+            owner_id,
+            _baseline_role_entries(current.source_profile),
+            source_fingerprint=(
+                current.source_profile_translation_fingerprint
+                or current.source_resume_fingerprint
+            ),
+            target_market=_effective_career_background(current).target_country,
+        )
+    except Exception:
+        current_app.logger.exception(
+            "Could not synchronize Baseline Resume employment roles to Career Evidence Library"
+        )
+        return False
+    return True
+
+
+def _baseline_creation_method(current: WorkflowState) -> str:
+    """Return the persisted or safely inferred Baseline Resume source type."""
+
+    method = str(getattr(current, "baseline_creation_method", "") or "").strip()
+    if method in {"import", "manual", "mixed"}:
+        return method
+    if current.profile_upload_name or current.source_resume_key:
+        return "import"
+    if current.source_profile.all_source_text().strip():
+        return "manual"
+    return ""
+
+
+def _mark_manual_baseline_ready(current: WorkflowState) -> None:
+    """Mark direct user entry as a ready, user-confirmed Baseline Resume."""
+
+    current.baseline_creation_method = "manual"
+    current.manual_source_profile = current.source_profile.model_copy(deep=True)
+    current.original_source_profile = current.source_profile.model_copy(deep=True)
+    choice = _resolved_resume_language(current)
+    current.source_resume_language = choice.code
+    current.source_profile_language = choice.code
+    current.source_profile_translation_fingerprint = translated_profile_fingerprint(
+        current.source_profile,
+        choice.code,
+        choice.country,
+    )
+
+
+def _refresh_manual_snapshot(current: WorkflowState) -> None:
+    """Keep the direct-entry source synchronized while the baseline is manual."""
+
+    if _baseline_creation_method(current) == "manual":
+        _mark_manual_baseline_ready(current)
+
+
+def _remove_baseline_experience(
+    profile: CandidateProfile,
+    source_experience_id: str,
+) -> Experience | None:
+    for index, experience in enumerate(profile.experiences):
+        if str(experience.id or "").strip() == source_experience_id:
+            return profile.experiences.pop(index)
+    return None
+
+
+def _education_identity(item: EducationItem) -> tuple[str, str, str]:
+    return tuple(
+        " ".join(str(value or "").casefold().split())
+        for value in (item.credential, item.institution, item.date)
+    )
+
+
+def _matching_manual_education_index(
+    profile: CandidateProfile | None,
+    item: EducationItem,
+) -> int | None:
+    if profile is None:
+        return None
+    identity = _education_identity(item)
+    for index, candidate in enumerate(profile.education):
+        if _education_identity(candidate) == identity:
+            return index
+    return None
+
+
+def _apply_confirmed_title_interpretations(
+    owner_id: str,
+    profile: CandidateProfile,
+    proposal: TailoringProposal,
+) -> TailoringProposal:
+    """Resolve title findings with active, user-confirmed library records."""
+
+    if not owner_id or not proposal.career_translation_assessment.findings:
+        return proposal
+    try:
+        roles = _knowledge_evidence_service().list_career_roles(owner_id)
+    except Exception:
+        current_app.logger.exception(
+            "Could not load confirmed employment roles for target-market review"
+        )
+        return proposal
+    confirmed_roles = [
+        role
+        for role in roles
+        if role.get("status") == "confirmed" and role.get("source_active", True)
+    ]
+    if not confirmed_roles:
+        return proposal
+
+    updated = proposal.model_copy(deep=True)
+    for finding in updated.career_translation_assessment.findings:
+        if finding.category != "job_title_translation":
+            continue
+        source_key = normalize_evidence_text(finding.source_text)
+        evidence_ids = set(finding.evidence_ids)
+        matches = [
+            role
+            for role in confirmed_roles
+            if (
+                str(role.get("source_experience_id") or "") in evidence_ids
+                or source_key
+                in {
+                    normalize_evidence_text(str(role.get("official_title") or "")),
+                    normalize_evidence_text(str(role.get("target_market_title") or "")),
+                }
+            )
+        ]
+        if not matches:
+            continue
+        interpretations = {
+            (
+                normalize_evidence_text(str(role.get("target_market_title") or "")),
+                normalize_evidence_text(str(role.get("recruiter_explanation") or "")),
+            )
+            for role in matches
+        }
+        if len(matches) > 1 and len(interpretations) != 1:
+            # The same official title can represent different functions at
+            # different employers. Reuse it only when every confirmed record
+            # agrees on the interpretation.
+            continue
+        role = matches[0]
+        official_title = str(role.get("official_title") or finding.source_text).strip()
+        target_title = str(role.get("target_market_title") or official_title).strip()
+        explanation = str(role.get("recruiter_explanation") or "").strip()
+        finding.disposition = "confirmed_experience"
+        finding.translated_meaning = target_title
+        if explanation:
+            finding.translated_meaning = f"{target_title}. {explanation}"
+        finding.rationale = (
+            "The official title and its target-market interpretation were confirmed "
+            "in Career Evidence Library and remain linked to the documented Baseline Resume role."
+        )
+        for matching_role in matches:
+            source_experience_id = str(
+                matching_role.get("source_experience_id") or ""
+            ).strip()
+            if source_experience_id and source_experience_id not in finding.evidence_ids:
+                finding.evidence_ids.append(source_experience_id)
+        finding.recommended_action = (
+            "No further clarification is required. Keep the official title and use the "
+            "confirmed target-market explanation only when it improves recruiter understanding."
+        )
+    return updated
+
+
+def _resolve_reusable_experience_id(
+    profile: CandidateProfile, stored: dict[str, Any]
+) -> str:
+    experience_lookup = profile.experience_lookup()
+    stored_id = str(stored.get("experience_id") or "").strip()
+    if stored_id in experience_lookup:
+        return stored_id
+
+    stored_employer = normalize_evidence_text(
+        str(stored.get("experience_employer") or "")
+    )
+    stored_title = normalize_evidence_text(str(stored.get("experience_title") or ""))
+    matches = [
+        experience.id
+        for experience in profile.experiences
+        if (
+            stored_employer
+            and normalize_evidence_text(experience.employer) == stored_employer
+            and (
+                not stored_title
+                or normalize_evidence_text(experience.title) == stored_title
+            )
+        )
+    ]
+    return matches[0] if len(matches) == 1 else ""
+
+
+def _reusable_follow_up_question(
+    question: CandidateQuestion,
+    requirement_text: str,
+    stored: dict[str, Any],
+) -> CandidateQuestion:
+    """Turn a related but incomplete saved answer into one narrow follow-up."""
+
+    updated = question.model_copy(deep=True)
+    topic = " ".join(str(requirement_text or "").split()).rstrip(".")
+    if topic:
+        updated.question = (
+            f'You previously confirmed related experience for “{topic}.” '
+            "Can you add one or two specific examples?"
+        )
+    else:
+        updated.question = (
+            "You previously confirmed related experience. "
+            "Can you add one or two specific examples?"
+        )
+    previous_question = " ".join(str(stored.get("question") or "").split())
+    updated.help_text = (
+        "Career Evidence Library matched a related answer, but the new question "
+        "asks for more specific evidence. Your previous answer is prefilled below."
+    )
+    if previous_question:
+        updated.help_text += f" Previously answered: {previous_question}"
+    updated.details_prompt = (
+        "Keep the confirmed facts already shown and add what you personally did, "
+        "the tools or techniques used, and the result or scope."
+    )
+    return updated
+
+
+def _reuse_library_confirmation_answers(
+    owner_id: str,
+    profile: CandidateProfile,
+    analysis: JobAnalysis,
+    proposal: TailoringProposal,
+) -> tuple[
+    TailoringProposal,
+    CandidateProfile | None,
+    list[CandidateAnswer],
+    dict[str, str],
+]:
+    """Reuse complete prior answers and prefill only missing-detail follow-ups."""
+
+    if not proposal.candidate_questions:
+        return proposal.model_copy(deep=True), None, [], {}
+    try:
+        service = _knowledge_evidence_service()
+        stored_answers = service.list_evidence_answers(owner_id)
+    except Exception:
+        current_app.logger.exception(
+            "Could not load reusable Career Evidence Library answers for %s", owner_id
+        )
+        return proposal.model_copy(deep=True), None, [], {}
+    if not stored_answers:
+        return proposal.model_copy(deep=True), None, [], {}
+
+    requirement_lookup = {item.id: item for item in analysis.requirements}
+    reused_answers: list[CandidateAnswer] = []
+    reused_questions: list[CandidateQuestion] = []
+    reused_ids: list[str] = []
+    remaining_questions: list[CandidateQuestion] = []
+    confirmation_draft: dict[str, str] = {}
+
+    for question in proposal.candidate_questions:
+        requirement = requirement_lookup.get(question.requirement_id)
+        requirement_text = requirement.requirement if requirement else ""
+        match, _score = find_best_evidence_match(
+            question.question,
+            requirement_text,
+            stored_answers,
+            answer_type=question.answer_type,
+        )
+        if match is None:
+            remaining_questions.append(question.model_copy(deep=True))
+            continue
+
+        yes_no = match.get("yes_no")
+        if yes_no not in (True, False, None):
+            remaining_questions.append(question.model_copy(deep=True))
+            continue
+        answer_text = str(match.get("answer_text") or "").strip()
+        experience_id = _resolve_reusable_experience_id(profile, dict(match))
+        supports_evidence = yes_no is True or (
+            yes_no is None and bool(answer_text)
+        )
+        placement = str(match.get("placement") or "auto")
+        if placement not in {"auto", "update_existing", "new_bullet"}:
+            placement = "auto"
+
+        fully_satisfies = stored_answer_fully_satisfies(
+            question.question,
+            requirement_text,
+            match,
+            answer_type=question.answer_type,
+            details_prompt=question.details_prompt,
+        )
+        if supports_evidence and not experience_id:
+            fully_satisfies = False
+
+        if not fully_satisfies and yes_no is not False:
+            follow_up = _reusable_follow_up_question(
+                question, requirement_text, dict(match)
+            )
+            remaining_questions.append(follow_up)
+            confirmation_draft[f"choice__{question.id}"] = "yes" if answer_text else ""
+            confirmation_draft[f"answer__{question.id}"] = answer_text
+            confirmation_draft[f"experience__{question.id}"] = experience_id
+            confirmation_draft[f"placement__{question.id}"] = placement
+            continue
+
+        answer_yes_no = yes_no
+        if question.answer_type in {"yes_no", "yes_no_with_details"}:
+            if answer_yes_no is None and answer_text:
+                answer_yes_no = True
+        answer = CandidateAnswer(
+            question_id=question.id,
+            question=question.question,
+            requirement_id=question.requirement_id,
+            answer_type=question.answer_type,
+            yes_no=answer_yes_no,
+            text=answer_text,
+            experience_id=experience_id,
+            placement=placement,
+            reused_from_library=True,
+            library_evidence_id=str(match.get("evidence_id") or ""),
+        )
+        if validate_candidate_answers([question], [answer]):
+            follow_up = _reusable_follow_up_question(
+                question, requirement_text, dict(match)
+            )
+            remaining_questions.append(follow_up)
+            confirmation_draft[f"choice__{question.id}"] = (
+                "no" if yes_no is False else "yes" if answer_text else ""
+            )
+            confirmation_draft[f"answer__{question.id}"] = answer_text
+            confirmation_draft[f"experience__{question.id}"] = experience_id
+            confirmation_draft[f"placement__{question.id}"] = placement
+            continue
+        reused_questions.append(question.model_copy(deep=True))
+        reused_answers.append(answer)
+        reused_ids.append(answer.library_evidence_id)
+
+    updated = proposal.model_copy(deep=True)
+    updated.candidate_questions = remaining_questions
+    if not reused_answers:
+        return updated, None, [], confirmation_draft
+
+    confirmed_profile = build_profile_with_candidate_answers(
+        profile, analysis, reused_questions, reused_answers
+    )
+    try:
+        service.record_evidence_reuse(owner_id, reused_ids)
+    except Exception:
+        current_app.logger.exception(
+            "Could not record reusable evidence usage for %s", owner_id
+        )
+    return updated, confirmed_profile, reused_answers, confirmation_draft
+
+
+def _confirmation_evidence_entries(
+    current: WorkflowState, answers: list[CandidateAnswer]
+) -> list[dict[str, Any]]:
+    profile = current.confirmed_profile or current.source_profile
+    experiences = profile.experience_lookup()
+    requirements = (
+        {item.id: item for item in current.analysis.requirements}
+        if current.analysis is not None
+        else {}
+    )
+    application = getattr(g, "active_application", None)
+    application_id = str(getattr(application, "id", "") or "")
+    company = (
+        str(getattr(application, "company", "") or "")
+        or str(getattr(current.analysis, "target_company", "") or "")
+    )
+    target_title = (
+        str(getattr(application, "role", "") or "")
+        or current.target_title
+        or str(getattr(current.analysis, "target_title", "") or "")
+    )
+    entries: list[dict[str, Any]] = []
+    for answer in answers:
+        experience = experiences.get(answer.experience_id)
+        requirement = requirements.get(answer.requirement_id)
+        entries.append(
+            {
+                "question": answer.question,
+                "requirement": requirement.requirement if requirement else "",
+                "answer_type": answer.answer_type,
+                "yes_no": answer.yes_no,
+                "answer_text": answer.text,
+                "experience_id": answer.experience_id,
+                "experience_label": (
+                    f"{experience.employer} — {experience.title}" if experience else ""
+                ),
+                "experience_employer": experience.employer if experience else "",
+                "experience_title": experience.title if experience else "",
+                "placement": answer.placement,
+                "source_application_id": application_id,
+                "source_job_title": target_title,
+                "source_company": company,
+            }
+        )
+    return entries
+
+
+def _save_confirmation_answers_to_library(
+    owner_id: str, current: WorkflowState, answers: list[CandidateAnswer]
+) -> int:
+    entries = _confirmation_evidence_entries(current, answers)
+    if not entries:
+        return 0
+    saved = _knowledge_evidence_service().save_evidence_answers(owner_id, entries)
+    return len(saved)
 
 def _normalize_audit_result(audit: ProposalAudit) -> ProposalAudit:
     """Keep pass/fail consistent with the application's documented blocking semantics."""
@@ -2519,19 +3403,59 @@ def _hydrate_workflow_documents(workflow_state: WorkflowState) -> None:
 
 
 def application_builder_storage_status() -> dict[str, Any]:
-    """Return non-secret storage capabilities for operational health checks."""
+    """Return non-secret storage capabilities for operational health checks.
+
+    Job Discovery reports the adapter that is actually installed in the Flask
+    extension registry rather than trusting configuration alone. This catches a
+    standalone/local fallback to the in-memory store before a deployment is
+    considered durable.
+    """
 
     workflow_backend = configured_workflow_backend(current_app.config)
     application_backend = configured_application_backend(current_app.config)
     document_backend = configured_document_backend(current_app.config)
+
+    configured_discovery_backend = str(
+        current_app.config.get("CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND")
+        or "memory"
+    ).strip().casefold()
+    discovery_store = current_app.extensions.get(
+        "career_bridge_job_discovery_store"
+    )
+    if isinstance(discovery_store, DynamoDBDiscoveryStore):
+        discovery_backend = "dynamodb"
+    elif isinstance(discovery_store, InMemoryDiscoveryStore):
+        discovery_backend = "memory"
+    else:
+        discovery_backend = configured_discovery_backend
+
+    discovery_table = (
+        str(
+            current_app.config.get(
+                "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME"
+            )
+            or ""
+        ).strip()
+        if discovery_backend == "dynamodb"
+        else ""
+    )
+    discovery_persistent = (
+        discovery_backend == "dynamodb" and bool(discovery_table)
+    )
     fully_persistent = (
         workflow_backend == "dynamodb"
         and application_backend == "dynamodb"
+        and discovery_persistent
         and document_backend == "s3"
     )
     return {
         "workflow_storage": workflow_backend,
         "application_storage": application_backend,
+        "job_discovery_storage": discovery_backend,
+        "job_discovery_table": discovery_table,
+        "job_discovery_durability": (
+            "persistent" if discovery_persistent else "ephemeral"
+        ),
         "document_storage": document_backend,
         "durability": "persistent" if fully_persistent else "mixed",
         "multi_worker_safe": fully_persistent,
@@ -2603,19 +3527,54 @@ def init_application_builder(app: Flask) -> None:
 
     warning_key = "career_bridge_application_builder_persistence_warning_logged"
     if not app.extensions.get(warning_key):
+        discovery_store = app.extensions.get(
+            "career_bridge_job_discovery_store"
+        )
+        if isinstance(discovery_store, DynamoDBDiscoveryStore):
+            discovery_backend = "dynamodb"
+        elif isinstance(discovery_store, InMemoryDiscoveryStore):
+            discovery_backend = "memory"
+        else:
+            discovery_backend = str(
+                app.config.get(
+                    "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND"
+                )
+                or "memory"
+            ).strip().casefold()
+        discovery_table = (
+            str(
+                app.config.get(
+                    "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME"
+                )
+                or ""
+            ).strip()
+            if discovery_backend == "dynamodb"
+            else ""
+        )
+        discovery_persistent = (
+            discovery_backend == "dynamodb" and bool(discovery_table)
+        )
         fully_persistent = (
             workflow_backend == "dynamodb"
             and application_backend == "dynamodb"
+            and discovery_persistent
             and document_backend == "s3"
         )
         log = app.logger.info if fully_persistent else app.logger.warning
         log(
             "Application Builder storage configured: workflow=%s, "
-            "applications=%s, documents=%s%s",
+            "applications=%s, job_discovery=%s, job_discovery_table=%s, "
+            "documents=%s%s",
             workflow_backend,
             application_backend,
+            discovery_backend,
+            discovery_table or "<none>",
             document_backend,
-            "" if fully_persistent else "; workflow or document storage is not fully durable",
+            (
+                ""
+                if fully_persistent
+                else "; one or more Career Bridge stores are not fully durable"
+            ),
         )
         app.extensions[warning_key] = True
 
@@ -2798,6 +3757,12 @@ def _register_application_builder_routes() -> None:
         endpoint = str(request.endpoint or "")
         if endpoint in {
             "application_builder.career_translation_workspace",
+            "application_builder.update_baseline_career_role",
+            "application_builder.delete_baseline_career_role",
+            "application_builder.update_baseline_summary",
+            "application_builder.update_baseline_skills",
+            "application_builder.update_baseline_education",
+            "application_builder.delete_baseline_education",
         }:
             return True
         return (
@@ -2823,42 +3788,187 @@ def _register_application_builder_routes() -> None:
     def _career_translation_workflow_key(owner_id: str) -> str:
         return f"{owner_id}:career-foundation:translation"
 
-    def _seed_application_from_career_translation(
-        owner_id: str, workflow_state: WorkflowState
-    ) -> None:
-        """Copy the one-time translated baseline into an empty application workflow.
+    def _application_baseline_is_frozen(workflow_state: WorkflowState) -> bool:
+        """Return whether tailoring has already captured this application's baseline."""
 
-        The application receives its own serialized profile copy, but not the
-        foundation document key. This prevents replacing an application-specific
-        resume from deleting the account-level imported resume object.
+        return bool(
+            workflow_state.workflow_stage != "initial"
+            or workflow_state.analysis is not None
+            or workflow_state.initial_report is not None
+            or workflow_state.initial_evidence_proposal is not None
+            or workflow_state.provisional_proposal is not None
+            or workflow_state.draft_proposal is not None
+            or workflow_state.final_proposal is not None
+            or workflow_state.confirmation_complete
+            or workflow_state.workflow_step_snapshots
+        )
+
+    def _foundation_baseline_version_fingerprint(
+        foundation: WorkflowState,
+    ) -> str:
+        """Fingerprint the reusable baseline independently of application translation."""
+
+        original = foundation.original_source_profile or foundation.source_profile
+        payload = {
+            "source_profile": foundation.source_profile.model_dump(mode="json"),
+            "original_source_profile": original.model_dump(mode="json"),
+            "source_profile_language": foundation.source_profile_language,
+            "source_resume_language": foundation.source_resume_language,
+            "source_resume_fingerprint": foundation.source_resume_fingerprint,
+            "profile_upload_name": foundation.profile_upload_name,
+        }
+        return _hash_json(payload)
+
+    def _foundation_baseline_differs(
+        workflow_state: WorkflowState, foundation: WorkflowState
+    ) -> bool:
+        """Compare provenance without confusing application translation with drift."""
+
+        foundation_version = _foundation_baseline_version_fingerprint(foundation)
+        if workflow_state.foundation_baseline_fingerprint:
+            return workflow_state.foundation_baseline_fingerprint != foundation_version
+
+        # Legacy application workflows predate the explicit provenance field.
+        # A different imported-file fingerprint is a reliable indication that
+        # the application was built from another resume. When both fingerprints
+        # are unavailable, fall back to the structured profile comparison.
+        if (
+            workflow_state.source_resume_fingerprint
+            or foundation.source_resume_fingerprint
+        ):
+            if (
+                workflow_state.source_resume_fingerprint
+                != foundation.source_resume_fingerprint
+            ):
+                return True
+            if _application_baseline_is_frozen(workflow_state):
+                # A frozen legacy application may have intentionally translated
+                # the same imported resume for a different target market.
+                return False
+        return (
+            workflow_state.source_profile.model_dump(mode="json")
+            != foundation.source_profile.model_dump(mode="json")
+        )
+
+    def _copy_foundation_baseline(
+        workflow_state: WorkflowState, foundation: WorkflowState
+    ) -> None:
+        """Replace application resume evidence with the reusable Foundation baseline."""
+
+        has_foundation_resume = bool(
+            foundation.source_profile.all_source_text().strip()
+        )
+        if has_foundation_resume:
+            workflow_state.source_profile = foundation.source_profile.model_copy(
+                deep=True
+            )
+            workflow_state.original_source_profile = (
+                foundation.original_source_profile.model_copy(deep=True)
+                if foundation.original_source_profile is not None
+                else foundation.source_profile.model_copy(deep=True)
+            )
+            workflow_state.source_profile_language = (
+                foundation.source_profile_language
+            )
+            workflow_state.source_resume_language = (
+                foundation.source_resume_language
+            )
+            workflow_state.source_profile_translation_fingerprint = (
+                foundation.source_profile_translation_fingerprint
+            )
+            workflow_state.profile_upload_name = foundation.profile_upload_name
+            workflow_state.source_resume_fingerprint = (
+                foundation.source_resume_fingerprint
+            )
+            workflow_state.source_resume_contact_links_fingerprint = (
+                foundation.source_resume_contact_links_fingerprint
+            )
+            workflow_state.foundation_baseline_fingerprint = (
+                _foundation_baseline_version_fingerprint(foundation)
+            )
+        else:
+            workflow_state.source_profile = _empty_candidate_profile()
+            workflow_state.original_source_profile = None
+            workflow_state.source_profile_language = ""
+            workflow_state.source_resume_language = ""
+            workflow_state.source_profile_translation_fingerprint = ""
+            workflow_state.profile_upload_name = ""
+            workflow_state.source_resume_fingerprint = ""
+            workflow_state.source_resume_contact_links_fingerprint = ""
+            workflow_state.foundation_baseline_fingerprint = (
+                _foundation_baseline_version_fingerprint(foundation)
+            )
+
+        # The original Foundation document remains owned by the account-level
+        # workflow. Application workflows store a serialized evidence copy only,
+        # preventing an application reset or deletion from deleting that file.
+        workflow_state.source_resume_key = ""
+
+    def _sync_application_from_foundation(
+        owner_id: str,
+        workflow_state: WorkflowState,
+        *,
+        force: bool = False,
+    ) -> str:
+        """Keep an application baseline aligned with Foundation until frozen.
+
+        Returns ``synced``, ``current``, ``frozen``, or ``missing`` for UI and
+        route decisions. A forced sync intentionally clears all tailoring
+        results because they were calculated from the previous baseline.
         """
 
-        if (
-            workflow_state.source_resume_key
-            or workflow_state.source_profile.all_source_text().strip()
-        ):
-            return
         foundation = store.load(_career_translation_workflow_key(owner_id)).state
-        if not foundation.source_profile.all_source_text().strip():
-            return
-        workflow_state.source_profile = foundation.source_profile.model_copy(deep=True)
-        workflow_state.original_source_profile = (
-            foundation.original_source_profile.model_copy(deep=True)
-            if foundation.original_source_profile is not None
-            else foundation.source_profile.model_copy(deep=True)
+        _backfill_professional_contact_links(foundation, document_store)
+        foundation_has_resume = bool(
+            foundation.source_profile.all_source_text().strip()
         )
-        workflow_state.source_profile_language = foundation.source_profile_language
-        workflow_state.source_profile_translation_fingerprint = (
-            foundation.source_profile_translation_fingerprint
-        )
-        workflow_state.career_background = foundation.career_background.model_copy(
-            deep=True
-        )
-        workflow_state.profile_upload_name = foundation.profile_upload_name
-        workflow_state.source_resume_fingerprint = (
-            foundation.source_resume_fingerprint
-        )
-        workflow_state.source_resume_key = ""
+        differs = _foundation_baseline_differs(workflow_state, foundation)
+        frozen = _application_baseline_is_frozen(workflow_state)
+
+        if force and not foundation_has_resume:
+            # Never erase a frozen application merely because Foundation is
+            # currently empty; the refresh route will direct the user to create
+            # the reusable baseline first.
+            return "missing"
+
+        if frozen and not force:
+            # Preserve the immutable baseline used by completed workflow steps,
+            # while repairing contact URLs that older imports may have dropped.
+            if foundation_has_resume:
+                workflow_state.source_profile = inherit_professional_contact_urls(
+                    workflow_state.source_profile, foundation.source_profile
+                )
+                foundation_original = (
+                    foundation.original_source_profile or foundation.source_profile
+                )
+                if workflow_state.original_source_profile is not None:
+                    workflow_state.original_source_profile = (
+                        inherit_professional_contact_urls(
+                            workflow_state.original_source_profile,
+                            foundation_original,
+                        )
+                    )
+                _propagate_professional_contact_links(
+                    workflow_state, workflow_state.source_profile
+                )
+            return "frozen" if differs else "current"
+
+        if differs or force:
+            _copy_foundation_baseline(workflow_state, foundation)
+            workflow_state.clear_results()
+            if foundation_has_resume:
+                _propagate_professional_contact_links(
+                    workflow_state, workflow_state.source_profile
+                )
+                return "synced"
+            return "missing"
+
+        if foundation_has_resume:
+            _propagate_professional_contact_links(
+                workflow_state, workflow_state.source_profile
+            )
+            return "current"
+        return "missing"
 
     @application_builder_bp.before_request
     def load_workflow_state() -> Response | None:
@@ -2987,9 +4097,30 @@ def _register_application_builder_routes() -> None:
                 ):
                     g.workflow_state.job_description = application.job_description
 
-            _seed_application_from_career_translation(
+            g.application_baseline_status = _sync_application_from_foundation(
                 owner_id, g.workflow_state
             )
+            if (
+                not _application_baseline_is_frozen(g.workflow_state)
+                and g.application_baseline_status
+                in {"synced", "current", "missing"}
+                and application.original_resume_key
+            ):
+                previous_application_source_key = application.original_resume_key
+                updated_application = application_store.update_builder_progress(
+                    owner_id,
+                    application.id,
+                    workflow_step=application.workflow_step,
+                    original_resume_key="",
+                )
+                if updated_application is not None:
+                    application = updated_application
+                    g.active_application = updated_application
+                document_store.delete(previous_application_source_key)
+            if _backfill_professional_contact_links(
+                g.workflow_state, document_store
+            ):
+                _propagate_professional_contact_links(g.workflow_state)
             g.workflow_state.career_background.target_role = (
                 g.workflow_state.target_title or application.role
             )
@@ -3027,6 +4158,49 @@ def _register_application_builder_routes() -> None:
         )
         return None
 
+    def _persist_workflow_state_now() -> bool:
+        """Durably save the loaded workflow and refresh its optimistic-lock token.
+
+        Most routes can rely on the shared ``after_request`` hook. Operations that
+        replace a retained document, such as a Baseline Resume re-import, call this
+        helper before deleting the previous object so the new structured profile
+        and its source-document reference are committed atomically from the user's
+        perspective.
+        """
+
+        workflow_key = str(getattr(g, "workflow_key", "") or "")
+        workflow_state = getattr(g, "workflow_state", None)
+        if (
+            not workflow_key
+            or workflow_state is None
+            or bool(getattr(g, "workflow_state_deleted", False))
+        ):
+            return False
+
+        _persist_workflow_documents(
+            str(getattr(g, "application_owner_id", "") or ""),
+            workflow_key,
+            workflow_state,
+        )
+        current_fingerprint = workflow_state_fingerprint(workflow_state)
+        initial_fingerprint = str(
+            getattr(g, "workflow_initial_fingerprint", "") or ""
+        )
+        if current_fingerprint == initial_fingerprint:
+            return False
+
+        saved = store.save(
+            workflow_key,
+            workflow_state,
+            expected_version=int(getattr(g, "workflow_initial_version", 0) or 0),
+            updated_by_request=str(getattr(g, "workflow_request_id", "") or ""),
+        )
+        g.workflow_initial_version = saved.version
+        g.workflow_initial_fingerprint = saved.fingerprint
+        g.workflow_initial_updated_at = saved.updated_at
+        g.workflow_initial_updated_by_request = saved.updated_by_request
+        return True
+
     @application_builder_bp.after_request
     def add_job_discovery_server_timing(response: Response) -> Response:
         """Expose phase timings after workflow persistence has completed."""
@@ -3039,50 +4213,20 @@ def _register_application_builder_routes() -> None:
 
         persist_started_at = perf_counter()
         try:
-            workflow_key = str(getattr(g, "workflow_key", "") or "")
-            workflow_state = getattr(g, "workflow_state", None)
-            if (
-                workflow_key
-                and workflow_state is not None
-                and not bool(getattr(g, "workflow_state_deleted", False))
-            ):
-                _persist_workflow_documents(
-                    str(getattr(g, "application_owner_id", "") or ""),
-                    workflow_key,
-                    workflow_state,
+            try:
+                _persist_workflow_state_now()
+            except WorkflowConflictError as exc:
+                workflow_key = str(getattr(g, "workflow_key", "") or "")
+                current_app.logger.warning(
+                    "Career Bridge workflow conflict for %s: expected=%s actual=%s "
+                    "request=%s last_updated_by=%s",
+                    hashlib.sha256(workflow_key.encode("utf-8")).hexdigest()[:12],
+                    exc.expected_version,
+                    exc.actual_version,
+                    str(getattr(g, "workflow_request_id", "") or ""),
+                    exc.actual_updated_by_request,
                 )
-                current_fingerprint = workflow_state_fingerprint(workflow_state)
-                initial_fingerprint = str(
-                    getattr(g, "workflow_initial_fingerprint", "") or ""
-                )
-                if current_fingerprint == initial_fingerprint:
-                    return response
-                try:
-                    saved = store.save(
-                        workflow_key,
-                        workflow_state,
-                        expected_version=int(
-                            getattr(g, "workflow_initial_version", 0) or 0
-                        ),
-                        updated_by_request=str(
-                            getattr(g, "workflow_request_id", "") or ""
-                        ),
-                    )
-                except WorkflowConflictError as exc:
-                    current_app.logger.warning(
-                        "Career Bridge workflow conflict for %s: expected=%s actual=%s "
-                        "request=%s last_updated_by=%s",
-                        hashlib.sha256(workflow_key.encode("utf-8")).hexdigest()[:12],
-                        exc.expected_version,
-                        exc.actual_version,
-                        str(getattr(g, "workflow_request_id", "") or ""),
-                        exc.actual_updated_by_request,
-                    )
-                    return workflow_conflict_response(exc)
-                g.workflow_initial_version = saved.version
-                g.workflow_initial_fingerprint = saved.fingerprint
-                g.workflow_initial_updated_at = saved.updated_at
-                g.workflow_initial_updated_by_request = saved.updated_by_request
+                return workflow_conflict_response(exc)
             return response
         finally:
             _record_job_discovery_phase(
@@ -5037,9 +6181,23 @@ def _register_application_builder_routes() -> None:
 
         current_input = input_fingerprint(current, models)
         source_profile = current.source_profile
+        application_baseline_frozen = _application_baseline_is_frozen(current)
+        application_baseline_status = str(
+            getattr(g, "application_baseline_status", "") or ""
+        )
+        application_baseline_outdated = bool(
+            application_baseline_frozen
+            and application_baseline_status == "frozen"
+        )
         profile = current.confirmed_profile or source_profile
         analysis = current.analysis
         proposal = working_proposal_for_stage(current)
+        if analysis is not None and proposal is not None:
+            proposal = _apply_confirmed_title_interpretations(
+                str(getattr(g, "application_owner_id", "") or ""),
+                profile,
+                proposal,
+            )
         draft_proposal = current.draft_proposal
         final_proposal = current.final_proposal
         input_is_current = bool(
@@ -5284,10 +6442,16 @@ def _register_application_builder_routes() -> None:
         }
         confirmation_rows = []
         if proposal:
-            for question in proposal.candidate_questions:
+            ordered_questions = order_candidate_questions_for_display(
+                proposal.candidate_questions
+            )
+            for display_position, question in enumerate(ordered_questions, start=1):
                 confirmation_rows.append(
                     {
                         "question": question,
+                        "display_id": candidate_question_display_label(
+                            question, display_position
+                        ),
                         "requirement": requirement_lookup.get(
                             question.requirement_id
                         ),
@@ -5414,7 +6578,7 @@ def _register_application_builder_routes() -> None:
             else None
         )
         career_translation_assessment = career_translation_assessment_view(
-            current.provisional_proposal or proposal
+            proposal
         )
         reusable_profile = getattr(
             g, "reusable_career_profile", ReusableCareerProfile()
@@ -5429,6 +6593,7 @@ def _register_application_builder_routes() -> None:
             application_fit=application_fit,
             career_translation_assessment=career_translation_assessment,
             career_background=_effective_career_background(current),
+            country_options=COUNTRY_OPTIONS,
             career_background_additions=_career_background_application_additions(
                 current.career_background,
                 reusable_profile,
@@ -5448,6 +6613,9 @@ def _register_application_builder_routes() -> None:
             api_ready=api_ready,
             ai_ready=ai_ready,
             source_profile=source_profile,
+            application_baseline_frozen=application_baseline_frozen,
+            application_baseline_outdated=application_baseline_outdated,
+            application_baseline_status=application_baseline_status,
             profile=profile,
             input_is_current=input_is_current,
             analysis_is_current=analysis_is_current,
@@ -5600,6 +6768,7 @@ def _register_application_builder_routes() -> None:
     @application_builder_bp.post("/profile/upload")
     def upload_profile():
         uploaded = request.files.get("profile_file")
+        import_strategy = str(request.form.get("import_strategy") or "").strip().casefold()
         return_to = str(request.form.get("return_to") or "").strip().casefold()
         is_career_translation = return_to == "career_translation"
         redirect_target = (
@@ -5612,6 +6781,17 @@ def _register_application_builder_routes() -> None:
             )
         )
         current = state()
+        existing_creation_method = _baseline_creation_method(current)
+        manual_profile_to_merge: CandidateProfile | None = None
+
+        if not is_career_translation:
+            flash(
+                "Application Baseline is managed in Foundation. Update the Baseline Resume there; applications that have not started tailoring will sync automatically.",
+                "info",
+            )
+            return redirect(
+                url_for("application_builder.career_translation_workspace")
+            )
 
         if is_career_translation:
             reusable_profile = getattr(
@@ -5644,6 +6824,14 @@ def _register_application_builder_routes() -> None:
                     reasoning_effort=models.analysis_tailoring_reasoning_effort,
                 )
                 _ensure_target_language_profile(current, translation_ai)
+                if (
+                    _baseline_creation_method(current) == "mixed"
+                    and current.manual_source_profile is not None
+                ):
+                    current.source_profile = merge_candidate_profiles(
+                        current.source_profile,
+                        current.manual_source_profile,
+                    )
             except (ResumeAIError, ValueError, RuntimeError) as exc:
                 flash(
                     "Baseline Resume preferences were saved, but the resume could not be regenerated: "
@@ -5651,21 +6839,63 @@ def _register_application_builder_routes() -> None:
                     "warning",
                 )
             else:
+                roles_synced = _sync_baseline_roles_to_evidence_library(current)
                 choice = _resolved_resume_language(current)
-                flash(
-                    f"Baseline Resume saved. The reusable resume is now in {choice.name}.",
-                    "success",
-                )
+                source_language = _source_resume_language_code(current)
+                if source_language and source_language == choice.code:
+                    flash(
+                        f"Baseline Resume saved in {choice.name}. The imported resume was already in {choice.name}, so no translation was needed.",
+                        "success",
+                    )
+                else:
+                    flash(
+                        f"Baseline Resume saved. The reusable resume is now in {choice.name}.",
+                        "success",
+                    )
+                if not roles_synced:
+                    flash(
+                        "The Baseline Resume was saved, but its employment roles could not be synchronized to Career Evidence Library. Regenerate the Baseline Resume to retry.",
+                        "warning",
+                    )
             return redirect(redirect_target)
+
+        if (
+            existing_creation_method in {"manual", "mixed"}
+            and current.source_profile.all_source_text().strip()
+        ):
+            if import_strategy not in {"replace", "merge"}:
+                flash(
+                    "Choose whether the imported resume should replace the manually entered Baseline Resume or merge new information for review.",
+                    "error",
+                )
+                return redirect(redirect_target)
+            if import_strategy == "merge":
+                manual_profile_to_merge = (
+                    current.manual_source_profile.model_copy(deep=True)
+                    if current.manual_source_profile is not None
+                    else current.source_profile.model_copy(deep=True)
+                )
 
         filename = uploaded.filename
         data = uploaded.read()
+        replacing_existing_baseline = bool(
+            current.source_resume_key
+            or current.source_resume_fingerprint
+            or current.profile_upload_name
+            or current.source_profile.all_source_text().strip()
+        )
         translation_ai: ResumeAI | None = None
+        import_adjustments: list[str] = []
+        detected_import_language = ""
         try:
             if resume_extension(filename) == ".json":
                 profile = load_candidate_profile_bytes(data)
+                detected_import_language = detect_text_language(
+                    profile.all_source_text()
+                )
             else:
                 resume_text = extract_resume_text(data, filename)
+                detected_import_language = detect_text_language(resume_text)
                 models = resolve_models(current)
                 translation_ai = ResumeAI(
                     models.analysis_tailoring_model,
@@ -5674,6 +6904,10 @@ def _register_application_builder_routes() -> None:
                 profile = translation_ai.create_candidate_profile_from_resume(
                     resume_text=resume_text,
                     filename=filename,
+                )
+                import_adjustments = list(
+                    getattr(translation_ai, "last_resume_import_adjustments", [])
+                    or []
                 )
         except (ResumeAIError, ValueError, RuntimeError) as exc:
             flash(f"Could not import the resume: {exc}", "error")
@@ -5704,11 +6938,18 @@ def _register_application_builder_routes() -> None:
         previous_source_key = current.source_resume_key
         current.original_source_profile = profile.model_copy(deep=True)
         current.source_profile = profile
+        current.source_resume_language = (
+            detected_import_language
+            or detect_text_language(profile.all_source_text())
+        )
         current.source_profile_language = ""
         current.source_profile_translation_fingerprint = ""
         current.profile_upload_name = filename
         current.source_resume_key = source_object_key
         current.source_resume_fingerprint = source_fingerprint
+        current.source_resume_contact_links_fingerprint = source_fingerprint
+        current.baseline_creation_method = "import"
+        current.manual_source_profile = None
 
         translation_warning = ""
         translated_choice = _resolved_resume_language(current)
@@ -5741,6 +6982,14 @@ def _register_application_builder_routes() -> None:
                 "Unexpected target-language conversion failure after resume import"
             )
 
+        if manual_profile_to_merge is not None:
+            current.source_profile = merge_candidate_profiles(
+                current.source_profile,
+                manual_profile_to_merge,
+            )
+            current.manual_source_profile = manual_profile_to_merge
+            current.baseline_creation_method = "mixed"
+
         active_application = getattr(g, "active_application", None)
         if active_application is not None:
             application_store.update_builder_progress(
@@ -5750,8 +6999,43 @@ def _register_application_builder_routes() -> None:
                 original_resume_key=source_object_key,
             )
         current.clear_results()
+
+        # Commit the replacement before removing the document referenced by the
+        # previously saved baseline. This prevents the redirect from reloading an
+        # older profile and avoids leaving the stored workflow pointed at a file
+        # that was already deleted when a concurrent update wins.
+        try:
+            _persist_workflow_state_now()
+        except WorkflowConflictError as exc:
+            if source_object_key != previous_source_key:
+                document_store.delete(source_object_key)
+            return workflow_conflict_response(exc)
+        except Exception:
+            if source_object_key != previous_source_key:
+                document_store.delete(source_object_key)
+            raise
+
         if previous_source_key and previous_source_key != source_object_key:
-            document_store.delete(previous_source_key)
+            try:
+                document_store.delete(previous_source_key)
+            except Exception:
+                current_app.logger.exception(
+                    "Could not remove the replaced Baseline Resume source document"
+                )
+
+        roles_synced = True
+        if not translation_warning:
+            roles_synced = _sync_baseline_roles_to_evidence_library(current)
+
+        # A revision-specific redirect also prevents a browser or intermediary
+        # from presenting the pre-import preview after a successful replacement.
+        redirect_target = (
+            url_for(
+                "application_builder.career_translation_workspace",
+                baseline_revision=source_fingerprint[:12],
+            )
+            + "#initial-resume"
+        )
         if translation_warning:
             flash(
                 "The resume was imported successfully, but its target-language version could not be generated yet. "
@@ -5769,29 +7053,73 @@ def _register_application_builder_routes() -> None:
                     else " for this application"
                 )
             )
+            source_language = _source_resume_language_code(current)
+            no_translation_needed = bool(
+                source_language and source_language == translated_choice.code
+            )
             preserved_message = (
-                "The verified original was preserved. New application workspaces can reuse this translated baseline."
+                "The verified original was preserved. New application workspaces can reuse this baseline."
                 if is_career_translation
                 else "The verified original was preserved and previous analysis results were cleared."
             )
-            flash(
-                f"Resume imported and converted into {translated_choice.name}{destination}. "
-                + preserved_message,
-                "success",
-            )
+            if manual_profile_to_merge is not None:
+                import_summary = (
+                    "The resume was imported and merged with the manually entered Baseline Resume for review"
+                )
+            else:
+                import_summary = (
+                    "The new resume replaced the existing Baseline Resume"
+                    if replacing_existing_baseline
+                    else "The resume was imported as the Baseline Resume"
+                )
+            if no_translation_needed:
+                flash(
+                    f"{import_summary} in {translated_choice.name}. It already matches the Baseline Resume language, so no translation was needed. "
+                    + preserved_message,
+                    "success",
+                )
+            else:
+                flash(
+                    f"{import_summary} and translated into {translated_choice.name}{destination}. "
+                    + preserved_message,
+                    "success",
+                )
+            if import_adjustments:
+                flash(
+                    "The new resume was accepted. A small amount of extractor-generated wording that was not explicit in the uploaded file was omitted. Review the extracted summary, skills, education, and employment fields before using the baseline.",
+                    "warning",
+                )
+            if not roles_synced:
+                flash(
+                    "The Baseline Resume was created, but its employment roles could not be synchronized to Career Evidence Library. Regenerate the Baseline Resume to retry.",
+                    "warning",
+                )
         return redirect(redirect_target)
 
     @application_builder_bp.post("/profile/default")
     def restore_default_profile():
+        if getattr(g, "active_application", None) is not None:
+            flash(
+                "Application Baseline is managed in Foundation. Clear or replace the Baseline Resume there instead.",
+                "info",
+            )
+            return redirect(
+                url_for("application_builder.career_translation_workspace")
+            )
         current = state()
         previous_source_key = current.source_resume_key
         current.source_profile = _empty_candidate_profile()
         current.original_source_profile = None
+        current.baseline_creation_method = ""
+        current.manual_source_profile = None
+        current.source_resume_language = ""
         current.source_profile_language = ""
         current.source_profile_translation_fingerprint = ""
         current.profile_upload_name = ""
         current.source_resume_key = ""
         current.source_resume_fingerprint = ""
+        current.source_resume_contact_links_fingerprint = ""
+        current.foundation_baseline_fingerprint = ""
         active_application = getattr(g, "active_application", None)
         if active_application is not None:
             application_store.update_builder_progress(
@@ -5813,6 +7141,50 @@ def _register_application_builder_routes() -> None:
         flash("Workflow results were reset. Your configuration and current inputs were preserved.", "success")
         return redirect(url_for("application_builder.index", tab="configuration"))
 
+    @application_builder_bp.post(
+        "/applications/<application_id>/baseline/refresh"
+    )
+    def refresh_application_baseline(application_id: str):
+        active_application = getattr(g, "active_application", None)
+        if active_application is None or active_application.id != application_id:
+            abort(404)
+
+        current = state()
+        previous_source_key = current.source_resume_key
+        status = _sync_application_from_foundation(
+            _application_owner_id(), current, force=True
+        )
+        if status == "missing":
+            flash(
+                "Create the Foundation Baseline Resume before refreshing this application.",
+                "error",
+            )
+            return redirect(
+                url_for("application_builder.career_translation_workspace")
+            )
+
+        application_store.update_builder_progress(
+            _application_owner_id(),
+            active_application.id,
+            workflow_step="setup",
+            original_resume_key="",
+        )
+        if previous_source_key:
+            document_store.delete(previous_source_key)
+        flash(
+            "Application Baseline refreshed from the current Foundation Baseline Resume. Previous tailoring results were cleared.",
+            "success",
+        )
+        return redirect(
+            url_for(
+                "application_builder.index",
+                tab="tailoring",
+                stage="setup",
+                application_id=active_application.id,
+            )
+            + "#resume-import"
+        )
+
     @application_builder_bp.post("/workflow/start")
     def start_workflow():
         current = state()
@@ -5820,7 +7192,7 @@ def _register_application_builder_routes() -> None:
         action = request.form.get("action", "")
         tailoring_started = False
         if not current.source_profile.all_source_text().strip():
-            flash("Import a resume before creating the Baseline Resume.", "error")
+            flash("Create the Foundation Baseline Resume before starting this application.", "error")
             return redirect(
                 url_for("application_builder.index", tab="tailoring", stage="setup")
                 + "#resume-import"
@@ -5888,6 +7260,11 @@ def _register_application_builder_routes() -> None:
                     evidence_source,
                     _effective_career_background(current),
                 )
+                evidence_source = _apply_confirmed_title_interpretations(
+                    str(getattr(g, "application_owner_id", "") or ""),
+                    current.source_profile,
+                    evidence_source,
+                )
                 current.initial_evidence_proposal = evidence_source.model_copy(
                     deep=True
                 )
@@ -5941,6 +7318,19 @@ def _register_application_builder_routes() -> None:
                     proposal,
                     _effective_career_background(current),
                 )
+                proposal = _apply_confirmed_title_interpretations(
+                    str(getattr(g, "application_owner_id", "") or ""),
+                    current.source_profile,
+                    proposal,
+                )
+                proposal, reused_profile, reused_answers, reusable_draft = (
+                    _reuse_library_confirmation_answers(
+                        str(getattr(g, "application_owner_id", "") or ""),
+                        current.source_profile,
+                        analysis,
+                        proposal,
+                    )
+                )
                 current.analysis = analysis
                 current.analysis_input_fingerprint = current_input
                 ensure_recommended_resume_style(current)
@@ -5955,7 +7345,16 @@ def _register_application_builder_routes() -> None:
                 current.provisional_proposal = proposal.model_copy(deep=True)
                 current.analyzed_input_fingerprint = current_input
                 current.confirmation_complete = False
-                current.confirmed_profile = None
+                current.candidate_answers = [
+                    answer.model_copy(deep=True) for answer in reused_answers
+                ]
+                current.confirmation_draft = dict(reusable_draft)
+                current.confirmed_profile = (
+                    reused_profile.model_copy(deep=True)
+                    if reused_profile is not None
+                    else None
+                )
+                current.reused_library_evidence_count = len(reused_answers)
                 current.initial_evidence_proposal = proposal.model_copy(deep=True)
                 current.initial_evidence_input_fingerprint = current_input
                 # Step 2 should appear as soon as the tailoring proposal is ready.
@@ -5968,10 +7367,31 @@ def _register_application_builder_routes() -> None:
                 current.initial_report_created_at = ""
                 current.initial_report_error = ""
                 tailoring_started = True
-                flash(
-                    "Job analysis and Target-Market Review completed. Confirm the high-value experience questions next; the Application Baseline Report is generating automatically without blocking the workflow.",
-                    "success",
+                prefilled_count = sum(
+                    1 for key in reusable_draft if key.startswith("answer__")
                 )
+                if reused_answers or prefilled_count:
+                    remaining_count = len(proposal.candidate_questions)
+                    reuse_summary = (
+                        f"{len(reused_answers)} previous answer"
+                        f"{'s were' if len(reused_answers) != 1 else ' was'} reused"
+                    )
+                    if prefilled_count:
+                        reuse_summary += (
+                            f"; {prefilled_count} related answer"
+                            f"{'s were' if prefilled_count != 1 else ' was'} prefilled for missing detail"
+                        )
+                    flash(
+                        f"Job analysis completed. {reuse_summary}; {remaining_count} "
+                        f"question{'s remain' if remaining_count != 1 else ' remains'}. "
+                        "The Application Baseline Report is generating automatically.",
+                        "success",
+                    )
+                else:
+                    flash(
+                        "Job analysis and Target-Market Review completed. Confirm the high-value experience questions next; the Application Baseline Report is generating automatically without blocking the workflow.",
+                        "success",
+                    )
             else:
                 flash("Unknown workflow action.", "error")
         except (ResumeAIError, TemplateError, ValueError) as exc:
@@ -6047,6 +7467,11 @@ def _register_application_builder_routes() -> None:
                 analysis,
                 evidence_source,
                 _effective_career_background(current),
+            )
+            evidence_source = _apply_confirmed_title_interpretations(
+                str(getattr(g, "application_owner_id", "") or ""),
+                current.source_profile,
+                evidence_source,
             )
             current.initial_evidence_proposal = evidence_source.model_copy(
                 deep=True
@@ -6227,7 +7652,6 @@ def _register_application_builder_routes() -> None:
 
         redirect_stage = "draft"
         redirect_anchor = "#tailored-resume"
-        processing_warnings: list[str] = []
         try:
             models = resolve_models(current)
             if current.analyzed_input_fingerprint != input_fingerprint(current, models):
@@ -6237,6 +7661,11 @@ def _register_application_builder_routes() -> None:
 
             questions = current.provisional_proposal.candidate_questions
             answers, draft = collect_candidate_answers(questions, request.form)
+            # Library persistence is an explicit, separate Step 2 action. Older
+            # workflow states may still contain this legacy flag from the removed
+            # checkbox/button behavior, so clear it rather than saving implicitly
+            # while creating the tailored resume.
+            current.save_confirmation_to_library = False
             current.confirmation_draft = draft
             errors = validate_candidate_answers(questions, answers)
             if errors:
@@ -6262,98 +7691,46 @@ def _register_application_builder_routes() -> None:
 
             proposal_for_refinement = current.provisional_proposal.model_copy(deep=True)
             proposal_for_refinement.candidate_questions = []
-            all_questions_declined = bool(questions) and all(
-                answer.yes_no is False and not answer.text.strip()
-                for answer in answers
-            )
-            if questions and not all_questions_declined:
-                try:
-                    ai = ResumeAI(
-                        model=models.analysis_tailoring_model,
-                        reasoning_effort=models.analysis_tailoring_reasoning_effort,
-                    )
-                    refined = ai.refine_proposal(
-                        confirmed_profile,
-                        current.analysis,
-                        proposal_for_refinement,
-                        answers,
-                        _effective_career_background(current),
-                    )
-                except ResumeAIError as exc:
-                    # Do not send the candidate back through the same completed
-                    # questions when the optional refinement request fails. The
-                    # provisional proposal already contains source-backed decisions;
-                    # confirmed answers are added deterministically below.
-                    current_app.logger.warning(
-                        "Confirmation refinement failed; using the safe provisional proposal: %s",
-                        exc,
-                    )
-                    refined = proposal_for_refinement.model_copy(deep=True)
-                    processing_warnings.append(
-                        "The optional AI wording refinement could not complete, so the app kept the existing job-aligned wording and applied your confirmed evidence safely."
-                    )
-            else:
-                # When every candidate question is explicitly declined, there is no
-                # new evidence for the model to incorporate. Reuse the proposal and
-                # let the bounded evidence review remove or soften unsupported text.
-                refined = proposal_for_refinement
 
+            # Creating the tailored resume must remain comfortably below the web
+            # gateway timeout. The provisional proposal is already grounded in the
+            # Application Baseline and job analysis. Candidate answers become
+            # first-class verified evidence in ``confirmed_profile`` above, so apply
+            # them locally and let deterministic validation/selection build Step 3.
+            #
+            # Do not call ``refine_proposal`` or the independent evidence auditor
+            # inside this interactive request. Those two sequential model calls were
+            # the source of the Target-Market Review HTTP 504 errors.
+            refined = apply_final_follow_up_answers_locally(
+                confirmed_profile,
+                proposal_for_refinement,
+                questions,
+                answers,
+            )
             refined = repair_missing_bullet_proposals(confirmed_profile, refined)
             refined.skills = balance_skill_categories(
                 confirmed_profile, current.analysis, refined.skills
             )
             refined = ensure_confirmed_answers_visible(confirmed_profile, refined)
-            try:
-                refined, review_audit, candidate_needed = _run_post_confirmation_evidence_review(
-                    models,
-                    confirmed_profile,
-                    current.analysis,
-                    refined,
-                    _effective_career_background(current),
-                    allow_candidate_questions=(
-                        current.confirmation_follow_up_round
-                        < MAX_TARGETED_FOLLOW_UP_ROUNDS
-                    ),
-                )
-            except (ResumeAIError, ValueError) as exc:
-                # A failed independent review previously redirected back to Step 2
-                # with every prior answer still filled, which looked like the resume
-                # had not been created. Fall back to the conservative pre-refinement
-                # proposal, add confirmed evidence, and run deterministic validation
-                # so the completed Step 2 can still advance to Step 3.
-                current_app.logger.warning(
-                    "Post-confirmation evidence review failed; using deterministic fallback: %s",
-                    exc,
-                )
-                refined = repair_missing_bullet_proposals(
-                    confirmed_profile,
-                    proposal_for_refinement.model_copy(deep=True),
-                )
-                refined.skills = balance_skill_categories(
-                    confirmed_profile, current.analysis, refined.skills
-                )
-                refined = ensure_confirmed_answers_visible(
-                    confirmed_profile, refined
-                )
-                refined, _ = apply_all_until_valid(
-                    confirmed_profile, current.analysis, refined
-                )
-                review_audit = ProposalAudit(
-                    passed=False,
-                    issues=[],
-                    verified_strengths=[],
-                )
-                candidate_needed = []
-                processing_warnings.append(
-                    "The independent evidence review could not complete, so the app used conservative source-backed wording and deterministic validation. Review the Step 3 comparison before optimizing."
-                )
+            refined.candidate_questions = []
+            refined = ensure_career_translation_assessment(
+                confirmed_profile,
+                current.analysis,
+                refined,
+                _effective_career_background(current),
+            )
+            refined = _apply_confirmed_title_interpretations(
+                str(getattr(g, "application_owner_id", "") or ""),
+                confirmed_profile,
+                refined,
+            )
+            refined, _ = apply_all_until_valid(
+                confirmed_profile, current.analysis, refined
+            )
 
             current.confirmed_profile = confirmed_profile
             current.candidate_answers = all_answers
-            current.save_confirmed_profile = (
-                current.save_confirmed_profile
-                or request.form.get("save_confirmed_profile") == "on"
-            )
+            current.save_confirmed_profile = False
             current.workflow_stage = "draft"
             current.quality_review_started = False
             current.provisional_proposal = refined.model_copy(deep=True)
@@ -6368,78 +7745,34 @@ def _register_application_builder_routes() -> None:
             current.clear_draft_report()
             current.clear_final_report()
 
-            if candidate_needed:
-                next_round = min(
-                    current.confirmation_follow_up_round + 1,
-                    MAX_TARGETED_FOLLOW_UP_ROUNDS,
-                )
-                follow_up_questions = build_targeted_follow_up_questions(
-                    candidate_needed,
-                    refined,
-                    round_number=next_round,
-                )
-                refined.candidate_questions = follow_up_questions
-                refined = ensure_career_translation_assessment(
-                    confirmed_profile,
-                    current.analysis,
-                    refined,
-                    _effective_career_background(current),
-                )
-                current.provisional_proposal = refined.model_copy(deep=True)
-                current.confirmation_complete = False
-                current.confirmation_follow_up_round = next_round
-                current.confirmation_follow_up_count = len(follow_up_questions)
-                redirect_stage = "confirmation"
-                redirect_anchor = "#confirmation"
-                count = len(follow_up_questions)
-                flash(
-                    f"Your answers were applied and the transformed resume was checked. "
-                    f"{count} final targeted follow-up question{'s are' if count != 1 else ' is'} needed "
-                    "before Review Tailored Resume. This is the only follow-up round; any "
-                    "remaining uncertainty will use safer source-backed wording automatically.",
-                    "warning",
-                )
-            else:
-                refined.candidate_questions = []
-                refined = ensure_career_translation_assessment(
-                    confirmed_profile,
-                    current.analysis,
-                    refined,
-                    _effective_career_background(current),
-                )
-                current.provisional_proposal = refined.model_copy(deep=True)
-                current.draft_proposal = refined.model_copy(deep=True)
-                current.draft_revision = 1
-                current.draft_last_change_label = (
-                    "Tailored resume created from confirmed evidence"
-                )
-                current.draft_last_changed_at = datetime.now(timezone.utc).isoformat(
-                    timespec="seconds"
-                )
-                current.confirmation_complete = True
-                current.confirmation_follow_up_count = 0
-                capture_workflow_step_snapshot(
-                    current,
-                    "confirmation",
-                    proposal=refined,
-                    profile=confirmed_profile,
-                )
-                # Review Tailored Resume should open immediately. Its report is
-                # generated automatically after the page becomes interactive.
-                current.clear_draft_report()
-                completion_message = (
-                    "The targeted follow-up was applied. Any remaining uncertainty was removed or rewritten with safer source-backed wording."
-                    if current.confirmation_follow_up_round
-                    else
-                    "Experience confirmation is complete and the Job-Aligned Resume is ready for review."
-                )
-                flash(
-                    completion_message
-                    + " Its Resume Report is generating automatically without blocking Step 3.",
-                    "success",
-                )
-            for warning in processing_warnings:
-                flash(warning, "warning")
+            # Step 2 now completes in one bounded request. The deterministic
+            # selector resolves inclusion and exclusion; the UI does not create a
+            # second AI-generated follow-up round before Review Tailored Resume.
+            current.provisional_proposal = refined.model_copy(deep=True)
+            current.draft_proposal = refined.model_copy(deep=True)
+            current.draft_revision = 1
+            current.draft_last_change_label = (
+                "Tailored resume created from confirmed evidence"
+            )
+            current.draft_last_changed_at = datetime.now(timezone.utc).isoformat(
+                timespec="seconds"
+            )
+            current.confirmation_complete = True
+            current.confirmation_follow_up_count = 0
+            capture_workflow_step_snapshot(
+                current,
+                "confirmation",
+                proposal=refined,
+                profile=confirmed_profile,
+            )
+            # Review Tailored Resume opens immediately. Its report is generated
+            # automatically after the page becomes interactive.
+            current.clear_draft_report()
+            flash(
+                "Experience confirmation is complete and the Job-Aligned Resume is ready for review. "
+                "Its Resume Report is generating automatically without blocking Step 3.",
+                "success",
+            )
         except (ResumeAIError, ValueError) as exc:
             flash(str(exc), "error")
             redirect_stage = "confirmation"
@@ -6448,6 +7781,96 @@ def _register_application_builder_routes() -> None:
         return redirect(
             url_for("application_builder.index", tab="tailoring", stage=redirect_stage) + redirect_anchor
         )
+
+    @application_builder_bp.post("/confirmation/save-to-library")
+    def save_confirmation_to_library():
+        """Persist Step 2 answers without creating or changing the tailored resume."""
+        current = state()
+        submitted_answers = any(
+            key.startswith(("choice__", "answer__", "experience__", "placement__"))
+            for key in request.form
+        )
+
+        answers_to_save = [
+            answer.model_copy(deep=True) for answer in current.candidate_answers
+        ]
+        if submitted_answers:
+            if current.analysis is None or current.provisional_proposal is None:
+                flash(
+                    "Analyze the job and resume before saving confirmation answers.",
+                    "error",
+                )
+                return redirect(
+                    url_for(
+                        "application_builder.index",
+                        tab="tailoring",
+                        stage="initial",
+                    )
+                )
+
+            questions = current.provisional_proposal.candidate_questions
+            submitted, draft = collect_candidate_answers(questions, request.form)
+            current.confirmation_draft = draft
+            errors = validate_candidate_answers(questions, submitted)
+            if errors:
+                for error in errors:
+                    flash(error, "error")
+                return redirect(
+                    url_for(
+                        "application_builder.index",
+                        tab="tailoring",
+                        stage="confirmation",
+                    )
+                    + "#confirmation"
+                )
+            answers_to_save = _merge_candidate_answers(
+                current.candidate_answers,
+                submitted,
+            )
+            # Keep the entered answers available on this application, but do not
+            # complete Step 2 or generate a proposal. The primary action remains
+            # the only path that advances to Review Tailored Resume.
+            current.candidate_answers = [
+                answer.model_copy(deep=True) for answer in answers_to_save
+            ]
+
+        if not answers_to_save:
+            flash("There are no confirmation answers to save yet.", "warning")
+            return redirect(
+                url_for("application_builder.index", tab="tailoring", stage="confirmation")
+                + "#confirmation"
+            )
+
+        try:
+            saved_count = _save_confirmation_answers_to_library(
+                str(getattr(g, "application_owner_id", "") or ""),
+                current,
+                answers_to_save,
+            )
+            # Preserve the field for backward-compatible workflow serialization,
+            # but never use it to trigger an implicit save during resume creation.
+            current.save_confirmation_to_library = False
+            current.saved_library_evidence_count = max(
+                current.saved_library_evidence_count, saved_count
+            )
+            flash(
+                f"{saved_count} confirmation answer{'s were' if saved_count != 1 else ' was'} saved to Career Evidence Library. You remain in Confirm Relevant Experience.",
+                "success",
+            )
+        except Exception as exc:
+            current_app.logger.exception(
+                "Could not save confirmation answers to Career Evidence Library"
+            )
+            flash(
+                "The confirmation answers could not be saved to Career Evidence Library: "
+                + str(exc),
+                "error",
+            )
+        return redirect(
+            url_for("application_builder.index", tab="tailoring", stage="confirmation")
+            + "#confirmation"
+        )
+
 
     @application_builder_bp.post("/confirmation/reopen")
     def reopen_confirmation():
@@ -6705,6 +8128,7 @@ def _register_application_builder_routes() -> None:
     @application_builder_bp.post("/workflow/start-final")
     def start_final_stage():
         """Run one score-guarded quality pass and open Step 4 quickly."""
+        route_started_at = perf_counter()
         current = state()
         job_aligned = current.draft_proposal
         working = (
@@ -6800,7 +8224,15 @@ def _register_application_builder_routes() -> None:
             # All actionable report findings are sent in one structured request.
             # The previous implementation made one sequential request per three-item
             # batch, which was the largest Step 3 → Step 4 latency source.
-            report_issues = final_optimization_actionable_issues(report_before)
+            # Keep the interactive request small and predictable. Applying every
+            # open recommendation in one structured-output request regularly
+            # exceeds reverse-proxy limits for two-page resumes. One focused
+            # category batch can finish quickly; remaining recommendations stay
+            # visible and can be handled by a later explicit rerun.
+            report_issue_batches = final_optimization_actionable_issue_batches(
+                report_before
+            )
+            report_issues = report_issue_batches[0] if report_issue_batches else []
             optimized = working.model_copy(deep=True)
             report_after_scoring = report_before
             accepted_issues: list[AuditIssue] = []
@@ -6808,67 +8240,112 @@ def _register_application_builder_routes() -> None:
             rejected_batch_count = 0
             rejected_issue_count = 0
             unchanged_batch_count = 0
-            optimization_warnings: list[str] = []
+            optimization_status = "not_needed" if not report_issues else "pending"
+            optimization_notice = ""
             current_validation_count = len(
                 validate_proposal(profile, current.analysis, optimized)
             )
 
             if report_issues:
-                optimizer = ResumeAI(
-                    model=models.analysis_tailoring_model,
-                    reasoning_effort=models.analysis_tailoring_reasoning_effort,
+                optimization_timeout = _final_optimization_ai_timeout_seconds(
+                    route_started_at
                 )
-                try:
-                    candidate = optimizer.apply_suggested_fixes(
-                        profile,
-                        current.analysis,
-                        optimized,
-                        report_issues,
-                        _effective_career_background(current),
+                if optimization_timeout <= 0:
+                    optimization_status = "timed_out"
+                    optimization_notice = (
+                        "The optional AI refinement did not finish within the "
+                        "interactive time limit. No unreviewed changes were applied; "
+                        "the approved Job-Aligned Resume remains the Final Resume."
                     )
-                except ResumeAIError as exc:
-                    optimization_warnings.append(str(exc))
                 else:
-                    candidate = repair_missing_bullet_proposals(profile, candidate)
-                    candidate = ensure_career_translation_assessment(
-                        profile,
-                        current.analysis,
-                        candidate,
-                        _effective_career_background(current),
+                    # One bounded provider attempt prevents the reverse proxy from
+                    # returning HTTP 504. A timeout is non-fatal because the reviewed
+                    # Job-Aligned Resume is already a valid, score-safe final version.
+                    optimizer = ResumeAI(
+                        model=models.analysis_tailoring_model,
+                        reasoning_effort=models.analysis_tailoring_reasoning_effort,
+                        max_attempts=1,
+                        request_timeout_seconds=optimization_timeout,
                     )
-                    candidate, _ = apply_all_until_valid(
-                        profile, current.analysis, candidate
-                    )
-                    candidate.candidate_questions = []
-                    if _proposal_json(candidate) == _proposal_json(optimized):
-                        unchanged_batch_count = 1
-                    else:
-                        candidate_validation_count = len(
-                            validate_proposal(profile, current.analysis, candidate)
+                    try:
+                        candidate = optimizer.apply_suggested_fixes(
+                            profile,
+                            current.analysis,
+                            optimized,
+                            report_issues,
+                            _effective_career_background(current),
                         )
-                        if candidate_validation_count > current_validation_count:
-                            rejected_batch_count = 1
-                            rejected_issue_count = len(report_issues)
+                    except ResumeAIError as exc:
+                        error_detail = str(exc).casefold()
+                        if "timed out" in error_detail or "timeout" in error_detail:
+                            optimization_status = "timed_out"
+                            optimization_notice = (
+                                "The optional AI refinement did not finish within the "
+                                "interactive time limit. No unreviewed changes were "
+                                "applied; the approved Job-Aligned Resume remains the "
+                                "Final Resume."
+                            )
                         else:
-                            candidate_report = _build_optimization_report(
-                                current,
-                                profile,
-                                candidate,
-                                report_filename,
-                                exact_page_count=False,
+                            optimization_status = "unavailable"
+                            optimization_notice = (
+                                "The optional AI refinement was temporarily unavailable. "
+                                "No unreviewed changes were applied; the approved "
+                                "Job-Aligned Resume remains the Final Resume."
                             )
-                            score_safe, _ = final_optimization_score_guard(
-                                report_before, candidate_report
+                        current_app.logger.warning(
+                            "Optional final resume optimization was skipped: %s", exc
+                        )
+                    else:
+                        candidate = repair_missing_bullet_proposals(profile, candidate)
+                        candidate = ensure_career_translation_assessment(
+                            profile,
+                            current.analysis,
+                            candidate,
+                            _effective_career_background(current),
+                        )
+                        candidate = _apply_confirmed_title_interpretations(
+                            str(getattr(g, "application_owner_id", "") or ""),
+                            profile,
+                            candidate,
+                        )
+                        candidate, _ = apply_all_until_valid(
+                            profile, current.analysis, candidate
+                        )
+                        candidate.candidate_questions = []
+                        if _proposal_json(candidate) == _proposal_json(optimized):
+                            unchanged_batch_count = 1
+                        else:
+                            candidate_validation_count = len(
+                                validate_proposal(profile, current.analysis, candidate)
                             )
-                            if score_safe:
-                                optimized = candidate
-                                report_after_scoring = candidate_report
-                                current_validation_count = candidate_validation_count
-                                accepted_issues = report_issues
-                                accepted_batch_count = 1
-                            else:
+                            if candidate_validation_count > current_validation_count:
                                 rejected_batch_count = 1
                                 rejected_issue_count = len(report_issues)
+                            else:
+                                candidate_report = _build_optimization_report(
+                                    current,
+                                    profile,
+                                    candidate,
+                                    report_filename,
+                                    exact_page_count=False,
+                                )
+                                score_safe, _ = final_optimization_score_guard(
+                                    report_before, candidate_report
+                                )
+                                if score_safe:
+                                    optimized = candidate
+                                    report_after_scoring = candidate_report
+                                    current_validation_count = candidate_validation_count
+                                    accepted_issues = report_issues
+                                    accepted_batch_count = 1
+                                    optimization_status = "applied"
+                                else:
+                                    rejected_batch_count = 1
+                                    rejected_issue_count = len(report_issues)
+                                    optimization_status = "completed"
+
+                        if optimization_status == "pending":
+                            optimization_status = "completed"
 
             optimization_baseline = working.model_copy(deep=True)
             current.quality_review_started = True
@@ -6916,6 +8393,8 @@ def _register_application_builder_routes() -> None:
             current.optimization_rejected_issue_count = rejected_issue_count
             current.optimization_unchanged_batch_count = unchanged_batch_count
             current.optimization_baseline_rolled_back = baseline_rolled_back
+            current.optimization_status = optimization_status
+            current.optimization_notice = optimization_notice
 
             remaining_recommendations = final_optimization_recommendations(
                 report_after
@@ -6925,12 +8404,6 @@ def _register_application_builder_routes() -> None:
                     "The current Final Resume scored below the saved Job-Aligned Resume, so the weaker working copy was rolled back before optimization.",
                     "warning",
                 )
-            if optimization_warnings:
-                flash(
-                    "The optional quality pass could not be completed, so the score-safe Job-Aligned Resume was preserved: "
-                    + optimization_warnings[0],
-                    "warning",
-                )
             score_change = (
                 f"Overall score {report_before.overall_score():.1f}% → "
                 f"{report_after.overall_score():.1f}%."
@@ -6938,7 +8411,14 @@ def _register_application_builder_routes() -> None:
             background_note = (
                 " Exact page-count verification is finishing automatically while you review Step 4."
             )
-            if changed_by_optimization:
+            if optimization_status in {"timed_out", "unavailable"}:
+                flash(
+                    "The Final Resume is ready to review and export. The approved "
+                    "Job-Aligned Resume was kept unchanged because the optional "
+                    "refinement did not finish.",
+                    "success",
+                )
+            elif changed_by_optimization:
                 flash(
                     f"Applied {len(accepted_issues)} safe quality improvement(s) in one consolidated pass. "
                     f"Discarded {rejected_issue_count} proposed change(s) that would have reduced resume quality. "
@@ -7331,6 +8811,369 @@ def _register_application_builder_routes() -> None:
             g.active_application = selected
         return applications, selected
 
+    @application_builder_bp.post("/career-translation/manual")
+    def start_manual_baseline():
+        """Open the shared Baseline Resume fields without requiring an upload."""
+
+        current = state(hydrate_documents=False)
+        if not current.source_profile.all_source_text().strip():
+            current.baseline_creation_method = "manual"
+            current.manual_source_profile = current.source_profile.model_copy(deep=True)
+            flash(
+                "Manual Baseline Resume started. Add your summary, skills, education, and employment history below; you can save each section independently.",
+                "success",
+            )
+        else:
+            flash(
+                "Continue editing the Baseline Resume fields below. Saved changes are available to future applications automatically.",
+                "info",
+            )
+        return redirect(
+            url_for("application_builder.career_translation_workspace")
+            + "#professional-summary"
+        )
+
+    @application_builder_bp.post("/career-translation/roles")
+    def create_baseline_career_role():
+        """Create one manually entered employment role in the Baseline Resume."""
+
+        payload = request.get_json(silent=True) or {}
+        official_title = " ".join(str(payload.get("official_title") or "").split())
+        employer = " ".join(str(payload.get("employer") or "").split())
+        if not official_title or not employer:
+            return jsonify({"error": "Official job title and employer are required."}), 400
+        normalized = {
+            "official_title": official_title,
+            "employer": employer,
+            "dates": str(payload.get("dates") or "").strip(),
+            "location": str(payload.get("location") or "").strip(),
+            "responsibilities": str(payload.get("responsibilities") or "").strip(),
+        }
+        limits = {
+            "official_title": 240,
+            "employer": 240,
+            "dates": 160,
+            "location": 240,
+            "responsibilities": 10000,
+        }
+        for field, limit in limits.items():
+            if len(normalized[field]) > limit:
+                return jsonify({"error": f"{field.replace('_', ' ').capitalize()} must be {limit:,} characters or fewer."}), 400
+
+        current = state(hydrate_documents=False)
+        experience = append_manual_experience(current.source_profile, normalized)
+        method = _baseline_creation_method(current)
+        if method == "manual" or not current.profile_upload_name:
+            _mark_manual_baseline_ready(current)
+        else:
+            if current.manual_source_profile is None:
+                current.manual_source_profile = _empty_candidate_profile()
+            append_manual_experience(current.manual_source_profile, normalized)
+            current.baseline_creation_method = "mixed"
+        current.clear_results()
+        roles_synced = _sync_baseline_roles_to_evidence_library(current)
+        message = "Employment role added to the Baseline Resume."
+        if not roles_synced:
+            message += " Its title-review record will be synchronized when the page is regenerated."
+        flash(message, "success")
+        return jsonify(
+            {
+                "success": True,
+                "baseline_updated": True,
+                "experience_id": experience.id,
+                "message": message,
+            }
+        )
+
+    @application_builder_bp.put("/career-translation/roles/<role_id>")
+    def update_baseline_career_role(role_id: str):
+        """Save a reviewed role and update the reusable Baseline Resume source facts."""
+
+        payload = request.get_json(silent=True) or {}
+        owner_id = str(getattr(g, "application_owner_id", "") or "").strip()
+        updated_role = _knowledge_evidence_service().update_career_role(
+            owner_id,
+            role_id,
+            payload,
+        )
+        current = state(hydrate_documents=False)
+        baseline_updated = bool(
+            updated_role.get("source_active", True)
+            and apply_career_role_to_profile(current.source_profile, updated_role)
+        )
+        if baseline_updated:
+            if current.manual_source_profile is not None:
+                apply_career_role_to_profile(current.manual_source_profile, updated_role)
+            _refresh_manual_snapshot(current)
+            current.clear_results()
+            message = (
+                "Employment role saved and the Baseline Resume was updated. "
+                "Applications that have not started tailoring will use the revised baseline automatically."
+            )
+        else:
+            message = (
+                "Employment-role interpretation saved. The Baseline Resume content did not change "
+                "because only review or target-market interpretation fields were updated."
+            )
+        flash(message, "success")
+        return jsonify(
+            {
+                "success": True,
+                "career_role": updated_role,
+                "baseline_updated": baseline_updated,
+                "message": message,
+            }
+        )
+
+    @application_builder_bp.delete("/career-translation/roles/<role_id>")
+    def delete_baseline_career_role(role_id: str):
+        """Remove a title-review record and any directly entered manual role."""
+
+        deleted = _knowledge_evidence_service().delete_career_role(
+            str(getattr(g, "application_owner_id", "") or "").strip(),
+            role_id,
+        )
+        current = state(hydrate_documents=False)
+        source_experience_id = str(deleted.get("source_experience_id") or "").strip()
+        baseline_updated = False
+        if source_experience_id.startswith("MAN-EXP-"):
+            baseline_updated = _remove_baseline_experience(
+                current.source_profile, source_experience_id
+            ) is not None
+            if current.manual_source_profile is not None:
+                _remove_baseline_experience(
+                    current.manual_source_profile, source_experience_id
+                )
+            if baseline_updated:
+                current.clear_results()
+                _refresh_manual_snapshot(current)
+        return jsonify(
+            {
+                "success": True,
+                "career_role": deleted,
+                "baseline_updated": baseline_updated,
+            }
+        )
+
+    @application_builder_bp.put("/career-translation/summary")
+    def update_baseline_summary():
+        """Update the professional summary in the reusable Baseline Resume."""
+
+        payload = request.get_json(silent=True) or {}
+        summary = str(payload.get("current_summary") or "").strip()
+        if len(summary) > 6000:
+            return jsonify({"error": "Professional summary must be 6,000 characters or fewer."}), 400
+
+        current = state(hydrate_documents=False)
+        baseline_updated = apply_baseline_summary(current.source_profile, summary)
+        if baseline_updated:
+            _refresh_manual_snapshot(current)
+            current.clear_results()
+            message = (
+                "Professional summary saved and the Baseline Resume was updated. "
+                "Applications that have not started tailoring will use the revised baseline automatically."
+            )
+        else:
+            message = "Professional summary is already up to date."
+        flash(message, "success")
+        return jsonify(
+            {
+                "success": True,
+                "baseline_updated": baseline_updated,
+                "current_summary": current.source_profile.current_summary,
+                "message": message,
+            }
+        )
+
+    @application_builder_bp.put("/career-translation/skills")
+    def update_baseline_skills():
+        """Update extracted skill categories in the reusable Baseline Resume."""
+
+        payload = request.get_json(silent=True) or {}
+        skill_fields = (
+            "hard_skills",
+            "soft_skills",
+            "tools_software",
+            "industry_knowledge",
+            "languages",
+        )
+        normalized: dict[str, list[str]] = {}
+        for field in skill_fields:
+            raw_values = payload.get(field) or []
+            if not isinstance(raw_values, list):
+                return jsonify({"error": "Each skill category must be a list."}), 400
+            values = [" ".join(str(value or "").split()) for value in raw_values]
+            values = [value for value in values if value]
+            if len(values) > 100:
+                return jsonify({"error": "Each skill category may contain at most 100 entries."}), 400
+            if any(len(value) > 240 for value in values):
+                return jsonify({"error": "Each skill must be 240 characters or fewer."}), 400
+            normalized[field] = values
+
+        current = state(hydrate_documents=False)
+        baseline_updated = apply_baseline_skills(current.source_profile, normalized)
+        if baseline_updated:
+            _refresh_manual_snapshot(current)
+            current.clear_results()
+            message = (
+                "Skills saved and the Baseline Resume was updated. "
+                "Applications that have not started tailoring will use the revised baseline automatically."
+            )
+        else:
+            message = "Skills are already up to date."
+        flash(message, "success")
+        return jsonify(
+            {
+                "success": True,
+                "baseline_updated": baseline_updated,
+                "skills": current.source_profile.skills.model_dump(mode="json"),
+                "message": message,
+            }
+        )
+
+    @application_builder_bp.post("/career-translation/education")
+    def create_baseline_education():
+        """Add one manually entered education or credential record."""
+
+        payload = request.get_json(silent=True) or {}
+        credential = str(payload.get("credential") or "").strip()
+        institution = str(payload.get("institution") or "").strip()
+        if not credential or not institution:
+            return jsonify({"error": "Credential and institution are required."}), 400
+        limits = {
+            "credential": 500,
+            "institution": 500,
+            "location": 300,
+            "date": 160,
+            "detail": 3000,
+        }
+        normalized = {field: str(payload.get(field) or "").strip() for field in limits}
+        for field, limit in limits.items():
+            if len(normalized[field]) > limit:
+                return jsonify({"error": f"{field.replace('_', ' ').capitalize()} must be {limit:,} characters or fewer."}), 400
+
+        current = state(hydrate_documents=False)
+        education_index = append_baseline_education(current.source_profile, normalized)
+        method = _baseline_creation_method(current)
+        if method == "manual" or not current.profile_upload_name:
+            _mark_manual_baseline_ready(current)
+        else:
+            if current.manual_source_profile is None:
+                current.manual_source_profile = _empty_candidate_profile()
+            append_baseline_education(current.manual_source_profile, normalized)
+            current.baseline_creation_method = "mixed"
+        current.clear_results()
+        message = "Education record added to the Baseline Resume."
+        flash(message, "success")
+        return jsonify(
+            {
+                "success": True,
+                "baseline_updated": True,
+                "education_index": education_index,
+                "message": message,
+            }
+        )
+
+    @application_builder_bp.put("/career-translation/education/<int:education_index>")
+    def update_baseline_education(education_index: int):
+        """Update one extracted education record in the reusable Baseline Resume."""
+
+        payload = request.get_json(silent=True) or {}
+        credential = str(payload.get("credential") or "").strip()
+        institution = str(payload.get("institution") or "").strip()
+        if not credential or not institution:
+            return jsonify({"error": "Credential and institution are required."}), 400
+        limits = {
+            "credential": 500,
+            "institution": 500,
+            "location": 300,
+            "date": 160,
+            "detail": 3000,
+        }
+        normalized = {
+            field: str(payload.get(field) or "").strip()
+            for field in limits
+        }
+        for field, limit in limits.items():
+            if len(normalized[field]) > limit:
+                label = field.replace("_", " ").capitalize()
+                return jsonify({"error": f"{label} must be {limit:,} characters or fewer."}), 400
+
+        current = state(hydrate_documents=False)
+        original_item = (
+            current.source_profile.education[education_index].model_copy(deep=True)
+            if 0 <= education_index < len(current.source_profile.education)
+            else None
+        )
+        try:
+            baseline_updated = apply_baseline_education(
+                current.source_profile, education_index, normalized
+            )
+        except IndexError:
+            abort(404)
+        if baseline_updated:
+            if original_item is not None and current.manual_source_profile is not None:
+                manual_index = _matching_manual_education_index(
+                    current.manual_source_profile, original_item
+                )
+                if manual_index is not None:
+                    apply_baseline_education(
+                        current.manual_source_profile, manual_index, normalized
+                    )
+            _refresh_manual_snapshot(current)
+            current.clear_results()
+            message = (
+                "Education record saved and the Baseline Resume was updated. "
+                "Applications that have not started tailoring will use the revised baseline automatically."
+            )
+        else:
+            message = "Education record is already up to date."
+        flash(message, "success")
+        return jsonify(
+            {
+                "success": True,
+                "baseline_updated": baseline_updated,
+                "education_index": education_index,
+                "education": current.source_profile.education[education_index].model_dump(mode="json"),
+                "message": message,
+            }
+        )
+
+    @application_builder_bp.delete("/career-translation/education/<int:education_index>")
+    def delete_baseline_education(education_index: int):
+        """Remove one education record from the reusable Baseline Resume."""
+
+        current = state(hydrate_documents=False)
+        try:
+            deleted = remove_baseline_education(
+                current.source_profile, education_index
+            )
+        except IndexError:
+            abort(404)
+        if current.manual_source_profile is not None:
+            manual_index = _matching_manual_education_index(
+                current.manual_source_profile, deleted
+            )
+            if manual_index is not None:
+                remove_baseline_education(
+                    current.manual_source_profile, manual_index
+                )
+        current.clear_results()
+        _refresh_manual_snapshot(current)
+        message = (
+            f"{deleted.credential or 'Education record'} was removed from the Baseline Resume. "
+            "Applications that have not started tailoring will use the revised baseline automatically."
+        )
+        flash(message, "success")
+        return jsonify(
+            {
+                "success": True,
+                "baseline_updated": True,
+                "education": deleted.model_dump(mode="json"),
+                "message": message,
+            }
+        )
+
     @application_builder_bp.get("/career-translation")
     def career_translation_workspace():
         """Open the reusable, job-independent Career Translation foundation."""
@@ -7345,8 +9188,31 @@ def _register_application_builder_routes() -> None:
         current.career_background.target_country = (
             reusable_profile.target_country if reusable_profile.enabled else ""
         )
-        source_profile = current.source_profile
         language_choice = _resolved_resume_language(current)
+        contact_links_changed = _backfill_professional_contact_links(
+            current, document_store
+        )
+        if (
+            contact_links_changed
+            and current.original_source_profile is not None
+            and current.source_profile_language == language_choice.code
+            and current.source_profile_translation_fingerprint
+        ):
+            # Contact fields are protected and do not require retranslation. Keep
+            # an already translated baseline ready after the deterministic repair.
+            current.source_profile_translation_fingerprint = translated_profile_fingerprint(
+                current.original_source_profile,
+                language_choice.code,
+                language_choice.country,
+            )
+        source_profile = current.source_profile
+        baseline_creation_method = _baseline_creation_method(current)
+        baseline_has_content = bool(source_profile.all_source_text().strip())
+        baseline_source_label = {
+            "import": "Imported from resume",
+            "manual": "Entered manually",
+            "mixed": "Imported and manually supplemented",
+        }.get(baseline_creation_method, "Not started")
         background = _effective_career_background(current)
         profile_stats = {
             "experiences": len(source_profile.experiences),
@@ -7367,11 +9233,31 @@ def _register_application_builder_routes() -> None:
             and current.source_profile_translation_fingerprint
             == expected_translation_fingerprint
         )
+        source_resume_language_code = _source_resume_language_code(current)
+        source_resume_language_name = (
+            language_name(source_resume_language_code)
+            if source_resume_language_code
+            else "Could not detect automatically"
+        )
+        no_translation_needed = bool(
+            source_resume_language_code
+            and source_resume_language_code == language_choice.code
+        )
         preview_language_code = language_choice.code
         preview_language_name = language_choice.name
+        try:
+            career_roles = _knowledge_evidence_service().list_career_roles(
+                _application_owner_id()
+            )
+        except Exception:
+            current_app.logger.exception(
+                "Could not load Baseline Resume employment roles"
+            )
+            career_roles = []
         if source_profile.all_source_text().strip() and not translation_ready:
-            detected_source_language = detect_text_language(
-                source_profile.all_source_text()
+            detected_source_language = (
+                source_resume_language_code
+                or detect_text_language(source_profile.all_source_text())
             )
             if detected_source_language:
                 preview_language_code = detected_source_language
@@ -7390,8 +9276,18 @@ def _register_application_builder_routes() -> None:
             selected_resume_language=current.career_background.resume_language,
             resume_labels=resume_labels(preview_language_code),
             preview_language_name=preview_language_name,
+            source_resume_language_name=source_resume_language_name,
+            no_translation_needed=no_translation_needed,
             profile_stats=profile_stats,
+            career_roles=career_roles,
             translation_ready=translation_ready,
+            baseline_creation_method=baseline_creation_method,
+            baseline_has_content=baseline_has_content,
+            baseline_source_label=baseline_source_label,
+            manual_baseline_requires_import_choice=(
+                baseline_creation_method in {"manual", "mixed"}
+                and baseline_has_content
+            ),
         )
 
     @application_builder_bp.get("/interview-preparation")

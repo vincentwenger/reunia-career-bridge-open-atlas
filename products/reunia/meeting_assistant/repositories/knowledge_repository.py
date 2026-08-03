@@ -32,6 +32,22 @@ class KnowledgeRepository(Protocol):
 
     def delete_file(self, user_id: str, file_id: str) -> dict[str, Any]: ...
 
+    def list_evidence_answers(self, user_id: str) -> list[dict[str, Any]]: ...
+
+    def get_evidence_answer(self, user_id: str, evidence_id: str) -> dict[str, Any] | None: ...
+
+    def upsert_evidence_answer(self, item: dict[str, Any]) -> None: ...
+
+    def delete_evidence_answer(self, user_id: str, evidence_id: str) -> dict[str, Any]: ...
+
+    def list_career_roles(self, user_id: str) -> list[dict[str, Any]]: ...
+
+    def get_career_role(self, user_id: str, role_id: str) -> dict[str, Any] | None: ...
+
+    def upsert_career_role(self, item: dict[str, Any]) -> None: ...
+
+    def delete_career_role(self, user_id: str, role_id: str) -> dict[str, Any]: ...
+
     def list_meetings(self, user_id: str) -> list[dict[str, Any]]: ...
 
     def get_meeting(self, user_id: str, meeting_id: str) -> dict[str, Any] | None: ...
@@ -51,6 +67,8 @@ class InMemoryKnowledgeRepository:
     def __init__(self) -> None:
         self._collections: dict[tuple[str, str], dict[str, Any]] = {}
         self._files: dict[tuple[str, str], dict[str, Any]] = {}
+        self._evidence_answers: dict[tuple[str, str], dict[str, Any]] = {}
+        self._career_roles: dict[tuple[str, str], dict[str, Any]] = {}
         self._meetings: dict[tuple[str, str], dict[str, Any]] = {}
         self._active_meetings: dict[str, str] = {}
         self._lock = threading.RLock()
@@ -115,6 +133,56 @@ class InMemoryKnowledgeRepository:
             item = self._files.pop((user_id, file_id), None)
             if item is None:
                 raise ResourceNotFoundError("Document not found.")
+            return deepcopy(item)
+
+    def list_evidence_answers(self, user_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            return deepcopy([
+                item
+                for (stored_user_id, _), item in self._evidence_answers.items()
+                if stored_user_id == user_id
+            ])
+
+    def get_evidence_answer(self, user_id: str, evidence_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            item = self._evidence_answers.get((user_id, evidence_id))
+            return deepcopy(item) if item is not None else None
+
+    def upsert_evidence_answer(self, item: dict[str, Any]) -> None:
+        key = (str(item["user_id"]), str(item["evidence_id"]))
+        with self._lock:
+            self._evidence_answers[key] = deepcopy(item)
+
+    def delete_evidence_answer(self, user_id: str, evidence_id: str) -> dict[str, Any]:
+        with self._lock:
+            item = self._evidence_answers.pop((user_id, evidence_id), None)
+            if item is None:
+                raise ResourceNotFoundError("Reusable confirmation answer not found.")
+            return deepcopy(item)
+
+    def list_career_roles(self, user_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            return deepcopy([
+                item
+                for (stored_user_id, _), item in self._career_roles.items()
+                if stored_user_id == user_id
+            ])
+
+    def get_career_role(self, user_id: str, role_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            item = self._career_roles.get((user_id, role_id))
+            return deepcopy(item) if item is not None else None
+
+    def upsert_career_role(self, item: dict[str, Any]) -> None:
+        key = (str(item["user_id"]), str(item["role_id"]))
+        with self._lock:
+            self._career_roles[key] = deepcopy(item)
+
+    def delete_career_role(self, user_id: str, role_id: str) -> dict[str, Any]:
+        with self._lock:
+            item = self._career_roles.pop((user_id, role_id), None)
+            if item is None:
+                raise ResourceNotFoundError("Employment role not found.")
             return deepcopy(item)
 
     def list_meetings(self, user_id: str) -> list[dict[str, Any]]:
@@ -232,6 +300,84 @@ class LocalKnowledgeRepository:
                     return deepcopy(deleted)
         raise ResourceNotFoundError("Document not found.")
 
+    def list_evidence_answers(self, user_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            return deepcopy([
+                item
+                for item in self._read()["evidence_answers"]
+                if item.get("user_id") == user_id
+            ])
+
+    def get_evidence_answer(self, user_id: str, evidence_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            for item in self._read()["evidence_answers"]:
+                if item.get("user_id") == user_id and item.get("evidence_id") == evidence_id:
+                    return deepcopy(item)
+        return None
+
+    def upsert_evidence_answer(self, item: dict[str, Any]) -> None:
+        with self._lock:
+            data = self._read()
+            for index, existing in enumerate(data["evidence_answers"]):
+                if (
+                    existing.get("user_id") == item.get("user_id")
+                    and existing.get("evidence_id") == item.get("evidence_id")
+                ):
+                    data["evidence_answers"][index] = deepcopy(item)
+                    self._write(data)
+                    return
+            data["evidence_answers"].append(deepcopy(item))
+            self._write(data)
+
+    def delete_evidence_answer(self, user_id: str, evidence_id: str) -> dict[str, Any]:
+        with self._lock:
+            data = self._read()
+            for index, item in enumerate(data["evidence_answers"]):
+                if item.get("user_id") == user_id and item.get("evidence_id") == evidence_id:
+                    deleted = data["evidence_answers"].pop(index)
+                    self._write(data)
+                    return deepcopy(deleted)
+        raise ResourceNotFoundError("Reusable confirmation answer not found.")
+
+    def list_career_roles(self, user_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            return deepcopy([
+                item
+                for item in self._read()["career_roles"]
+                if item.get("user_id") == user_id
+            ])
+
+    def get_career_role(self, user_id: str, role_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            for item in self._read()["career_roles"]:
+                if item.get("user_id") == user_id and item.get("role_id") == role_id:
+                    return deepcopy(item)
+        return None
+
+    def upsert_career_role(self, item: dict[str, Any]) -> None:
+        with self._lock:
+            data = self._read()
+            for index, existing in enumerate(data["career_roles"]):
+                if (
+                    existing.get("user_id") == item.get("user_id")
+                    and existing.get("role_id") == item.get("role_id")
+                ):
+                    data["career_roles"][index] = deepcopy(item)
+                    self._write(data)
+                    return
+            data["career_roles"].append(deepcopy(item))
+            self._write(data)
+
+    def delete_career_role(self, user_id: str, role_id: str) -> dict[str, Any]:
+        with self._lock:
+            data = self._read()
+            for index, item in enumerate(data["career_roles"]):
+                if item.get("user_id") == user_id and item.get("role_id") == role_id:
+                    deleted = data["career_roles"].pop(index)
+                    self._write(data)
+                    return deepcopy(deleted)
+        raise ResourceNotFoundError("Employment role not found.")
+
     def list_meetings(self, user_id: str) -> list[dict[str, Any]]:
         with self._lock:
             return deepcopy([item for item in self._read()["meetings"] if item.get("user_id") == user_id])
@@ -276,7 +422,7 @@ class LocalKnowledgeRepository:
 
     def _read(self) -> dict[str, Any]:
         if not self._path.exists():
-            return {"collections": [], "files": [], "meetings": [], "active_meetings": {}}
+            return {"collections": [], "files": [], "evidence_answers": [], "career_roles": [], "meetings": [], "active_meetings": {}}
         try:
             raw = json.loads(self._path.read_text(encoding="utf-8"))
         except OSError:
@@ -286,6 +432,8 @@ class LocalKnowledgeRepository:
         return {
             "collections": raw.get("collections", []) if isinstance(raw, dict) else [],
             "files": raw.get("files", []) if isinstance(raw, dict) else [],
+            "evidence_answers": raw.get("evidence_answers", []) if isinstance(raw, dict) else [],
+            "career_roles": raw.get("career_roles", []) if isinstance(raw, dict) else [],
             "meetings": raw.get("meetings", []) if isinstance(raw, dict) else [],
             "active_meetings": raw.get("active_meetings", {}) if isinstance(raw, dict) else {},
         }
@@ -304,8 +452,9 @@ class DynamoKnowledgeRepository(DynamoRepository):
     """DynamoDB metadata storage for Document Library.
 
     The table uses `user_id` (String) as partition key and `item_id` (String) as
-    sort key. Collection records use `collection#<id>` and file records use
-    `file#<id>`.
+    sort key. Collection records use `collection#<id>`, file records use
+    `file#<id>`, reusable confirmation answers use `evidence_answer#<id>`, and
+    structured employment roles use `career_role#<id>`.
     """
 
     def _table(self):
@@ -374,6 +523,44 @@ class DynamoKnowledgeRepository(DynamoRepository):
         item = response.get("Attributes")
         if not item:
             raise ResourceNotFoundError("Document not found.")
+        return item
+
+    def list_evidence_answers(self, user_id: str) -> list[dict[str, Any]]:
+        return self._query_prefix(user_id, "evidence_answer#")
+
+    def get_evidence_answer(self, user_id: str, evidence_id: str) -> dict[str, Any] | None:
+        return self._get(user_id, f"evidence_answer#{evidence_id}")
+
+    def upsert_evidence_answer(self, item: dict[str, Any]) -> None:
+        self._table().put_item(Item=item)
+
+    def delete_evidence_answer(self, user_id: str, evidence_id: str) -> dict[str, Any]:
+        response = self._table().delete_item(
+            Key={"user_id": user_id, "item_id": f"evidence_answer#{evidence_id}"},
+            ReturnValues="ALL_OLD",
+        )
+        item = response.get("Attributes")
+        if not item:
+            raise ResourceNotFoundError("Reusable confirmation answer not found.")
+        return item
+
+    def list_career_roles(self, user_id: str) -> list[dict[str, Any]]:
+        return self._query_prefix(user_id, "career_role#")
+
+    def get_career_role(self, user_id: str, role_id: str) -> dict[str, Any] | None:
+        return self._get(user_id, f"career_role#{role_id}")
+
+    def upsert_career_role(self, item: dict[str, Any]) -> None:
+        self._table().put_item(Item=item)
+
+    def delete_career_role(self, user_id: str, role_id: str) -> dict[str, Any]:
+        response = self._table().delete_item(
+            Key={"user_id": user_id, "item_id": f"career_role#{role_id}"},
+            ReturnValues="ALL_OLD",
+        )
+        item = response.get("Attributes")
+        if not item:
+            raise ResourceNotFoundError("Employment role not found.")
         return item
 
     def list_meetings(self, user_id: str) -> list[dict[str, Any]]:

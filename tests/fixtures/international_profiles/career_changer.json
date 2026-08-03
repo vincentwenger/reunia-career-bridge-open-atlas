@@ -261,7 +261,7 @@
       {
         "category": "unsupported_requirement",
         "source_text": "Maintain customer activity in Salesforce CRM",
-        "disposition": "recommended_learning_or_future_action"
+        "disposition": "unsupported_claim"
       }
     ],
     "expected_min_transferable_findings": 2,

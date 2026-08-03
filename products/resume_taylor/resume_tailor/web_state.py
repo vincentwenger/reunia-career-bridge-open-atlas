@@ -78,6 +78,14 @@ class WorkflowStepSnapshot:
 class WorkflowState:
     source_profile: CandidateProfile
     original_source_profile: CandidateProfile | None = None
+    # How the reusable Baseline Resume was first created. Older stored states
+    # intentionally default to an empty value and are inferred at render time.
+    baseline_creation_method: str = ""
+    # User-entered facts retained when an imported resume is merged for review.
+    manual_source_profile: CandidateProfile | None = None
+    # Language detected from the originally imported file. This is distinct
+    # from source_profile_language, which is the generated Baseline Resume language.
+    source_resume_language: str = ""
     source_profile_language: str = ""
     source_profile_translation_fingerprint: str = ""
     career_background: NewcomerCareerProfile = field(
@@ -88,6 +96,11 @@ class WorkflowState:
     profile_upload_name: str = ""
     source_resume_key: str = ""
     source_resume_fingerprint: str = ""
+    source_resume_contact_links_fingerprint: str = ""
+    # Fingerprint of the reusable Foundation Baseline Resume version from which
+    # this application was copied. It remains stable when the application is
+    # intentionally translated into a different target language.
+    foundation_baseline_fingerprint: str = ""
 
     processing_mode: str = "testing"
     custom_analysis_tailoring_model: str = "gpt-5.6-terra"
@@ -129,6 +142,9 @@ class WorkflowState:
     candidate_answers: list[CandidateAnswer] = field(default_factory=list)
     confirmed_profile: CandidateProfile | None = None
     save_confirmed_profile: bool = False
+    save_confirmation_to_library: bool = False
+    saved_library_evidence_count: int = 0
+    reused_library_evidence_count: int = 0
     confirmation_draft: dict[str, str] = field(default_factory=dict)
     confirmation_follow_up_round: int = 0
     confirmation_follow_up_count: int = 0
@@ -151,6 +167,11 @@ class WorkflowState:
     optimization_rejected_issue_count: int = 0
     optimization_unchanged_batch_count: int = 0
     optimization_baseline_rolled_back: bool = False
+    # User-facing outcome for the optional Step 4 AI quality pass. Keep the
+    # provider exception out of persisted workflow state and expose only a
+    # stable status that the template can explain without technical details.
+    optimization_status: str = "not_started"
+    optimization_notice: str = ""
 
     final_report: ResumeReport | None = None
     final_report_input_fingerprint: str | None = None
@@ -197,6 +218,9 @@ class WorkflowState:
         self.candidate_answers = []
         self.confirmed_profile = None
         self.save_confirmed_profile = False
+        self.save_confirmation_to_library = False
+        self.saved_library_evidence_count = 0
+        self.reused_library_evidence_count = 0
         self.confirmation_draft = {}
         self.confirmation_follow_up_round = 0
         self.confirmation_follow_up_count = 0
@@ -221,6 +245,8 @@ class WorkflowState:
         self.optimization_rejected_issue_count = 0
         self.optimization_unchanged_batch_count = 0
         self.optimization_baseline_rolled_back = False
+        self.optimization_status = "not_started"
+        self.optimization_notice = ""
         self.final_report = None
         self.final_report_input_fingerprint = None
         self.final_report_proposal_fingerprint = None

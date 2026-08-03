@@ -1,0 +1,16 @@
+Additional experience confirmation question order — build 239
+
+Problem
+- Candidate questions retained AI-generated identifiers after lower-value questions were filtered out.
+- The selected questions were displayed in job-priority order, which could produce Q2, Q6, Q1, Q3, Q4 and visible numbering gaps such as Q6 without Q5.
+
+Change
+- Selected initial confirmation questions are now presented in natural numeric identifier order.
+- The visible question labels are renumbered consecutively (Q1, Q2, Q3, ...).
+- Stable internal question IDs are preserved for form submission, saved drafts, reusable evidence, and workflow persistence.
+- Targeted follow-up IDs remain round-aware (for example FQ1-1 and FQ1-2).
+
+Validation
+- 4 focused ordering tests passed.
+- 555 unit/contract tests passed, 12 environment-dependent tests skipped, and 84 subtests passed.
+- Python compilation passed for the changed modules.

@@ -34,7 +34,7 @@ CAREER_NAVIGATION: tuple[CareerNavigationSection, ...] = (
             "resume_id",
             "evidence_library_id",
         ),
-        description="Maintain the reusable Career Profile, Baseline Resume, and verified evidence used across applications.",
+        description="Maintain the reusable Baseline Resume, Career Profile, and verified evidence used across applications.",
     ),
     CareerNavigationSection(
         key="jobs_applications",

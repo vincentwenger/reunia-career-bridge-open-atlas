@@ -1,0 +1,25 @@
+Career Bridge 243 — Target-Market Review consolidation
+Date: 2026-08-02
+
+Resolved behavior
+- Shows each target-job requirement only once.
+- When a candidate question exists, the review uses one "Experience questions to answer" card and does not also show an unsupported-requirement card.
+- Missing resume wording is no longer treated automatically as a learning deficit.
+- Requirements with no linked evidence are labeled "Keep outside resume for now" and explain that absence from the resume is not proof that the candidate lacks the experience.
+- "Confirmed development opportunity" is retained only when review wording records an explicit candidate-confirmed gap.
+- Supported or partial requirements alone may appear in transferable-evidence findings; unsupported requirements cannot reappear elsewhere as implied strengths.
+- Zero-count status chips are hidden.
+- Evidence-question cards link directly to the confirmation questions.
+
+Conservative broad-capability recognition
+- Application Development
+- Create and maintain technical documentation
+- Troubleshoot production issues
+- Strong collaboration skills
+- Performance Optimization
+- Requirements translation only upgrades when a concrete role or supplemental-evidence record demonstrates it; a profile skill alone remains one focused question.
+- Specialized or qualified variants remain unsupported unless directly evidenced.
+
+Validation
+- Focused Target-Market Review tests passed.
+- Full unittest discovery: 629 tests passed, 46 skipped.

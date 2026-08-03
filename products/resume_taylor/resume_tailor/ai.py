@@ -35,7 +35,13 @@ from .models import (
     ProposalAudit,
     TailoringProposal,
 )
-from .resume_import import RESUME_IMPORT_SYSTEM, build_resume_import_prompt
+from .resume_import import (
+    RESUME_IMPORT_SYSTEM,
+    build_resume_import_prompt,
+    extract_explicit_resume_summary,
+    restore_professional_contact_urls,
+    sanitize_imported_candidate_profile,
+)
 from .resume_language import (
     RESUME_TRANSLATION_SYSTEM,
     build_resume_translation_prompt,
@@ -163,6 +169,7 @@ class ResumeAI:
             except (TypeError, ValueError):
                 continue
             self.max_output_tokens_by_operation[normalized_operation] = normalized_value
+        self.last_resume_import_adjustments: list[str] = []
         self.client = OpenAI(
             api_key=get_api_key(),
             timeout=self.request_timeout_seconds,
@@ -510,12 +517,22 @@ class ResumeAI:
         resume_text: str,
         filename: str,
     ) -> CandidateProfile:
+        """Extract a fresh profile using only the newly uploaded resume.
+
+        A replacement import must never be blocked because the extractor used one
+        untraceable paraphrase. Deterministic sanitization omits only unsupported
+        fields while preserving the rest of the newly uploaded resume.
+        """
+
+        self.last_resume_import_adjustments = []
+        explicit_summary = extract_explicit_resume_summary(resume_text)
         profile = self._parse(
             RESUME_IMPORT_SYSTEM,
             build_resume_import_prompt(resume_text, filename),
             CandidateProfile,
             operation="create_candidate_profile_from_resume",
         )
+        profile = restore_professional_contact_urls(profile, resume_text)
         from .grounding import validate_candidate_claim
 
         findings = validate_candidate_claim(
@@ -524,10 +541,40 @@ class ResumeAI:
             require_overlap=False,
         )
         if findings:
-            raise ResumeAIError(
-                "The imported Verified Resume Evidence introduced content that could not be traced "
-                "to the uploaded resume. Review the source document and try the import again."
+            profile, removed = sanitize_imported_candidate_profile(
+                profile, resume_text
             )
+            self.last_resume_import_adjustments = removed
+            final_findings = validate_candidate_claim(
+                profile.all_source_text(),
+                [resume_text],
+                require_overlap=False,
+            )
+            if final_findings:
+                # The sanitizer is intentionally fail-closed: no unsupported
+                # generated source text is retained in the reusable baseline.
+                logger.warning(
+                    "Resume replacement retained residual grounding findings after cleanup: %s",
+                    "; ".join(item.message for item in final_findings[:4]),
+                )
+                profile.current_summary = ""
+                profile.skills.hard_skills = []
+                profile.skills.soft_skills = []
+                profile.skills.tools_software = []
+                profile.skills.industry_knowledge = []
+                profile.skills.languages = []
+                profile.education = []
+                profile.experiences = []
+                profile.supplemental_evidence = []
+                self.last_resume_import_adjustments = [
+                    "structured resume details that required manual review"
+                ]
+
+        # The user's authored summary is source evidence, not generated copy.
+        # Apply it after grounding cleanup so the exact uploaded wording wins
+        # over an AI paraphrase and is not normalized into different sentences.
+        if explicit_summary:
+            profile.current_summary = explicit_summary
         return profile
 
     def translate_candidate_profile(
@@ -566,16 +613,85 @@ class ResumeAI:
             operation="analyze_job",
         )
 
+    def _retry_incomplete_bullet_selection(
+        self,
+        *,
+        profile: CandidateProfile,
+        prompt: str,
+        proposal: TailoringProposal,
+        operation: str,
+    ) -> TailoringProposal:
+        """Retry once when the model omits source-bullet evidence-mapping records."""
+
+        from .proposal_integrity import missing_source_bullet_ids
+
+        missing_ids = missing_source_bullet_ids(profile, proposal)
+        if not missing_ids:
+            return proposal
+
+        retry_prompt = (
+            prompt
+            + "\n\nSTRUCTURAL RETRY REQUIRED:\n"
+            + (
+                "The previous structured response omitted a bullet_proposals evidence-mapping "
+                "record for: "
+            )
+            + ", ".join(missing_ids)
+            + (
+                ". Return a complete TailoringProposal with exactly one record for every "
+                "source bullet ID. Every record must set include=false and contain source-backed "
+                "proposed_text, matched_requirement_ids, and an evidence-basis note. "
+                "Do not omit any source bullet."
+            )
+        )
+        try:
+            retried = self._parse(
+                PROPOSAL_SYSTEM,
+                retry_prompt,
+                TailoringProposal,
+                operation=operation,
+            )
+        except ResumeAIError as exc:
+            logger.warning(
+                "Bullet-mapping retry failed; deterministic selection will use "
+                "the original proposal: operation=%s detail=%s",
+                operation,
+                exc,
+            )
+            return proposal
+        retried_missing_ids = missing_source_bullet_ids(profile, retried)
+        if len(retried_missing_ids) < len(missing_ids):
+            logger.info(
+                "Recovered incomplete bullet mapping: operation=%s missing_before=%s missing_after=%s",
+                operation,
+                len(missing_ids),
+                len(retried_missing_ids),
+            )
+            return retried
+        logger.warning(
+            "Bullet-mapping retry remained incomplete: operation=%s missing_ids=%s",
+            operation,
+            ",".join(missing_ids),
+        )
+        return proposal
+
     def create_proposal(
         self,
         profile: CandidateProfile,
         analysis: JobAnalysis,
         career_background: NewcomerCareerProfile | None = None,
     ) -> TailoringProposal:
+        prompt = build_proposal_prompt(profile, analysis, career_background)
         proposal = self._parse(
             PROPOSAL_SYSTEM,
-            build_proposal_prompt(profile, analysis, career_background),
+            prompt,
             TailoringProposal,
+            operation="create_proposal",
+        )
+        proposal = self._retry_incomplete_bullet_selection(
+            profile=profile,
+            prompt=prompt,
+            proposal=proposal,
             operation="create_proposal",
         )
         from .deterministic_fixes import repair_unsupported_candidate_claims
@@ -590,12 +706,19 @@ class ResumeAI:
         answers: list[CandidateAnswer],
         career_background: NewcomerCareerProfile | None = None,
     ) -> TailoringProposal:
+        prompt = build_refinement_prompt(
+            profile, analysis, provisional, answers, career_background
+        )
         proposal = self._parse(
             PROPOSAL_SYSTEM,
-            build_refinement_prompt(
-                profile, analysis, provisional, answers, career_background
-            ),
+            prompt,
             TailoringProposal,
+            operation="refine_proposal",
+        )
+        proposal = self._retry_incomplete_bullet_selection(
+            profile=profile,
+            prompt=prompt,
+            proposal=proposal,
             operation="refine_proposal",
         )
         from .deterministic_fixes import repair_unsupported_candidate_claims

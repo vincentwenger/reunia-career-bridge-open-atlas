@@ -11,3 +11,7 @@ Use these files as the current source of truth:
 - [`validation/validation_report.md`](validation/validation_report.md) — current quality-contract overview.
 
 Generated files under `reports/validation/` are execution output and historical evidence. They are not the canonical product specification.
+
+## Resume tailoring
+
+- [Job-Aligned Resume bullet selection](job_aligned_bullet_selection.md)

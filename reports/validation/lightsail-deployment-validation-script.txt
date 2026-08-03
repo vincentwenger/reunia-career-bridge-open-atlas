@@ -4,7 +4,7 @@ Date: 2026-07-30
 Implemented
 -----------
 - scripts/deployment/validate_lightsail_deployment.py and its Windows wrapper are present.
-- Requires /health to report persistent DynamoDB/DynamoDB/S3 storage by default.
+- Requires /health to report persistent DynamoDB/DynamoDB/DynamoDB/S3 storage by default, including Job Discovery.
 - Accepts demo storage only with the explicit validator override.
 - Enforces Lightsail scale 1 and one Gunicorn worker only for demo storage.
 - Accepts positive multi-node and multi-worker settings for persistent storage.

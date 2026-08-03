@@ -1,0 +1,24 @@
+Final optimization gateway-timeout fix (build 213)
+
+Problem
+- Step 3 Approve & optimize used the general ResumeAI defaults: up to 90 seconds per provider attempt and two attempts.
+- The reverse proxy could return HTTP 504 before the route caught the provider timeout.
+
+Changes
+- Added a 45-second total interactive request budget with an export/persistence reserve.
+- Limited the optional optimization provider call to one attempt and a default maximum of 25 seconds.
+- Dynamically reduces or skips the optional AI pass when earlier scoring consumed the safe request budget.
+- A provider timeout now preserves the approved score-safe Job-Aligned Resume, creates the Final Resume export, and opens Step 4 with a warning.
+- Exact page-count verification remains deferred until Step 4 is interactive.
+
+Optional environment overrides
+- CAREER_BRIDGE_FINAL_OPTIMIZATION_REQUEST_BUDGET_SECONDS
+- CAREER_BRIDGE_FINAL_OPTIMIZATION_EXPORT_RESERVE_SECONDS
+- CAREER_BRIDGE_FINAL_OPTIMIZATION_AI_TIMEOUT_SECONDS
+
+Validation
+- 278 contract tests passed; 4 skipped for unavailable runtime dependencies.
+- 565 complete discovered tests passed; 38 skipped for unavailable runtime dependencies.
+- Python compileall passed.
+- JavaScript syntax validation passed.
+- 12 Jinja templates parsed successfully.
