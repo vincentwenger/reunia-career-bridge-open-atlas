@@ -1,14 +1,22 @@
-# Shared Career Bridge workspace only. Imported product snapshots remain preserved in Git history.
+.env
+.venv/
+node_modules/
+.stylelintcache
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 .mypy_cache/
 .ruff_cache/
-.venv/
-venv/
-.env
-*.log
-.DS_Store
 build/
 dist/
 *.egg-info/
+*.log
+npm-debug.log*
+
+# Generated production assets and validation output.
+*.min.css
+*.min.js
+reports/validation/

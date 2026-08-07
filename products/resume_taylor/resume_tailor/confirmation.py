@@ -3,7 +3,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .bullet_text import normalize_resume_bullet_text
+from .bullet_text import (
+    normalize_resume_bullet_terminal_punctuation,
+    normalize_resume_bullet_text,
+    summarize_confirmation_answer_as_bullet,
+)
 from .models import (
     BulletProposal,
     CandidateAnswer,
@@ -18,6 +22,16 @@ from .models import (
 
 _SKILL_CATEGORIES = {"technical_skill", "domain_knowledge", "methodology", "leadership"}
 _CONFIRM_ID_RE = re.compile(r"^(?P<prefix>[A-Za-z0-9]+)-CONF-(?P<number>\d+)$", re.IGNORECASE)
+
+_CURRENT_ROLE_RE = re.compile(
+    r"\b(?:present|current|now|ongoing|today|actuel|actuelle|actuellement|en cours)\b",
+    re.IGNORECASE,
+)
+
+
+def _experience_uses_past_tense(profile: CandidateProfile, experience_id: str) -> bool:
+    experience = profile.experience_lookup().get(experience_id)
+    return not bool(experience and _CURRENT_ROLE_RE.search(experience.dates or ""))
 
 
 def validate_candidate_answers(
@@ -104,6 +118,29 @@ def is_candidate_confirmed_bullet_id(value: str) -> bool:
     return bool(_CONFIRM_ID_RE.match(value.strip()))
 
 
+def _resume_ready_confirmation_bullet(
+    *values: str,
+    fallback: str = "",
+    use_past_tense: bool = True,
+) -> str:
+    """Return the first usable action-led bullet from candidate-confirmed prose.
+
+    This is also applied to previously saved workflows so conversational lead-ins
+    such as ``From there,`` are repaired when the proposal is reopened.
+    """
+    for value in values:
+        bullet = summarize_confirmation_answer_as_bullet(
+            value,
+            max_words=35,
+            use_past_tense=use_past_tense,
+        )
+        if bullet:
+            return normalize_resume_bullet_terminal_punctuation(bullet)
+    return normalize_resume_bullet_terminal_punctuation(
+        normalize_resume_bullet_text(fallback, max_words=35)
+    )
+
+
 def build_profile_with_candidate_answers(
     profile: CandidateProfile,
     analysis: JobAnalysis,
@@ -140,9 +177,11 @@ def build_profile_with_candidate_answers(
             continue
 
         statement = _evidence_statement(question, answer, requirement_text)
-        resume_bullet_text = normalize_resume_bullet_text(statement, max_words=35)
-        if not resume_bullet_text:
-            resume_bullet_text = normalize_resume_bullet_text(requirement_text, max_words=35)
+        resume_bullet_text = _resume_ready_confirmation_bullet(
+            statement,
+            fallback=requirement_text,
+            use_past_tense=_experience_uses_past_tense(updated, experience_id),
+        )
         source_bullet_id = _next_confirmed_bullet_id(updated, experience_id)
         experience_lookup[experience_id].bullets.append(
             ResumeBullet(id=source_bullet_id, text=resume_bullet_text)
@@ -203,8 +242,14 @@ def ensure_confirmed_answers_visible(
             item = BulletProposal(
                 source_bullet_id=source_id,
                 include=True,
-                proposed_text=normalize_resume_bullet_text(
-                    source_lookup.get(source_id, evidence.statement), max_words=35
+                proposed_text=_resume_ready_confirmation_bullet(
+                    evidence.statement,
+                    source_lookup.get(source_id, ""),
+                    fallback=evidence.statement,
+                    use_past_tense=_experience_uses_past_tense(
+                        profile,
+                        evidence.experience_id,
+                    ),
                 ),
                 matched_requirement_ids=list(evidence.requirement_ids),
                 evidence_note=f"Candidate-confirmed experience from {evidence.id}.",
@@ -226,9 +271,15 @@ def ensure_confirmed_answers_visible(
 
         if evidence.placement == "new_bullet" or represented_by is None:
             item.include = True
-            item.proposed_text = normalize_resume_bullet_text(
-                item.proposed_text.strip() or source_lookup.get(source_id, evidence.statement),
-                max_words=35,
+            item.proposed_text = _resume_ready_confirmation_bullet(
+                item.proposed_text.strip(),
+                evidence.statement,
+                source_lookup.get(source_id, ""),
+                fallback=evidence.statement,
+                use_past_tense=_experience_uses_past_tense(
+                    profile,
+                    evidence.experience_id,
+                ),
             )
             item.matched_requirement_ids = list(
                 dict.fromkeys(item.matched_requirement_ids + evidence.requirement_ids)

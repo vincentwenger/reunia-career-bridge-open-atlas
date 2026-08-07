@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Réunia Career Bridge architecture</title>
+  <desc id="desc">A browser connects to a Flask web application and a background worker. They use OpenAI, DynamoDB, and S3. Candidate evidence flows through job applications, resumes, interviews, actions, and outcomes.</desc>
+  <rect width="1600" height="900" fill="#f7fafc"/>
+  <text x="80" y="85" font-family="Arial, sans-serif" font-size="42" font-weight="700" fill="#15324b">Réunia Career Bridge</text>
+  <text x="80" y="128" font-family="Arial, sans-serif" font-size="24" fill="#456174">Evidence-grounded application architecture</text>
+
+  <rect x="80" y="205" width="270" height="170" rx="24" fill="#ffffff" stroke="#9eb6c6" stroke-width="3"/>
+  <text x="215" y="260" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="700" fill="#15324b">Candidate</text>
+  <text x="215" y="304" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#456174">Browser experience</text>
+  <text x="215" y="338" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" fill="#456174">Profile • evidence • applications</text>
+
+  <rect x="475" y="165" width="410" height="250" rx="28" fill="#e8f5f3" stroke="#178579" stroke-width="4"/>
+  <text x="680" y="225" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#0d5f58">Flask web application</text>
+  <text x="680" y="273" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#234e52">Authentication and owner isolation</text>
+  <text x="680" y="309" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#234e52">Career, resume, interview, action UI</text>
+  <text x="680" y="345" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#234e52">Durable job creation and health API</text>
+  <text x="680" y="381" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" fill="#456174">Gunicorn • Jinja • JavaScript</text>
+
+  <rect x="475" y="505" width="410" height="180" rx="28" fill="#fff5e6" stroke="#d9822b" stroke-width="4"/>
+  <text x="680" y="565" text-anchor="middle" font-family="Arial, sans-serif" font-size="29" font-weight="700" fill="#8a4b08">Background worker</text>
+  <text x="680" y="611" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" fill="#68411a">Resume • discovery • interview jobs</text>
+  <text x="680" y="647" text-anchor="middle" font-family="Arial, sans-serif" font-size="19" fill="#68411a">Retries • idempotency • heartbeat</text>
+
+  <rect x="1030" y="125" width="255" height="130" rx="22" fill="#ffffff" stroke="#7f9aab" stroke-width="3"/>
+  <text x="1157" y="180" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="700" fill="#15324b">OpenAI API</text>
+  <text x="1157" y="218" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#456174">Task-specific prompts</text>
+
+  <rect x="1030" y="300" width="255" height="130" rx="22" fill="#ffffff" stroke="#7f9aab" stroke-width="3"/>
+  <text x="1157" y="355" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="700" fill="#15324b">DynamoDB</text>
+  <text x="1157" y="393" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#456174">Applications • jobs • workflows</text>
+
+  <rect x="1030" y="475" width="255" height="130" rx="22" fill="#ffffff" stroke="#7f9aab" stroke-width="3"/>
+  <text x="1157" y="530" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="700" fill="#15324b">Amazon S3</text>
+  <text x="1157" y="568" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#456174">Resumes • exports • snapshots</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 z" fill="#5a7486"/>
+    </marker>
+  </defs>
+  <line x1="350" y1="290" x2="465" y2="290" stroke="#5a7486" stroke-width="5" marker-end="url(#arrow)"/>
+  <line x1="680" y1="415" x2="680" y2="495" stroke="#5a7486" stroke-width="5" marker-end="url(#arrow)"/>
+  <line x1="885" y1="225" x2="1020" y2="190" stroke="#5a7486" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="885" y1="300" x2="1020" y2="355" stroke="#5a7486" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="885" y1="355" x2="1020" y2="530" stroke="#5a7486" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="885" y1="565" x2="1020" y2="365" stroke="#5a7486" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="885" y1="610" x2="1020" y2="540" stroke="#5a7486" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="885" y1="650" x2="1020" y2="215" stroke="#5a7486" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="80" y="755" width="805" height="85" rx="20" fill="#15324b"/>
+  <text x="482" y="792" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff">Verified evidence stays connected across the journey</text>
+  <text x="482" y="823" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#d7e7ef">Career translation → application → resume → interview → action → outcome</text>
+</svg>

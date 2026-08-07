@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import json
 
-from .models import AuditIssue, CandidateAnswer, CandidateProfile, JobAnalysis, TailoringProposal
+from .models import (
+    AuditIssue,
+    CandidateAnswer,
+    CandidateProfile,
+    JobAnalysis,
+    NewcomerCareerProfile,
+    TailoringProposal,
+)
 from .skill_rules import (
     SKILL_CATEGORY_RULES,
     SKILL_TOTAL_MAXIMUM,
     SKILL_TOTAL_RECOMMENDED_MINIMUM,
 )
 from .validation import deterministic_audit_facts
+from .resume_language import language_name
 
 
 JOB_ANALYSIS_SYSTEM = """You are a job-description analyst for an evidence-based resume tailoring tool.
@@ -29,14 +37,21 @@ but it may not add a new number, technology, responsibility, leadership scope, r
 When evidence is partial or missing, mark the requirement partial or unsupported and add a candidate question instead
 of inserting it into the resume. Prefer natural recruiter-readable language over keyword density. Every visible experience
 bullet must be one plain-text, action-led statement of 35 words or fewer. Never put headings, labels, markdown, nested
-lists, multiple paragraphs, or a leading bullet symbol inside proposed_text."""
+lists, multiple paragraphs, or a leading bullet symbol inside proposed_text.
+
+Before drafting resume wording, complete the Target-Market Review. Its purpose is to make international
+experience understandable without overstating it. Treat newcomer onboarding as context for identifying translations
+and questions, not as resume evidence by itself. Only the Verified Resume Evidence and later candidate-confirmed evidence may
+support resume claims."""
 
 
 AUDIT_SYSTEM = """You are an independent factual auditor for a resume-tailoring application.
 Compare every claim in the proposal against the candidate profile. Treat any unsupported technology, responsibility,
 number, scope, outcome, leadership claim, certification, domain claim, employer detail, or job-title change as blocking.
-Also flag awkward wording, keyword stuffing, repetition, excessive length, or weak relevance as warnings. A proposal
-passes only when it contains no blocking issues. Be conservative and specific. For every issue, provide a concrete,
+Also flag awkward wording, keyword stuffing, repetition, excessive length, or weak relevance as warnings. Treat the
+newcomer career background as context only: flag any resume claim that relies on onboarding data without Candidate
+Profile or CONF- evidence. A proposal passes only when it contains no blocking issues. Be conservative and specific.
+For every issue, provide a concrete,
 actionable suggested_fix that can be applied to the TailoringProposal. Do not repeat a finding whose exact correction
 is already present in the proposal. Verify evidence statuses, rationales, evidence IDs, unsupported requirements,
 evidence notes, summary wording, skills, and bullets together so the fix is internally consistent. For a Rephrase or
@@ -58,8 +73,10 @@ as 'not documented in the profile' unless a cited CONF- supplemental-evidence ID
 When a status is downgraded or upgraded, synchronize its rationale, evidence IDs, and unsupported_requirements entry.
 When a grouped finding references several requirement IDs or source IDs, correct every referenced item. Keep
 candidate_questions empty after the confirmation stage. Preserve every source_bullet_id and requirement_id. Do not
-remove an audit finding by hiding the requirement or deleting required proposal content. Before returning, verify that
-each supplied finding is no longer true and that the complete proposal remains internally consistent. Use the smallest
+remove an audit finding by hiding the requirement or deleting required proposal content. Preserve the Career
+Translation Assessment unless an applied fix changes its evidence status; never upgrade a finding from onboarding
+context alone. Before returning, verify that each supplied finding is no longer true and that the complete proposal
+remains internally consistent. Use the smallest
 conservative change that fully addresses each supplied finding. Every visible experience bullet must remain one
 plain-text, action-led statement of 35 words or fewer. Never return headings such as "Overview" or "Specific Tools",
 markdown emphasis, nested lists, multiple paragraphs, or a leading bullet symbol inside proposed_text. When a finding
@@ -85,21 +102,40 @@ JOB DESCRIPTION
 """
 
 
-def build_proposal_prompt(profile: CandidateProfile, analysis: JobAnalysis) -> str:
+def build_proposal_prompt(
+    profile: CandidateProfile,
+    analysis: JobAnalysis,
+    career_background: NewcomerCareerProfile | None = None,
+) -> str:
     profile_json = json.dumps(profile.model_dump(exclude={"contact"}), ensure_ascii=False, indent=2)
     analysis_json = json.dumps(analysis.model_dump(), ensure_ascii=False, indent=2)
+    background = career_background or NewcomerCareerProfile()
+    background_json = json.dumps(
+        background.model_dump(),
+        ensure_ascii=False,
+        indent=2,
+    )
+    target_language = language_name(background.resume_language)
     return f"""Create a conservative tailoring proposal for the candidate and analyzed job.
+
+Resume language:
+- Write every candidate-facing resume field in {target_language}, including the professional summary, translated titles, selected descriptive skills, and every proposed bullet.
+- Do not mix prose from another language. Preserve employer names, institution names, products, technologies, acronyms, dates, numbers, and official proper names.
 
 Hard constraints:
 1. Professional summary: 50 to 80 words, 3 or 4 sentences.
-2. Skills: aim for {SKILL_TOTAL_RECOMMENDED_MINIMUM}-{SKILL_TOTAL_MAXIMUM} total across the four categories, using only skills that are relevant to the target role and copied verbatim from the candidate profile. Keep each selected skill in its original Candidate Profile category. Aim for Hard Skills {SKILL_CATEGORY_RULES['hard_skills']['minimum']}-{SKILL_CATEGORY_RULES['hard_skills']['maximum']}, Soft Skills {SKILL_CATEGORY_RULES['soft_skills']['minimum']}-{SKILL_CATEGORY_RULES['soft_skills']['maximum']}, Tools & Software {SKILL_CATEGORY_RULES['tools_software']['minimum']}-{SKILL_CATEGORY_RULES['tools_software']['maximum']}, and Industry Knowledge {SKILL_CATEGORY_RULES['industry_knowledge']['minimum']}-{SKILL_CATEGORY_RULES['industry_knowledge']['maximum']}. If the profile does not contain enough relevant verified skills for a range, use the available relevant skills rather than inventing or forcing unrelated ones.
+2. Skills: aim for {SKILL_TOTAL_RECOMMENDED_MINIMUM}-{SKILL_TOTAL_MAXIMUM} total across the four categories, using only skills that are relevant to the target role and copied verbatim from the candidate profile. Keep each selected skill in its original Verified Resume Evidence category. Aim for Hard Skills {SKILL_CATEGORY_RULES['hard_skills']['minimum']}-{SKILL_CATEGORY_RULES['hard_skills']['maximum']}, Soft Skills {SKILL_CATEGORY_RULES['soft_skills']['minimum']}-{SKILL_CATEGORY_RULES['soft_skills']['maximum']}, Tools & Software {SKILL_CATEGORY_RULES['tools_software']['minimum']}-{SKILL_CATEGORY_RULES['tools_software']['maximum']}, and Industry Knowledge {SKILL_CATEGORY_RULES['industry_knowledge']['minimum']}-{SKILL_CATEGORY_RULES['industry_knowledge']['maximum']}. If the profile does not contain enough relevant verified skills for a range, use the available relevant skills rather than inventing or forcing unrelated ones.
 3. Return exactly one bullet proposal for every source bullet, using its exact source_bullet_id. Never omit the
-   structured record. If you cannot justify an exclusion, include the original source wording by default.
-4. For the most recent experience, include 6 or 7 bullets. For the second experience, include 3 or 4. For the third,
-   include 2 or 3. Keep other experiences at 2 or 3 if any exist.
-   Each included bullet must contain 35 words or fewer, use one sentence or concise clause, begin with an action verb,
-   and contain plain text only. Do not include a bullet glyph, markdown, bold markers, headings, labels, line breaks,
-   sub-bullets, or explanatory sections inside proposed_text.
+   structured record. Your job is to map evidence, not to select bullets: set include=false for every record. Career
+   Bridge uses deterministic code to choose the Job-Aligned Resume bullets after the proposal is validated.
+4. For every bullet, return:
+   - grounded proposed_text using the source accomplishment;
+   - every directly supported matched_requirement_id;
+   - an evidence_note describing the verified evidence basis only.
+   Do not provide inclusion, exclusion, resume-space, or ranking rationales. Each proposed bullet must contain 35 words
+   or fewer, use one sentence or concise clause, begin with an action verb, and contain plain text only. Do not include
+   a bullet glyph, markdown, bold markers, headings, labels, line breaks, sub-bullets, or explanatory sections inside
+   proposed_text.
 5. Each proposed bullet must be supported by its source bullet. It may use a verified skill from elsewhere in the
    profile only when the evidence note explicitly identifies that supporting profile evidence.
 6. Do not add job-posting terminology such as hardware upgrades, employee coaching, user-defined functions, report
@@ -114,6 +150,31 @@ Hard constraints:
     the profile. Prefer one concise yes_no_with_details question over several overlapping prompts. A yes/no question
     must not be used for a new detailed claim unless answer_type is yes_no_with_details and details_prompt explains
     what evidence is needed.
+11. Complete career_translation_assessment before drafting the resume. Include only meaningful findings from these
+    categories: job_title_translation, credential_explanation, regional_terminology, hidden_accomplishment,
+    transferable_skill, unsupported_requirement, and missing_evidence. Classify every finding as exactly one of:
+    confirmed_experience, reasonable_rephrasing, user_clarification_required, unsupported_claim, or
+    recommended_learning_or_future_action.
+    - confirmed_experience requires exact Verified Resume Evidence IDs.
+    - reasonable_rephrasing may explain an existing title, credential, term, or accomplishment without changing facts.
+    - Preserve official product, platform, technology, acronym, and proper names exactly as written. When a
+      regional_terminology item is already an exact verified name, classify the name as confirmed_experience;
+      do not invent an explanation or require candidate clarification merely because no explanation is available.
+    - user_clarification_required means the context may be useful but cannot be safely claimed yet. Create a candidate
+      question when the clarification could materially strengthen this application.
+    - unsupported_claim must remain outside the resume and align with unsupported_requirements.
+    - Show each job requirement only once in career_translation_assessment. When a candidate question exists for a
+      requirement, use one missing_evidence finding and do not also add an unsupported_requirement finding for it.
+    - recommended_learning_or_future_action is allowed only after the candidate explicitly confirms that they do not
+      have the experience. In the initial proposal, missing evidence must be user_clarification_required when a useful
+      question exists, or unsupported_claim when it does not. Never infer a learning need merely because the resume
+      does not contain the exact job-description wording.
+    Do not treat reusable-profile headlines, roles, year counts, skills, accomplishments, countries, languages,
+    credentials, certifications, unfamiliar titles, transitions, work authorization, or target-country experience as
+    claim evidence unless the uploaded or candidate-confirmed Verified Resume Evidence independently supports them.
+
+REUSABLE CAREER PROFILE AND INTERNATIONAL BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+{background_json}
 
 CANDIDATE PROFILE
 {profile_json}
@@ -127,8 +188,14 @@ def build_audit_prompt(
     profile: CandidateProfile,
     analysis: JobAnalysis,
     proposal: TailoringProposal,
+    career_background: NewcomerCareerProfile | None = None,
 ) -> str:
     deterministic_facts = deterministic_audit_facts(profile, analysis, proposal)
+    background_json = json.dumps(
+        (career_background or NewcomerCareerProfile()).model_dump(),
+        ensure_ascii=False,
+        indent=2,
+    )
     return f"""Audit the proposed resume content against the source evidence.
 
 Your responsibility is semantic evidence quality and writing quality:
@@ -164,6 +231,9 @@ finding. Report only the semantic finding.
 DETERMINISTIC RESULTS — SOURCE OF TRUTH
 {json.dumps(deterministic_facts, ensure_ascii=False, indent=2)}
 
+REUSABLE CAREER PROFILE AND INTERNATIONAL BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+{background_json}
+
 CANDIDATE PROFILE
 {json.dumps(profile.model_dump(exclude={"contact"}), ensure_ascii=False, indent=2)}
 
@@ -180,8 +250,20 @@ def build_refinement_prompt(
     analysis: JobAnalysis,
     provisional: TailoringProposal,
     answers: list[CandidateAnswer],
+    career_background: NewcomerCareerProfile | None = None,
 ) -> str:
+    background = career_background or NewcomerCareerProfile()
+    background_json = json.dumps(
+        background.model_dump(),
+        ensure_ascii=False,
+        indent=2,
+    )
+    target_language = language_name(background.resume_language)
     return f"""Revise the provisional proposal using the candidate-confirmed evidence and answers below.
+
+Resume language:
+- Keep every candidate-facing resume field in {target_language}. Translate newly confirmed wording into that language while preserving all facts, proper names, technologies, dates, and numbers.
+- Do not reintroduce source-language prose into the summary, skills, or bullets.
 
 Rules:
 - Return a complete TailoringProposal, not a patch.
@@ -192,6 +274,8 @@ Rules:
   evidence notes when used.
 - Every affirmative answer is attached to a selected experience and has a candidate-confirmed source bullet such as
   NAS-CONF-01. Return exactly one bullet proposal for every source bullet, including these candidate-confirmed bullets.
+- Synthesize each candidate-confirmed bullet from the complete answer. Prefer concrete actions, techniques, tools, and
+  outcomes from all relevant sentences; do not copy only the opening sentence or retain first-person framing.
 - Honor each answer's placement preference:
   * new_bullet: include the candidate-confirmed source bullet as a distinct bullet.
   * update_existing: strengthen the closest existing bullet in the same experience, cite both the CONF evidence ID and
@@ -208,6 +292,14 @@ Rules:
 - Return candidate_questions empty. The application performs the post-transformation evidence review and creates any
   additional targeted follow-up round itself.
 - Do not add a confirmed skill to the resume unless the confirmed evidence is specific enough to support it.
+- Recalculate career_translation_assessment after applying the answers. An affirmative answer may upgrade a related
+  finding to confirmed_experience only when the updated profile contains a traceable CONF- evidence ID. A negative
+  answer must remain an unsupported_claim or may become recommended_learning_or_future_action when the candidate has
+  explicitly confirmed the gap, never a resume claim. Keep exactly one finding per requirement; do not retain both an
+  unsupported_requirement finding and a missing_evidence finding for the same requirement.
+
+REUSABLE CAREER PROFILE AND INTERNATIONAL BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+{background_json}
 
 CANDIDATE PROFILE WITH CONFIRMED EVIDENCE
 {json.dumps(profile.model_dump(exclude={"contact"}), ensure_ascii=False, indent=2)}
@@ -228,9 +320,21 @@ def build_audit_fix_prompt(
     analysis: JobAnalysis,
     proposal: TailoringProposal,
     issues: list[AuditIssue],
+    career_background: NewcomerCareerProfile | None = None,
 ) -> str:
     actionable = [issue for issue in issues if issue.suggested_fix.strip()]
+    background = career_background or NewcomerCareerProfile()
+    background_json = json.dumps(
+        background.model_dump(),
+        ensure_ascii=False,
+        indent=2,
+    )
+    target_language = language_name(background.resume_language)
     return f"""Apply the listed audit findings and suggested fixes to the proposal.
+
+Resume language:
+- Keep all candidate-facing resume wording in {target_language}. Any replacement summary, skill wording, title explanation, or bullet must use that language.
+- Preserve proper names, products, technologies, dates, numbers, and official acronyms.
 
 Rules:
 - Return the complete corrected TailoringProposal, not a patch or explanation.
@@ -250,6 +354,11 @@ Rules:
 - Before returning, check every supplied finding against the corrected proposal and ensure the finding is no longer true.
 - Apply grouped fixes to every referenced requirement ID and source ID, not only the first one.
 - Keep evidence status, evidence IDs, rationale, unsupported_requirements, bullet evidence notes, and visible wording synchronized.
+- Preserve career_translation_assessment unless a supplied fix directly affects a finding. When it does, synchronize the
+  disposition and evidence IDs, but never treat newcomer onboarding as evidence.
+
+REUSABLE CAREER PROFILE AND INTERNATIONAL BACKGROUND — CONTEXT ONLY, NOT CLAIM EVIDENCE
+{background_json}
 
 CANDIDATE PROFILE
 {json.dumps(profile.model_dump(exclude={"contact"}), ensure_ascii=False, indent=2)}

@@ -1,12 +1,12 @@
 <nav class="navbar marketing-navbar" id="mainNavbar" aria-label="Public navigation">
     <div class="nav-container">
-        <a href="#product" class="nav-brand" aria-label="Réunia home">
+        <a href="#product" class="nav-brand" aria-label="Réunia Career Bridge home">
             <span class="brand-icon" aria-hidden="true">
                 <img src="{{ static_asset('icons/favicon-64.png') }}" alt="">
             </span>
             <span class="brand-text">
                 <span class="brand-title">Réunia</span>
-                <span class="brand-subtitle">YOUR AI CAREER BRIDGE</span>
+                <span class="brand-subtitle">AI CAREER BRIDGE</span>
             </span>
         </a>
 
@@ -25,18 +25,16 @@
 
         <div class="nav-content" id="primaryNavContent">
             <ul class="nav-menu marketing-nav-menu">
-                <li class="nav-item"><a class="nav-link" href="#product">Product</a></li>
-                <li class="nav-item"><a class="nav-link" href="#how-it-works">How it works</a></li>
                 <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
-                <li class="nav-item"><a class="nav-link" href="#use-cases">Use cases</a></li>
-                <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+                <li class="nav-item"><a class="nav-link" href="#inclusion">Inclusion</a></li>
+                <li class="nav-item"><a class="nav-link" href="#how-it-works">How it works</a></li>
             </ul>
 
             <div class="nav-auth marketing-nav-auth">
                 {% include 'components/guest_language_switcher.html' %}
                 <a href="{{ request.script_root }}/login.html" class="support-nav-link">Sign in</a>
                 <a href="{{ request.script_root }}/login.html" class="marketing-get-started-btn">
-                    Get started
+                    Open the app
                     <span aria-hidden="true">→</span>
                 </a>
             </div>

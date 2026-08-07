@@ -13,9 +13,61 @@
         return;
     }
 
+    const navGroups = Array.from(navbar.querySelectorAll('[data-nav-group]'));
+
+    function moveMenuFocus(menu, event) {
+        const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+        if (!items.length) return;
+
+        const currentIndex = items.indexOf(document.activeElement);
+        let nextIndex = currentIndex;
+
+        if (event.key === 'ArrowDown') {
+            nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
+        } else if (event.key === 'ArrowUp') {
+            nextIndex = currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length;
+        } else if (event.key === 'Home') {
+            nextIndex = 0;
+        } else if (event.key === 'End') {
+            nextIndex = items.length - 1;
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        items[nextIndex].focus();
+    }
+
+    function setNavGroup(group, open, returnFocus) {
+        if (!group) return;
+        const trigger = group.querySelector('.nav-group-trigger');
+        const menu = group.querySelector('.nav-group-menu');
+        if (!trigger || !menu) return;
+
+        group.classList.toggle('open', open);
+        trigger.setAttribute('aria-expanded', String(open));
+        menu.hidden = !open;
+
+        if (returnFocus) {
+            trigger.focus();
+        }
+    }
+
+    function closeNavGroups(exceptGroup) {
+        navGroups.forEach(function (group) {
+            if (group !== exceptGroup) {
+                setNavGroup(group, false);
+            }
+        });
+    }
+
     function setAccountDropdown(open, returnFocus) {
         if (!accountDropdown || !accountDropdownButton) {
             return;
+        }
+
+        if (open) {
+            closeNavGroups();
         }
 
         accountDropdown.classList.toggle('open', open);
@@ -45,36 +97,53 @@
         }
 
         if (!open) {
+            closeNavGroups();
             setAccountDropdown(false);
         }
-    }
-
-    function moveMenuFocus(menu, event) {
-        const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
-        if (!items.length) return;
-
-        const currentIndex = items.indexOf(document.activeElement);
-        let nextIndex = currentIndex;
-
-        if (event.key === 'ArrowDown') {
-            nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
-        } else if (event.key === 'ArrowUp') {
-            nextIndex = currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length;
-        } else if (event.key === 'Home') {
-            nextIndex = 0;
-        } else if (event.key === 'End') {
-            nextIndex = items.length - 1;
-        } else {
-            return;
-        }
-
-        event.preventDefault();
-        items[nextIndex].focus();
     }
 
     function updateScrollState() {
         navbar.classList.toggle('is-scrolled', window.scrollY > 8);
     }
+
+    navGroups.forEach(function (group) {
+        const trigger = group.querySelector('.nav-group-trigger');
+        const menu = group.querySelector('.nav-group-menu');
+        if (!trigger || !menu) return;
+
+        trigger.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const shouldOpen = !group.classList.contains('open');
+            closeNavGroups(group);
+            setAccountDropdown(false);
+            setNavGroup(group, shouldOpen);
+        });
+
+        trigger.addEventListener('keydown', function (event) {
+            if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+                event.preventDefault();
+                closeNavGroups(group);
+                setAccountDropdown(false);
+                setNavGroup(group, true);
+                const items = menu.querySelectorAll('[role="menuitem"]');
+                const target = event.key === 'ArrowUp' ? items[items.length - 1] : items[0];
+                target?.focus();
+            }
+        });
+
+        group.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                setNavGroup(group, false, true);
+                return;
+            }
+
+            if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+                moveMenuFocus(menu, event);
+            }
+        });
+    });
 
     if (mobileMenuButton) {
         mobileMenuButton.addEventListener('click', function (event) {
@@ -104,22 +173,29 @@
     }
 
     document.addEventListener('click', function (event) {
-        if (accountDropdown && !accountDropdown.contains(event.target)) {
+        if (!navbar.contains(event.target)) {
+            closeNavGroups();
             setAccountDropdown(false);
+            if (window.innerWidth <= desktopBreakpoint) {
+                setMobileMenu(false);
+            }
+            return;
         }
 
-        if (
-            window.innerWidth <= desktopBreakpoint &&
-            navbar.classList.contains('mobile-open') &&
-            navContent &&
-            !navbar.contains(event.target)
-        ) {
-            setMobileMenu(false);
+        navGroups.forEach(function (group) {
+            if (!group.contains(event.target)) {
+                setNavGroup(group, false);
+            }
+        });
+
+        if (accountDropdown && !accountDropdown.contains(event.target)) {
+            setAccountDropdown(false);
         }
     });
 
     navbar.querySelectorAll('a').forEach(function (link) {
         link.addEventListener('click', function () {
+            closeNavGroups();
             if (window.innerWidth <= desktopBreakpoint) {
                 setMobileMenu(false);
             }
@@ -128,12 +204,14 @@
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
+            closeNavGroups();
             setAccountDropdown(false);
             setMobileMenu(false);
         }
     });
 
     window.addEventListener('resize', function () {
+        closeNavGroups();
         setAccountDropdown(false);
         if (window.innerWidth > desktopBreakpoint) {
             setMobileMenu(false);

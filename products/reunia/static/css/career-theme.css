@@ -1,0 +1,340 @@
+/*
+ * Réunia Career Bridge — Trust + Action visual system
+ *
+ * 60% canvas: white and cool near-white surfaces keep document-heavy screens calm.
+ * 30% anchor: navy/slate establishes credibility, privacy, and professional trust.
+ * 10% action: teal/emerald communicates progress; warm orange is reserved for
+ *             deadlines and attention states. Semantic colors remain distinct.
+ */
+:root {
+    color-scheme: light;
+}
+
+html {
+    scrollbar-color: var(--cb-p-9db4c7) var(--cb-p-eef2f6);
+}
+
+body {
+    accent-color: var(--cb-color-teal);
+    background: var(--cb-gradient-page);
+    color: var(--cb-color-ink);
+}
+
+::selection {
+    color: var(--cb-color-ink);
+    background: var(--cb-p-cfe5ef);
+}
+
+:focus-visible {
+    outline-color: var(--cb-color-teal);
+}
+
+input[type="checkbox"],
+input[type="radio"],
+progress {
+    accent-color: var(--cb-color-teal);
+}
+
+/* Navy carries the structural 30%: heroes, headers, and trusted shell surfaces. */
+.page-hero {
+    background:
+        radial-gradient(circle at 90% 0%, rgba(42, 157, 143, 0.28), transparent 34%),
+        linear-gradient(135deg, var(--cb-color-primary-dark), var(--cb-color-primary) 58%, var(--cb-color-primary-bright));
+    box-shadow: 0 14px 32px rgba(20, 58, 90, 0.20);
+}
+
+/* Teal is used for active state, orientation, and forward progress. */
+.button.text,
+.loading-state strong,
+.no-records-state strong {
+    color: var(--cb-color-teal);
+}
+
+progress::-webkit-progress-value {
+    background: linear-gradient(90deg, var(--cb-color-teal), var(--cb-color-emerald));
+}
+
+progress::-moz-progress-bar {
+    background: linear-gradient(90deg, var(--cb-color-teal), var(--cb-color-emerald));
+}
+
+/* Navy is the consistent primary-action color across authenticated workspaces. */
+.button.primary,
+.btn-primary,
+.submit-btn,
+.btn-submit,
+.action-primary-button,
+.admin-primary-button,
+.support-button-primary,
+.guide-button-primary,
+.marketing-button-primary,
+.marketing-get-started-btn,
+.shared-primary-button,
+.mock-button-primary,
+.interview-generate-button,
+.application-builder-content .button.primary {
+    border-color: var(--cb-color-primary) !important;
+    color: var(--cb-color-surface) !important;
+    background: linear-gradient(135deg, var(--cb-color-primary-dark), var(--cb-color-primary-bright)) !important;
+    box-shadow: 0 8px 20px rgba(29, 78, 120, 0.20) !important;
+}
+
+.button.primary:hover:not(:disabled),
+.btn-primary:hover:not(:disabled),
+.submit-btn:hover:not(:disabled),
+.btn-submit:hover:not(:disabled),
+.action-primary-button:hover:not(:disabled),
+.admin-primary-button:hover:not(:disabled),
+.support-button-primary:hover:not(:disabled),
+.guide-button-primary:hover:not(:disabled),
+.marketing-button-primary:hover:not(:disabled),
+.marketing-get-started-btn:hover:not(:disabled),
+.shared-primary-button:hover:not(:disabled),
+.mock-button-primary:hover:not(:disabled),
+.interview-generate-button:hover:not(:disabled),
+.application-builder-content .button.primary:hover:not(:disabled) {
+    border-color: var(--cb-color-primary-dark) !important;
+    color: var(--cb-color-surface) !important;
+    background: linear-gradient(135deg, var(--cb-color-primary-deep), var(--cb-color-primary)) !important;
+    box-shadow: 0 10px 24px rgba(20, 58, 90, 0.26) !important;
+}
+
+.button.primary:focus-visible,
+.btn-primary:focus-visible,
+.submit-btn:focus-visible,
+.btn-submit:focus-visible,
+.action-primary-button:focus-visible,
+.admin-primary-button:focus-visible,
+.support-button-primary:focus-visible,
+.guide-button-primary:focus-visible,
+.marketing-button-primary:focus-visible,
+.mock-button-primary:focus-visible,
+.interview-generate-button:focus-visible {
+    outline: 3px solid rgba(29, 78, 120, 0.28);
+    outline-offset: 3px;
+}
+
+/* Hero actions stay quiet and trustworthy rather than competing with page CTAs. */
+.application-builder-hero-button-primary,
+.knowledge-hero-button-primary,
+.guide-button-light,
+.marketing-button-light {
+    color: var(--cb-color-primary) !important;
+    background: var(--cb-color-surface) !important;
+}
+
+/* Shared active and progress treatments use the bridge color, not CTA orange. */
+.nav-link.active::after,
+.progress span,
+.impact-score-current,
+.application-fit-progress span,
+.admin-progress-track i {
+    background: linear-gradient(90deg, var(--cb-color-teal), var(--cb-color-emerald)) !important;
+}
+
+.nav-link:hover,
+.nav-link.active,
+.dropdown-content a:hover,
+.tab-button.active,
+.admin-section-tabs button[aria-selected="true"],
+.admin-operations-tabs button[aria-selected="true"] {
+    color: var(--cb-color-teal) !important;
+}
+
+/* Warm accent for deadlines, priority guidance, and selected attention states. */
+[data-tone="deadline"],
+[data-tone="priority"] {
+    color: var(--cb-p-7c3d0b);
+    background: var(--cb-color-cta-soft);
+    border-color: var(--cb-p-fed7aa);
+}
+
+/* Keep non-semantic empty states neutral and low-pressure. */
+.empty-message {
+    color: var(--cb-color-muted) !important;
+    background: var(--cb-color-surface-alt) !important;
+    border-color: var(--cb-color-border) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+    }
+}
+
+/*
+ * Product-wide visual consistency pass.
+ * Authenticated workspaces use navy blue for structure and primary actions,
+ * teal for selected/progress states, and pale blue for section orientation.
+ */
+body[data-authenticated="true"] .home-header {
+    padding: 22px 24px;
+    border-radius: var(--cb-radius-xl);
+    color: var(--cb-color-surface);
+    background:
+        radial-gradient(circle at 90% 0%, rgba(15, 118, 110, .28), transparent 34%),
+        linear-gradient(135deg, var(--cb-color-primary-dark), var(--cb-color-primary) 58%, var(--cb-color-primary-bright));
+    box-shadow: 0 12px 28px rgba(20, 58, 90, .18);
+}
+
+body[data-authenticated="true"] .home-header-copy h1,
+body[data-authenticated="true"] .home-header-copy p,
+body[data-authenticated="true"] .home-smart-status {
+    color: var(--cb-color-surface);
+}
+
+body[data-authenticated="true"] .home-header-copy p,
+body[data-authenticated="true"] .home-smart-status {
+    opacity: .88;
+}
+
+body[data-authenticated="true"] .home-header .home-button-primary {
+    color: var(--cb-color-primary-dark) !important;
+    background: var(--cb-color-surface) !important;
+    box-shadow: 0 8px 20px rgba(8, 28, 45, .18);
+}
+
+body[data-authenticated="true"] :is(
+    .home-card,
+    .application-builder-content .card,
+    .impact-toolbar,
+    .impact-metric-card,
+    .impact-panel,
+    .impact-integrity
+) {
+    border-color: var(--cb-p-d7e3ed);
+    box-shadow: 0 8px 24px rgba(20, 58, 90, .06);
+}
+
+body[data-authenticated="true"] :is(
+    .home-card-heading,
+    .application-card-header,
+    .impact-panel-header
+) h2,
+body[data-authenticated="true"] :is(
+    .home-card-heading,
+    .application-card-header,
+    .impact-panel-header
+) h3 {
+    color: var(--cb-color-primary-dark);
+}
+
+body[data-authenticated="true"] .home-card {
+    overflow: hidden;
+    border-top: 3px solid var(--cb-color-primary);
+}
+
+body[data-authenticated="true"] .home-foundation-list small,
+body[data-authenticated="true"] .impact-count-badge,
+body[data-authenticated="true"] .application-status {
+    color: var(--cb-color-primary);
+    background: var(--cb-color-primary-soft);
+}
+
+body[data-authenticated="true"] :is(
+    .home-card-heading > a,
+    .home-action-list i,
+    .impact-panel-header a
+) {
+    color: var(--cb-color-primary);
+}
+
+/* Application-level orientation shared by Resume, Materials, Interview, Actions, and Activity. */
+.application-workspace-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin: 0 0 20px;
+    padding: 14px 16px;
+    border: 1px solid var(--cb-color-border, var(--cb-p-d8e3eb));
+    border-radius: 16px;
+    background: var(--cb-color-surface);
+    box-shadow: 0 10px 28px rgba(20, 58, 90, 0.07);
+}
+
+.application-workspace-nav-context {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.application-workspace-nav-context strong,
+.application-workspace-nav-context > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.application-workspace-nav-context strong {
+    color: var(--cb-color-ink, var(--cb-color-ink-strong));
+    font-size: 0.95rem;
+}
+
+.application-workspace-nav-context > span:last-child {
+    color: var(--cb-color-muted, var(--cb-p-6d7f92));
+    font-size: 0.78rem;
+}
+
+.application-workspace-nav-eyebrow {
+    color: var(--cb-color-teal);
+    font-size: 0.67rem;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.application-workspace-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.application-workspace-nav-links a {
+    flex: 0 0 auto;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 11px;
+    border: 1px solid transparent;
+    border-radius: var(--cb-radius-sm);
+    color: var(--cb-color-muted-strong, var(--cb-p-52697d));
+    font-size: 0.78rem;
+    font-weight: 750;
+    text-decoration: none;
+}
+
+.application-workspace-nav-links a:hover {
+    border-color: var(--cb-p-d2e5e4);
+    color: var(--cb-color-primary);
+    background: var(--cb-p-f3f8f8);
+}
+
+.application-workspace-nav-links a.active {
+    border-color: var(--cb-p-b8d9d6);
+    color: var(--cb-color-primary);
+    background: linear-gradient(135deg, var(--cb-p-e6f4ef), var(--cb-color-surface-subtle));
+}
+
+/* A consistent, visible keyboard focus ring across both product shells. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 3px solid rgba(15, 118, 110, 0.34);
+    outline-offset: 3px;
+}
+
+@media (max-width: 920px) {
+    .application-workspace-nav {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .application-workspace-nav-links {
+        width: 100%;
+        padding-bottom: 2px;
+    }
+}

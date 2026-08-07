@@ -79,7 +79,7 @@ PROCESSING_MODE_LABELS = {
     **{key: settings.label for key, settings in MODEL_PRESETS.items()},
     "custom": "Custom models",
 }
-REASONING_EFFORTS = ("none", "low", "medium", "high", "xhigh", "max")
+REASONING_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
 
 
 def get_default_processing_mode() -> str:

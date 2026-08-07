@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
-{% from 'macros/ui.html' import page_hero %}
+{% block feature_id %}admin-analytics{% endblock %}
+
+{% from 'macros/ui.html' import page_hero, workspace_state %}
 
 {% block title %}Réunia - Admin Analytics{% endblock %}
 
@@ -43,6 +45,35 @@
         </section>
     </div>
 
+    <div class="admin-workspace-states" aria-live="polite">
+        {{ workspace_state(
+            'admin-loading-state',
+            'loading',
+            'Loading admin analytics',
+            'Collecting product, reliability, support, and user activity metrics for the selected period.',
+            hidden=false,
+            compact=true
+        ) }}
+        {{ workspace_state(
+            'admin-empty-state',
+            'empty',
+            'No admin activity yet',
+            'The dashboard is ready. Metrics will appear after users begin completing Career Bridge workflows.',
+            hidden=true,
+            compact=true
+        ) }}
+        {{ workspace_state(
+            'admin-error-state',
+            'error',
+            'Admin analytics could not be loaded',
+            'Check the analytics storage configuration and access permissions, then retry.',
+            hidden=true,
+            action_label='Retry loading',
+            action_id='admin-retry-state-button',
+            compact=true
+        ) }}
+    </div>
+
     <section class="admin-tab-panel" id="admin-panel-overview" role="tabpanel" aria-labelledby="admin-tab-overview" data-admin-panel="overview"></section>
     <section class="admin-tab-panel" id="admin-panel-product" role="tabpanel" aria-labelledby="admin-tab-product" data-admin-panel="product" hidden></section>
     <section class="admin-tab-panel" id="admin-panel-operations" role="tabpanel" aria-labelledby="admin-tab-operations" data-admin-panel="operations" hidden></section>
@@ -64,7 +95,7 @@
             <div>
                 <span>Activated users</span>
                 <strong id="admin-activation-rate">—</strong>
-                <small id="admin-activation-note">Saved a meeting and opened its review</small>
+                <small id="admin-activation-note">Completed a mock interview and opened Interview Review</small>
             </div>
         </article>
         <article class="admin-kpi-card">
@@ -169,10 +200,10 @@
             </summary>
             <ul>
                 <li>Guests are counted using an anonymous first-party browser identifier.</li>
-                <li>Last active and active-user counts include browser activity plus durable product actions such as desktop sign-ins, recordings, meetings, documents, Live Q&amp;A, and Action Center changes.</li>
+                <li>Last active and active-user counts include browser activity plus durable product actions such as mock interviews, interview reviews, documents, and Career Action Plan changes.</li>
                 <li>Active time and web active days count only while a browser tab is visible and recently used.</li>
                 <li>IP addresses, transcripts, recording audio, and document contents are not stored in analytics; only content-free metadata such as recording length and a coarse country code is used.</li>
-                <li>Product usage reads document metadata and saved-meeting metadata, never document or transcript content.</li>
+                <li>Product usage reads document metadata and saved-interview metadata, never document, recording, or transcript content.</li>
                 <li>Desktop use counts successful desktop-client sign-ins; downloads are tied to an account only when the user is signed in.</li>
                 <li>Your administrator activity is excluded by default.</li>
             </ul>
@@ -207,7 +238,7 @@
 
     <section class="admin-metrics-grid" id="admin-workflow-grid">
         <article class="admin-card">
-            <header class="admin-card-header"><div><span class="admin-card-kicker">Core workflow</span><h2>Meeting funnel</h2><p>Completion across recording, processing, review, and follow-up.</p></div></header>
+            <header class="admin-card-header"><div><span class="admin-card-kicker">Core workflow</span><h2>Interview practice funnel</h2><p>Completion across mock interview recording, processing, Interview Review, and follow-up.</p></div></header>
             <div class="admin-progress-list" id="admin-meeting-funnel"></div>
         </article>
         <article class="admin-card">
@@ -293,8 +324,8 @@
 
     <section class="admin-detail-metric-grid">
         <article class="admin-card" id="admin-document-card"><header class="admin-card-header"><div><span class="admin-card-kicker">Documents</span><h2>Library health</h2><p>How many files users currently store, upload, and successfully process.</p></div></header><div class="admin-stat-list" id="admin-document-health"></div><div class="admin-chip-section"><strong>Current files by type</strong><small>Shows the file extension and number of files currently stored across user libraries.</small><div class="admin-chip-list" id="admin-file-types"></div></div></article>
-        <article class="admin-card" id="admin-actions-card"><header class="admin-card-header"><div><span class="admin-card-kicker">Follow-through</span><h2>Action outcomes</h2><p>Whether meeting follow-up tasks are created, completed, or becoming overdue.</p></div></header><div class="admin-stat-list" id="admin-action-outcomes"></div></article>
-        <article class="admin-card" id="admin-live-ai-card"><header class="admin-card-header"><div><span class="admin-card-kicker">AI assistance</span><h2>Live Q&amp;A and AI</h2><p>How often users request AI help, whether answers succeed, and how quickly they arrive.</p></div></header><div class="admin-stat-list" id="admin-live-ai-health"></div></article>
+        <article class="admin-card" id="admin-actions-card"><header class="admin-card-header"><div><span class="admin-card-kicker">Follow-through</span><h2>Action outcomes</h2><p>Whether interview follow-up tasks are created, completed, or becoming overdue.</p></div></header><div class="admin-stat-list" id="admin-action-outcomes"></div></article>
+        <article class="admin-card" id="admin-live-ai-card"><header class="admin-card-header"><div><span class="admin-card-kicker">AI usage</span><h2>AI requests and cost</h2><p>How often users request AI help and whether usage data can be priced.</p></div></header><div class="admin-stat-list" id="admin-live-ai-health"></div></article>
         <article class="admin-card" id="admin-support-health-card"><header class="admin-card-header"><div><span class="admin-card-kicker">Customer care</span><h2>Support health</h2><p>How many support requests need attention and how quickly administrators respond.</p></div></header><div class="admin-stat-list" id="admin-support-health"></div></article>
     </section>
 
@@ -303,7 +334,7 @@
             <div>
                 <span class="admin-card-kicker">Registered accounts</span>
                 <h2>User activity</h2>
-                <p>Last active includes confirmed browser, desktop, meeting, document, Live Q&amp;A, and Action Center activity. Web active days measure browser engagement only.</p>
+                <p>Last active includes confirmed browser, mock interview, document, and Career Action Plan activity. Web active days measure browser engagement only.</p>
             </div>
             <div class="admin-user-controls">
                 <label class="admin-user-search">
@@ -341,14 +372,9 @@
                 <small>Total current file size</small>
             </article>
             <article>
-                <span>Saved meetings</span>
+                <span>Saved mock interviews</span>
                 <strong id="admin-total-meetings">—</strong>
-                <small>Recorded and saved meeting reviews</small>
-            </article>
-            <article>
-                <span>Live Q&amp;A answers</span>
-                <strong id="admin-total-live-qa-answers">—</strong>
-                <small>Durably counted from this update onward</small>
+                <small>Recorded mock interviews available in Interview Review</small>
             </article>
             <article>
                 <span>Desktop downloads</span>
@@ -372,7 +398,7 @@
                         <th scope="col">Last active</th>
                         <th scope="col">Activated</th>
                         <th scope="col">Web active days</th>
-                        <th scope="col">Saved meetings</th>
+                        <th scope="col">Saved mock interviews</th>
                         <th scope="col">Documents</th>
                         <th scope="col">Actions</th>
                         <th scope="col"><span class="sr-only">Usage details</span></th>
@@ -427,11 +453,10 @@
             <div class="admin-usage-summary-grid">
                 <article><span>Documents</span><strong id="admin-detail-documents">0</strong></article>
                 <article><span>Total size</span><strong id="admin-detail-storage">0 B</strong></article>
-                <article><span>Saved meetings</span><strong id="admin-detail-meetings">0</strong></article>
+                <article><span>Saved mock interviews</span><strong id="admin-detail-meetings">0</strong></article>
                 <article><span>Average recording</span><strong id="admin-detail-recording-average">—</strong></article>
                 <article><span>Longest recording</span><strong id="admin-detail-recording-maximum">—</strong></article>
                 <article><span>Shortest recording</span><strong id="admin-detail-recording-minimum">—</strong></article>
-                <article><span>Live Q&amp;A answers</span><strong id="admin-detail-answers">0</strong></article>
                 <article><span>Desktop downloads</span><strong id="admin-detail-desktop-downloads">0</strong></article>
                 <article><span>Desktop uses</span><strong id="admin-detail-desktop-uses">0</strong></article>
             </div>
@@ -452,13 +477,13 @@
                 </div>
             </section>
 
-            <p class="admin-live-qa-tracking-note" id="admin-recording-duration-tracking-note"></p>
+            <p class="admin-usage-tracking-note" id="admin-recording-duration-tracking-note"></p>
 
             <div class="admin-usage-detail-grid">
                 <section class="admin-usage-list-card">
                     <header>
                         <div>
-                            <h3>Document Library</h3>
+                            <h3>Career Evidence Library</h3>
                             <p>Current files and their individual sizes.</p>
                         </div>
                     </header>
@@ -468,16 +493,15 @@
                 <section class="admin-usage-list-card">
                     <header>
                         <div>
-                            <h3>Saved meetings</h3>
-                            <p>Meetings recorded, processed, and saved.</p>
+                            <h3>Saved mock interviews</h3>
+                            <p>Mock interviews recorded, processed, and saved.</p>
                         </div>
                     </header>
                     <div class="admin-usage-list" id="admin-detail-meeting-list"></div>
                 </section>
             </div>
 
-            <p class="admin-live-qa-tracking-note" id="admin-live-qa-tracking-note"></p>
-            <p class="admin-live-qa-tracking-note" id="admin-desktop-tracking-note"></p>
+            <p class="admin-usage-tracking-note" id="admin-desktop-tracking-note"></p>
         </div>
     </section>
 </div>

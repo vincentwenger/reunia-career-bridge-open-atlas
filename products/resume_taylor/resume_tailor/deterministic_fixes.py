@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import re
 
-from .bullet_text import has_bullet_structure_artifacts, normalize_resume_bullet_text
+from .bullet_text import (
+    has_bullet_structure_artifacts,
+    normalize_resume_bullet_text,
+    normalize_resume_bullet_terminal_punctuation,
+    summarize_confirmation_answer_as_bullet,
+)
 from .models import (
     AuditIssue,
     BulletProposal,
@@ -13,6 +18,15 @@ from .models import (
     TailoringProposal,
 )
 from .confirmation import ensure_confirmed_answers_visible
+from .bullet_selection import select_job_aligned_bullets
+from .proposal_integrity import (
+    BULLET_MAPPING_FALLBACK_NOTE,
+    DETERMINISTIC_DUPLICATE_PREFIX,
+    DETERMINISTIC_EXCLUDE_PREFIX,
+    DETERMINISTIC_INCLUDE_PREFIX,
+    DETERMINISTIC_TRANSFERABLE_INCLUDE_PREFIX,
+)
+from .grounding import validate_candidate_claim
 from .skill_rules import balance_skill_categories
 from .validation import (
     normalize,
@@ -25,6 +39,26 @@ from .validation import (
 
 _PRIORITY_WEIGHT = {"critical": 3, "important": 2, "secondary": 1}
 _STATUS_WEIGHT = {"supported": 3, "partial": 2, "unsupported": 1}
+
+_RECONCILIATION_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "as",
+    "at",
+    "by",
+    "for",
+    "from",
+    "in",
+    "into",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "using",
+    "with",
+}
 
 
 def _dedupe(values: list[str]) -> list[str]:
@@ -55,106 +89,107 @@ def _ensure_period(text: str) -> str:
     return f"{text}." if text else ""
 
 
-def _build_safe_summary(profile: CandidateProfile, preferred: str) -> str:
-    """Return a 3-4 sentence, 50-80 word summary using only profile-backed facts."""
+def _build_safe_summary(
+    profile: CandidateProfile,
+    analysis: JobAnalysis,
+    preferred: str,
+) -> str:
+    """Return a 3-4 sentence, 50-80 word summary using only source-backed text."""
     cleaned_preferred = remove_adjacent_repeated_words(preferred).strip()
     cleaned_source_summary = remove_adjacent_repeated_words(
         profile.current_summary
     ).strip()
-    for candidate in (cleaned_preferred, cleaned_source_summary):
-        if _summary_is_valid(candidate):
-            return candidate
+    job_context = "\n".join(
+        [
+            analysis.target_title,
+            analysis.target_company,
+            *(requirement.requirement for requirement in analysis.requirements),
+            *(keyword for requirement in analysis.requirements for keyword in requirement.keywords),
+        ]
+    )
 
-    source_sentences = _sentence_parts(cleaned_source_summary)
-    preferred_sentences = _sentence_parts(cleaned_preferred)
-    sentences: list[str] = []
-    seen: set[str] = set()
-    for item in preferred_sentences + source_sentences:
-        key = normalize(item)
-        if key and key not in seen:
-            sentences.append(item)
-            seen.add(key)
-        if len(sentences) == 4:
+    # Preserve a model-written summary only when the complete text is already
+    # structurally valid and every claim is traceable to verified evidence.
+    if _summary_is_valid(cleaned_preferred) and not validate_candidate_claim(
+        cleaned_preferred,
+        [profile.all_source_text()],
+        context_texts=[job_context],
+        allow_gap_context=True,
+    ):
+        return cleaned_preferred
+
+    # Otherwise compose exclusively from verbatim source-summary sentences,
+    # source bullets, and candidate-confirmed supplemental statements.
+    source_units: list[str] = []
+    source_units.extend(_sentence_parts(cleaned_source_summary))
+    source_units.extend(
+        remove_adjacent_repeated_words(bullet.text).strip().rstrip(".!?")
+        for experience in profile.experiences
+        for bullet in experience.bullets
+        if remove_adjacent_repeated_words(bullet.text).strip()
+    )
+    source_units.extend(
+        remove_adjacent_repeated_words(item.statement).strip().rstrip(".!?")
+        for item in profile.supplemental_evidence
+        if remove_adjacent_repeated_words(item.statement).strip()
+    )
+    source_units = _dedupe(source_units)
+
+    selected: list[str] = []
+    for unit in source_units:
+        if not unit:
+            continue
+        selected.append(unit)
+        if len(selected) >= 3 and sum(word_count(item) for item in selected) >= 52:
+            break
+        if len(selected) == 4:
             break
 
-    employers = [experience.employer for experience in profile.experiences if experience.employer]
-    titles = [experience.title for experience in profile.experiences if experience.title]
+    # Profiles with unusually terse source text can be expanded using only
+    # exact verified skill names and exact employer/title values.
+    if len(selected) < 3:
+        skills = _dedupe(profile.all_verified_skills())
+        if skills:
+            selected.append("Verified skills: " + ", ".join(skills[:12]))
+    if len(selected) < 3:
+        for experience in profile.experiences:
+            selected.append(
+                f"Documented role: {experience.title} at {experience.employer}"
+            )
+            if len(selected) >= 3:
+                break
+    while len(selected) < 3:
+        selected.append("Documented professional experience from the Verified Resume Evidence")
+
+    selected = selected[:4]
     skills = _dedupe(profile.all_verified_skills())
-    education = profile.education[0] if profile.education else None
-
-    fallbacks = []
-    if skills:
-        fallbacks.append("Verified skills include " + ", ".join(skills[:8]))
-    if employers:
-        role_text = ", ".join(titles[:3]) if titles else "professional roles"
-        fallbacks.append(
-            f"Professional experience includes {role_text} at {', '.join(employers[:3])}"
-        )
-    if education:
-        fallbacks.append(
-            f"Education includes {education.credential} from {education.institution}"
-        )
-    fallbacks.append("The resume documents experience, skills, and accomplishments from the candidate profile")
-
-    for item in fallbacks:
-        if len(sentences) >= 3:
-            break
-        key = normalize(item)
-        if key and key not in seen:
-            sentences.append(item)
-            seen.add(key)
-
-    sentences = sentences[:4]
-    summary = " ".join(_ensure_period(item) for item in sentences if item)
-
-    # If the summary is short, expand only with verified skills and documented employers.
-    if word_count(summary) < 50 and skills:
-        extra = "Additional verified capabilities include " + ", ".join(skills[8:16] or skills[:8])
-        if len(sentences) < 4:
-            sentences.append(extra)
+    if sum(word_count(item) for item in selected) < 50 and skills:
+        verified_skill_text = "Verified skills: " + ", ".join(skills[:16])
+        if len(selected) < 4:
+            selected.append(verified_skill_text)
         else:
-            sentences[-1] = sentences[-1].rstrip(".!?") + "; " + extra[0].lower() + extra[1:]
-        summary = " ".join(_ensure_period(item) for item in sentences[:4] if item)
+            selected[-1] = selected[-1].rstrip(".!?") + "; " + verified_skill_text
 
-    if word_count(summary) < 50 and employers:
-        extra = "The documented work history spans " + ", ".join(employers)
-        if len(sentences) < 4:
-            sentences.append(extra)
-        else:
-            sentences[-1] = sentences[-1].rstrip(".!?") + "; " + extra[0].lower() + extra[1:]
-        summary = " ".join(_ensure_period(item) for item in sentences[:4] if item)
-
-    # Keep at most 80 words while retaining 3 sentences. Truncate only the final sentence.
-    parts = _sentence_parts(summary)
-    while len(parts) < 3:
-        parts.append("The candidate profile provides verified professional evidence")
-    parts = parts[:4]
-    while sum(word_count(_ensure_period(part)) for part in parts) > 80 and parts:
-        last_words = parts[-1].split()
-        if len(last_words) > 6:
-            parts[-1] = " ".join(last_words[:-1])
-        elif len(parts) == 4:
-            parts.pop()
+    # Trim only the final source-backed sentence to satisfy the upper bound.
+    while sum(word_count(item) for item in selected) > 80:
+        words = selected[-1].split()
+        if len(words) > 8:
+            selected[-1] = " ".join(words[:-1])
+        elif len(selected) == 4:
+            selected.pop()
         else:
             break
-    summary = " ".join(_ensure_period(item) for item in parts)
 
-    # Last-resort padding with verified skill names. This remains profile-backed.
-    if word_count(summary) < 50:
-        padding = skills or employers or ["documented professional experience"]
-        words = summary.rstrip(".").split()
-        index = 0
-        while len(words) < 50:
-            words.extend(str(padding[index % len(padding)]).split())
-            index += 1
-        words = words[:50]
-        # Preserve 3 sentences by appending the padding to the final sentence.
-        summary_parts = _sentence_parts(summary)
-        prefix = " ".join(_ensure_period(item) for item in summary_parts[:-1])
-        used = word_count(prefix)
-        final_words = words[used:]
-        summary = (prefix + " " + " ".join(final_words).rstrip(".") + ".").strip()
-
+    summary = " ".join(_ensure_period(item) for item in selected if item)
+    # Do not return a fallback that fails its own grounding gate. A source summary
+    # is safer than preserving unsupported generated language, even when terse.
+    if validate_candidate_claim(
+        summary,
+        [profile.all_source_text()],
+        context_texts=[job_context],
+        allow_gap_context=True,
+    ):
+        return cleaned_source_summary
     return summary
 
 
@@ -189,9 +224,140 @@ def _requirement_score(ids: list[str], analysis: JobAnalysis) -> int:
     return sum(_PRIORITY_WEIGHT[lookup[item].priority] for item in set(ids) if item in lookup)
 
 
+def _bullet_grounding_evidence(
+    profile: CandidateProfile,
+    source_text: str,
+    evidence_note: str,
+) -> list[str]:
+    grounding_evidence = [source_text]
+    evidence_note_normalized = normalize(evidence_note)
+    for evidence_item in profile.supplemental_evidence:
+        if normalize(evidence_item.id) in evidence_note_normalized:
+            grounding_evidence.append(evidence_item.statement)
+            grounding_evidence.extend(evidence_item.verified_skills)
+    for verified_skill in profile.all_verified_skills():
+        if normalize(verified_skill) in evidence_note_normalized:
+            grounding_evidence.append(verified_skill)
+    return grounding_evidence
+
+
+def _reconciliation_token(value: str) -> str:
+    """Return a conservative lightweight stem for requirement comparison."""
+
+    token = value.casefold()
+    concept_prefixes = {
+        "resolut": "resolv",
+        "resolv": "resolv",
+        "troubleshoot": "troubleshoot",
+        "transform": "transform",
+        "integrat": "integrat",
+        "aggregat": "aggregat",
+        "collaborat": "collaborat",
+        "automat": "automat",
+        "analy": "analy",
+    }
+    for prefix, normalized in concept_prefixes.items():
+        if token.startswith(prefix):
+            return normalized
+    if token.endswith("ies") and len(token) > 5:
+        token = token[:-3] + "y"
+    elif token.endswith("ing") and len(token) > 6:
+        token = token[:-3]
+    elif token.endswith("ed") and len(token) > 5:
+        token = token[:-2]
+    elif token.endswith("es") and len(token) > 5:
+        token = token[:-2]
+    elif token.endswith("s") and len(token) > 4:
+        token = token[:-1]
+    return token
+
+
+def _reconciliation_tokens(value: str) -> set[str]:
+    return {
+        _reconciliation_token(token)
+        for token in re.findall(r"[a-z0-9+#.]+", value.casefold())
+        if len(token) >= 3 and token not in _RECONCILIATION_STOPWORDS
+    }
+
+
+def _infer_requirement_ids_for_bullet(
+    source_id: str,
+    source_text: str,
+    analysis: JobAnalysis,
+    proposal: TailoringProposal,
+) -> list[str]:
+    """Infer conservative requirement links for an omitted selection record.
+
+    Evidence-match links are authoritative. A bounded lexical fallback is used only
+    when at least two meaningful requirement concepts appear in the verified bullet.
+    """
+
+    inferred: set[str] = {
+        match.requirement_id
+        for match in proposal.evidence_matches
+        if match.status != "unsupported" and source_id in match.evidence_ids
+    }
+    source_tokens = _reconciliation_tokens(source_text)
+    for requirement in analysis.requirements:
+        requirement_tokens = _reconciliation_tokens(
+            " ".join([requirement.requirement, *requirement.keywords])
+        )
+        if len(source_tokens & requirement_tokens) >= 2:
+            inferred.add(requirement.id)
+    return [
+        requirement.id
+        for requirement in analysis.requirements
+        if requirement.id in inferred
+    ]
+
+
+def repair_unsupported_candidate_claims(
+    profile: CandidateProfile,
+    analysis: JobAnalysis,
+    proposal: TailoringProposal,
+) -> TailoringProposal:
+    """Remove unsupported generated candidate claims without changing workflow metadata.
+
+    Unlike the full deterministic repair pass, this function preserves candidate
+    questions, inclusion choices, evidence decisions, and Baseline Resume
+    findings. It is safe to run immediately after every model-generated proposal.
+    """
+
+    repaired = proposal.model_copy(deep=True)
+    repaired.professional_summary = _build_safe_summary(
+        profile,
+        analysis,
+        repaired.professional_summary,
+    )
+    source_lookup = profile.bullet_lookup()
+    for bullet in repaired.bullet_proposals:
+        source_text = source_lookup.get(bullet.source_bullet_id)
+        if source_text is None or not bullet.include:
+            continue
+        findings = validate_candidate_claim(
+            bullet.proposed_text,
+            _bullet_grounding_evidence(profile, source_text, bullet.evidence_note),
+            require_overlap=True,
+        )
+        if findings:
+            bullet.proposed_text = source_text.strip()
+            bullet.evidence_note = (
+                bullet.evidence_note.strip()
+                or f"Directly supported by source bullet {bullet.source_bullet_id}."
+            )
+    return repaired
+
+
 def _clean_bullets(
     profile: CandidateProfile, analysis: JobAnalysis, proposal: TailoringProposal
 ) -> list[BulletProposal]:
+    """Map every verified bullet, then select the job-aligned set deterministically.
+
+    The AI-generated ``include`` value is intentionally ignored. The model may map
+    requirements and propose grounded wording, while one simple two-pass selector
+    controls which bullets appear in the Job-Aligned Resume.
+    """
+
     source_lookup = profile.bullet_lookup()
     confirmed_source_ids = {
         evidence.source_bullet_id
@@ -199,13 +365,13 @@ def _clean_bullets(
         if evidence.source == "candidate_confirmation" and evidence.source_bullet_id
     }
     requirement_ids = {item.id for item in analysis.requirements}
+    requirement_lookup = {item.id: item for item in analysis.requirements}
     first_by_id: dict[str, BulletProposal] = {}
     for item in proposal.bullet_proposals:
         if item.source_bullet_id in source_lookup and item.source_bullet_id not in first_by_id:
             first_by_id[item.source_bullet_id] = item
 
-    result: list[BulletProposal] = []
-    restored_ids: set[str] = set()
+    mapped: list[BulletProposal] = []
     supplemental_numbers = {
         token
         for evidence in profile.supplemental_evidence
@@ -216,91 +382,246 @@ def _clean_bullets(
             existing = first_by_id.get(source.id)
             source_text = remove_adjacent_repeated_words(source.text).strip()
             source_is_confirmed = source.id in confirmed_source_ids
-            if source_is_confirmed or has_bullet_structure_artifacts(source_text):
-                source_text = normalize_resume_bullet_text(
-                    source_text, max_words=35 if source_is_confirmed else 55
+            use_past_tense = not bool(
+                re.search(
+                    r"\b(?:present|current|now|ongoing|today|actuel|actuelle|actuellement|en cours)\b",
+                    experience.dates or "",
+                    re.IGNORECASE,
                 )
+            )
+            if source_is_confirmed:
+                source_text = summarize_confirmation_answer_as_bullet(
+                    source_text,
+                    max_words=35,
+                    use_past_tense=use_past_tense,
+                )
+            elif has_bullet_structure_artifacts(source_text):
+                source_text = normalize_resume_bullet_text(source_text, max_words=55)
 
             if existing is None:
-                restored_ids.add(source.id)
-                result.append(
-                    BulletProposal(
-                        source_bullet_id=source.id,
-                        include=True,
-                        proposed_text=source_text,
-                        matched_requirement_ids=[],
-                        evidence_note=f"Directly supported by source bullet {source.id}.",
+                proposed_text = source_text
+                existing_matches: list[str] = []
+                evidence_note = BULLET_MAPPING_FALLBACK_NOTE
+            else:
+                proposed_text = remove_adjacent_repeated_words(existing.proposed_text).strip()
+                if source_is_confirmed:
+                    proposed_text = summarize_confirmation_answer_as_bullet(
+                        proposed_text,
+                        max_words=35,
+                        use_past_tense=use_past_tense,
                     )
+                elif has_bullet_structure_artifacts(proposed_text):
+                    proposed_text = normalize_resume_bullet_text(
+                        proposed_text,
+                        max_words=55,
+                    )
+                source_numbers = numeric_tokens(source.text)
+                new_numbers = numeric_tokens(proposed_text) - source_numbers - supplemental_numbers
+                grounding_findings = (
+                    validate_candidate_claim(
+                        proposed_text,
+                        _bullet_grounding_evidence(
+                            profile, source.text, existing.evidence_note
+                        ),
+                        require_overlap=True,
+                    )
+                    if proposed_text
+                    else []
                 )
-                continue
-
-            text = remove_adjacent_repeated_words(existing.proposed_text).strip()
-            if source_is_confirmed or has_bullet_structure_artifacts(text):
-                text = normalize_resume_bullet_text(
-                    text, max_words=35 if source_is_confirmed else 55
+                if (
+                    not proposed_text
+                    or new_numbers
+                    or grounding_findings
+                    or word_count(proposed_text) > 55
+                ):
+                    proposed_text = source_text
+                existing_matches = [
+                    requirement_id
+                    for requirement_id in _dedupe(existing.matched_requirement_ids)
+                    if requirement_id in requirement_ids
+                ]
+                evidence_note = existing.evidence_note.strip() or (
+                    f"Directly supported by source bullet {source.id}."
                 )
-            source_numbers = numeric_tokens(source.text)
-            new_numbers = numeric_tokens(text) - source_numbers - supplemental_numbers
-            if not text or new_numbers or word_count(text) > 55:
-                text = source_text
 
-            matched = [
-                requirement_id
-                for requirement_id in _dedupe(existing.matched_requirement_ids)
-                if requirement_id in requirement_ids
-            ]
-            result.append(
-                existing.model_copy(
-                    update={
-                        "proposed_text": text,
-                        "matched_requirement_ids": matched,
-                        "evidence_note": existing.evidence_note.strip()
-                        or f"Directly supported by source bullet {source.id}.",
-                    }
+            proposed_text = normalize_resume_bullet_terminal_punctuation(proposed_text)
+
+            # Evidence-match links and conservative lexical matches are combined for
+            # every bullet, not only malformed or omitted model records.
+            matched = _dedupe(
+                [
+                    *existing_matches,
+                    *_infer_requirement_ids_for_bullet(
+                        source.id,
+                        source.text,
+                        analysis,
+                        proposal,
+                    ),
+                ]
+            )
+            mapped.append(
+                BulletProposal(
+                    source_bullet_id=source.id,
+                    include=False,
+                    proposed_text=proposed_text,
+                    matched_requirement_ids=matched,
+                    evidence_note=evidence_note,
                 )
             )
 
-    # Enforce employer-specific selection ranges deterministically.
-    by_id = {item.source_bullet_id: item for item in result}
+    by_id = {item.source_bullet_id: item for item in mapped}
     limits = [(6, 7), (3, 4), (2, 3)]
+
     for index, experience in enumerate(profile.experiences):
         minimum, maximum = limits[index] if index < len(limits) else (2, 3)
         items = [by_id[bullet.id] for bullet in experience.bullets]
-        source_order = {bullet.id: position for position, bullet in enumerate(experience.bullets)}
+        source_order = {
+            bullet.id: position for position, bullet in enumerate(experience.bullets)
+        }
+        selection = select_job_aligned_bullets(
+            items,
+            analysis.requirements,
+            source_order=source_order,
+            confirmed_source_ids=confirmed_source_ids,
+            minimum_count=minimum,
+            maximum_count=maximum,
+        )
 
-        def rank(item: BulletProposal) -> tuple[int, int, int, int, int]:
-            return (
-                1 if item.include else 0,
-                1 if item.source_bullet_id in confirmed_source_ids else 0,
-                1 if item.source_bullet_id in restored_ids else 0,
-                _requirement_score(item.matched_requirement_ids, analysis),
-                -source_order[item.source_bullet_id],
-            )
-
-        selected = sorted(items, key=rank, reverse=True)[:maximum]
-        selected_ids = {item.source_bullet_id for item in selected if item.include}
-        if len(selected_ids) < minimum:
-            candidates = [item for item in sorted(items, key=rank, reverse=True) if item.source_bullet_id not in selected_ids]
-            for item in candidates:
-                selected_ids.add(item.source_bullet_id)
-                if len(selected_ids) >= minimum:
-                    break
-        if len(selected_ids) > maximum:
-            selected_ids = {
-                item.source_bullet_id
-                for item in sorted(
-                    [item for item in items if item.source_bullet_id in selected_ids],
-                    key=rank,
-                    reverse=True,
-                )[:maximum]
-            }
-
+        item_lookup = {item.source_bullet_id: item for item in items}
         for item in items:
-            by_id[item.source_bullet_id] = item.model_copy(
-                update={"include": item.source_bullet_id in selected_ids}
+            selected = item.source_bullet_id in selection.selected_ids
+            duplicate = item.source_bullet_id in selection.duplicate_ids
+            labels = [
+                requirement_lookup[requirement_id].requirement
+                for requirement_id in item.matched_requirement_ids
+                if requirement_id in requirement_lookup
+            ]
+            score = selection.scores[item.source_bullet_id]
+            score_detail = (
+                f"Job relevance {score.relevance}/3; evidence strength "
+                f"{score.evidence_strength}/2; unique coverage "
+                f"{score.unique_coverage}/2."
             )
 
-    return [by_id[bullet.id] for experience in profile.experiences for bullet in experience.bullets]
+            selected_instead_ids = (
+                []
+                if selected
+                else list(
+                    selection.selected_instead_ids.get(item.source_bullet_id, ())
+                )
+            )
+            comparison_reasons: dict[str, list[str]] = {}
+            item_requirements = set(item.matched_requirement_ids)
+            for selected_id in selected_instead_ids:
+                other = item_lookup[selected_id]
+                other_score = selection.scores[selected_id]
+                other_requirements = set(other.matched_requirement_ids)
+                shared_ids = item_requirements & other_requirements
+                additional_ids = other_requirements - item_requirements
+                reasons: list[str] = []
+                if shared_ids:
+                    shared_labels = [
+                        requirement_lookup[requirement_id].requirement
+                        for requirement_id in shared_ids
+                        if requirement_id in requirement_lookup
+                    ]
+                    if shared_labels:
+                        reasons.append(
+                            "Supports the same requirement: "
+                            + "; ".join(shared_labels)
+                        )
+                if other_score.unique_coverage > score.unique_coverage:
+                    reasons.append("Provides more unique job-requirement coverage")
+                if other_score.evidence_strength > score.evidence_strength:
+                    reasons.append("Provides stronger or more specific evidence")
+                if other_score.relevance > score.relevance:
+                    reasons.append("Has a stronger direct job match")
+                if additional_ids:
+                    additional_labels = [
+                        requirement_lookup[requirement_id].requirement
+                        for requirement_id in additional_ids
+                        if requirement_id in requirement_lookup
+                    ]
+                    if additional_labels:
+                        reasons.append(
+                            "Also covers: " + "; ".join(additional_labels)
+                        )
+                if duplicate and not reasons:
+                    reasons.append("Covers substantially similar evidence with less duplication")
+                if not reasons:
+                    reasons.append(
+                        "Ranked higher after the deterministic tie-break within the role's bullet limit"
+                    )
+                comparison_reasons[selected_id] = reasons
+
+            if selected and labels:
+                note = (
+                    f"{DETERMINISTIC_INCLUDE_PREFIX} Supports "
+                    + "; ".join(labels)
+                    + f" with specific verified evidence. {score_detail}"
+                )
+            elif selected:
+                note = (
+                    f"{DETERMINISTIC_TRANSFERABLE_INCLUDE_PREFIX} Selected to complete "
+                    "the role with specific, non-duplicative verified evidence. "
+                    + score_detail
+                )
+            elif duplicate:
+                requirement_text = (
+                    " It supports " + "; ".join(labels) + ", but"
+                    if labels
+                    else " It"
+                )
+                comparison_text = (
+                    " The higher-ranked related accomplishments are identified below."
+                    if selected_instead_ids
+                    else ""
+                )
+                note = (
+                    f"{DETERMINISTIC_DUPLICATE_PREFIX}{requirement_text} overlaps with a "
+                    "stronger selected accomplishment. The source evidence remains available "
+                    "for manual restoration."
+                    + comparison_text
+                    + " "
+                    + score_detail
+                )
+            elif labels:
+                comparison_text = (
+                    " The higher-ranked related accomplishments are identified below."
+                    if selected_instead_ids
+                    else ""
+                )
+                note = (
+                    f"{DETERMINISTIC_EXCLUDE_PREFIX} This accomplishment supports "
+                    + "; ".join(labels)
+                    + ", but other selected evidence ranked higher or covered the same "
+                    "requirement more uniquely within the available resume space."
+                    + comparison_text
+                    + " "
+                    + score_detail
+                )
+            else:
+                note = (
+                    f"{DETERMINISTIC_EXCLUDE_PREFIX} This accomplishment is valid, but it "
+                    "does not directly support a target-job requirement and ranked below "
+                    "matched evidence within the available resume space. "
+                    + score_detail
+                )
+
+            by_id[item.source_bullet_id] = item.model_copy(
+                update={
+                    "include": selected,
+                    "evidence_note": note,
+                    "selected_instead_ids": selected_instead_ids,
+                    "selection_comparison_reasons": comparison_reasons,
+                }
+            )
+
+    return [
+        by_id[bullet.id]
+        for experience in profile.experiences
+        for bullet in experience.bullets
+    ]
 
 
 def _clean_evidence(
@@ -381,11 +702,12 @@ def remove_adjacent_repeated_words_from_proposal(
         )
     for bullet in repaired.bullet_proposals:
         cleaned = remove_adjacent_repeated_words(bullet.proposed_text).strip()
-        bullet.proposed_text = (
+        normalized = (
             normalize_resume_bullet_text(cleaned, max_words=55)
             if has_bullet_structure_artifacts(cleaned)
             else cleaned
         )
+        bullet.proposed_text = normalize_resume_bullet_terminal_punctuation(normalized)
     return repaired
 
 
@@ -396,11 +718,17 @@ def apply_deterministic_repairs(
 ) -> TailoringProposal:
     """Normalize every rule enforced by validate_proposal without inventing evidence."""
     repaired = remove_adjacent_repeated_words_from_proposal(proposal)
-    repaired.professional_summary = _build_safe_summary(profile, repaired.professional_summary)
+    repaired.professional_summary = _build_safe_summary(
+        profile, analysis, repaired.professional_summary
+    )
     repaired.skills = _clean_skills(profile, analysis, repaired)
     repaired.bullet_proposals = _clean_bullets(profile, analysis, repaired)
     repaired.evidence_matches = _clean_evidence(profile, analysis, repaired)
     repaired = ensure_confirmed_answers_visible(profile, repaired)
+    for bullet in repaired.bullet_proposals:
+        bullet.proposed_text = normalize_resume_bullet_terminal_punctuation(
+            bullet.proposed_text
+        )
     gap_ids = {
         match.requirement_id
         for match in repaired.evidence_matches

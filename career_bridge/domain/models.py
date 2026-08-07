@@ -243,7 +243,7 @@ class CareerDocument:
 
 @dataclass(frozen=True, slots=True)
 class Resume:
-    """A reusable source resume owned by a candidate, before job tailoring."""
+    """An Imported Resume owned by a candidate before job tailoring."""
 
     id: str
     candidate_profile_id: str
@@ -886,7 +886,7 @@ class JobApplicationBundle:
         if self.resume.career_background_id != self.career_background.id:
             raise ValueError("resume does not use the application's career background")
         if self.resume.id not in self.career_background.source_resume_ids:
-            raise ValueError("career background does not reference the source resume")
+            raise ValueError("career background does not reference the Imported Resume")
         if self.target_job_description.id != app.target_job_description_id:
             raise ValueError("target job description does not belong to application")
         if self.target_job_description.application_id != app.id:

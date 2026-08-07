@@ -1,0 +1,37 @@
+PROPRIETARY SOURCE-AVAILABLE LICENSE
+
+Copyright © 2026 Vincent Wenger. All rights reserved.
+
+This source code and its accompanying documentation (the "Software") are
+proprietary. The Software is made publicly viewable for evaluation of the
+Réunia Career Bridge Open Atlas hackathon submission and related technical
+review only.
+
+Subject to the restrictions below, you may download, clone, and execute the
+Software locally solely to evaluate the submission, verify its functionality,
+or conduct a private technical review.
+
+Except with prior written permission from the copyright owner, you may not:
+
+- use the Software to operate a production or public service;
+- use the Software for commercial purposes;
+- copy, modify, adapt, merge, or create derivative works from the Software;
+- publish, distribute, sublicense, sell, rent, lease, or otherwise transfer the
+  Software or substantial portions of it;
+- remove or alter copyright, trademark, attribution, or proprietary notices; or
+- use Réunia, Réunia Career Bridge, associated logos, branding, or product
+  identity.
+
+Third-party libraries, frameworks, APIs, fonts, and other dependencies remain
+subject to their respective licenses and terms. This license does not grant
+rights to third-party materials, user data, credentials, trademarks, domains,
+or service accounts.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT
+PERMITTED BY LAW, THE COPYRIGHT OWNER WILL NOT BE LIABLE FOR ANY CLAIM,
+DAMAGES, OR OTHER LIABILITY ARISING FROM OR RELATED TO THE SOFTWARE OR ITS USE.
+
+For commercial licensing, partnerships, or other permissions, contact the
+repository owner.

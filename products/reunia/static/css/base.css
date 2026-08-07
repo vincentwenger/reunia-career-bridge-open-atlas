@@ -1,14 +1,3 @@
-:root {
-    color-scheme: light;
-    --ma-primary: #0f4c81;
-    --ma-primary-light: #1976d2;
-    --ma-text: #1f2937;
-    --ma-muted: #6b7280;
-    --ma-border: #eef2f7;
-    --ma-surface: #ffffff;
-    --ma-page-background: linear-gradient(180deg, #f4f8fc 0%, #ffffff 100%);
-}
-
 *,
 *::before,
 *::after {
@@ -23,9 +12,9 @@ html {
 body {
     min-height: 100vh;
     margin: 0;
-    font-family: "Segoe UI", Arial, sans-serif;
-    background: var(--ma-page-background);
-    color: var(--ma-text);
+    font-family: var(--cb-font-family-sans);
+    background: var(--cb-gradient-page);
+    color: var(--cb-color-ink);
 }
 
 button,
@@ -49,10 +38,10 @@ svg {
     top: 8px;
     left: 8px;
     z-index: 10000;
-    padding: 10px 14px;
-    border-radius: 10px;
-    background: #111827;
-    color: #ffffff;
+    padding: var(--cb-space-3) var(--cb-space-4);
+    border-radius: var(--cb-radius-md);
+    background: var(--cb-color-navy-slate);
+    color: var(--cb-color-surface);
     text-decoration: none;
     transform: translateY(-150%);
     transition: transform 0.2s ease;

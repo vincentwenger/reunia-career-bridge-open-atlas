@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% block feature_id %}help-support{% endblock %}
+
 {% from 'macros/ui.html' import page_hero %}
 
 {% block title %}Help & Support - Réunia{% endblock %}
@@ -36,7 +38,7 @@
                 <span class="support-shortcut-arrow" aria-hidden="true">→</span>
             </a>
 
-            <a class="support-shortcut-card" href="{{ request.script_root }}/application-builder/">
+            <a class="support-shortcut-card" href="{{ request.script_root }}/applications/">
                 <span class="support-shortcut-icon" aria-hidden="true">🧠</span>
                 <span>
                     <strong>Application &amp; Interview Preparation</strong>
@@ -58,7 +60,7 @@
                 <span class="support-shortcut-icon" aria-hidden="true">📋</span>
                 <span>
                     <strong>Review &amp; Improve</strong>
-                    <small>Interview Review, Interview Scorecard, Career Action Plan, Career Progress, and coaching questions.</small>
+                    <small>Interview Review, Interview Scorecard, Career Action Plan, Progress &amp; Outcomes, and coaching questions.</small>
                 </span>
                 <span class="support-shortcut-arrow" aria-hidden="true">→</span>
             </a>
@@ -150,11 +152,11 @@
                             <option value="">Select a feature or area</option>
                             <option value="getting-started">Home page or getting started</option>
                             <option value="preparation">Application &amp; Interview Preparation</option>
-                            <option value="recorder">Mock Interview Recorder</option>
+                            <option value="recorder">Adaptive Mock Interview</option>
                             <option value="meeting-review">Interview Review</option>
                             <option value="sharing">Interview review sharing</option>
                             <option value="action-center">Career Action Plan</option>
-                            <option value="analytics">Career Progress</option>
+                            <option value="analytics">Progress &amp; Outcomes</option>
                             <option value="settings">Settings</option>
                             <option value="account">Profile or account</option>
                             <option value="other">Other</option>
@@ -256,41 +258,49 @@
                 <div class="support-faq-search">
                     <label class="sr-only" for="supportFaqSearch">Search quick answers</label>
                     <span aria-hidden="true">⌕</span>
-                    <input id="supportFaqSearch" type="search" placeholder="Search recording, actions, sharing…" autocomplete="off">
+                    <input id="supportFaqSearch" type="search" placeholder="Search mock interviews, actions, sharing…" autocomplete="off">
                 </div>
 
                 <div class="support-faq-list" id="supportFaqList">
                     <details data-support-faq>
                         <summary>Where should I start?</summary>
-                        <p>Use Career Bridge to create an Application Workspace, connect Application Materials and your Career Profile, prepare evidence-backed answers, run a Mock Interview, then review the transcript, Interview Scorecard, Career Action Plan, and Career Progress.</p>
+                        <p>Use Career Bridge to create an Application Workspace, connect Application Materials and your Career Profile, prepare evidence-backed answers, run a Mock Interview, then review the transcript, Interview Scorecard, Career Action Plan, and Progress &amp; Outcomes.</p>
                     </details>
                     <details data-support-faq>
                         <summary>What is included in interview preparation?</summary>
-                        <p>Application Materials stores the resume, job posting, company notes, and recruiter messages for one target position. Career Profile stores professional background, accomplishments, preferences, and constraints. Career Evidence Library searches verified projects, achievements, and experience.</p>
+                        <p>Application Materials stores the resume, job posting, company notes, selected evidence, and application-only files for one target position. The application also tracks interview dates, follow-up dates, status, and custom next steps. Career Profile stores career direction, international context, preferences, and constraints; Baseline Resume stores extracted resume facts. Career Evidence Library searches verified projects, achievements, and experience.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>How do I finish or discard a browser recording?</summary>
-                        <p>Select <strong>Stop &amp; Process</strong> to upload, transcribe, analyze, and save the mock-interview session. Select <strong>Discard Recording</strong> to stop without creating a saved practice session.</p>
+                        <summary>Which communication and calendar features are available?</summary>
+                        <p>The current release tracks upcoming interview dates, application follow-up dates, custom next steps, interview-preparation actions, and post-interview thank-you actions. It does not yet provide recruiter-message history, message drafting, calendar synchronization, or cover-letter generation. Those are planned secondary features after the core application, resume, interview, and action-plan workflows.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>Why is interviewer prompt audio missing?</summary>
-                        <p>Turn on <strong>Capture interviewer audio</strong> before starting, choose the practice prompt tab or screen, and enable the browser option to share its audio. Microphone audio is captured separately.</p>
+                        <summary>How do I finish or discard a mock interview?</summary>
+                        <p>Use <strong>Skip question</strong> when you do not want to answer the current question; skipped questions are not scored. Complete the remaining questions, then choose <strong>Generate interview review</strong>. Use <strong>Discard interview</strong> at any time to abandon the session and delete its recorded answers without creating a review.</p>
+                    </details>
+                    <details data-support-faq>
+                        <summary>How are adaptive questions selected?</summary>
+                        <p>Réunia evaluates each transcribed answer for relevance, specificity, evidence, structure, and credibility. It challenges vague or unsupported claims; otherwise it asks a deeper follow-up or moves to another important competency.</p>
+                    </details>
+                    <details data-support-faq>
+                        <summary>Can I practice my own interview questions?</summary>
+                        <p>Yes. In Adaptive Mock Interview, choose <strong>My saved questions</strong>, name the list, enter one question per line, and save it. Réunia stores the list with your account, asks the questions in the exact saved order, evaluates every answer, and keeps the list available for future practice sessions.</p>
                     </details>
                     <details data-support-faq>
                         <summary>Does Réunia answer questions during a real interview?</summary>
-                        <p>No. Candidate-facing Live Q&amp;A is retired. Réunia supports interview preparation, browser-based mock interviews, and post-practice coaching rather than hidden real-time assistance.</p>
+                        <p>Career Bridge supports interview preparation, browser-based mock interviews, interview reviews, and post-practice coaching.</p>
                     </details>
                     <details data-support-faq>
                         <summary>Where do I find mock-interview results?</summary>
-                        <p>Open Interview Review and select a saved practice session. Use Summary, Interview Scorecard, Transcript, or Ask about this interview. Sharing controls can create a read-only link with optional expiration, password, transcript, scorecard, and download access.</p>
+                        <p>Open Interview Review and select a saved practice session. Use Summary, Interview Scorecard, Transcript, or Ask about this interview.</p>
                     </details>
                     <details data-support-faq>
                         <summary>How do I find open or completed actions?</summary>
-                        <p>Open Career Action Plan. The default view shows open actions. Use My actions, All, or Closed and refine the list by owner, application, due date, priority, status, or search.</p>
+                        <p>Open Career Action Plan. The default view shows open actions. Use Open, Generated, All, or Closed and refine the list by application, source, due date, priority, status, or search.</p>
                     </details>
                     <details data-support-faq>
-                        <summary>What does Career Progress show?</summary>
-                        <p>Career Progress summarizes score trends, answer-quality patterns, recurring improvement areas, completed actions, and readiness across applications and mock interviews.</p>
+                        <summary>What does Progress &amp; Outcomes show?</summary>
+                        <p>Progress &amp; Outcomes tracks evidence-backed career translation, resume alignment, automatically calculated interview readiness, mock-interview score changes, improved weak answers, application results, and completed actions.</p>
                     </details>
                     <details data-support-faq>
                         <summary>Should I use Interview Review or Career Evidence Library?</summary>

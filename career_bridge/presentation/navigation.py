@@ -25,8 +25,8 @@ class CareerNavigationSection:
 
 CAREER_NAVIGATION: tuple[CareerNavigationSection, ...] = (
     CareerNavigationSection(
-        key="career_profile",
-        label="Career Profile",
+        key="foundation",
+        label="Foundation",
         order=1,
         aggregate_fields=(
             "candidate_profile_id",
@@ -34,11 +34,11 @@ CAREER_NAVIGATION: tuple[CareerNavigationSection, ...] = (
             "resume_id",
             "evidence_library_id",
         ),
-        description="Maintain professional background, accomplishments, preferences, constraints, source resume, and verified career evidence.",
+        description="Maintain the reusable Baseline Resume, Career Profile, and verified evidence used across applications.",
     ),
     CareerNavigationSection(
-        key="application_builder",
-        label="Application Builder",
+        key="jobs_applications",
+        label="Jobs & Applications",
         order=2,
         aggregate_fields=(
             "target_job_description_id",
@@ -46,49 +46,21 @@ CAREER_NAVIGATION: tuple[CareerNavigationSection, ...] = (
             "current_tailored_resume_version_id",
             "status",
         ),
-        description="Use one Application Workspace per target role, with its job posting, resume, company notes, recruiter messages, and tailored versions.",
+        description="Discover roles and manage one evidence-backed workspace for each job application.",
     ),
     CareerNavigationSection(
-        key="interview_preparation",
-        label="Interview Preparation",
+        key="interviews",
+        label="Interviews",
         order=3,
-        aggregate_fields=("interview_preparation_id",),
-        description="Research the company and role, retrieve verified evidence, and prepare likely interview questions and answer guidance.",
-    ),
-    CareerNavigationSection(
-        key="mock_interview",
-        label="Mock Interview",
-        order=4,
-        aggregate_fields=("mock_interview_session_ids",),
-        description="Run and record mock interviews belonging to the selected job application; real-interview answer assistance is intentionally excluded.",
-    ),
-    CareerNavigationSection(
-        key="interview_review",
-        label="Interview Review",
-        order=5,
-        aggregate_fields=("mock_interview_session_ids",),
-        description="Review mock-interview transcripts and score answer relevance, evidence, structure, clarity, and delivery.",
-    ),
-    CareerNavigationSection(
-        key="career_action_plan",
-        label="Career Action Plan",
-        order=6,
-        aggregate_fields=("improvement_action_ids",),
-        description="Track resume changes, practice needs, applications, and recruiter follow-ups.",
+        aggregate_fields=("interview_preparation_id", "mock_interview_session_ids"),
+        description="Prepare, practice, and review application-specific interview answers.",
     ),
     CareerNavigationSection(
         key="progress",
         label="Progress",
-        order=7,
-        aggregate_fields=("status", "status_history"),
-        description="Track improvement across job applications and mock interviews.",
-    ),
-    CareerNavigationSection(
-        key="help_support",
-        label="Help & Support",
-        order=8,
-        aggregate_fields=(),
-        description="Get product help without making support a child of the job application aggregate.",
+        order=4,
+        aggregate_fields=("improvement_action_ids", "status", "status_history"),
+        description="Manage the Career Action Plan and track measurable application outcomes.",
     ),
 )
 

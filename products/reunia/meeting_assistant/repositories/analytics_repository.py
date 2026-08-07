@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import math
 import threading
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any, Protocol
 
 from boto3.dynamodb.conditions import Attr, Key
@@ -10,6 +12,24 @@ from botocore.exceptions import ClientError
 from flask import current_app
 
 from meeting_assistant.repositories.base import DynamoRepository
+
+
+def _dynamodb_safe(value: Any) -> Any:
+    """Recursively convert Python floats into DynamoDB-supported Decimals."""
+
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("Analytics values must not contain NaN or infinity.")
+        return Decimal(str(value))
+    if isinstance(value, dict):
+        return {key: _dynamodb_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_dynamodb_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_dynamodb_safe(item) for item in value]
+    if isinstance(value, set):
+        return {_dynamodb_safe(item) for item in value}
+    return value
 
 
 class AnalyticsRepository(Protocol):
@@ -63,6 +83,8 @@ class InMemoryAnalyticsRepository:
                 updated.pop("user_id", None)
             if event.get("country_code"):
                 updated["country_code"] = str(event["country_code"])
+            if event.get("feature"):
+                updated["last_feature"] = str(event["feature"])
             self._items[session_key] = updated
 
     def list_activity(self, start_date: str | None = None) -> list[dict[str, Any]]:
@@ -134,7 +156,6 @@ class DynamoAnalyticsRepository(DynamoRepository):
             "#active_seconds": "active_seconds",
             "#page_views": "page_views",
             "#user_id": "user_id",
-            "#country_code": "country_code",
         }
         values: dict[str, Any] = {
             ":record_type": "activity",
@@ -166,8 +187,13 @@ class DynamoAnalyticsRepository(DynamoRepository):
         else:
             remove_part = " REMOVE #user_id"
         if event.get("country_code"):
+            names["#country_code"] = "country_code"
             values[":country_code"] = event["country_code"]
             set_parts.append("#country_code = :country_code")
+        if event.get("feature"):
+            names["#last_feature"] = "last_feature"
+            values[":last_feature"] = event["feature"]
+            set_parts.append("#last_feature = :last_feature")
 
         update_expression = (
             "SET " + ", ".join(set_parts)
@@ -188,10 +214,12 @@ class DynamoAnalyticsRepository(DynamoRepository):
         return [item for item in self._scan_all() if _is_activity_record(item)]
 
     def record_usage_event(self, event: dict[str, Any]) -> bool:
-        item = {
-            **event,
-            "record_type": "usage_event",
-        }
+        item = _dynamodb_safe(
+            {
+                **event,
+                "record_type": "usage_event",
+            }
+        )
         try:
             self._table().put_item(
                 Item=item,

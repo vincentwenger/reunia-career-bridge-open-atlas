@@ -8,7 +8,9 @@ from career_bridge.presentation.application_builder import (
     validate_application_builder_model_alignment,
 )
 from career_bridge.presentation.feature_mapping import (
+    CURRENT_APPLICATION_FOLLOW_UP_CAPABILITIES,
     REPURPOSED_FEATURES,
+    SECONDARY_FEATURE_ROADMAP,
     RepurposedFeature,
     feature_by_legacy_name,
     repurposed_features,
@@ -26,7 +28,9 @@ __all__ = [
     "ApplicationDashboardItem",
     "application_builder_steps",
     "validate_application_builder_model_alignment",
+    "CURRENT_APPLICATION_FOLLOW_UP_CAPABILITIES",
     "REPURPOSED_FEATURES",
+    "SECONDARY_FEATURE_ROADMAP",
     "RepurposedFeature",
     "feature_by_legacy_name",
     "repurposed_features",

@@ -16,14 +16,16 @@
     <link rel="icon" type="image/png" sizes="64x64" href="{{ static_asset('icons/favicon-64.png') }}">
     <link rel="apple-touch-icon" sizes="192x192" href="{{ static_asset('icons/favicon.png') }}">
 
-    <link rel="stylesheet" href="{{ static_asset('css/base.css') }}">
+    {% include 'components/common_page_styles.html' %}
     <link rel="stylesheet" href="{{ static_asset('css/navbar.css') }}">
     <link rel="stylesheet" href="{{ static_asset('css/components.css') }}">
     {% block page_styles %}{% endblock %}
     <link rel="stylesheet" href="{{ static_asset('css/app-layout.css') }}">
+    <link rel="stylesheet" href="{{ static_asset('css/career-theme.css') }}">
+    <link rel="stylesheet" href="{{ static_asset('css/career-workspaces.css') }}">
     {% include 'components/asset_recovery.html' %}
 </head>
-<body class="{% block body_class %}{% endblock %}" data-app-root="{{ request.script_root }}" data-app-language="{{ app_language | default('en') }}" data-authenticated="{{ 'true' if session.get('user_id') else 'false' }}" data-analytics-heartbeat="{{ analytics_heartbeat_seconds | default(30) }}">
+<body class="{% block body_class %}{% endblock %}" data-feature="{% block feature_id %}unclassified{% endblock %}" data-app-root="{{ request.script_root }}" data-app-language="{{ app_language | default('en') }}" data-i18n-fr-src="{{ static_asset('js/i18n-fr.js') }}" data-authenticated="{{ 'true' if session.get('user_id') else 'false' }}" data-analytics-heartbeat="{{ analytics_heartbeat_seconds | default(30) }}">
     <a class="skip-link" href="#main-content">Skip to main content</a>
 
     {% include 'navbar.html' %}
@@ -33,8 +35,11 @@
         {% block content %}{% endblock %}
     </div>
 
-    <script src="{{ static_asset('js/common.js') }}" defer></script>
+    {% include 'components/common_page_scripts.html' %}
     <script src="{{ static_asset('js/analytics-tracker.js') }}" defer></script>
+    {% if (app_language | default('en'))[:2] == 'fr' %}
+    <script src="{{ static_asset('js/i18n-fr.js') }}" defer></script>
+    {% endif %}
     <script src="{{ static_asset('js/i18n.js') }}" defer></script>
     <script src="{{ static_asset('js/navbar.js') }}" defer></script>
     {% block page_scripts %}{% endblock %}

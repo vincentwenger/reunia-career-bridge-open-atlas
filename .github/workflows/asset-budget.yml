@@ -1,0 +1,62 @@
+name: Static quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: static-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Stylelint
+        run: npm install --no-audit --no-fund
+
+      - name: Validate generated assets
+        run: python scripts/build_static_assets.py --check
+
+      - name: Enforce static asset budgets
+        run: python scripts/check_asset_budgets.py
+
+      - name: Enforce shared page assets
+        run: python scripts/check_common_page_assets.py
+
+      - name: Enforce CSS token policy
+        run: python scripts/check_css_token_policy.py
+
+      - name: Run Stylelint
+        run: npm run lint:css
+
+      - name: Reject retired CSS and browser-storage fallbacks
+        run: |
+          python scripts/check_retired_css.py
+          python scripts/check_browser_storage_policy.py
+
+      - name: Run maintainability contracts
+        run: |
+          python -m unittest tests.contracts.test_performance_maintainability
+          python -m unittest tests.contracts.test_css_token_system
+          python -m unittest tests.contracts.test_common_page_assets
+          python -m unittest tests.contracts.test_no_silent_browser_storage_fallbacks

@@ -165,6 +165,8 @@ def admin_user_usage(user_id: str):
     return jsonify({"usage": AdminAnalyticsService().user_usage(user_id)})
 
 
+
+
 @admin_analytics_bp.get("/api/admin/analytics/incidents")
 @admin_api_required
 def admin_incident_details():
@@ -250,7 +252,6 @@ def export_admin_users_csv():
         "Average recording length (seconds)",
         "Maximum recording length (seconds)",
         "Minimum recording length (seconds)",
-        "Live Q&A AI answers",
         "Desktop client downloads",
         "Desktop client uses",
         "Actions",
@@ -279,7 +280,6 @@ def export_admin_users_csv():
             _optional_csv_number(user.get("average_recording_duration_seconds")),
             _optional_csv_number(user.get("maximum_recording_duration_seconds")),
             _optional_csv_number(user.get("minimum_recording_duration_seconds")),
-            user.get("live_qa_answer_count") or 0,
             user.get("desktop_download_count") or 0,
             user.get("desktop_use_count") or 0,
             user.get("action_count") or 0,

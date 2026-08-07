@@ -1,0 +1,47 @@
+{% set skills = source_profile.skills %}
+{% set baseline_skill_count = (skills.hard_skills | length) + (skills.soft_skills | length) + (skills.tools_software | length) + (skills.industry_knowledge | length) + (skills.languages | length) %}
+<section class="card baseline-structured-evidence baseline-skills-panel" id="skills" data-baseline-skills-endpoint="{{ url_for('application_builder.update_baseline_skills') }}" aria-labelledby="baselineSkillsTitle">
+  <div class="reusable-evidence-header">
+    <div>
+      <p class="section-eyebrow">Baseline Resume information</p>
+      <h2 id="baselineSkillsTitle">Skills</h2>
+      <p>{% if baseline_creation_method == 'manual' %}Add the skills that should be available for future resume tailoring.{% else %}Review the skills populated from the resume and organize them by how they are used in tailoring.{% endif %}</p>
+      <p class="caption">Enter one skill per line. Saving updates the reusable Baseline Resume; removing a line removes that skill from the baseline.{% if state.profile_upload_name %} The imported resume remains preserved as source evidence.{% endif %}</p>
+    </div>
+    <span class="reusable-evidence-count baseline-skills-count">{{ baseline_skill_count }} skill{% if baseline_skill_count != 1 %}s{% endif %}</span>
+  </div>
+
+  <form class="baseline-skills-form" data-baseline-skills-form>
+    <div class="baseline-skills-grid">
+      <div>
+        <label for="baseline-hard-skills">Hard skills</label>
+        <textarea id="baseline-hard-skills" name="hard_skills" rows="7" maxlength="12000" placeholder="SQL&#10;Python&#10;Data modeling">{{ skills.hard_skills | join('\n') }}</textarea>
+        <small>Technical capabilities and specialized methods.</small>
+      </div>
+      <div>
+        <label for="baseline-tools-software">Tools and software</label>
+        <textarea id="baseline-tools-software" name="tools_software" rows="7" maxlength="12000" placeholder="Oracle&#10;AWS&#10;Jenkins">{{ skills.tools_software | join('\n') }}</textarea>
+        <small>Named technologies, platforms, products, and software.</small>
+      </div>
+      <div>
+        <label for="baseline-industry-knowledge">Industry knowledge</label>
+        <textarea id="baseline-industry-knowledge" name="industry_knowledge" rows="7" maxlength="12000" placeholder="Regulatory reporting&#10;Financial services&#10;IT controls">{{ skills.industry_knowledge | join('\n') }}</textarea>
+        <small>Industries, regulations, business domains, and functional knowledge.</small>
+      </div>
+      <div>
+        <label for="baseline-soft-skills">Soft skills</label>
+        <textarea id="baseline-soft-skills" name="soft_skills" rows="7" maxlength="12000" placeholder="Stakeholder communication&#10;Mentoring&#10;Cross-functional collaboration">{{ skills.soft_skills | join('\n') }}</textarea>
+        <small>Documented collaboration, communication, and leadership capabilities.</small>
+      </div>
+      <div>
+        <label for="baseline-languages">Languages</label>
+        <textarea id="baseline-languages" name="languages" rows="7" maxlength="12000" placeholder="English&#10;French">{{ skills.languages | join('\n') }}</textarea>
+        <small>Spoken or written languages explicitly listed in the resume.</small>
+      </div>
+    </div>
+    <div class="baseline-structured-action-row">
+      <button class="btn btn-primary" type="submit">Save skills</button>
+    </div>
+  </form>
+  <div class="baseline-structured-feedback" data-baseline-skills-feedback role="status" aria-live="polite" hidden></div>
+</section>

@@ -3,11 +3,19 @@ from __future__ import annotations
 import hashlib
 import io
 import mimetypes
+import re
 import zipfile
 from datetime import datetime, timedelta, timezone
 from pathlib import PurePath
 from typing import Any, Iterable
 from uuid import uuid4
+
+from career_bridge.career_role_dates import career_role_date_sort_key
+from career_bridge.reusable_evidence import (
+    evidence_answer_key,
+    find_best_evidence_match,
+    normalize_evidence_text,
+)
 
 from botocore.exceptions import BotoCoreError, ClientError
 from flask import current_app
@@ -49,6 +57,14 @@ class KnowledgeService:
         try:
             raw_collections = self.repository.list_collections(user_id)
             raw_files = self.repository.list_files(user_id)
+            list_evidence_answers = getattr(self.repository, "list_evidence_answers", None)
+            raw_evidence_answers = (
+                list_evidence_answers(user_id) if callable(list_evidence_answers) else []
+            )
+            list_career_roles = getattr(self.repository, "list_career_roles", None)
+            raw_career_roles = (
+                list_career_roles(user_id) if callable(list_career_roles) else []
+            )
         except (BotoCoreError, ClientError, OSError) as exc:
             raise DatabaseError("The document library could not be loaded.") from exc
 
@@ -77,13 +93,631 @@ class KnowledgeService:
             for item in raw_files
         ]
         files.sort(key=lambda item: (item.get("created_at", ""), item["filename"]), reverse=True)
-        return {"collections": collections, "files": files}
+        evidence_answers = [self._serialize_evidence_answer(item) for item in raw_evidence_answers]
+        evidence_answers.sort(
+            key=lambda item: (item.get("updated_at", ""), item.get("question", "")),
+            reverse=True,
+        )
+        career_roles = [self._serialize_career_role(item) for item in raw_career_roles]
+        career_roles.sort(key=career_role_date_sort_key)
+        return {
+            "collections": collections,
+            "files": files,
+            "evidence_answers": evidence_answers,
+            "career_roles": career_roles,
+        }
 
     def list_collections(self, user_id: str) -> list[dict[str, Any]]:
         return self.list_library(user_id)["collections"]
 
     def list_files(self, user_id: str) -> list[dict[str, Any]]:
         return self.list_library(user_id)["files"]
+
+    def list_evidence_answers(self, user_id: str) -> list[dict[str, Any]]:
+        try:
+            items = self.repository.list_evidence_answers(user_id)
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("Reusable confirmation answers could not be loaded.") from exc
+        serialized = [self._serialize_evidence_answer(item) for item in items]
+        serialized.sort(
+            key=lambda item: (item.get("updated_at", ""), item.get("question", "")),
+            reverse=True,
+        )
+        return serialized
+
+    def list_career_roles(self, user_id: str) -> list[dict[str, Any]]:
+        list_career_roles = getattr(self.repository, "list_career_roles", None)
+        if not callable(list_career_roles):
+            return []
+        try:
+            items = list_career_roles(user_id)
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("Employment roles could not be loaded.") from exc
+        serialized = [self._serialize_career_role(item) for item in items]
+        serialized.sort(key=career_role_date_sort_key)
+        return serialized
+
+    def sync_career_roles_from_baseline(
+        self,
+        user_id: str,
+        entries: Iterable[dict[str, Any]],
+        *,
+        source_fingerprint: str = "",
+        target_market: str = "",
+    ) -> list[dict[str, Any]]:
+        """Upsert structured employment roles extracted from the Baseline Resume.
+
+        Existing user-confirmed interpretations are preserved while unchanged.
+        New or materially changed source roles return to a review state.
+        """
+
+        upsert_role = getattr(self.repository, "upsert_career_role", None)
+        list_roles = getattr(self.repository, "list_career_roles", None)
+        if not callable(upsert_role) or not callable(list_roles):
+            return []
+        try:
+            existing_items = list_roles(user_id)
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("Existing employment roles could not be loaded.") from exc
+        existing_by_id = {
+            str(item.get("role_id") or ""): dict(item)
+            for item in existing_items
+            if item.get("role_id")
+        }
+        now = _utc_now()
+        seen: set[str] = set()
+        saved: list[dict[str, Any]] = []
+        for raw in entries:
+            entry = dict(raw or {})
+            source_experience_id = self._optional_text(
+                entry.get("source_experience_id") or entry.get("id"),
+                "Source experience ID",
+                160,
+            )
+            official_title = self._required_text(
+                entry.get("official_title") or entry.get("title"),
+                "Official job title",
+                240,
+            )
+            employer = self._required_text(entry.get("employer"), "Employer", 240)
+            dates = self._optional_text(entry.get("dates"), "Employment dates", 160)
+            location = self._optional_text(entry.get("location"), "Location", 240)
+            responsibilities = self._optional_text(
+                entry.get("responsibilities"), "Responsibilities", 10000
+            )
+            role_id = self._career_role_id(
+                source_experience_id, employer, official_title, dates
+            )
+            seen.add(role_id)
+            current = existing_by_id.get(role_id, {})
+            core_fingerprint = self._career_role_core_fingerprint(
+                official_title=official_title,
+                employer=employer,
+                dates=dates,
+                location=location,
+                responsibilities=responsibilities,
+            )
+            source_changed = bool(
+                current and str(current.get("core_fingerprint") or "") != core_fingerprint
+            )
+            if current and not source_changed:
+                official_title = str(current.get("official_title") or official_title).strip()
+                employer = str(current.get("employer") or employer).strip()
+                dates = str(current.get("dates") or dates).strip()
+                location = str(current.get("location") or location).strip()
+                responsibilities = str(
+                    current.get("responsibilities") or responsibilities
+                ).strip()
+            previous_official = str(current.get("official_title") or "").strip()
+            previous_target = str(current.get("target_market_title") or "").strip()
+            target_market_title = previous_target or official_title
+            if source_changed and previous_target == previous_official:
+                target_market_title = official_title
+            status = str(current.get("status") or "needs_review")
+            if status not in {"needs_review", "confirmed", "needs_explanation"}:
+                status = "needs_review"
+            if not current or source_changed:
+                status = "needs_review"
+            item = {
+                "user_id": user_id,
+                "item_id": f"career_role#{role_id}",
+                "entity_type": "career_employment_role",
+                "role_id": role_id,
+                "source_experience_id": source_experience_id or role_id,
+                "official_title": official_title,
+                "employer": employer,
+                "dates": dates,
+                "location": location,
+                "responsibilities": responsibilities,
+                "target_market_title": target_market_title,
+                "recruiter_explanation": str(
+                    current.get("recruiter_explanation") or ""
+                ).strip(),
+                "status": status,
+                "source_type": "baseline_resume",
+                "source_active": True,
+                "source_fingerprint": str(source_fingerprint or "").strip(),
+                "core_fingerprint": core_fingerprint,
+                "target_market": str(target_market or current.get("target_market") or "").strip(),
+                "created_at": str(current.get("created_at") or now),
+                "updated_at": now if source_changed or not current else str(current.get("updated_at") or now),
+                "confirmed_at": (
+                    "" if source_changed else str(current.get("confirmed_at") or "")
+                ),
+            }
+            try:
+                upsert_role(item)
+            except (BotoCoreError, ClientError, OSError) as exc:
+                raise DatabaseError("An employment role could not be saved.") from exc
+            saved.append(self._serialize_career_role(item))
+
+        # Preserve user edits for roles removed from a later Baseline Resume, but
+        # make them ineligible for automatic reuse until the source is restored.
+        for role_id, current in existing_by_id.items():
+            if role_id in seen or not bool(current.get("source_active", True)):
+                continue
+            current["source_active"] = False
+            current["updated_at"] = now
+            try:
+                upsert_role(current)
+            except (BotoCoreError, ClientError, OSError):
+                current_app.logger.exception(
+                    "Could not mark removed Baseline Resume role %s inactive", role_id
+                )
+        return saved
+
+    def update_career_role(
+        self,
+        user_id: str,
+        role_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        normalized_id = str(role_id or "").strip()
+        get_role = getattr(self.repository, "get_career_role", None)
+        upsert_role = getattr(self.repository, "upsert_career_role", None)
+        if not normalized_id or not callable(get_role) or not callable(upsert_role):
+            raise ResourceNotFoundError("Employment role not found.")
+        try:
+            current = get_role(user_id, normalized_id)
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("The employment role could not be loaded.") from exc
+        if not current:
+            raise ResourceNotFoundError("Employment role not found.")
+        official_title = self._required_text(
+            payload.get("official_title", current.get("official_title")),
+            "Official job title",
+            240,
+        )
+        employer = self._required_text(
+            payload.get("employer", current.get("employer")), "Employer", 240
+        )
+        dates = self._optional_text(
+            payload.get("dates", current.get("dates")), "Employment dates", 160
+        )
+        location = self._optional_text(
+            payload.get("location", current.get("location")), "Location", 240
+        )
+        responsibilities = self._optional_text(
+            payload.get("responsibilities", current.get("responsibilities")),
+            "Responsibilities",
+            10000,
+        )
+        target_market_title = self._required_text(
+            payload.get("target_market_title", current.get("target_market_title")),
+            "Target-market title",
+            240,
+        )
+        recruiter_explanation = self._optional_text(
+            payload.get("recruiter_explanation", current.get("recruiter_explanation")),
+            "Recruiter explanation",
+            2000,
+        )
+        status = str(payload.get("status", current.get("status") or "needs_review")).strip()
+        if status not in {"needs_review", "confirmed", "needs_explanation"}:
+            raise ValidationError("Select a valid role-review status.")
+        now = _utc_now()
+        updated = dict(current)
+        updated.update(
+            {
+                "official_title": official_title,
+                "employer": employer,
+                "dates": dates,
+                "location": location,
+                "responsibilities": responsibilities,
+                "target_market_title": target_market_title,
+                "recruiter_explanation": recruiter_explanation,
+                "status": status,
+                "core_fingerprint": self._career_role_core_fingerprint(
+                    official_title=official_title,
+                    employer=employer,
+                    dates=dates,
+                    location=location,
+                    responsibilities=responsibilities,
+                ),
+                "updated_at": now,
+                "confirmed_at": now if status == "confirmed" else "",
+            }
+        )
+        try:
+            upsert_role(updated)
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("The employment role could not be updated.") from exc
+        return self._serialize_career_role(updated)
+
+    def delete_career_role(self, user_id: str, role_id: str) -> dict[str, Any]:
+        normalized_id = str(role_id or "").strip()
+        delete_role = getattr(self.repository, "delete_career_role", None)
+        if not normalized_id or not callable(delete_role):
+            raise ResourceNotFoundError("Employment role not found.")
+        try:
+            deleted = delete_role(user_id, normalized_id)
+        except ResourceNotFoundError:
+            raise
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("The employment role could not be removed.") from exc
+        return self._serialize_career_role(deleted)
+
+    def create_manual_evidence_answer(
+        self,
+        user_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Create user-confirmed evidence directly in Career Evidence Library.
+
+        Manual records use the same durable repository and semantic matching model
+        as answers saved from Confirm Relevant Experience. Records marked
+        ``needs_review`` remain visible and editable but are excluded from automatic
+        reuse until the user confirms them.
+        """
+
+        title = self._required_text(
+            payload.get("evidence_title") or payload.get("question"),
+            "Evidence title",
+            240,
+        )
+        statement = self._required_text(
+            payload.get("confirmed_statement") or payload.get("answer_text"),
+            "Confirmed statement",
+            4000,
+        )
+        confirmation_status = str(
+            payload.get("confirmation_status") or "confirmed"
+        ).strip().lower()
+        if confirmation_status not in {"confirmed", "needs_review"}:
+            raise ValidationError(
+                "Confirmation status must be Confirmed or Needs review."
+            )
+
+        employer = self._optional_text(payload.get("experience_employer"), "Employer", 200)
+        role = self._optional_text(payload.get("experience_title"), "Role", 200)
+        dates = self._optional_text(payload.get("experience_dates"), "Dates", 160)
+        supported_skills = self._optional_text(
+            payload.get("supported_skills"), "Supported skills", 1200
+        )
+        source_note = self._optional_text(payload.get("source_note"), "Source", 600)
+        limitations = self._optional_text(
+            payload.get("evidence_limitations"), "Evidence limitations", 2000
+        )
+        experience_label = self._optional_text(
+            payload.get("experience_label"), "Experience", 300
+        ) or self._experience_label(employer, role, dates)
+
+        now = _utc_now()
+        evidence_id = uuid4().hex
+        item = {
+            "user_id": user_id,
+            "item_id": f"evidence_answer#{evidence_id}",
+            "entity_type": "career_evidence_answer",
+            "evidence_id": evidence_id,
+            "question_key": evidence_answer_key(title, supported_skills),
+            "question": title,
+            "normalized_question": normalize_evidence_text(title),
+            "requirement": supported_skills,
+            "normalized_requirement": normalize_evidence_text(supported_skills),
+            "answer_type": "long_text",
+            "yes_no": True if confirmation_status == "confirmed" else None,
+            "answer_text": statement,
+            "experience_id": self._optional_text(
+                payload.get("experience_id"), "Experience ID", 160
+            ),
+            "experience_label": experience_label,
+            "experience_employer": employer,
+            "experience_title": role,
+            "experience_dates": dates,
+            "supported_skills": supported_skills,
+            "source_note": source_note,
+            "evidence_limitations": limitations,
+            "confirmation_status": confirmation_status,
+            "entry_method": "manual",
+            "placement": "auto",
+            "source_application_id": "",
+            "source_job_title": "",
+            "source_company": "",
+            "created_at": now,
+            "updated_at": now,
+            "confirmed_at": now if confirmation_status == "confirmed" else "",
+            "reuse_count": 0,
+            "last_reused_at": "",
+        }
+        try:
+            self.repository.upsert_evidence_answer(item)
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("The confirmed evidence could not be saved.") from exc
+        return self._serialize_evidence_answer(item)
+
+    def save_evidence_answers(
+        self,
+        user_id: str,
+        entries: Iterable[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        prepared_entries = [dict(entry or {}) for entry in entries]
+        if not prepared_entries:
+            return []
+        try:
+            existing = self.repository.list_evidence_answers(user_id)
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("Reusable confirmation answers could not be loaded.") from exc
+
+        saved: list[dict[str, Any]] = []
+        now = _utc_now()
+        for entry in prepared_entries:
+            question = self._required_text(entry.get("question"), "Question", 1200)
+            requirement = self._optional_text(
+                entry.get("requirement"), "Requirement", 1200
+            )
+            answer_type = self._required_text(
+                entry.get("answer_type"), "Answer type", 40
+            )
+            yes_no = entry.get("yes_no")
+            if yes_no not in (True, False, None):
+                raise ValidationError("Answer status must be Yes, No, or not applicable.")
+            answer_text = self._optional_text(
+                entry.get("answer_text"), "Answer", 4000
+            )
+            if yes_no is not False and not answer_text:
+                raise ValidationError("An affirmative or text answer requires a factual detail.")
+
+            match, _score = find_best_evidence_match(
+                question,
+                requirement,
+                existing,
+                answer_type=answer_type,
+            )
+            evidence_id = (
+                str(match.get("evidence_id") or "")
+                if match is not None
+                else evidence_answer_key(question, requirement)[:32]
+            )
+            if not evidence_id:
+                evidence_id = uuid4().hex
+            created_at = str(match.get("created_at") or now) if match else now
+            item = {
+                "user_id": user_id,
+                "item_id": f"evidence_answer#{evidence_id}",
+                "entity_type": "career_evidence_answer",
+                "evidence_id": evidence_id,
+                "question_key": evidence_answer_key(question, requirement),
+                "question": question,
+                "normalized_question": normalize_evidence_text(question),
+                "requirement": requirement,
+                "normalized_requirement": normalize_evidence_text(requirement),
+                "answer_type": answer_type,
+                "yes_no": yes_no,
+                "answer_text": answer_text,
+                "experience_id": self._optional_text(
+                    entry.get("experience_id"), "Experience ID", 160
+                ),
+                "experience_label": self._optional_text(
+                    entry.get("experience_label"), "Experience", 300
+                ),
+                "experience_employer": self._optional_text(
+                    entry.get("experience_employer"), "Employer", 200
+                ),
+                "experience_title": self._optional_text(
+                    entry.get("experience_title"), "Role", 200
+                ),
+                "experience_dates": str(match.get("experience_dates") or "") if match else "",
+                "supported_skills": str(match.get("supported_skills") or requirement) if match else requirement,
+                "source_note": str(match.get("source_note") or "") if match else "",
+                "evidence_limitations": str(match.get("evidence_limitations") or "") if match else "",
+                "placement": self._optional_text(
+                    entry.get("placement"), "Placement", 40
+                )
+                or "auto",
+                "source_application_id": self._optional_text(
+                    entry.get("source_application_id"), "Application ID", 160
+                ),
+                "source_job_title": self._optional_text(
+                    entry.get("source_job_title"), "Target role", 240
+                ),
+                "source_company": self._optional_text(
+                    entry.get("source_company"), "Company", 240
+                ),
+                "created_at": created_at,
+                "updated_at": now,
+                "reuse_count": int(match.get("reuse_count") or 0) if match else 0,
+                "last_reused_at": str(match.get("last_reused_at") or "") if match else "",
+                "confirmation_status": "confirmed",
+                "entry_method": str(match.get("entry_method") or "workflow") if match else "workflow",
+                "confirmed_at": str(match.get("confirmed_at") or now) if match else now,
+            }
+            try:
+                self.repository.upsert_evidence_answer(item)
+            except (BotoCoreError, ClientError, OSError) as exc:
+                raise DatabaseError("A reusable confirmation answer could not be saved.") from exc
+            existing = [
+                candidate
+                for candidate in existing
+                if str(candidate.get("evidence_id") or "") != evidence_id
+            ]
+            existing.append(item)
+            saved.append(self._serialize_evidence_answer(item))
+        return saved
+
+    def update_evidence_answer(
+        self,
+        user_id: str,
+        evidence_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        normalized_id = str(evidence_id or "").strip()
+        if not normalized_id:
+            raise ResourceNotFoundError("Reusable confirmation answer not found.")
+        try:
+            current = self.repository.get_evidence_answer(user_id, normalized_id)
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("The reusable confirmation answer could not be loaded.") from exc
+        if not current:
+            raise ResourceNotFoundError("Reusable confirmation answer not found.")
+
+        question = self._required_text(
+            payload.get(
+                "evidence_title", payload.get("question", current.get("question"))
+            ),
+            "Question",
+            1200,
+        )
+        requirement = self._optional_text(
+            payload.get(
+                "supported_skills",
+                payload.get("requirement", current.get("requirement")),
+            ),
+            "Requirement",
+            1200,
+        )
+        answer_text = self._optional_text(
+            payload.get(
+                "confirmed_statement",
+                payload.get("answer_text", current.get("answer_text")),
+            ),
+            "Answer",
+            4000,
+        )
+        is_manual = str(current.get("entry_method") or "") == "manual"
+        if is_manual:
+            confirmation_status = str(
+                payload.get(
+                    "confirmation_status",
+                    current.get("confirmation_status") or "confirmed",
+                )
+            ).strip().lower()
+            if confirmation_status not in {"confirmed", "needs_review"}:
+                raise ValidationError(
+                    "Confirmation status must be Confirmed or Needs review."
+                )
+            yes_no = True if confirmation_status == "confirmed" else None
+        else:
+            # Workflow-generated evidence keeps its Yes/No/Detailed-answer state.
+            # Detailed edits may change the wording, role, source, skills, and
+            # limitations without silently converting a negative or text answer
+            # into affirmative evidence.
+            confirmation_status = str(
+                current.get("confirmation_status") or "confirmed"
+            ).strip().lower()
+            yes_no = payload.get("yes_no", current.get("yes_no"))
+        if yes_no not in (True, False, None):
+            raise ValidationError("Answer status must be Yes, No, or not applicable.")
+        if yes_no is not False and not answer_text:
+            raise ValidationError("An affirmative or text answer requires a factual detail.")
+
+        employer = self._optional_text(
+            payload.get("experience_employer", current.get("experience_employer")),
+            "Employer",
+            200,
+        )
+        role = self._optional_text(
+            payload.get("experience_title", current.get("experience_title")),
+            "Role",
+            200,
+        )
+        dates = self._optional_text(
+            payload.get("experience_dates", current.get("experience_dates")),
+            "Dates",
+            160,
+        )
+        experience_label = self._optional_text(
+            payload.get("experience_label", current.get("experience_label")),
+            "Experience",
+            300,
+        ) or self._experience_label(employer, role, dates)
+        now = _utc_now()
+        updated = dict(current)
+        updated.update(
+            {
+                "question_key": evidence_answer_key(question, requirement),
+                "question": question,
+                "normalized_question": normalize_evidence_text(question),
+                "requirement": requirement,
+                "normalized_requirement": normalize_evidence_text(requirement),
+                "yes_no": yes_no,
+                "answer_text": answer_text,
+                "experience_label": experience_label,
+                "experience_employer": employer,
+                "experience_title": role,
+                "experience_dates": dates,
+                "supported_skills": self._optional_text(
+                    payload.get("supported_skills", current.get("supported_skills") or requirement),
+                    "Supported skills",
+                    1200,
+                ),
+                "source_note": self._optional_text(
+                    payload.get("source_note", current.get("source_note")),
+                    "Source",
+                    600,
+                ),
+                "evidence_limitations": self._optional_text(
+                    payload.get(
+                        "evidence_limitations", current.get("evidence_limitations")
+                    ),
+                    "Evidence limitations",
+                    2000,
+                ),
+                "confirmation_status": confirmation_status,
+                "confirmed_at": now
+                if confirmation_status == "confirmed"
+                else str(current.get("confirmed_at") or ""),
+                "updated_at": now,
+            }
+        )
+        try:
+            self.repository.upsert_evidence_answer(updated)
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("The reusable confirmation answer could not be updated.") from exc
+        return self._serialize_evidence_answer(updated)
+
+    def record_evidence_reuse(
+        self, user_id: str, evidence_ids: Iterable[str]
+    ) -> None:
+        now = _utc_now()
+        for raw_id in dict.fromkeys(str(value or "").strip() for value in evidence_ids):
+            if not raw_id:
+                continue
+            try:
+                item = self.repository.get_evidence_answer(user_id, raw_id)
+                if not item:
+                    continue
+                item["reuse_count"] = int(item.get("reuse_count") or 0) + 1
+                item["last_reused_at"] = now
+                item["updated_at"] = str(item.get("updated_at") or now)
+                self.repository.upsert_evidence_answer(item)
+            except (BotoCoreError, ClientError, OSError):
+                current_app.logger.exception(
+                    "Could not record reuse for career evidence answer %s", raw_id
+                )
+
+    def delete_evidence_answer(
+        self, user_id: str, evidence_id: str
+    ) -> dict[str, Any]:
+        normalized_id = str(evidence_id or "").strip()
+        if not normalized_id:
+            raise ResourceNotFoundError("Reusable confirmation answer not found.")
+        try:
+            deleted = self.repository.delete_evidence_answer(user_id, normalized_id)
+        except ResourceNotFoundError:
+            raise
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise DatabaseError("The reusable confirmation answer could not be deleted.") from exc
+        return self._serialize_evidence_answer(deleted)
 
     def create_collection(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         name = self._required_text(payload.get("name"), "Collection name", 80)
@@ -417,6 +1051,122 @@ class KnowledgeService:
         }
 
     @staticmethod
+    def _experience_label(employer: str, role: str, dates: str = "") -> str:
+        primary = " — ".join(value for value in (employer, role) if value)
+        if dates and primary:
+            return f"{primary} ({dates})"
+        return primary or dates
+
+    @staticmethod
+    def _serialize_evidence_answer(item: dict[str, Any]) -> dict[str, Any]:
+        yes_no = item.get("yes_no")
+        if yes_no not in (True, False, None):
+            yes_no = None
+        return {
+            "evidence_id": str(item.get("evidence_id") or ""),
+            "question_key": str(item.get("question_key") or ""),
+            "question": str(item.get("question") or ""),
+            "normalized_question": str(item.get("normalized_question") or ""),
+            "requirement": str(item.get("requirement") or ""),
+            "normalized_requirement": str(item.get("normalized_requirement") or ""),
+            "answer_type": str(item.get("answer_type") or "short_text"),
+            "yes_no": yes_no,
+            "answer_text": str(item.get("answer_text") or ""),
+            "experience_id": str(item.get("experience_id") or ""),
+            "experience_label": str(item.get("experience_label") or ""),
+            "experience_employer": str(item.get("experience_employer") or ""),
+            "experience_title": str(item.get("experience_title") or ""),
+            "experience_dates": str(item.get("experience_dates") or ""),
+            "supported_skills": str(
+                item.get("supported_skills") or item.get("requirement") or ""
+            ),
+            "source_note": str(item.get("source_note") or ""),
+            "evidence_limitations": str(item.get("evidence_limitations") or ""),
+            "confirmation_status": str(
+                item.get("confirmation_status") or "confirmed"
+            ),
+            "entry_method": str(item.get("entry_method") or "workflow"),
+            "confirmed_at": str(item.get("confirmed_at") or ""),
+            "placement": str(item.get("placement") or "auto"),
+            "source_application_id": str(item.get("source_application_id") or ""),
+            "source_job_title": str(item.get("source_job_title") or ""),
+            "source_company": str(item.get("source_company") or ""),
+            "created_at": str(item.get("created_at") or ""),
+            "updated_at": str(item.get("updated_at") or ""),
+            "reuse_count": int(item.get("reuse_count") or 0),
+            "last_reused_at": str(item.get("last_reused_at") or ""),
+        }
+
+    @staticmethod
+    def _serialize_career_role(item: dict[str, Any]) -> dict[str, Any]:
+        status = str(item.get("status") or "needs_review")
+        if status not in {"needs_review", "confirmed", "needs_explanation"}:
+            status = "needs_review"
+        return {
+            "role_id": str(item.get("role_id") or ""),
+            "source_experience_id": str(item.get("source_experience_id") or ""),
+            "official_title": str(item.get("official_title") or ""),
+            "employer": str(item.get("employer") or ""),
+            "dates": str(item.get("dates") or ""),
+            "location": str(item.get("location") or ""),
+            "responsibilities": str(item.get("responsibilities") or ""),
+            "target_market_title": str(item.get("target_market_title") or ""),
+            "recruiter_explanation": str(item.get("recruiter_explanation") or ""),
+            "status": status,
+            "status_label": {
+                "needs_review": "Needs review",
+                "confirmed": "Confirmed",
+                "needs_explanation": "Needs explanation",
+            }[status],
+            "source_type": str(item.get("source_type") or "baseline_resume"),
+            "source_active": bool(item.get("source_active", True)),
+            "source_fingerprint": str(item.get("source_fingerprint") or ""),
+            "target_market": str(item.get("target_market") or ""),
+            "created_at": str(item.get("created_at") or ""),
+            "updated_at": str(item.get("updated_at") or ""),
+            "confirmed_at": str(item.get("confirmed_at") or ""),
+        }
+
+    @staticmethod
+    def _career_role_id(
+        source_experience_id: str,
+        employer: str,
+        official_title: str,
+        dates: str,
+    ) -> str:
+        source_id = str(source_experience_id or "").strip()
+        if source_id:
+            normalized = re.sub(r"[^A-Za-z0-9_.-]+", "-", source_id).strip("-")
+            if normalized:
+                return normalized[:160]
+        payload = "\n".join(
+            normalize_evidence_text(value)
+            for value in (employer, official_title, dates)
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
+
+    @staticmethod
+    def _career_role_core_fingerprint(
+        *,
+        official_title: str,
+        employer: str,
+        dates: str,
+        location: str,
+        responsibilities: str,
+    ) -> str:
+        payload = "\n".join(
+            normalize_evidence_text(value)
+            for value in (
+                official_title,
+                employer,
+                dates,
+                location,
+                responsibilities,
+            )
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
     def _normalize_tags(value: str | Iterable[str]) -> list[str]:
         raw_values = value.split(",") if isinstance(value, str) else list(value)
         tags: list[str] = []
@@ -450,6 +1200,7 @@ class KnowledgeService:
         if len(text) > maximum:
             raise ValidationError(f"{label} must be {maximum} characters or fewer.")
         return text
+
 
 
 def _format_bytes(size_bytes: int) -> str:

@@ -1,0 +1,47 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    APP_ENV=production \
+    PORT=8000
+
+COPY requirements.txt ./requirements.txt
+RUN python -m pip install --upgrade pip \
+    && python -m pip install -r requirements.txt
+
+# Copy the merged application: shared Career Bridge definitions, the Réunia
+# shell, and the Resume Taylor Application Builder.
+COPY app.py ./app.py
+COPY career_bridge ./career_bridge
+COPY job_discovery ./job_discovery
+COPY products/reunia/meeting_assistant ./products/reunia/meeting_assistant
+COPY products/reunia/templates ./products/reunia/templates
+COPY products/reunia/static ./products/reunia/static
+COPY products/resume_taylor/app.py ./products/resume_taylor/app.py
+COPY products/resume_taylor/application_builder_routes ./products/resume_taylor/application_builder_routes
+COPY products/resume_taylor/resume_tailor ./products/resume_taylor/resume_tailor
+COPY products/resume_taylor/templates ./products/resume_taylor/templates
+COPY products/resume_taylor/static ./products/resume_taylor/static
+COPY products/resume_taylor/data ./products/resume_taylor/data
+COPY scripts/build_static_assets.py ./scripts/build_static_assets.py
+
+RUN python scripts/build_static_assets.py --quiet
+
+RUN addgroup --system appgroup \
+    && adduser --system --ingroup appgroup --home /home/appuser appuser \
+    && mkdir -p /app/instance /app/products/resume_taylor/instance \
+    && chown -R appuser:appgroup /app/instance /app/products/resume_taylor/instance
+
+USER appuser
+
+EXPOSE 8000
+
+# Deployment invariant: Lightsail should not override this versioned image command.
+# Production workflow/application state is DynamoDB-backed and documents are in
+# S3. One worker remains the conservative default, not a storage-correctness
+# requirement; durable deployments may raise the worker count in a future image
+# while optimistic locking protects overlapping workflow updates.
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--timeout", "180", "--graceful-timeout", "30", "--access-logfile", "-", "--error-logfile", "-", "app:app"]

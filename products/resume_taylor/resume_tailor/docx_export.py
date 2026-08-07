@@ -8,9 +8,13 @@ from docx.enum.text import WD_TAB_ALIGNMENT, WD_TAB_LEADER
 from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Inches
+from docx.shared import Inches, Pt
 
-from .bullet_text import has_bullet_structure_artifacts, normalize_resume_bullet_text
+from .bullet_text import (
+    has_bullet_structure_artifacts,
+    normalize_resume_bullet_terminal_punctuation,
+    normalize_resume_bullet_text,
+)
 from .docx_styles import (
     DEFAULT_RESUME_STYLE,
     RESUME_STYLE_THEMES,
@@ -36,6 +40,8 @@ from .docx_styles import (
     resume_preference_label,
 )
 from .models import ApprovedResume, CandidateProfile
+from .resume_pagination import rebalance_resume_pagination
+from .resume_language import resume_format_headings, resume_labels
 from .validation import adjacent_repeated_words
 
 
@@ -244,13 +250,15 @@ def _add_skills(
     *,
     heading: str = "Skills",
     resume_format: str = "standard",
+    resume_language: str = "English",
 ) -> None:
+    labels = resume_labels(resume_language)
     category_map = {
-        "hard": ("Hard Skills", approved.skills.hard_skills),
-        "soft": ("Soft Skills", approved.skills.soft_skills),
-        "tools": ("Tools & Software", approved.skills.tools_software),
-        "industry": ("Industry Knowledge", approved.skills.industry_knowledge),
-        "languages": ("Languages", profile.skills.languages),
+        "hard": (labels["hard_skills"], approved.skills.hard_skills),
+        "soft": (labels["soft_skills"], approved.skills.soft_skills),
+        "tools": (labels["tools_software"], approved.skills.tools_software),
+        "industry": (labels["industry_knowledge"], approved.skills.industry_knowledge),
+        "languages": (labels["languages"], profile.skills.languages),
     }
     sections = [category_map[key] for key in SKILL_CATEGORY_ORDER[resume_format]]
     populated = [(label, [item.strip() for item in items if item.strip()]) for label, items in sections]
@@ -296,21 +304,18 @@ def _add_experience(
         return
 
     _add_section_heading(document, heading, theme)
-    balance_after_first = (
-        len(included) >= 2
-        and len(included[0][1]) >= 7
-        and sum(len(item) for item in included[0][1]) >= 1000
-    )
     for index, (experience, bullets) in enumerate(included):
         employer_line = document.add_paragraph(style=STYLE_EMPLOYER_LINE)
-        if index == 1 and balance_after_first:
-            employer_line.paragraph_format.page_break_before = True
+        # Let Word paginate naturally. Employer headings are already configured
+        # to stay with their role title, so a forced break is unnecessary and
+        # can leave a largely empty second page.
         _add_right_tab_stop(document, employer_line)
+        employer_line.paragraph_format.space_before = Pt(
+            0 if index == 0 else 6 if theme.is_mid_career_corporate else 4.5 if theme.is_executive else 4
+        )
         employer_run = employer_line.add_run(experience.employer.strip())
-        if theme.is_mid_career_corporate:
-            employer_run.underline = True
-        else:
-            employer_run.bold = True
+        employer_run.bold = True
+        employer_run.underline = False
         location = experience.location.strip()
         if location:
             employer_line.add_run(f", {location}")
@@ -324,6 +329,7 @@ def _add_experience(
                 if has_bullet_structure_artifacts(bullet)
                 else " ".join(bullet.split()).strip()
             )
+            rendered_bullet = normalize_resume_bullet_terminal_punctuation(rendered_bullet)
             if not rendered_bullet:
                 continue
             paragraph = document.add_paragraph(style=STYLE_BULLET)
@@ -367,7 +373,9 @@ def _add_education(
             if item.detail.strip():
                 detail = document.add_paragraph(style=STYLE_EDUCATION_DETAIL)
                 detail.add_run("• ")
-                detail.add_run(item.detail.strip())
+                detail.add_run(
+                    normalize_resume_bullet_terminal_punctuation(item.detail.strip())
+                )
             continue
 
         has_following_line = bool(institution_parts or item.detail.strip())
@@ -376,7 +384,10 @@ def _add_education(
             institution = document.add_paragraph(", ".join(institution_parts), style=STYLE_EDUCATION_META)
             institution.paragraph_format.keep_with_next = bool(item.detail.strip())
         if item.detail.strip():
-            document.add_paragraph(item.detail.strip(), style=STYLE_EDUCATION_DETAIL)
+            document.add_paragraph(
+                normalize_resume_bullet_terminal_punctuation(item.detail.strip()),
+                style=STYLE_EDUCATION_DETAIL,
+            )
 
 
 def _validate_generated_document(document) -> None:
@@ -397,6 +408,7 @@ def export_resume_docx(
     career_stage: str | None = None,
     resume_format: str | None = None,
     visual_design: str | None = None,
+    resume_language: str | None = None,
 ) -> bytes:
     template = Path(template_path)
     if not template.exists():
@@ -427,7 +439,7 @@ def export_resume_docx(
     clear_document_body(document)
     clear_headers_and_footers(document)
 
-    headings = RESUME_FORMAT_SECTIONS[format_key]
+    headings = resume_format_headings(resume_language or "English", format_key)
     _add_header(document, profile, approved, theme)
 
     def add_summary() -> None:
@@ -441,6 +453,7 @@ def export_resume_docx(
             theme,
             heading=headings["skills"],
             resume_format=format_key,
+            resume_language=resume_language or "English",
         )
 
     def add_experience() -> None:
@@ -484,6 +497,7 @@ def export_resume_docx(
         f"resume, ATS, tailored, {stage}, {format_key}, {design_key}"
     )
 
+    rebalance_resume_pagination(document)
     _validate_generated_document(document)
     if enforce_language_gate:
         _enforce_repeated_word_export_gate(document)

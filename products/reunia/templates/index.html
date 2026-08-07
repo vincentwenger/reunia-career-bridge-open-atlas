@@ -1,8 +1,11 @@
 {% extends 'base.html' %}
+{% block feature_id %}career-bridge-overview{% endblock %}
 
-{% block title %}Réunia Career Bridge - Application Workspace{% endblock %}
+{% from 'macros/ui.html' import workspace_state %}
 
-{% block meta_description %}Build a job application, prepare evidence-backed interview answers, practice, review, and improve with Réunia Career Bridge.{% endblock %}
+{% block title %}Dashboard · Réunia Career Bridge{% endblock %}
+
+{% block meta_description %}Continue your current job application, maintain your Career Foundation, and take the next useful action from one simple dashboard.{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/index.css') }}">
@@ -14,98 +17,107 @@
 <main
     class="home-page"
     data-authenticated="true"
-    data-guided-url="{{ request.script_root }}/application-builder/"
+    data-summary-url="{{ request.script_root }}/api/career/dashboard-summary"
     data-recorder-url="{{ request.script_root }}/mock-interview"
-    data-review-url="{{ request.script_root }}/interview-review"
+    data-storage-scope="{{ session.get('user_id') or 'default' }}"
 >
-    <section class="home-start-card" aria-labelledby="home-title">
-        <div class="home-start-copy">
-            <span class="home-kicker">Réunia</span>
-            <span class="home-brand-subtitle">AI CAREER BRIDGE</span>
-            <h1 id="home-title">Build your next job application.</h1>
-            <p id="home-primary-description">Create one Application Workspace for each target position, connect your materials and career evidence, then prepare and practice for the interview.</p>
+    <header class="home-header" aria-labelledby="home-title">
+        <div class="home-header-copy">
+            <h1 id="home-title">Your next step</h1>
+            <p id="home-primary-description">Discover matching jobs or continue the application that matters most.</p>
+        </div>
+        <a class="home-button home-button-primary" id="home-primary-action" href="{{ request.script_root }}/applications/job-discovery">
+            <span id="home-primary-action-label">Discover jobs</span>
+            <span aria-hidden="true">→</span>
+        </a>
+        <div class="home-smart-status" id="home-smart-status" role="status" hidden>
+            <span class="home-smart-status-dot" aria-hidden="true"></span>
+            <span id="home-smart-status-text"></span>
+        </div>
+    </header>
 
-            <div class="home-smart-status" id="home-smart-status" role="status" hidden>
-                <span class="home-smart-status-dot" aria-hidden="true"></span>
-                <span id="home-smart-status-text"></span>
+    <div class="home-workspace-states" aria-live="polite">
+        {{ workspace_state(
+            'home-loading-state',
+            'loading',
+            'Loading your dashboard',
+            'Checking your applications and recommended next action.',
+            hidden=false,
+            compact=true
+        ) }}
+        {{ workspace_state(
+            'home-empty-state',
+            'empty',
+            'Start with your Career Foundation',
+            'Complete your Career Profile so job matching, resume tailoring, and interview preparation can use your verified background.',
+            hidden=true,
+            action_label='Complete Career Profile',
+            action_href=request.script_root ~ '/career-profile',
+            compact=true
+        ) }}
+        {{ workspace_state(
+            'home-error-state',
+            'error',
+            'Dashboard summary could not be loaded',
+            'You can still open applications and other Career Bridge tools from the navigation.',
+            hidden=true,
+            action_label='Retry dashboard',
+            action_id='home-retry-button',
+            compact=true
+        ) }}
+    </div>
+
+    <section class="home-card home-current-work" aria-labelledby="home-current-title">
+        <div class="home-card-heading">
+            <h2 id="home-current-title">Current application</h2>
+            <a href="{{ request.script_root }}/applications/?tab=applications">View all applications</a>
+        </div>
+
+        <div class="home-current-content" id="home-current-content">
+            <div class="home-current-placeholder">
+                <strong>Loading your active application…</strong>
+                <p>Your most recently selected application will appear here.</p>
             </div>
-
-            <a class="home-primary-action" id="home-primary-action" href="{{ request.script_root }}/application-builder/">
-                <span id="home-primary-action-label">Create application workspace</span>
-                <span aria-hidden="true">→</span>
-            </a>
-
-            <p class="home-flow-note">
-                Application Materials <span aria-hidden="true">→</span>
-                Career Profile <span aria-hidden="true">→</span>
-                Interview Preparation <span aria-hidden="true">→</span>
-                <strong>Mock Interview</strong>
-            </p>
         </div>
+    </section>
 
-        <div class="home-start-visual" aria-hidden="true">
-            <div class="home-visual-orbit home-visual-orbit-large"></div>
-            <div class="home-visual-orbit home-visual-orbit-small"></div>
-            <div class="home-visual-microphone">
-                <svg viewBox="0 0 24 24" fill="none">
-                    <rect x="8" y="3" width="8" height="12" rx="4" stroke="currentColor" stroke-width="1.8"/>
-                    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                </svg>
+    <section class="home-lower-grid">
+        <article class="home-card home-foundation" aria-labelledby="home-foundation-title">
+            <div class="home-card-heading home-card-heading-stacked">
+                <h2 id="home-foundation-title">Career Foundation</h2>
+                <p>Reusable information shared across every application.</p>
             </div>
-            <span class="home-visual-label home-visual-label-one">Build</span>
-            <span class="home-visual-label home-visual-label-two">Practice</span>
-            <span class="home-visual-label home-visual-label-three">Improve</span>
-        </div>
+            <nav class="home-foundation-list" aria-label="Career Foundation">
+                <a href="{{ request.script_root }}/career-profile">
+                    <span>Career Profile</span>
+                    <small id="home-profile-badge">Checking…</small>
+                </a>
+                <a href="{{ request.script_root }}/applications/career-translation">
+                    <span>Baseline Resume</span>
+                    <small id="home-translation-badge">Checking…</small>
+                </a>
+                <a href="{{ request.script_root }}/career-evidence-library">
+                    <span>Career Evidence Library</span>
+                    <small id="home-evidence-badge">Checking…</small>
+                </a>
+            </nav>
+        </article>
+
+        <aside class="home-card home-actions" aria-labelledby="home-actions-title">
+            <div class="home-card-heading home-card-heading-stacked">
+                <h2 id="home-actions-title">Other actions</h2>
+                <p>Start a different task.</p>
+            </div>
+            <nav class="home-action-list" aria-label="Other actions">
+                <a href="{{ request.script_root }}/applications/job-discovery"><span>Discover jobs</span><i aria-hidden="true">→</i></a>
+                <a href="{{ request.script_root }}/applications/?tab=applications#new-application"><span>Create application</span><i aria-hidden="true">→</i></a>
+                <a href="{{ request.script_root }}/mock-interview"><span>Practice an interview</span><i aria-hidden="true">→</i></a>
+            </nav>
+        </aside>
     </section>
-
-    <section class="home-quick-access" aria-labelledby="quick-access-title">
-        <div class="home-section-heading">
-            <div><span>Your Career Bridge</span><h2 id="quick-access-title">Continue your work</h2></div>
-            <p>Open the workspace that matches your next career step.</p>
-        </div>
-
-        <nav class="home-quick-grid" aria-label="Career Bridge tools">
-            <a href="{{ request.script_root }}/career-profile">
-                <span class="home-quick-icon" aria-hidden="true">◎</span>
-                <span><strong>Career Profile</strong><small>Background, accomplishments, preferences, and constraints</small></span>
-                <span aria-hidden="true">→</span>
-            </a>
-            <a href="{{ request.script_root }}/interview-preparation">
-                <span class="home-quick-icon" aria-hidden="true">▦</span>
-                <span><strong>Career Evidence Library</strong><small>Find verified projects, achievements, and experience</small></span>
-                <span aria-hidden="true">→</span>
-            </a>
-            <a href="{{ request.script_root }}/interview-review">
-                <span class="home-quick-icon" aria-hidden="true">▤</span>
-                <span><strong>Interview Review</strong><small>Review mock answers, transcripts, and scorecards</small></span>
-                <span aria-hidden="true">→</span>
-            </a>
-            <a href="{{ request.script_root }}/career-action-plan">
-                <span class="home-quick-icon" aria-hidden="true">✓</span>
-                <span><strong>Career Action Plan</strong><small>Track resume changes, practice, applications, and follow-ups</small></span>
-                <span aria-hidden="true">→</span>
-            </a>
-        </nav>
-    </section>
-
-    <section class="home-continue" id="home-continue" aria-labelledby="home-continue-title" hidden>
-        <div class="home-continue-icon" aria-hidden="true">↗</div>
-        <div class="home-continue-copy">
-            <span>Continue where you left off</span>
-            <h2 id="home-continue-title">Latest mock interview</h2>
-            <p id="home-continue-summary">Open your most recent interview review.</p>
-        </div>
-        <a class="home-continue-link" id="home-continue-link" href="{{ request.script_root }}/interview-review">Review interview <span aria-hidden="true">→</span></a>
-    </section>
-
-    <aside class="home-recording-note" aria-label="Practice-mode reminder">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 5 6v5c0 4.8 2.9 8.1 7 10 4.1-1.9 7-5.2 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Mock Interview is for practice. Réunia does not provide hidden answers during a real employer interview.</span>
-    </aside>
 </main>
 {% endblock %}
 
 {% block page_scripts %}
-<script src="{{ static_asset('js/meeting-utils.js') }}" defer></script>
 <script src="{{ static_asset('js/pages/index.js') }}" defer></script>
 {% endblock %}

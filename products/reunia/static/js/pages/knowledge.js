@@ -5,32 +5,29 @@
     if (!root) return;
 
     const appUrl = window.AppUI?.appUrl || (path => path);
-    const scopeKey = encodeURIComponent(root.dataset.contextStorageScope || 'default');
-    const contextStorageKey = `meetingAssistant.assistantContext.v2.${scopeKey}`;
-    const meetingContextStorageKey = `meetingAssistant.meetingContexts.v1.${scopeKey}`;
-    const meetingMaterialsStorageKey = `meetingAssistant.meetingMaterials.v1.${scopeKey}`;
-    const upcomingMeetingsStorageKey = `meetingAssistant.upcomingMeetings.v1.${scopeKey}`;
+    const requestedApplicationId = String(root.dataset.requestedApplicationId || '').trim();
 
     const endpoints = {
         upload: appUrl('/api/career/evidence'),
         files: appUrl('/api/career/evidence'),
-        collections: appUrl('/api/knowledge/collections'),
+        collections: appUrl('/api/career/evidence/collections'),
         ask: appUrl('/api/career/evidence/search'),
         transcripts: appUrl('/api/career/interview-reviews'),
         context: root.dataset.contextEndpoint || appUrl('/api/career/profile'),
         materials: root.dataset.materialsEndpoint || appUrl('/api/career/application-materials'),
         meetings: appUrl('/api/career/application-workspaces'),
-        activeMeeting: appUrl('/api/career/active-application')
+        activeMeeting: appUrl('/api/career/active-application'),
+        evidenceAnswers: root.dataset.evidenceAnswersEndpoint || appUrl('/api/career/evidence/answers'),
     };
 
     const state = {
         selectedCollectionId: 'all',
         selectedCollectionName: 'All Files',
         completedMeetings: [],
-        upcomingMeetings: normalizeUpcomingMeetings(readJsonStorage(upcomingMeetingsStorageKey, [])),
+        upcomingMeetings: [],
         context: null,
-        meetingContexts: normalizeMeetingContexts(readJsonStorage(meetingContextStorageKey, {})),
-        materials: readJsonStorage(meetingMaterialsStorageKey, {}),
+        meetingContexts: {},
+        materials: {},
         activeModal: null,
         modalTrigger: null,
         pendingTemporaryFiles: [],
@@ -57,26 +54,6 @@
         toast.hidden = false;
         window.clearTimeout(showToast.timeoutId);
         showToast.timeoutId = window.setTimeout(() => { toast.hidden = true; }, 3800);
-    }
-
-    function readJsonStorage(key, fallback) {
-        try {
-            const raw = localStorage.getItem(key);
-            return raw ? JSON.parse(raw) : fallback;
-        } catch (error) {
-            console.warn(`Unable to read ${key}:`, error);
-            return fallback;
-        }
-    }
-
-    function writeJsonStorage(key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-            return true;
-        } catch (error) {
-            console.warn(`Unable to save ${key}:`, error);
-            return false;
-        }
     }
 
     function formatBytes(bytes) {
@@ -213,14 +190,14 @@
         document.querySelectorAll('[data-upcoming-meeting-select]').forEach(select => {
             const previousValue = preferredId || select.value;
             const defaultLabel = select.id === 'contextMeetingSelect'
-                ? 'No upcoming interview selected'
-                : 'Select an upcoming interview';
+                ? 'No job application selected'
+                : 'Select a job application';
             const firstOption = new Option(defaultLabel, '');
             select.replaceChildren(firstOption);
             meetings.forEach(meeting => select.add(new Option(upcomingMeetingLabel(meeting), meeting.id)));
             select.disabled = meetings.length === 0;
             if (!meetings.length) {
-                firstOption.textContent = 'No upcoming interviews yet';
+                firstOption.textContent = 'No job applications yet';
             }
             if (previousValue && meetings.some(meeting => meeting.id === previousValue)) {
                 select.value = previousValue;
@@ -262,7 +239,7 @@
         });
 
         participantSelects.forEach(select => {
-            const firstOption = select.options[0]?.cloneNode(true) || new Option('All participants', '');
+            const firstOption = select.options[0]?.cloneNode(true) || new Option('All interviewers and contacts', '');
             select.replaceChildren(firstOption);
             Array.from(participants).sort((a, b) => a.localeCompare(b)).forEach(name => select.add(new Option(name, name)));
         });
@@ -272,81 +249,51 @@
         return window.crypto?.randomUUID?.() || `upcoming-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
 
-    function saveUpcomingMeetings() {
-        writeJsonStorage(upcomingMeetingsStorageKey, state.upcomingMeetings);
-    }
-
-    async function setActiveMeeting(meetingId) {
+    async function setActiveMeeting(meetingId, {notify = true} = {}) {
         try {
-            await fetch(endpoints.activeMeeting, {
+            const response = await fetch(endpoints.activeMeeting, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({application_workspace_id: meetingId || '', meeting_id: meetingId || ''})
             });
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                throw new Error(result.error || 'The active application could not be synchronized.');
+            }
+            return true;
         } catch (error) {
-            console.info('Active application workspace could not be synchronized.', error);
+            console.error('Active application workspace could not be synchronized.', error);
+            if (notify) showToast(error.message || 'The active application could not be synchronized.', true);
+            return false;
         }
     }
 
     async function loadUpcomingMeetingsFromServer() {
-        const localMeetings = normalizeUpcomingMeetings(readJsonStorage(upcomingMeetingsStorageKey, []));
         try {
-            let response = await fetch(endpoints.meetings, {headers: {'Accept': 'application/json'}});
-            if (!response.ok) throw new Error(`Application workspace endpoint returned ${response.status}.`);
-            let result = await response.json();
-            let serverMeetings = normalizeUpcomingMeetings(result.meetings || []);
-
-            // Migrate packages created by the previous browser-only implementation.
-            if (localMeetings.length) {
-                const serverIds = new Set(serverMeetings.map(meeting => meeting.id));
-                for (const meeting of localMeetings) {
-                    if (serverIds.has(meeting.id)) continue;
-                    const created = await fetch(endpoints.meetings, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({...meeting, activate: false})
-                    });
-                    if (!created.ok) continue;
-                    const localMaterials = state.materials[meeting.id];
-                    if (localMaterials) {
-                        await fetch(endpoints.materials, {
-                            method: 'PUT',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({meeting_id: meeting.id, ...localMaterials, activate: false})
-                        });
-                    }
-                    const localContext = state.meetingContexts[meeting.id];
-                    if (localContext) {
-                        await fetch(`${endpoints.meetings}/${encodeURIComponent(meeting.id)}/context`, {
-                            method: 'PUT',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify(localContext)
-                        });
-                    }
-                }
-                response = await fetch(endpoints.meetings, {headers: {'Accept': 'application/json'}});
-                result = response.ok ? await response.json() : result;
-                serverMeetings = normalizeUpcomingMeetings(result.meetings || []);
+            const response = await fetch(endpoints.meetings, {headers: {'Accept': 'application/json'}});
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(result.error || `Application workspace endpoint returned ${response.status}.`);
             }
-
+            const serverMeetings = normalizeUpcomingMeetings(
+                result.application_workspaces || result.upcoming_interviews || result.meetings || []
+            );
             state.upcomingMeetings = serverMeetings;
-            saveUpcomingMeetings();
             let activeMeetingId = result.active_application_workspace_id || result.active_meeting_id || '';
-            if (!activeMeetingId && localMeetings.length) {
-                const preparedLocal = [...localMeetings]
-                    .filter(meeting => (state.materials[meeting.id]?.library_file_ids || []).length)
-                    .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
-                if (preparedLocal && serverMeetings.some(meeting => meeting.id === preparedLocal.id)) {
-                    activeMeetingId = preparedLocal.id;
-                    await setActiveMeeting(activeMeetingId);
-                }
+            if (requestedApplicationId && serverMeetings.some(meeting => meeting.id === requestedApplicationId)) {
+                activeMeetingId = requestedApplicationId;
+                await setActiveMeeting(activeMeetingId, {notify: false});
             }
             populateUpcomingMeetingSelects(activeMeetingId);
             return activeMeetingId;
         } catch (error) {
-            console.info('Upcoming interviews endpoint unavailable; using browser storage.', error);
-            state.upcomingMeetings = localMeetings;
+            console.error('Application workspaces could not be loaded.', error);
+            state.upcomingMeetings = [];
             populateUpcomingMeetingSelects();
+            showToast(
+                error.message || 'Application workspaces could not be loaded. Retry when the service is available.',
+                true
+            );
             return '';
         }
     }
@@ -654,7 +601,7 @@
             if (meetingDetailsPurposeInput) meetingDetailsPurposeInput.value = '';
             savedUpcomingMeetingDetailsSnapshot = null;
             if (meetingDetailsStatus) {
-                meetingDetailsStatus.textContent = 'Select an upcoming interview to view its saved title, purpose, participants, and date.';
+                meetingDetailsStatus.textContent = 'Select a job application to view its target role, notes, interviewer contacts, and interview date.';
             }
             updateUpcomingMeetingDetailsSaveState();
             return;
@@ -728,11 +675,12 @@
             if (!response.ok) throw new Error(result.error || 'The application workspace could not be created.');
             Object.assign(meeting, result.meeting || {});
         } catch (error) {
-            console.info('Creating application workspace in browser storage.', error);
+            console.error('The application workspace could not be created.', error);
+            showToast(error.message || 'The application workspace could not be created. Nothing was saved.', true);
+            return;
         }
         state.upcomingMeetings = state.upcomingMeetings.filter(item => item.id !== meeting.id);
         state.upcomingMeetings.push(meeting);
-        saveUpcomingMeetings();
         populateUpcomingMeetingSelects(meeting.id);
         closeModal(upcomingMeetingModal);
 
@@ -782,7 +730,6 @@
             state.upcomingMeetings = state.upcomingMeetings.map(item =>
                 item.id === meeting.id ? normalizeUpcomingMeetings([savedMeeting])[0] : item
             );
-            saveUpcomingMeetings();
             populateUpcomingMeetingSelects(meeting.id);
             showToast('Application details saved.');
         } catch (error) {
@@ -831,9 +778,6 @@
             delete state.materials[selectedId];
             delete state.meetingContexts[selectedId];
             delete savedMeetingContextSnapshots[selectedId];
-            saveUpcomingMeetings();
-            writeJsonStorage(meetingMaterialsStorageKey, state.materials);
-            writeJsonStorage(meetingContextStorageKey, state.meetingContexts);
 
             populateUpcomingMeetingSelects();
             if (materialsMeeting) {
@@ -1169,8 +1113,9 @@
     let savedMaterialsSnapshot = null;
     let materialsLoadRequest = 0;
     let isSavingMeetingMaterials = false;
+    let materialsLoadFailed = false;
 
-    function getLocalMaterialRecord(id) {
+    function getCachedMaterialRecord(id) {
         return state.materials[id] || {library_file_ids: [], temporary_files: []};
     }
 
@@ -1179,7 +1124,6 @@
             library_file_ids: Array.from(new Set(record.library_file_ids || [])),
             temporary_files: Array.isArray(record.temporary_files) ? record.temporary_files : []
         };
-        writeJsonStorage(meetingMaterialsStorageKey, state.materials);
     }
 
     function selectedMaterialFileIds() {
@@ -1214,7 +1158,7 @@
 
     function updateSaveMeetingMaterialsButton() {
         if (!saveMeetingMaterialsButton) return;
-        const disabled = isSavingMeetingMaterials || !materialsHaveUnsavedChanges();
+        const disabled = isSavingMeetingMaterials || materialsLoadFailed || !materialsHaveUnsavedChanges();
         saveMeetingMaterialsButton.disabled = disabled;
         saveMeetingMaterialsButton.setAttribute('aria-disabled', String(disabled));
     }
@@ -1265,7 +1209,9 @@
         if (statusElement) {
             statusElement.textContent = !hasMeeting
                 ? 'Not started'
-                : (hasUnsavedChanges ? 'Unsaved changes' : 'Saved');
+                : materialsLoadFailed
+                    ? 'Unavailable'
+                    : (hasUnsavedChanges ? 'Unsaved changes' : 'Saved');
         }
         if (summaryElement) {
             summaryElement.textContent = hasMeeting
@@ -1290,6 +1236,7 @@
         const requestId = ++materialsLoadRequest;
         const id = materialsMeeting?.value || '';
         savedMaterialsSnapshot = null;
+        materialsLoadFailed = false;
         materialsCheckboxes.forEach(input => { input.checked = false; });
         state.pendingTemporaryFiles = [];
         state.currentTemporaryFiles = [];
@@ -1300,39 +1247,51 @@
             return;
         }
 
-        let record = getLocalMaterialRecord(id);
         try {
-            const response = await fetch(`${endpoints.materials}?meeting_id=${encodeURIComponent(id)}`, {headers: {'Accept': 'application/json'}});
-            if (response.ok) {
-                const result = await response.json();
-                const serverRecord = result.materials || result.meeting_materials || result;
-                if (serverRecord && typeof serverRecord === 'object') {
-                    record = {
-                        library_file_ids: serverRecord.library_file_ids || serverRecord.file_ids || record.library_file_ids || [],
-                        temporary_files: serverRecord.temporary_files || record.temporary_files || []
-                    };
-                    setMaterialRecord(id, record);
-                }
+            const response = await fetch(
+                `${endpoints.materials}?meeting_id=${encodeURIComponent(id)}`,
+                {headers: {'Accept': 'application/json'}}
+            );
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(result.error || 'Application materials could not be loaded.');
             }
-        } catch (error) {
-            console.info('Application materials endpoint unavailable; using browser storage.', error);
-        }
+            const serverRecord = result.application_materials || result.materials || result.meeting_materials || result;
+            const record = {
+                library_file_ids: serverRecord?.library_file_ids || serverRecord?.file_ids || [],
+                temporary_files: serverRecord?.temporary_files || []
+            };
+            setMaterialRecord(id, record);
 
-        if (requestId !== materialsLoadRequest || id !== (materialsMeeting?.value || '')) return;
-        const selected = new Set(record.library_file_ids || []);
-        materialsCheckboxes.forEach(input => { input.checked = selected.has(input.value); });
-        state.currentTemporaryFiles = Array.isArray(record.temporary_files) ? record.temporary_files : [];
-        renderTemporaryFiles();
-        markMeetingMaterialsSaved();
-        updateMaterialsSummary();
-        filterMaterialLibrary();
+            if (requestId !== materialsLoadRequest || id !== (materialsMeeting?.value || '')) return;
+            const selected = new Set(record.library_file_ids || []);
+            materialsCheckboxes.forEach(input => { input.checked = selected.has(input.value); });
+            state.currentTemporaryFiles = Array.isArray(record.temporary_files) ? record.temporary_files : [];
+            renderTemporaryFiles();
+            markMeetingMaterialsSaved();
+            updateMaterialsSummary();
+            filterMaterialLibrary();
+        } catch (error) {
+            if (requestId !== materialsLoadRequest || id !== (materialsMeeting?.value || '')) return;
+            console.error('Application materials could not be loaded.', error);
+            materialsLoadFailed = true;
+            delete state.materials[id];
+            state.currentTemporaryFiles = [];
+            renderTemporaryFiles();
+            updateMaterialsSummary();
+            showToast(error.message || 'Application materials could not be loaded. No cached copy was used.', true);
+        }
     }
 
     async function saveMeetingMaterials() {
         const id = materialsMeeting?.value || '';
         if (!id) {
-            showToast('Create or select an upcoming interview before saving materials.', true);
+            showToast('Select a job application before saving materials.', true);
             materialsMeeting?.focus();
+            return;
+        }
+        if (materialsLoadFailed) {
+            showToast('Reload the application materials before saving changes.', true);
             return;
         }
         if (!materialsHaveUnsavedChanges() || isSavingMeetingMaterials) return;
@@ -1343,26 +1302,31 @@
             library_file_ids: selectedMaterialFileIds(),
             temporary_files: state.currentTemporaryFiles
         };
-        setMaterialRecord(id, record);
         try {
             const response = await fetch(endpoints.materials, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({meeting_id: id, ...record, activate: true})
             });
-            if (!response.ok && ![404, 405].includes(response.status)) {
-                const result = await response.json().catch(() => ({}));
-                throw new Error(result.error || 'Application materials could not be saved on the server.');
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(result.error || 'Application materials could not be saved.');
             }
-            showToast(response.ok ? 'Application materials saved.' : 'Application materials saved in this browser.');
+            const savedRecord = result.application_materials || result.materials || record;
+            setMaterialRecord(id, {
+                library_file_ids: savedRecord.library_file_ids || record.library_file_ids,
+                temporary_files: savedRecord.temporary_files || record.temporary_files
+            });
+            markMeetingMaterialsSaved();
+            showToast('Application materials saved.');
         } catch (error) {
-            console.info('Saving application materials in browser storage.', error);
-            showToast('Application materials saved in this browser.');
+            console.error('Application materials could not be saved.', error);
+            showToast(error.message || 'Application materials could not be saved. Your unsaved selections remain on this page.', true);
+        } finally {
+            isSavingMeetingMaterials = false;
+            if (saveMeetingMaterialsButton) saveMeetingMaterialsButton.textContent = 'Save Application Materials';
+            updateMaterialsSummary();
         }
-        markMeetingMaterialsSaved();
-        isSavingMeetingMaterials = false;
-        if (saveMeetingMaterialsButton) saveMeetingMaterialsButton.textContent = 'Save Application Materials';
-        updateMaterialsSummary();
     }
 
     function setPendingTemporaryFiles(files) {
@@ -1396,35 +1360,28 @@
         const formData = new FormData();
         formData.append('meeting_id', id);
         state.pendingTemporaryFiles.forEach(file => formData.append('files', file));
-        const localMetadata = state.pendingTemporaryFiles.map(file => ({
-            id: `local-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            added_at: new Date().toISOString(),
-            local_only: true
-        }));
 
         try {
-            const response = await fetch(`${endpoints.materials}/${encodeURIComponent(id)}/temporary-files`, {method: 'POST', body: formData});
+            const response = await fetch(
+                `${endpoints.materials}/${encodeURIComponent(id)}/temporary-files`,
+                {method: 'POST', body: formData}
+            );
             const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.error || 'Temporary upload endpoint unavailable.');
+            if (!response.ok) throw new Error(result.error || 'Temporary files could not be uploaded.');
             const uploaded = result.files || result.temporary_files || [];
             state.currentTemporaryFiles.push(...uploaded);
+            state.pendingTemporaryFiles = [];
+            if (temporaryFileInput) temporaryFileInput.value = '';
+            setMaterialRecord(id, {
+                library_file_ids: selectedMaterialFileIds(),
+                temporary_files: state.currentTemporaryFiles
+            });
+            renderTemporaryFiles();
             showToast('Temporary files added to this application.');
         } catch (error) {
-            state.currentTemporaryFiles.push(...localMetadata);
-            showToast('Temporary file references saved in this browser for this application.');
-            console.info('Temporary files stored as browser metadata because the upload endpoint is unavailable.', error);
+            console.error('Temporary files could not be uploaded.', error);
+            showToast(error.message || 'Temporary files could not be uploaded. The selected files remain ready to retry.', true);
         }
-
-        state.pendingTemporaryFiles = [];
-        if (temporaryFileInput) temporaryFileInput.value = '';
-        setMaterialRecord(id, {
-            library_file_ids: selectedMaterialFileIds(),
-            temporary_files: state.currentTemporaryFiles
-        });
-        renderTemporaryFiles();
     });
 
     document.getElementById('temporaryFileList')?.addEventListener('click', async event => {
@@ -1438,17 +1395,30 @@
             renderTemporaryFiles();
             return;
         }
-        state.currentTemporaryFiles = state.currentTemporaryFiles.filter(file => String(file.id || file.file_id || '') !== id);
         const meeting = materialsMeeting?.value || '';
-        if (meeting) {
-            setMaterialRecord(meeting, {library_file_ids: selectedMaterialFileIds(), temporary_files: state.currentTemporaryFiles});
-            try {
-                await fetch(`${endpoints.materials}/${encodeURIComponent(meeting)}/temporary-files/${encodeURIComponent(id)}`, {method: 'DELETE'});
-            } catch (error) {
-                console.info('Temporary file removed from browser record only.', error);
-            }
+        if (!meeting || !id) return;
+        button.disabled = true;
+        try {
+            const response = await fetch(
+                `${endpoints.materials}/${encodeURIComponent(meeting)}/temporary-files/${encodeURIComponent(id)}`,
+                {method: 'DELETE', headers: {'Accept': 'application/json'}}
+            );
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || 'The temporary file could not be removed.');
+            state.currentTemporaryFiles = state.currentTemporaryFiles.filter(
+                file => String(file.id || file.file_id || '') !== id
+            );
+            setMaterialRecord(meeting, {
+                library_file_ids: selectedMaterialFileIds(),
+                temporary_files: state.currentTemporaryFiles
+            });
+            renderTemporaryFiles();
+            showToast('Temporary file removed.');
+        } catch (error) {
+            console.error('Temporary file removal failed.', error);
+            button.disabled = false;
+            showToast(error.message || 'The temporary file could not be removed.', true);
         }
-        renderTemporaryFiles();
     });
 
     document.getElementById('clearTemporaryFiles')?.addEventListener('click', async () => {
@@ -1462,14 +1432,27 @@
             })
             : window.confirm(window.AppI18n?.t('Clear all temporary files?') || 'Clear all temporary files?');
         if (!confirmed) return;
-        state.pendingTemporaryFiles = [];
-        state.currentTemporaryFiles = [];
         const id = materialsMeeting?.value || '';
-        if (id) {
-            setMaterialRecord(id, {library_file_ids: selectedMaterialFileIds(), temporary_files: []});
-            try { await fetch(`${endpoints.materials}/${encodeURIComponent(id)}/temporary-files`, {method: 'DELETE'}); } catch (error) { console.info('Temporary files cleared locally only.', error); }
+        try {
+            if (id && state.currentTemporaryFiles.length) {
+                const response = await fetch(
+                    `${endpoints.materials}/${encodeURIComponent(id)}/temporary-files`,
+                    {method: 'DELETE', headers: {'Accept': 'application/json'}}
+                );
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.error || 'Temporary files could not be cleared.');
+            }
+            state.pendingTemporaryFiles = [];
+            state.currentTemporaryFiles = [];
+            if (id) {
+                setMaterialRecord(id, {library_file_ids: selectedMaterialFileIds(), temporary_files: []});
+            }
+            renderTemporaryFiles();
+            showToast('Temporary files cleared.');
+        } catch (error) {
+            console.error('Temporary files could not be cleared.', error);
+            showToast(error.message || 'Temporary files could not be cleared.', true);
         }
-        renderTemporaryFiles();
     });
 
     materialsMeeting?.addEventListener('change', async () => {
@@ -1488,36 +1471,64 @@
 
     // Career Profile
     function seedContextFromTemplate() {
+        // The complete profile is fetched from the API. Only values already
+        // present in the Career Profile form are used as an immediate fallback.
+        const field = (id) => document.getElementById(id)?.value || '';
         return {
-            enabled: root.dataset.contextEnabled !== 'false',
-            company: root.dataset.contextCompany || '',
-            reference_link: root.dataset.contextReferenceLink || '',
-            role: root.dataset.contextRole || '',
-            type: root.dataset.contextType || '',
-            domain: root.dataset.contextDomain || '',
-            audience: root.dataset.contextAudience || '',
-            answer_style: root.dataset.contextAnswerStyle || '',
-            response_mode: root.dataset.contextResponseMode || 'ready_to_say',
-            audio_response_instructions: root.dataset.contextAudioResponseInstructions || '',
-            clipboard_response_instructions: root.dataset.contextClipboardResponseInstructions || '',
-            objective: root.dataset.contextObjective || '',
-            free_text: root.dataset.contextFreeText || ''
+            enabled: document.getElementById('useAssistantContext')?.checked ?? true,
+            professional_headline: field('profileProfessionalHeadline'),
+            current_role: field('profileCurrentRole'),
+            years_experience: field('profileYearsExperience'),
+            current_location: field('profileCurrentLocation'),
+            preferred_roles: field('profilePreferredRoles'),
+            industries: field('profileIndustries'),
+            core_skills: field('profileCoreSkills'),
+            key_accomplishments: field('profileKeyAccomplishments'),
+            countries_worked: field('profileCountriesWorked'),
+            languages: field('profileLanguages'),
+            target_country: field('profileTargetCountry'),
+            target_country_experience: field('profileTargetCountryExperience'),
+            international_credentials: field('profileInternationalCredentials'),
+            certifications: field('profileCertifications'),
+            titles_needing_translation: field('profileTitlesNeedingTranslation'),
+            career_transition: field('profileCareerTransition'),
+            work_preferences: field('profileWorkPreferences'),
+            relocation_preferences: field('profileRelocationPreferences'),
+            work_authorization: field('profileWorkAuthorization'),
+            career_goals: field('profileCareerGoals'),
+            constraints: field('profileConstraints')
         };
     }
 
     function normalizeContext(raw = {}) {
         return {
             enabled: raw.enabled ?? raw.use_context ?? true,
+            professional_headline: raw.professional_headline ?? raw.profile_professional_headline ?? '',
+            current_role: raw.current_role ?? raw.profile_current_role ?? raw.role ?? raw.context_role ?? '',
+            years_experience: raw.years_experience ?? raw.profile_years_experience ?? '',
+            current_location: raw.current_location ?? raw.profile_current_location ?? '',
+            preferred_roles: raw.preferred_roles ?? raw.profile_preferred_roles ?? '',
+            industries: raw.industries ?? raw.profile_industries ?? raw.domain ?? raw.context_domain ?? '',
+            core_skills: raw.core_skills ?? raw.profile_core_skills ?? '',
+            key_accomplishments: raw.key_accomplishments ?? raw.profile_key_accomplishments ?? '',
+            countries_worked: raw.countries_worked ?? raw.profile_countries_worked ?? '',
+            languages: raw.languages ?? raw.profile_languages ?? '',
+            target_country: raw.target_country ?? raw.profile_target_country ?? '',
+            target_country_experience: raw.target_country_experience ?? raw.profile_target_country_experience ?? '',
+            international_credentials: raw.international_credentials ?? raw.profile_international_credentials ?? '',
+            certifications: raw.certifications ?? raw.profile_certifications ?? '',
+            titles_needing_translation: raw.titles_needing_translation ?? raw.profile_titles_needing_translation ?? '',
+            career_transition: raw.career_transition ?? raw.profile_career_transition ?? '',
+            work_preferences: raw.work_preferences ?? raw.profile_work_preferences ?? '',
+            relocation_preferences: raw.relocation_preferences ?? raw.profile_relocation_preferences ?? '',
+            work_authorization: raw.work_authorization ?? raw.profile_work_authorization ?? '',
+            career_goals: raw.career_goals ?? raw.profile_career_goals ?? raw.objective ?? raw.context_objective ?? '',
+            constraints: raw.constraints ?? raw.profile_constraints ?? '',
             company: raw.company ?? raw.context_company ?? raw.assistant_context_company ?? '',
             reference_link: raw.reference_link ?? raw.context_reference_link ?? raw.assistant_context_reference_link ?? '',
             role: raw.role ?? raw.context_role ?? raw.assistant_context_role ?? '',
             type: raw.type ?? raw.context_type ?? raw.assistant_context_type ?? '',
             domain: raw.domain ?? raw.context_domain ?? raw.assistant_context_domain ?? '',
-            audience: raw.audience ?? raw.context_audience ?? raw.assistant_context_audience ?? '',
-            answer_style: raw.answer_style ?? raw.context_answer_style ?? raw.assistant_context_answer_style ?? '',
-            response_mode: raw.response_mode ?? raw.context_response_mode ?? raw.assistant_context_response_mode ?? 'ready_to_say',
-            audio_response_instructions: raw.audio_response_instructions ?? raw.context_audio_response_instructions ?? raw.assistant_context_audio_response_instructions ?? '',
-            clipboard_response_instructions: raw.clipboard_response_instructions ?? raw.context_clipboard_response_instructions ?? raw.assistant_context_clipboard_response_instructions ?? '',
             objective: raw.objective ?? raw.context_objective ?? raw.assistant_context_objective ?? '',
             free_text: raw.free_text ?? raw.context_free_text ?? raw.assistant_context_free_text ?? ''
         };
@@ -1528,74 +1539,118 @@
         return {
             ...value,
             use_context: value.enabled,
+            profile_professional_headline: value.professional_headline,
+            profile_current_role: value.current_role,
+            profile_years_experience: value.years_experience,
+            profile_current_location: value.current_location,
+            profile_preferred_roles: value.preferred_roles,
+            profile_industries: value.industries,
+            profile_core_skills: value.core_skills,
+            profile_key_accomplishments: value.key_accomplishments,
+            profile_countries_worked: value.countries_worked,
+            profile_languages: value.languages,
+            profile_target_country: value.target_country,
+            profile_target_country_experience: value.target_country_experience,
+            profile_international_credentials: value.international_credentials,
+            profile_certifications: value.certifications,
+            profile_titles_needing_translation: value.titles_needing_translation,
+            profile_career_transition: value.career_transition,
+            profile_work_preferences: value.work_preferences,
+            profile_relocation_preferences: value.relocation_preferences,
+            profile_work_authorization: value.work_authorization,
+            profile_career_goals: value.career_goals,
+            profile_constraints: value.constraints,
             context_company: value.company,
             context_reference_link: value.reference_link,
-            context_role: value.role,
+            context_role: value.current_role || value.preferred_roles || value.role,
             context_type: value.type,
-            context_domain: value.domain,
-            context_audience: value.audience,
-            context_answer_style: value.answer_style,
-            context_response_mode: value.response_mode,
-            context_audio_response_instructions: value.audio_response_instructions,
-            context_clipboard_response_instructions: value.clipboard_response_instructions,
-            context_objective: value.objective,
+            context_domain: value.industries || value.domain,
+            context_objective: value.career_goals || value.objective,
             context_free_text: value.free_text
         };
     }
 
+    const ACTIVE_CAREER_PROFILE_FIELDS = [
+        'professional_headline',
+        'current_location',
+        'preferred_roles',
+        'industries',
+        'countries_worked',
+        'target_country',
+        'target_country_experience',
+        'titles_needing_translation',
+        'career_transition',
+        'work_preferences',
+        'relocation_preferences',
+        'work_authorization',
+        'career_goals',
+        'constraints'
+    ];
+
+    function profileContextForAI(context) {
+        const value = normalizeContext(context || {});
+        return Object.fromEntries(
+            ACTIVE_CAREER_PROFILE_FIELDS
+                .map(key => [key, value[key]])
+                .filter(([, fieldValue]) => String(fieldValue || '').trim())
+        );
+    }
+
     function hasContextDetails(context) {
         const value = normalizeContext(context || {});
-        return Boolean(
-            value.company ||
-            value.reference_link ||
-            value.role ||
-            value.type ||
-            value.domain ||
-            value.audience ||
-            value.answer_style ||
-            value.response_mode !== 'ready_to_say' ||
-            value.audio_response_instructions ||
-            value.clipboard_response_instructions ||
-            value.objective ||
-            value.free_text
+        return ACTIVE_CAREER_PROFILE_FIELDS.some(
+            key => String(value[key] || '').trim()
         );
     }
 
     function readDefaultContextForm() {
         const enabled = document.getElementById('useAssistantContext');
         if (!enabled) return state.context || seedContextFromTemplate();
+        const existing = normalizeContext(state.context || seedContextFromTemplate());
         return normalizeContext({
+            ...existing,
             enabled: enabled.checked,
-            company: document.getElementById('contextCompany')?.value.trim() || '',
-            reference_link: document.getElementById('contextReferenceLink')?.value.trim() || '',
-            role: document.getElementById('contextRole')?.value.trim() || '',
-            type: document.getElementById('contextType')?.value || '',
-            domain: document.getElementById('contextDomain')?.value.trim() || '',
-            audience: document.getElementById('contextAudience')?.value.trim() || '',
-            answer_style: document.getElementById('contextAnswerStyle')?.value || '',
-            response_mode: document.getElementById('contextResponseMode')?.value || 'ready_to_say',
-            audio_response_instructions: document.getElementById('contextAudioResponseInstructions')?.value.trim() || '',
-            clipboard_response_instructions: document.getElementById('contextClipboardResponseInstructions')?.value.trim() || '',
-            objective: document.getElementById('contextObjective')?.value.trim() || '',
-            free_text: document.getElementById('contextFreeText')?.value.trim() || ''
+            professional_headline: document.getElementById('profileProfessionalHeadline')?.value.trim() || '',
+            current_location: document.getElementById('profileCurrentLocation')?.value.trim() || '',
+            preferred_roles: document.getElementById('profilePreferredRoles')?.value.trim() || '',
+            industries: document.getElementById('profileIndustries')?.value.trim() || '',
+            countries_worked: document.getElementById('profileCountriesWorked')?.value.trim() || '',
+            target_country: document.getElementById('profileTargetCountry')?.value.trim() || '',
+            target_country_experience: document.getElementById('profileTargetCountryExperience')?.value.trim() || '',
+            titles_needing_translation: document.getElementById('profileTitlesNeedingTranslation')?.value.trim() || '',
+            career_transition: document.getElementById('profileCareerTransition')?.value.trim() || '',
+            work_preferences: document.getElementById('profileWorkPreferences')?.value || '',
+            relocation_preferences: document.getElementById('profileRelocationPreferences')?.value.trim() || '',
+            work_authorization: document.getElementById('profileWorkAuthorization')?.value.trim() || '',
+            career_goals: document.getElementById('profileCareerGoals')?.value.trim() || '',
+            constraints: document.getElementById('profileConstraints')?.value.trim() || ''
         });
     }
 
     function writeDefaultContextForm(context) {
         const map = {
             useAssistantContext: context.enabled !== false,
-            contextCompany: context.company || '',
-            contextReferenceLink: context.reference_link || '',
-            contextRole: context.role || '',
-            contextType: context.type || '',
-            contextDomain: context.domain || '',
-            contextAudience: context.audience || '',
-            contextAnswerStyle: context.answer_style || '',
-            contextResponseMode: context.response_mode || 'ready_to_say',
-            contextAudioResponseInstructions: context.audio_response_instructions || '',
-            contextClipboardResponseInstructions: context.clipboard_response_instructions || '',
-            contextObjective: context.objective || '',
-            contextFreeText: context.free_text || ''
+            profileProfessionalHeadline: context.professional_headline || '',
+            profileCurrentRole: context.current_role || '',
+            profileYearsExperience: context.years_experience || '',
+            profileCurrentLocation: context.current_location || '',
+            profilePreferredRoles: context.preferred_roles || '',
+            profileIndustries: context.industries || '',
+            profileCoreSkills: context.core_skills || '',
+            profileKeyAccomplishments: context.key_accomplishments || '',
+            profileCountriesWorked: context.countries_worked || '',
+            profileLanguages: context.languages || '',
+            profileTargetCountry: context.target_country || '',
+            profileTargetCountryExperience: context.target_country_experience || '',
+            profileInternationalCredentials: context.international_credentials || '',
+            profileCertifications: context.certifications || '',
+            profileTitlesNeedingTranslation: context.titles_needing_translation || '',
+            profileCareerTransition: context.career_transition || '',
+            profileWorkPreferences: context.work_preferences || '',
+            profileRelocationPreferences: context.relocation_preferences || '',
+            profileWorkAuthorization: context.work_authorization || '',
+            profileCareerGoals: context.career_goals || '',
+            profileConstraints: context.constraints || ''
         };
         Object.entries(map).forEach(([id, value]) => {
             const element = document.getElementById(id);
@@ -1630,16 +1685,6 @@
         };
     }
 
-    function normalizeMeetingContexts(raw = {}) {
-        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
-        return Object.fromEntries(
-            Object.entries(raw).map(([meetingId, context]) => [
-                meetingId,
-                normalizeMeetingContext(context)
-            ])
-        );
-    }
-
     function hasMeetingContextDetails(context = {}) {
         const normalized = normalizeMeetingContext(context);
         return Boolean(
@@ -1655,55 +1700,6 @@
             participants: document.getElementById('meetingContextParticipants')?.value.trim() || '',
             special_instructions: document.getElementById('meetingContextSpecialInstructions')?.value.trim() || ''
         });
-    }
-
-    function responseAnswerStyleLabel(value) {
-        const labels = {
-            concise: 'Concise answers',
-            detailed: 'Detailed answers',
-            bullet_points: 'Bullet-point answers',
-            step_by_step: 'Step-by-step answers',
-            action_oriented: 'Action-oriented answers',
-            professional: 'Professional answers'
-        };
-        return labels[value] || 'Balanced answers';
-    }
-
-    function responseModeLabel(value, {compact = false} = {}) {
-        const labels = {
-            concise_structured_action: 'Concise, structured, and action-oriented',
-            coaching: 'Coaching guidance'
-        };
-        return labels[value] || (compact ? 'Ready-to-say' : 'Ready-to-say answer');
-    }
-
-    function updateResponsePreferencesSummary() {
-        const summary = document.getElementById('responsePreferencesSummary');
-        if (!summary) return;
-        const context = readDefaultContextForm();
-        const parts = [
-            responseAnswerStyleLabel(context.answer_style),
-            responseModeLabel(context.response_mode, {compact: true})
-        ];
-        if (context.audio_response_instructions) parts.push('Custom audio instructions');
-        if (context.clipboard_response_instructions) parts.push('Custom clipboard instructions');
-        summary.textContent = parts.join(' · ');
-    }
-
-    function setResponsePreferencesExpanded(expanded, {focus = false} = {}) {
-        const toggle = document.getElementById('responsePreferencesToggle');
-        const panel = document.getElementById('responsePreferencesPanel');
-        if (!toggle || !panel) return;
-        const open = Boolean(expanded);
-        toggle.setAttribute('aria-expanded', String(open));
-        panel.hidden = !open;
-
-        const action = toggle.querySelector('.response-preferences-toggle-action');
-        if (action) action.textContent = open ? 'Hide' : 'Customize';
-
-        if (focus && open) {
-            window.requestAnimationFrame(() => document.getElementById('contextAnswerStyle')?.focus());
-        }
     }
 
     function setMeetingOverrideExpanded(expanded, {focus = false} = {}) {
@@ -1790,8 +1786,9 @@
     function cacheCurrentMeetingContextDraft() {
         const meetingId = activeContextMeetingId || document.getElementById('contextMeetingSelect')?.value || '';
         if (!meetingId) return;
+        // Keep unsaved form changes only in memory so the UI can preserve them
+        // while switching sections. They are never represented as saved data.
         state.meetingContexts[meetingId] = readMeetingContextForm();
-        writeJsonStorage(meetingContextStorageKey, state.meetingContexts);
     }
 
     function updateContextStatus(context) {
@@ -1813,16 +1810,24 @@
     }
 
     function updateEffectiveContextPreview() {
-        const defaultContext = readDefaultContextForm();
-        const meetingContext = readMeetingContextForm();
+        const profile = readDefaultContextForm();
         const preview = document.getElementById('effectiveContextPreview');
         const chips = document.getElementById('effectiveContextChips');
         const status = document.getElementById('effectiveContextStatus');
         if (!preview || !chips || !status) return;
 
-        status.textContent = defaultContext.enabled ? 'Context is enabled' : 'Context is paused';
-        status.classList.toggle('is-paused', !defaultContext.enabled);
-        const chipValues = [defaultContext.company, defaultContext.role, defaultContext.type, defaultContext.domain].filter(Boolean);
+        status.textContent = profile.enabled ? 'Profile is enabled' : 'Profile is paused';
+        status.classList.toggle('is-paused', !profile.enabled);
+        const firstCompactValue = value => String(value || '')
+            .split(/[\n;,]+/)
+            .map(item => item.trim())
+            .find(Boolean) || '';
+        const chipValues = [
+            firstCompactValue(profile.preferred_roles),
+            profile.target_country,
+            profile.work_preferences,
+            profile.current_location
+        ].filter(Boolean);
         chips.replaceChildren(...chipValues.map(value => {
             const chip = document.createElement('span');
             chip.textContent = value;
@@ -1830,23 +1835,26 @@
         }));
 
         const rows = [
-            ['Organization', defaultContext.company],
-            ['Reference Link', defaultContext.reference_link],
-            ['Role', defaultContext.role],
-            ['Audience', meetingContext.participants || defaultContext.audience],
-            ['Objective', meetingContext.objective || defaultContext.objective],
-            ['Answer style', defaultContext.answer_style],
-            ['Response mode', responseModeLabel(defaultContext.response_mode)],
-            ['Audio response instructions', defaultContext.audio_response_instructions],
-            ['Clipboard response instructions', defaultContext.clipboard_response_instructions],
-            ['Reusable instructions', defaultContext.free_text],
-            ['Special instructions for this application', meetingContext.special_instructions]
+            ['Target headline', profile.professional_headline],
+            ['Preferred roles', profile.preferred_roles],
+            ['Target industries', profile.industries],
+            ['Target country', profile.target_country],
+            ['Career goals', profile.career_goals],
+            ['Current location', profile.current_location],
+            ['Countries worked', profile.countries_worked],
+            ['Target-country experience', profile.target_country_experience],
+            ['Other terminology', profile.titles_needing_translation],
+            ['Career transition', profile.career_transition],
+            ['Work preference', profile.work_preferences],
+            ['Relocation', profile.relocation_preferences],
+            ['Work authorization', profile.work_authorization],
+            ['Constraints', profile.constraints]
         ].filter(([, value]) => String(value || '').trim());
         preview.replaceChildren();
         if (!rows.length) {
             const empty = document.createElement('div');
             empty.className = 'context-preview-empty';
-            empty.textContent = 'Add context details to see the effective AI guidance.';
+            empty.textContent = 'Add career direction, international context, or practical preferences to build your reusable profile.';
             preview.appendChild(empty);
             return;
         }
@@ -1860,22 +1868,22 @@
     }
 
     async function loadContext() {
-        const local = normalizeContext(readJsonStorage(contextStorageKey, {}));
-        let context = hasContextDetails(local) ? local : normalizeContext(seedContextFromTemplate());
+        let context = normalizeContext(seedContextFromTemplate());
         try {
             const response = await fetch(endpoints.context, {headers: {'Accept': 'application/json'}});
-            if (response.ok) {
-                const result = await response.json();
-                const serverContext = result.context || result.assistant_context || result;
-                if (serverContext && typeof serverContext === 'object') context = normalizeContext(serverContext);
-            }
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(result.error || 'Career Profile could not be loaded.');
+            const serverContext = result.career_profile || result.context || result.assistant_context || result;
+            if (serverContext && typeof serverContext === 'object') context = normalizeContext(serverContext);
         } catch (error) {
-            console.info('Context endpoint unavailable; using local context.', error);
+            console.error('Career Profile could not be refreshed.', error);
+            showToast(
+                error.message || 'Career Profile could not be refreshed. The server-rendered values remain visible.',
+                true
+            );
         }
         state.context = context;
         writeDefaultContextForm(context);
-        updateResponsePreferencesSummary();
-        setResponsePreferencesExpanded(false);
         markDefaultContextSaved(context);
         updateContextStatus(context);
         updateEffectiveContextPreview();
@@ -1883,23 +1891,19 @@
     }
 
     async function persistContext(context) {
-        writeJsonStorage(contextStorageKey, context);
-        state.context = context;
-        updateContextStatus(context);
-        try {
-            const response = await fetch(endpoints.context, {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(serializeContext(context))
-            });
-            if (response.ok) return 'career profile saved.';
-            if ([404, 405].includes(response.status)) return 'career profile saved in this browser.';
-            const result = await response.json().catch(() => ({}));
-            throw new Error(result.error || 'Context could not be saved on the server.');
-        } catch (error) {
-            console.info('Saving context locally.', error);
-            return 'career profile saved in this browser.';
+        const response = await fetch(endpoints.context, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(serializeContext(context))
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(result.error || 'Career Profile could not be saved.');
         }
+        const savedContext = normalizeContext(result.career_profile || result.context || context);
+        state.context = savedContext;
+        updateContextStatus(savedContext);
+        return savedContext;
     }
 
     async function loadMeetingContextForSelection(meetingId) {
@@ -1914,15 +1918,20 @@
 
         if (normalizedId && !hasUnsavedDraft) {
             try {
-                const response = await fetch(`${endpoints.materials}?meeting_id=${encodeURIComponent(normalizedId)}`);
-                if (response.ok) {
-                    const result = await response.json();
-                    context = normalizeMeetingContext(result.materials?.meeting_context || context);
-                    state.meetingContexts[normalizedId] = context;
-                    writeJsonStorage(meetingContextStorageKey, state.meetingContexts);
+                const response = await fetch(
+                    `${endpoints.materials}?meeting_id=${encodeURIComponent(normalizedId)}`,
+                    {headers: {'Accept': 'application/json'}}
+                );
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(result.error || 'Application-specific context could not be loaded.');
                 }
+                const materials = result.application_materials || result.materials || {};
+                context = normalizeMeetingContext(materials.meeting_context || {});
+                state.meetingContexts[normalizedId] = context;
             } catch (error) {
-                console.info('Application context could not be loaded from the server.', error);
+                console.error('Application-specific context could not be loaded.', error);
+                showToast(error.message || 'Application-specific context could not be loaded.', true);
             }
         }
 
@@ -1938,11 +1947,6 @@
         const meetingId = event.currentTarget.value || '';
         await setActiveMeeting(meetingId);
         await loadMeetingContextForSelection(meetingId);
-    });
-
-    document.getElementById('responsePreferencesToggle')?.addEventListener('click', event => {
-        const expanded = event.currentTarget.getAttribute('aria-expanded') === 'true';
-        setResponsePreferencesExpanded(!expanded, {focus: !expanded});
     });
 
     document.getElementById('meetingOverrideToggle')?.addEventListener('click', event => {
@@ -1982,7 +1986,6 @@
     document.getElementById('assistantContextForm')?.addEventListener('input', () => {
         cacheCurrentMeetingContextDraft();
         updateMeetingInstructionsControls();
-        updateResponsePreferencesSummary();
         updateEffectiveContextPreview();
         updateSaveContextButton();
     });
@@ -1998,40 +2001,49 @@
 
         const context = readDefaultContextForm();
         const selectedMeeting = document.getElementById('contextMeetingSelect')?.value || '';
-        let meetingContext = null;
+        const meetingContext = selectedMeeting ? readMeetingContextForm() : null;
 
-        if (selectedMeeting) {
-            meetingContext = readMeetingContextForm();
-            state.meetingContexts[selectedMeeting] = meetingContext;
-            writeJsonStorage(meetingContextStorageKey, state.meetingContexts);
-            try {
-                const response = await fetch(`${endpoints.meetings}/${encodeURIComponent(selectedMeeting)}/context`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(meetingContext)
-                });
-                if (!response.ok && ![404, 405].includes(response.status)) {
-                    const result = await response.json().catch(() => ({}));
-                    throw new Error(result.error || 'Application-specific context could not be saved on the server.');
+        try {
+            const savedContext = await persistContext(context);
+            writeDefaultContextForm(savedContext);
+            markDefaultContextSaved(savedContext);
+
+            if (selectedMeeting && meetingContext) {
+                const response = await fetch(
+                    `${endpoints.meetings}/${encodeURIComponent(selectedMeeting)}/context`,
+                    {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(meetingContext)
+                    }
+                );
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(result.error || 'Application-specific context could not be saved.');
                 }
-                await setActiveMeeting(selectedMeeting);
-            } catch (error) {
-                console.info('Application-specific context saved in browser only.', error);
+                const savedMeetingContext = normalizeMeetingContext(
+                    result.application_context || result.context || meetingContext
+                );
+                state.meetingContexts[selectedMeeting] = savedMeetingContext;
+                writeMeetingContextForm(savedMeetingContext);
+                markMeetingContextSaved(selectedMeeting, savedMeetingContext);
+                if (!hasMeetingContextDetails(savedMeetingContext)) setMeetingOverrideExpanded(false);
+                await setActiveMeeting(selectedMeeting, {notify: false});
             }
-        }
 
-        const message = await persistContext(context);
-        markDefaultContextSaved(context);
-        if (selectedMeeting && meetingContext) {
-            markMeetingContextSaved(selectedMeeting, meetingContext);
-            if (!hasMeetingContextDetails(meetingContext)) setMeetingOverrideExpanded(false);
+            updateEffectiveContextPreview();
+            showToast('Career Profile saved.');
+        } catch (error) {
+            console.error('Career Profile could not be saved.', error);
+            showToast(
+                error.message || 'Career Profile could not be saved. Your edits remain unsaved on this page.',
+                true
+            );
+        } finally {
+            isSavingContext = false;
+            if (button) button.textContent = 'Save Career Profile';
+            updateSaveContextButton();
         }
-        updateEffectiveContextPreview();
-        showToast(message);
-
-        isSavingContext = false;
-        if (button) button.textContent = 'Save Career Profile';
-        updateSaveContextButton();
     });
 
     // Unified Career Evidence Library
@@ -2041,6 +2053,11 @@
     const answerContent = document.getElementById('answerContent');
     const sourcesSection = document.getElementById('sourcesSection');
     const sourceList = document.getElementById('sourceList');
+    const answerLoadingState = document.getElementById('knowledge-answer-loading');
+    const answerEmptyState = document.getElementById('knowledge-answer-empty');
+    const answerErrorState = document.getElementById('knowledge-answer-error');
+    const answerRetryButton = document.getElementById('knowledge-answer-retry');
+    const copyAnswerButton = document.getElementById('copyAnswerButton');
 
     function selectedSearchScope() {
         return document.querySelector('input[name="search_scope"]:checked')?.value || 'current_meeting';
@@ -2052,7 +2069,7 @@
             current_meeting: 'Current Application Materials',
             library: 'Career Evidence Library',
             meetings: 'Previous Mock Interviews',
-            all: 'All Knowledge'
+            all: 'All Career Sources'
         };
         const scopeLabel = document.getElementById('searchScopeLabel');
         if (scopeLabel) scopeLabel.textContent = labels[scope] || labels.current_meeting;
@@ -2108,6 +2125,22 @@
         sourcesSection.hidden = uniqueSources.length === 0;
     }
 
+    function setAnswerState(state, message = '') {
+        [answerLoadingState, answerEmptyState, answerErrorState].forEach(element => {
+            if (element) element.hidden = true;
+        });
+        if (answerContent) answerContent.hidden = state !== 'answer';
+        if (copyAnswerButton) copyAnswerButton.hidden = state !== 'answer';
+        if (sourcesSection && state !== 'answer') sourcesSection.hidden = true;
+        if (state === 'loading' && answerLoadingState) answerLoadingState.hidden = false;
+        if (state === 'empty' && answerEmptyState) answerEmptyState.hidden = false;
+        if (state === 'error' && answerErrorState) {
+            window.AppUI?.showWorkspaceState(answerErrorState, {state: 'error', message});
+        }
+    }
+
+    answerRetryButton?.addEventListener('click', () => knowledgeForm?.requestSubmit());
+
     knowledgeForm?.addEventListener('submit', async event => {
         event.preventDefault();
         const question = questionInput?.value.trim() || '';
@@ -2118,7 +2151,7 @@
         const selectedMeeting = document.getElementById('knowledgeSearchMeeting')?.value || '';
         const contextKey = selectedPackage || selectedMeeting;
         const meetingContext = contextKey ? (state.meetingContexts[contextKey] || {}) : {};
-        const materialRecord = selectedPackage ? getLocalMaterialRecord(selectedPackage) : {library_file_ids: [], temporary_files: []};
+        const materialRecord = selectedPackage ? getCachedMaterialRecord(selectedPackage) : {library_file_ids: [], temporary_files: []};
         const payload = {
             question,
             source_scope: scope,
@@ -2135,7 +2168,7 @@
                 content_type: document.getElementById('knowledgeSearchContentType')?.value || 'all'
             },
             use_context: state.context?.enabled !== false,
-            assistant_context: state.context?.enabled !== false ? serializeContext(state.context || {}) : null,
+            assistant_context: state.context?.enabled !== false ? profileContextForAI(state.context || {}) : null,
             meeting_context: meetingContext
         };
 
@@ -2147,8 +2180,7 @@
             answerPanel.hidden = false;
             answerPanel.setAttribute('aria-busy', 'true');
         }
-        if (answerContent) answerContent.textContent = 'Searching the selected knowledge sources…';
-        if (sourcesSection) sourcesSection.hidden = true;
+        setAnswerState('loading');
 
         try {
             const response = await fetch(endpoints.ask, {
@@ -2158,11 +2190,16 @@
             });
             const result = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(result.error || 'The question could not be answered.');
-            if (answerContent) answerContent.textContent = result.answer || 'No answer was returned.';
-            renderSources(result.sources || result.meeting_sources || []);
+            const answer = String(result.answer || '').trim();
+            if (!answer) {
+                setAnswerState('empty');
+            } else {
+                if (answerContent) answerContent.textContent = answer;
+                setAnswerState('answer');
+                renderSources(result.sources || result.meeting_sources || []);
+            }
         } catch (error) {
-            if (answerContent) answerContent.textContent = error.message;
-            showToast(error.message, true);
+            setAnswerState('error', error.message || 'The question could not be answered.');
         } finally {
             answerPanel?.setAttribute('aria-busy', 'false');
             if (button) {
@@ -2179,6 +2216,100 @@
         } catch (error) {
             showToast('The answer could not be copied.', true);
         }
+    });
+
+    // Reusable confirmation answers in Career Evidence Library.
+    document.querySelectorAll('[data-evidence-answer-form]').forEach(form => {
+        form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const evidenceId = String(form.dataset.evidenceId || '').trim();
+            if (!evidenceId) return;
+            const row = form.closest('[data-evidence-answer-row]');
+            const submitButton = row?.querySelector(`button[type="submit"][form="${CSS.escape(form.id)}"]`);
+            const data = new FormData(form);
+            const statusValue = String(data.get('yes_no') ?? '');
+            const confirmationStatus = String(data.get('confirmation_status') || '').trim();
+            const payload = {
+                yes_no: statusValue === 'true' ? true : statusValue === 'false' ? false : null,
+                answer_text: String(data.get('answer_text') || '').trim()
+            };
+            if (confirmationStatus) payload.confirmation_status = confirmationStatus;
+            if (payload.yes_no !== false && !payload.answer_text) {
+                showToast('Add a factual answer before saving.', true);
+                return;
+            }
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Saving…';
+            }
+            try {
+                const response = await fetch(`${endpoints.evidenceAnswers}/${encodeURIComponent(evidenceId)}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.error || result.message || 'The reusable answer could not be saved.');
+                const updatedAt = row?.querySelector('[data-evidence-updated]');
+                if (updatedAt) updatedAt.textContent = `Updated ${result.evidence_answer?.updated_at || 'just now'}`;
+                showToast('Reusable confirmation answer saved.');
+            } catch (error) {
+                showToast(error.message || 'The reusable answer could not be saved.', true);
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Save';
+                }
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-delete-evidence-answer]').forEach(button => {
+        button.addEventListener('click', async () => {
+            const row = button.closest('[data-evidence-answer-row]');
+            const evidenceId = String(row?.dataset.evidenceId || '').trim();
+            if (!evidenceId) return;
+            const question = String(button.dataset.evidenceQuestion || '').trim();
+            const questionLabel = question ? `\n\n“${question}”` : '';
+            const confirmed = window.confirm(
+                `Remove this question and its saved answer from Career Evidence Library?${questionLabel}\n\nFuture applications may ask it again.`
+            );
+            if (!confirmed) return;
+            button.disabled = true;
+            button.textContent = 'Removing…';
+            try {
+                const response = await fetch(`${endpoints.evidenceAnswers}/${encodeURIComponent(evidenceId)}`, {method: 'DELETE'});
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(result.error || result.message || 'The reusable answer could not be removed.');
+                row?.remove();
+                const remaining = document.querySelectorAll('[data-evidence-answer-row]').length;
+                const count = document.querySelector('.reusable-evidence-count');
+                if (count) count.textContent = `${remaining} saved`;
+                if (remaining === 0) {
+                    const tableWrapper = document.querySelector('.reusable-evidence-table-wrapper');
+                    if (tableWrapper) {
+                        const emptyState = document.createElement('div');
+                        emptyState.className = 'reusable-evidence-empty';
+                        const strong = document.createElement('strong');
+                        strong.textContent = 'No reusable confirmed evidence yet.';
+                        const paragraph = document.createElement('p');
+                        paragraph.textContent = 'Add a verified experience directly, or save an answer from Confirm Relevant Experience.';
+                        const addButton = document.createElement('button');
+                        addButton.type = 'button';
+                        addButton.className = 'btn btn-primary';
+                        addButton.textContent = 'Add confirmed evidence';
+                        addButton.dataset.openEvidenceModal = '';
+                        emptyState.append(strong, paragraph, addButton);
+                        tableWrapper.replaceWith(emptyState);
+                    }
+                }
+                showToast('Question removed from Career Evidence Library.');
+            } catch (error) {
+                button.disabled = false;
+                button.textContent = 'Remove question';
+                showToast(error.message || 'The reusable answer could not be removed.', true);
+            }
+        });
     });
 
     // Initialize the active workspace.

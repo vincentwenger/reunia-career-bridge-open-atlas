@@ -1,0 +1,148 @@
+{% extends "application_builder/base.html" %}
+
+{% block title %}Job Applications · Réunia Career Bridge{% endblock %}
+
+{% block content %}
+{% if applications %}
+<section class="application-metric-grid application-metric-grid-minimal" aria-label="Application summary">
+  <p class="sr-only">Interview readiness is calculated automatically.</p>
+  <div class="metric-card"><span>Tracked</span><strong>{{ application_metrics.tracked }}</strong></div>
+  <div class="metric-card"><span>Interview-ready</span><strong>{{ application_metrics.ready_for_interview }}</strong></div>
+  <div class="metric-card"><span>Follow-ups due</span><strong>{{ application_metrics.follow_ups_due }}</strong></div>
+</section>
+{% endif %}
+
+<section class="card application-add-card">
+  <details id="new-application" {% if not applications %}open{% endif %}>
+    <summary>Create a job application</summary>
+    <form action="{{ url_for('application_builder.create_application_record') }}" method="post" class="stack-form application-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field-grid two">
+        <div><label for="new-company">Company</label><input id="new-company" name="company" type="text" required></div>
+        <div><label for="new-role">Job title</label><input id="new-role" name="role" type="text" required></div>
+      </div>
+      <p class="caption">Provide a job posting link, the job description, or both.</p>
+      <label for="new-job-url">Job posting link</label>
+      <input id="new-job-url" name="job_url" type="url" inputmode="url" placeholder="https://…">
+      <label for="new-job-description">Job description</label>
+      <textarea id="new-job-description" name="job_description" rows="6" placeholder="Paste the job description when a link is unavailable"></textarea>
+      <input type="hidden" name="start_builder" value="1">
+      <div class="button-row"><button class="button primary" type="submit">Create application</button></div>
+    </form>
+  </details>
+</section>
+
+<section class="applications-list" aria-labelledby="applications-list-title">
+  <div class="section-heading compact-section-heading">
+    <div><h2 id="applications-list-title">Applications</h2></div>
+    {% if applications %}<span class="discovery-count">{{ applications|length }}</span>{% endif %}
+  </div>
+
+  {% if applications %}
+    <div class="application-card-list application-dashboard-grid">
+      {% for application in applications %}
+        {% set readiness = readiness_by_application.get(application.id) %}
+        <article class="card application-card application-dashboard-card application-dashboard-card-minimal" id="application-{{ application.id }}">
+          <header class="application-card-header">
+            <div>
+              <span class="application-status status-{{ application.status }}">{{ application.status_label }}</span>
+              <h3>{{ application.role }}</h3>
+              <p>{{ application.company }}</p>
+            </div>
+            <div class="application-card-date">
+              <span>Resume stage</span>
+              <strong>{{ application.workflow_step_label }}</strong>
+            </div>
+          </header>
+
+          <dl class="application-dashboard-fields application-dashboard-fields-minimal">
+            <div class="application-readiness-field">
+              <dt>Interview readiness</dt>
+              <dd class="application-readiness-value">
+                {% if readiness and readiness.score is not none %}
+                  <strong>{{ readiness.label }}</strong>
+                  <span class="application-readiness-status">{{ readiness.status_label }}</span>
+                {% else %}
+                  <span class="application-readiness-empty">Not started</span>
+                {% endif %}
+              </dd>
+            </div>
+            <div><dt>Resume</dt><dd>{{ application.resume_version_label }}</dd></div>
+            <div><dt>Next action</dt><dd>{{ application.next_action_label }}</dd></div>
+            <div><dt>Next date</dt><dd>{{ application.upcoming_event_label }}</dd></div>
+          </dl>
+
+          <footer class="application-card-actions application-dashboard-actions application-dashboard-actions-minimal">
+            <a class="button primary" href="{{ url_for('application_builder.open_application_builder', application_id=application.id) }}">Open application</a>
+            <a class="button secondary" href="{{ request.script_root }}/application-materials?application_id={{ application.id | urlencode }}" aria-label="Open application materials for {{ application.role }} at {{ application.company }}">Materials</a>
+            <details class="application-card-more" data-application-menu>
+              <summary aria-haspopup="menu">More</summary>
+              <div class="application-card-more-menu" role="menu">
+                <a role="menuitem" href="{{ url_for('application_builder.interview_preparation_workspace', application_id=application.id) }}">Interview preparation</a>
+                <a role="menuitem" href="{{ request.script_root }}/career-action-plan?application_id={{ application.id | urlencode }}">Career action plan</a>
+                {% if application.job_url %}<a role="menuitem" href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer">View posting</a>{% endif %}
+                {% if application.has_resume_snapshot %}<a role="menuitem" href="{{ url_for('application_builder.download_application_resume', application_id=application.id) }}">Download submitted resume</a>{% endif %}
+                <a role="menuitem" href="#edit-application-{{ application.id }}">Edit application</a>
+              </div>
+            </details>
+          </footer>
+
+          <details class="application-edit-details" id="edit-application-{{ application.id }}">
+            <summary>Edit application</summary>
+            <form action="{{ url_for('application_builder.update_application_record', application_id=application.id) }}" method="post" class="stack-form application-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="field-grid two">
+                <div><label for="company-{{ application.id }}">Company</label><input id="company-{{ application.id }}" name="company" type="text" value="{{ application.company }}" required></div>
+                <div><label for="role-{{ application.id }}">Job title</label><input id="role-{{ application.id }}" name="role" type="text" value="{{ application.role }}" required></div>
+                <div><label for="interview-audience-{{ application.id }}">Interview audience</label><input id="interview-audience-{{ application.id }}" name="interview_audience" type="text" list="interview-audience-suggestions" maxlength="200" autocomplete="off" value="{{ application.interview_audience }}" placeholder="Hiring manager, recruiter…"></div>
+                <div>
+                  <label for="status-{{ application.id }}">Status</label>
+                  <select id="status-{{ application.id }}" name="status">{% for value, label in application_status_options %}<option value="{{ value }}" {% if application.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                </div>
+                <div><label for="date-{{ application.id }}">Application date</label><input id="date-{{ application.id }}" name="application_date" type="date" value="{{ application.application_date }}"></div>
+                <div><label for="action-{{ application.id }}">Next action</label><input id="action-{{ application.id }}" name="next_action" type="text" value="{{ application.next_action }}"></div>
+                <div>
+                  <label for="upcoming-type-{{ application.id }}">Upcoming milestone</label>
+                  <select id="upcoming-type-{{ application.id }}" name="upcoming_event_type">{% for value, label in upcoming_event_type_options %}<option value="{{ value }}" {% if application.upcoming_event_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+                </div>
+                <div><label for="upcoming-date-{{ application.id }}">Upcoming date</label><input id="upcoming-date-{{ application.id }}" name="upcoming_event_date" type="date" value="{{ application.upcoming_event_date }}"></div>
+                <div><label for="follow-up-{{ application.id }}">Follow-up date</label><input id="follow-up-{{ application.id }}" name="next_follow_up_date" type="date" value="{{ application.next_follow_up_date }}"></div>
+                <div><label for="job-url-{{ application.id }}">Job posting link</label><input id="job-url-{{ application.id }}" name="job_url" type="url" value="{{ application.job_url }}" placeholder="https://…"></div>
+              </div>
+
+              <fieldset class="application-outcome-fields">
+                <legend>Outcomes</legend>
+                <label class="checkbox-row"><input type="checkbox" name="screening_received" {% if application.screening_received %}checked{% endif %}> Screening call</label>
+                <label class="checkbox-row"><input type="checkbox" name="interview_received" {% if application.interview_received %}checked{% endif %}> Interview</label>
+                <label class="checkbox-row"><input type="checkbox" name="offer_received" {% if application.offer_received %}checked{% endif %}> Offer</label>
+              </fieldset>
+
+              <label for="job-description-{{ application.id }}">Job description</label>
+              <textarea id="job-description-{{ application.id }}" name="job_description" rows="5">{{ application.job_description }}</textarea>
+              <label for="notes-{{ application.id }}">Notes</label>
+              <textarea id="notes-{{ application.id }}" name="notes" rows="3">{{ application.notes }}</textarea>
+              <div class="button-row"><button class="button primary" type="submit">Save changes</button></div>
+            </form>
+
+            <form action="{{ url_for('application_builder.delete_application_record', application_id=application.id) }}" method="post" class="inline-form application-remove-form application-danger-zone" data-confirm-submit="Remove this application, its workflow data, and its stored application documents?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="button text application-delete-button" type="submit">Delete application</button>
+            </form>
+          </details>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    {{ workspace_state(
+      'application-list-empty-state',
+      'empty',
+      'No applications yet',
+      'Create your first application above.',
+      hidden=false,
+      action_label='Create application',
+      action_href='#new-application',
+      extra_class='empty-state'
+    ) }}
+  {% endif %}
+</section>
+{% endblock %}

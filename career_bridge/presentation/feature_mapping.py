@@ -16,7 +16,25 @@ class RepurposedFeature:
     career_bridge_name: str
     recommendation: str
     route: str | None = None
-    available_in_mvp: bool = True
+    available_to_standard_users: bool = True
+
+
+CURRENT_APPLICATION_FOLLOW_UP_CAPABILITIES: tuple[str, ...] = (
+    "Upcoming interview dates",
+    "Application follow-up dates",
+    "Custom next steps",
+    "Interview-preparation actions",
+    "Post-interview thank-you actions",
+)
+
+SECONDARY_FEATURE_ROADMAP: tuple[str, ...] = (
+    "Communication log attached to an application",
+    "Thank-you and follow-up message templates",
+    "Recruiter-response drafting",
+    "Optional calendar synchronization",
+    "Cover-letter generation",
+    "Advanced application analytics",
+)
 
 
 REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
@@ -24,13 +42,13 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
         "Meeting Preparation",
         "Interview Preparation",
         "Rewrite around the company, role, interviewer, and likely questions.",
-        "/interview-preparation",
+        "/applications/interview-preparation",
     ),
     RepurposedFeature(
         "Meeting Materials",
         "Application Materials",
-        "Store the resume, job posting, company notes, and recruiter messages.",
-        "/application-builder",
+        "Store the job posting, imported resume, company notes, selected evidence, and application-only files.",
+        "/application-materials",
     ),
     RepurposedFeature(
         "AI Context",
@@ -39,34 +57,34 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
         "/career-profile",
     ),
     RepurposedFeature(
+        "Newcomer Career Onboarding",
+        "Baseline Resume",
+        "Translate international titles, credentials, terminology, and transferable skills without treating onboarding context as verified evidence.",
+        "/applications/career-translation",
+    ),
+    RepurposedFeature(
         "Knowledge Search",
         "Career Evidence Library",
         "Search verified projects, achievements, and experience.",
-        "/interview-preparation",
+        "/career-evidence-library",
     ),
     RepurposedFeature(
         "Meeting Package",
         "Application Workspace",
         "Use one workspace for each target position.",
-        "/application-builder",
+        "/applications/?tab=applications",
     ),
     RepurposedFeature(
         "Browser Meeting Recorder",
-        "Mock Interview Recorder",
-        "Keep audio recording and transcription for practice sessions.",
+        "Adaptive Mock Interview",
+        "Run answer-by-answer practice with transcription, evidence-aware evaluation, adaptive follow-ups, challenges, and a final review.",
         "/mock-interview",
     ),
     RepurposedFeature(
         "Windows Desktop Recorder",
-        "Remove from MVP",
-        "Avoid desktop-client complexity in the hackathon MVP.",
-        available_in_mvp=False,
-    ),
-    RepurposedFeature(
-        "Live Q&A",
-        "Remove from real interviews",
-        "Do not position the product as secretly answering questions during an employer interview.",
-        available_in_mvp=False,
+        "Retired",
+        "Use the browser-based Adaptive Mock Interview instead of a desktop recorder.",
+        available_to_standard_users=False,
     ),
     RepurposedFeature(
         "Meeting Review",
@@ -88,15 +106,15 @@ REPURPOSED_FEATURES: tuple[RepurposedFeature, ...] = (
     ),
     RepurposedFeature(
         "Analytics",
-        "Career Progress",
-        "Show improvement across applications and mock interviews.",
+        "Progress & Outcomes",
+        "Track application outcomes, resume gains, automatic interview readiness, practice improvement, and completed actions.",
         "/progress",
     ),
     RepurposedFeature(
         "Upcoming Meetings",
         "Upcoming Interviews",
-        "Optional calendar integration for interview dates.",
-        "/application-builder",
+        "Track interview dates inside the application. Calendar synchronization is planned, not currently available.",
+        "/applications",
     ),
     RepurposedFeature(
         "Admin Analytics",

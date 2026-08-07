@@ -1,0 +1,139 @@
+{% from 'macros/ui.html' import workspace_state %}
+<!doctype html>
+<html lang="{{ app_language | default('en') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Réunia Career Bridge Application Builder — manage applications and create evidence-backed tailored resumes.">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Application Builder · Réunia Career Bridge{% endblock %}</title>
+
+  <link rel="icon" type="image/x-icon" href="{{ static_asset('icons/favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ static_asset('icons/favicon-32.png') }}">
+  <link rel="icon" type="image/png" sizes="64x64" href="{{ static_asset('icons/favicon-64.png') }}">
+  <link rel="apple-touch-icon" sizes="192x192" href="{{ static_asset('icons/favicon.png') }}">
+
+  {% include 'components/common_page_styles.html' %}
+  <link rel="stylesheet" href="{{ static_asset('css/navbar.css') }}">
+  <link rel="stylesheet" href="{{ static_asset('css/components.css') }}">
+  <link rel="stylesheet" href="{{ application_builder_asset('styles.css') }}">
+  <link rel="stylesheet" href="{{ static_asset('css/app-layout.css') }}">
+  <link rel="stylesheet" href="{{ static_asset('css/career-theme.css') }}">
+  <link rel="stylesheet" href="{{ application_builder_asset('career_bridge.css') }}">
+  {% block page_styles %}{% endblock %}
+  <link rel="stylesheet" href="{{ static_asset('css/career-workspaces.css') }}">
+
+  {% include 'components/common_page_scripts.html' %}
+  {% if (app_language | default('en'))[:2] == 'fr' %}
+  <script defer src="{{ static_asset('js/i18n-fr.js') }}"></script>
+  {% endif %}
+  <script defer src="{{ static_asset('js/i18n.js') }}"></script>
+  <script defer src="{{ static_asset('js/navbar.js') }}"></script>
+  <script defer src="{{ static_asset('js/analytics-tracker.js') }}"></script>
+  <script defer src="{{ application_builder_asset('app-shell.js') }}"></script>
+  {% block head_page_scripts %}{% endblock %}
+</head>
+<body class="application-builder-body career-workspace-ui application-builder-tab-{{ active_tab | default('tailoring') | replace('_', '-') }}" data-feature="{% block feature_id %}{% if active_tab == 'applications' %}job-applications{% elif active_tab == 'career_translation' %}baseline-resume{% elif active_tab == 'discovery' %}job-discovery{% elif active_tab == 'interview_preparation' %}interview-preparation{% elif active_tab == 'reports' %}resume-reports{% elif active_tab == 'configuration' %}ai-configuration{% else %}resume-workflow{% endif %}{% endblock %}" data-app-root="{{ request.script_root }}" data-app-language="{{ app_language | default('en') }}" data-i18n-fr-src="{{ static_asset('js/i18n-fr.js') }}" data-authenticated="{{ 'true' if session.get('user_id') else 'false' }}" data-analytics-heartbeat="{{ analytics_heartbeat_seconds | default(30) }}">
+  {% set career_translation_focus = active_tab == 'career_translation' or (active_tab == 'tailoring' and request.args.get('focus') == 'career-translation') %}
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  {% include 'navbar.html' %}
+
+  <div id="main-content" tabindex="-1">
+    <main class="app-page application-builder-page">
+      <header class="page-hero application-builder-hero">
+        <div class="page-hero-layout">
+          <div class="page-hero-copy">
+            {% if active_tab == 'interview_preparation' %}
+              <h1>Interview Preparation</h1>
+            {% elif career_translation_focus %}
+              <h1>Baseline Resume</h1>
+            {% elif active_tab == 'discovery' %}
+              <h1>Job Discovery</h1>
+            {% elif active_tab == 'reports' %}
+              <h1>Resume Reports</h1>
+            {% elif active_tab == 'applications' %}
+              <h1>Job Applications</h1>
+            {% elif active_tab == 'configuration' %}
+              <h1>AI Configuration</h1>
+            {% else %}
+              <h1>{% if active_application %}{{ active_application.role }}{% else %}Resume Workflow{% endif %}</h1>
+            {% endif %}
+          </div>
+
+          <div class="page-hero-actions application-builder-hero-actions">
+            {% if active_tab == 'applications' %}
+              <a class="application-builder-hero-button application-builder-hero-button-primary" href="#new-application">Create application</a>
+            {% elif active_tab == 'discovery' %}
+              {% if discovery_view|default('results') == 'settings' %}
+                <a class="application-builder-hero-button application-builder-hero-button-primary" href="{{ url_for('application_builder.job_discovery_workspace') }}">View results</a>
+              {% else %}
+                <a class="application-builder-hero-button application-builder-hero-button-secondary" href="{{ url_for('application_builder.job_discovery_workspace', view='settings') }}">Preferences</a>
+              {% endif %}
+            {% elif active_tab == 'configuration' %}
+              <a class="application-builder-hero-button application-builder-hero-button-secondary" href="{{ request.script_root }}/settings.html">Account settings</a>
+            {% elif active_application and active_tab not in ['career_translation'] %}
+              <a class="application-builder-hero-button application-builder-hero-button-secondary" href="{{ url_for('application_builder.index', tab='applications') }}">All applications</a>
+            {% endif %}
+          </div>
+        </div>
+      </header>
+
+      {% if active_application and active_tab not in ['discovery', 'applications', 'configuration', 'career_translation'] %}
+        <div class="active-application-banner" aria-label="Selected job application">
+          <strong>{{ active_application.company }}</strong>
+          <span>{{ active_application.status_label }}</span>
+          <span>Next: {{ active_application.next_action_label }}</span>
+        </div>
+      {% endif %}
+
+      {% if active_application and active_tab not in ['discovery', 'applications', 'configuration', 'career_translation'] %}
+        {% set application_workspace_nav_application = active_application %}
+        {% set application_workspace_nav_active = 'interview' if active_tab == 'interview_preparation' else 'resume' %}
+        {% include 'components/application_workspace_nav.html' %}
+      {% endif %}
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-stack" aria-live="polite">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <div class="application-builder-content">
+        {{ workspace_state(
+          'application-builder-error-state',
+          'error',
+          'This workspace could not finish the requested update',
+          'The current application data remains unchanged. Reload the workspace or use the available page controls to retry.',
+          hidden=true,
+          action_label='Reload workspace',
+          action_id='application-builder-error-retry',
+          compact=true,
+          extra_class='application-builder-inline-state'
+        ) }}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+
+  <div class="loading-overlay" id="loading-overlay" data-ui-state="loading" hidden>
+    <div class="loading-card" role="dialog" aria-modal="true" aria-labelledby="loading-title" aria-describedby="loading-message" tabindex="-1">
+      <div class="spinner" id="loading-spinner"></div>
+      <strong id="loading-title">Processing…</strong>
+      <span id="loading-message">The requested operation is running.</span>
+      <div class="loading-progress" id="loading-progress" hidden aria-live="polite">
+        <div class="loading-progress-header">
+          <span>What the app is working through</span>
+          <span id="loading-elapsed"></span>
+        </div>
+        <ol class="loading-progress-steps" id="loading-progress-steps"></ol>
+        <p class="loading-reassurance" id="loading-reassurance"></p>
+      </div>
+    </div>
+  </div>
+  {% block page_scripts %}{% endblock %}
+</body>
+</html>

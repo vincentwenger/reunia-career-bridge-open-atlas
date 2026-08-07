@@ -1,155 +1,83 @@
 <section class="tab-content" id="scorecard-tab" role="tabpanel" aria-labelledby="scorecard-tab-button" hidden>
-                    <section class="score-hero-card score-red" id="overall-score-card">
-                        <div class="score-hero-content">
-                            <div>
-                                <div class="score-hero-heading-row">
-                                    <div class="score-hero-title" id="overall-score-title">Overall Interview Score</div>
-                                    <span class="score-evidence-badge evidence-insufficient" id="overall-evidence-badge">Insufficient evidence</span>
-                                </div>
-                                <div class="score-hero-subtitle" id="score-description">
-                                    Select a mock interview to view the weighted evaluation of answer relevance, evidence, structure, clarity, and delivery.
-                                </div>
-                            </div>
+    <section class="score-hero-card score-neutral" id="overall-score-card">
+        <div class="score-hero-content">
+            <div>
+                <div class="score-hero-heading-row">
+                    <div class="score-hero-title" id="overall-score-title">Overall Interview Score</div>
+                    <span class="score-evidence-badge evidence-insufficient" id="overall-evidence-badge">Insufficient evidence</span>
+                </div>
+                <div class="score-hero-subtitle" id="score-description">
+                    Select a mock interview to review the eight interview-specific criteria.
+                </div>
+            </div>
 
-                            <div class="score-circle" id="score-circle">
-                                <div class="score-circle-inner">
-                                    <span class="score-number" id="final-weighted-grade">-</span>
-                                    <span class="score-label" id="score-circle-label">out of 100</span>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+            <div class="score-circle" id="score-circle">
+                <div class="score-circle-inner">
+                    <span class="score-number" id="final-weighted-grade">-</span>
+                    <span class="score-label" id="score-circle-label">out of 100</span>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                    <section class="score-stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Answer Quality Score</div>
-                            <div class="stat-value" id="content-average-score">-</div>
-                            <div class="stat-evidence" id="content-evidence-status">Insufficient evidence</div>
-                        </div>
+    <section class="section-card">
+        <div class="section-header">
+            <h3>Interview-specific criteria</h3>
+            <p>Criteria that were not observable are shown as Not observed and are excluded from the overall score.</p>
+        </div>
+        <div class="section-body">
+            <div class="interview-criteria-grid" id="interview-criteria-grid">
+                {% for key, label in [
+                    ('answer-relevance', 'Answer relevance'),
+                    ('use-of-evidence', 'Use of evidence'),
+                    ('star-structure', 'STAR structure'),
+                    ('clarity-conciseness', 'Clarity and conciseness'),
+                    ('role-alignment', 'Role alignment'),
+                    ('confidence-of-delivery', 'Confidence of delivery'),
+                    ('handling-follow-up-questions', 'Handling of follow-up questions'),
+                    ('questions-asked-employer', 'Questions asked of the employer')
+                ] %}
+                <article class="interview-criterion-card" id="criterion-{{ key }}">
+                    <div class="interview-criterion-heading">
+                        <span>{{ label }}</span>
+                        <strong id="criterion-{{ key }}-score">—</strong>
+                    </div>
+                    <span class="interview-criterion-status" id="criterion-{{ key }}-status">Not observed</span>
+                    <p id="criterion-{{ key }}-summary">Select a mock interview to view this criterion.</p>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
 
-                        <div class="stat-card">
-                            <div class="stat-label">Delivery Score</div>
-                            <div class="stat-value" id="form-average-score">-</div>
-                            <div class="stat-evidence" id="form-evidence-status">Insufficient evidence</div>
-                        </div>
-                    </section>
+    <section class="section-card">
+        <div class="section-header">
+            <h3>Observable communication snapshot</h3>
+            <p>Uses transcribed answer length, recorded duration, pace, structure, and relevance. It does not infer emotions or sensitive traits.</p>
+        </div>
+        <div class="section-body">
+            <div class="score-stats-grid interview-observation-grid">
+                <div class="stat-card"><div class="stat-label">Answers reviewed</div><div class="stat-value" id="observable-answer-count">-</div></div>
+                <div class="stat-card"><div class="stat-label">Transcribed words</div><div class="stat-value" id="observable-word-count">-</div></div>
+                <div class="stat-card"><div class="stat-label">Average answer length</div><div class="stat-value" id="observable-average-words">-</div><div class="stat-evidence">words per answer</div></div>
+                <div class="stat-card"><div class="stat-label">Average pace</div><div class="stat-value" id="observable-pace">-</div><div class="stat-evidence">words per minute</div></div>
+            </div>
+            <div class="interview-safety-note" id="interview-safety-note">
+                This scorecard evaluates only observable communication characteristics and confirmed content. It does not infer emotions, personality, health, protected traits, or other sensitive characteristics from voice or appearance.
+            </div>
+        </div>
+    </section>
 
-                    <section class="section-card">
-                        <div class="section-header">
-                            <h3>Answer Relevance, Evidence & Structure</h3>
-                            <p>Evaluate whether answers address the question, use concrete evidence, and follow a clear structure.</p>
-                        </div>
-
-                        <div class="section-evidence-note" id="content-evidence-note" hidden></div>
-                        <div class="section-body" id="content-grading-container">
-                            <div class="no-records-state">
-                                <strong>No mock interview selected</strong>
-                                Select a mock interview to review answer relevance, evidence, and structure.
-                            </div>
-                        </div>
-                    </section>
-
-                    <section class="section-card">
-                        <div class="section-header">
-                            <h3>Clarity & Delivery</h3>
-                            <p>Evaluate clarity, confidence, tone, pace, concision, and spoken delivery.</p>
-                        </div>
-
-                        <div class="section-evidence-note" id="form-evidence-note" hidden></div>
-                        <div class="section-body">
-                            <div class="metric-grid">
-                                <div class="metric-box">
-                                    <div class="metric-title">Pace</div>
-                                    <div class="metric-value" id="form-pace-value">-</div>
-                                    <span class="badge badge-grade" id="form-pace-grade">N/A</span>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    class="metric-box metric-box-clickable"
-                                    data-form-metric-detail="filler_words"
-                                    aria-expanded="false"
-                                    aria-controls="form-metric-details"
-                                >
-                                    <div class="metric-title">Filler Words</div>
-                                    <div class="metric-value" id="form-filler-value">-</div>
-                                    <span class="badge badge-grade" id="form-filler-grade">N/A</span>
-                                    <span class="metric-rate" id="form-filler-rate">Rate unavailable</span>
-                                    <span class="metric-click-hint">View detected words</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    class="metric-box metric-box-clickable"
-                                    data-form-metric-detail="power_words"
-                                    aria-expanded="false"
-                                    aria-controls="form-metric-details"
-                                >
-                                    <div class="metric-title">Power Words</div>
-                                    <div class="metric-value" id="form-power-value">-</div>
-                                    <span class="badge badge-grade" id="form-power-grade">N/A</span>
-                                    <span class="metric-rate" id="form-power-rate">Rate unavailable</span>
-                                    <span class="metric-click-hint">View detected words</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    class="metric-box metric-box-clickable"
-                                    data-form-metric-detail="negative_words"
-                                    aria-expanded="false"
-                                    aria-controls="form-metric-details"
-                                >
-                                    <div class="metric-title">Negative Words</div>
-                                    <div class="metric-value" id="form-negative-words-value">-</div>
-                                    <span class="badge badge-grade" id="form-negative-words-grade">N/A</span>
-                                    <span class="metric-rate" id="form-negative-words-rate">Rate unavailable</span>
-                                    <span class="metric-click-hint">View detected words</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    class="metric-box metric-box-clickable"
-                                    data-form-metric-detail="negative_tone"
-                                    aria-expanded="false"
-                                    aria-controls="form-metric-details"
-                                >
-                                    <div class="metric-title">Negative Tone</div>
-                                    <div class="metric-value" id="form-negative-tone-value">-</div>
-                                    <span class="badge badge-grade" id="form-negative-tone-grade">N/A</span>
-                                    <span class="metric-rate" id="form-negative-tone-rate">Rate unavailable</span>
-                                    <span class="metric-click-hint">View tone excerpts</span>
-                                </button>
-
-                                <div class="metric-box">
-                                    <div class="metric-title">Pauses</div>
-                                    <div class="metric-value" id="form-pauses-value">-</div>
-                                    <span class="badge badge-grade" id="form-pauses-grade">N/A</span>
-                                    <span class="metric-rate" id="form-pauses-rate">Rate unavailable</span>
-                                </div>
-                            </div>
-
-                            <section
-                                class="form-metric-details"
-                                id="form-metric-details"
-                                tabindex="-1"
-                                aria-live="polite"
-                                hidden
-                            >
-                                <div class="form-metric-details-header">
-                                    <div>
-                                        <div class="form-metric-details-eyebrow">Communication detail</div>
-                                        <h4 id="form-metric-details-title">Detected words</h4>
-                                    </div>
-                                    <span class="form-metric-details-count" id="form-metric-details-count">0 items</span>
-                                </div>
-                                <p class="form-metric-details-description" id="form-metric-details-description"></p>
-                                <ul class="form-metric-details-list" id="form-metric-details-list"></ul>
-                            </section>
-
-                            <div class="overall-assessment-box">
-                                <div class="overall-assessment-title">Overall Assessment</div>
-                                <p class="overall-assessment-text" id="form-overall-assessment">N/A</p>
-                            </div>
-                        </div>
-                    </section>
-                </section>
+    <section class="section-card">
+        <div class="section-header">
+            <h3>Answer-by-answer coaching</h3>
+            <p>Each answer includes strengths, unclear points, evidence gaps, a better structure, an evidence-safe sample answer, and one practice action.</p>
+        </div>
+        <div class="section-body" id="interview-answer-reviews">
+            <div class="no-records-state">
+                <strong>No mock interview selected</strong>
+                Select a mock interview to review each answer.
+            </div>
+        </div>
+    </section>
+</section>

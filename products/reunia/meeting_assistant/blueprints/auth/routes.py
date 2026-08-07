@@ -189,6 +189,7 @@ def handle_login():
     session["email"] = user.get("email", user["user_id"])
     session["full_name"] = user.get("full_name", "")
     session["is_admin"] = is_admin_identity(user["user_id"], user)
+    session["groups"] = list(user.get("groups") or user.get("access_groups") or ())
     session["language"] = normalize_language(
         (user.get("settings") or {}).get("language"),
         default="en",
@@ -243,6 +244,7 @@ def handle_signup():
     session["email"] = user.get("email", user["user_id"])
     session["full_name"] = user.get("full_name", "")
     session["is_admin"] = is_admin_identity(user["user_id"], user)
+    session["groups"] = list(user.get("groups") or user.get("access_groups") or ())
     session["language"] = signup_language
     try:
         UsageMetricsService().record_product_event(

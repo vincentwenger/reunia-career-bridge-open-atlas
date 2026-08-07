@@ -76,7 +76,7 @@ def balance_skill_categories(
     """Return a supported, category-correct, reasonably balanced skill set.
 
     Existing selected skills are preserved when possible, but each skill is placed in
-    the same category used by the Candidate Profile. Underfilled groups are completed
+    the same category used by the Verified Resume Evidence. Underfilled groups are completed
     with the most job-relevant verified skills. Category and total caps prevent a long
     keyword dump. When the profile has fewer skills than a target, all available skills
     are retained without creating a validation failure.

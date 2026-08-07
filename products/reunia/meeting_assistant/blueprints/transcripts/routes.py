@@ -6,7 +6,6 @@ from meeting_assistant.services.admin_analytics_service import UsageMetricsServi
 from meeting_assistant.utils.authentication import api_auth_required, login_required
 
 
-@transcript_bp.get("/meeting-review.html")
 @transcript_bp.get("/interview-review")
 @login_required
 def view_transcripts():
@@ -17,7 +16,6 @@ def view_transcripts():
     "/api/career/interview-reviews",
     methods=["GET", "POST", "DELETE", "PATCH", "PUT"],
 )
-@transcript_bp.route("/api/transcripts", methods=["GET", "POST", "DELETE", "PATCH", "PUT"])
 @api_auth_required
 def transcripts_collection():
     service = TranscriptService()
@@ -33,10 +31,10 @@ def transcripts_collection():
             UsageMetricsService().record_product_event(
                 "meeting_processing_succeeded", g.current_user_id,
                 event_id=str(result.get("meeting_id") or data.get("meeting_id") or ""),
-                metadata={"source": "transcript_api"},
+                metadata={"source": "interview_review_api"},
             )
         except Exception:
-            current_app.logger.exception("Could not record saved-meeting analytics")
+            current_app.logger.exception("Could not record saved-interview analytics")
         return jsonify(result), 201
 
     meeting_id = data.get("meeting_id") or data.get("transcript_id") or data.get("id")
@@ -52,10 +50,6 @@ def transcripts_collection():
     "/api/career/interview-reviews/<string:meeting_id>",
     methods=["DELETE", "PATCH", "PUT"],
 )
-@transcript_bp.route(
-    "/api/transcripts/<string:meeting_id>",
-    methods=["DELETE", "PATCH", "PUT"],
-)
 @api_auth_required
 def modify_transcript(meeting_id: str):
     service = TranscriptService()
@@ -69,20 +63,7 @@ def modify_transcript(meeting_id: str):
 
 
 @transcript_bp.patch("/api/career/interview-review-topics")
-@transcript_bp.patch("/api/transcript-topics")
 @api_auth_required
 def manage_transcript_topics():
     data = request.get_json(silent=True) or {}
     return jsonify(TranscriptService().manage_topics(g.current_user_id, data))
-
-
-@transcript_bp.post("/submit-transcript")
-@api_auth_required
-def submit_transcript():
-    """Retired desktop-recorder compatibility endpoint."""
-    return jsonify(
-        {
-            "error": "The Windows Desktop Recorder is not part of the Career Bridge MVP.",
-            "replacement": "/mock-interview",
-        }
-    ), 410

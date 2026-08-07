@@ -1,0 +1,62 @@
+{
+  "files": {
+    "products/reunia/static/js/i18n.js": 30000,
+    "products/reunia/static/js/i18n-fr.js": 285000,
+    "products/resume_taylor/static/app-job-discovery.js": 42000,
+    "products/reunia/static/js/pages/knowledge.js": 118000,
+    "products/reunia/static/js/pages/knowledge-evidence.js": 12000,
+    "products/resume_taylor/static/styles.css": 110000,
+    "products/resume_taylor/static/career_bridge.css": 52000,
+    "products/resume_taylor/static/app-shell.js": 18000,
+    "products/resume_taylor/static/app-resume-workflow.js": 18000,
+    "products/resume_taylor/static/interview-preparation.js": 12000,
+    "products/resume_taylor/static/resume-async-jobs.js": 12000,
+    "products/reunia/static/css/design-tokens.css": 25000
+  },
+  "groups": [
+    {
+      "name": "Application Builder default JavaScript",
+      "maximum_bytes": 55000,
+      "files": [
+        "products/resume_taylor/static/app-shell.js",
+        "products/reunia/static/js/common.js",
+        "products/reunia/static/js/navbar.js",
+        "products/reunia/static/js/i18n.js"
+      ]
+    },
+    {
+      "name": "Job Discovery JavaScript",
+      "maximum_bytes": 90000,
+      "files": [
+        "products/resume_taylor/static/app-shell.js",
+        "products/resume_taylor/static/app-job-discovery.js",
+        "products/reunia/static/js/common.js",
+        "products/reunia/static/js/navbar.js",
+        "products/reunia/static/js/i18n.js"
+      ]
+    },
+    {
+      "name": "Resume Workflow JavaScript",
+      "maximum_bytes": 82000,
+      "files": [
+        "products/resume_taylor/static/app-shell.js",
+        "products/resume_taylor/static/app-resume-workflow.js",
+        "products/resume_taylor/static/resume-async-jobs.js",
+        "products/reunia/static/js/common.js",
+        "products/reunia/static/js/navbar.js",
+        "products/reunia/static/js/i18n.js"
+      ]
+    },
+    {
+      "name": "Interview Preparation JavaScript",
+      "maximum_bytes": 70000,
+      "files": [
+        "products/resume_taylor/static/app-shell.js",
+        "products/resume_taylor/static/interview-preparation.js",
+        "products/reunia/static/js/common.js",
+        "products/reunia/static/js/navbar.js",
+        "products/reunia/static/js/i18n.js"
+      ]
+    }
+  ]
+}

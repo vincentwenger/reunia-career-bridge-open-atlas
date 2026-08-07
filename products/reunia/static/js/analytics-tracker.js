@@ -31,8 +31,38 @@
         window.addEventListener(eventName, markActive, { passive: true });
     });
 
+    const TRACKED_FEATURES = new Set([
+        'career_bridge_overview',
+        'career_profile',
+        'baseline_resume',
+        'career_evidence_library',
+        'job_discovery',
+        'job_applications',
+        'resume_workflow',
+        'resume_reports',
+        'application_materials',
+        'ai_configuration',
+        'interview_preparation',
+        'mock_interview',
+        'interview_review',
+        'career_action_plan',
+        'progress',
+        'admin_analytics',
+        'help_support',
+    ]);
+
+    const featureForPage = () => {
+        const explicitFeature = String(body.dataset.feature || '').trim().toLowerCase();
+        if (!explicitFeature) return '';
+        const normalizedFeature = explicitFeature.replaceAll('-', '_');
+        return TRACKED_FEATURES.has(normalizedFeature) ? normalizedFeature : '';
+    };
+
+    const currentFeature = featureForPage();
+
     const payloadFor = (activeSeconds) => ({
         page_path: window.location.pathname || '/',
+        feature: currentFeature,
         active_seconds: activeSeconds,
         page_view: pageViewPending,
         csrf_token: csrfToken,
@@ -55,24 +85,6 @@
             credentials: 'same-origin',
             keepalive: true,
         }).catch(() => { /* Analytics must never interrupt the application. */ });
-    };
-
-    const featureForPage = () => {
-        const path = window.location.pathname || '';
-        const view = new URLSearchParams(window.location.search).get('view') || '';
-        if (path.includes('knowledge')) {
-            if (view === 'library') return 'document_library';
-            if (view === 'materials') return 'meeting_materials';
-            if (view === 'context') return 'ai_context';
-            if (view === 'search') return 'knowledge_search';
-            return 'meeting_preparation';
-        }
-        if (path.includes('meeting-recorder')) return 'browser_recorder';
-        if (path.includes('live-qa')) return 'live_qa';
-        if (path.includes('meeting-review') || path.includes('transcript') || path.includes('scorecard')) return 'meeting_review';
-        if (path.includes('action-center')) return 'action_center';
-        if (path.endsWith('/analytics.html')) return 'analytics';
-        return '';
     };
 
     const trackProductEvent = (metric, metadata = {}, eventId = '') => {
@@ -100,14 +112,10 @@
         createId,
     };
 
-    const currentFeature = featureForPage();
     if (currentFeature) {
         trackProductEvent('feature_used', { feature: currentFeature }, `page-${pageSessionId}-${currentFeature}`);
-        if (currentFeature === 'meeting_review') {
+        if (currentFeature === 'interview_review') {
             trackProductEvent('meeting_review_opened', { feature: currentFeature }, `review-${pageSessionId}`);
-        }
-        if (currentFeature === 'live_qa') {
-            trackProductEvent('live_qa_session_started', { feature: currentFeature }, `liveqa-${pageSessionId}`);
         }
     }
 

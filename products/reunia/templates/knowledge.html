@@ -1,6 +1,6 @@
 {% extends "base.html" %}
+{% from 'macros/ui.html' import workspace_state %}
 
-{% set guided_flow = request.args.get('guided') == '1' %}
 {% set preparation_view = route_view | default(request.args.get('view', 'library'), true) %}
 {% if preparation_view not in ['library', 'materials', 'context', 'search'] %}
     {% set preparation_view = 'library' %}
@@ -8,23 +8,24 @@
 
 {% if preparation_view == 'materials' %}
     {% set page_title = 'Application Materials' %}
-    {% set page_eyebrow = 'Interview Preparation' %}
     {% set page_description = 'Choose library files or temporary documents for this application.' %}
 {% elif preparation_view == 'context' %}
     {% set page_title = 'Career Profile' %}
-    {% set page_eyebrow = 'Interview Preparation' %}
-    {% set page_description = 'Store professional background, accomplishments, preferences, and constraints used across applications.' %}
+    {% set page_description = 'Set career direction, international context, preferences, and constraints used across applications.' %}
 {% elif preparation_view == 'search' %}
     {% set page_title = 'Interview Preparation' %}
-    {% set page_eyebrow = 'Selected job application' %}
     {% set page_description = 'Prepare for the company, target role, interviewers, and likely questions using verified career evidence.' %}
 {% else %}
     {% set page_title = 'Career Evidence Library' %}
-    {% set page_eyebrow = 'Interview Preparation' %}
-    {% set page_description = 'Upload verified projects, achievements, work samples, and career documents.' %}
+    {% set page_description = 'Review additional and user-confirmed evidence that can be reused across applications.' %}
 {% endif %}
 
+{% block feature_id %}{% if preparation_view == 'materials' %}application-materials{% elif preparation_view == 'context' %}career-profile{% elif preparation_view == 'search' %}interview-preparation{% else %}career-evidence-library{% endif %}{% endblock %}
+
 {% block title %}{{ page_title }} - Réunia{% endblock %}
+
+{% block body_class %}career-workspace-ui knowledge-workspace-ui knowledge-view-{{ preparation_view }}{% endblock %}
+
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/knowledge.css') }}">
@@ -35,28 +36,14 @@
     class="app-page knowledge-page preparation-workspace"
     id="knowledgePage"
     data-active-view="{{ preparation_view }}"
-    data-guided-flow="{{ 'true' if guided_flow else 'false' }}"
+    data-requested-application-id="{{ requested_application_id | default('') | e }}"
     data-context-endpoint="{{ request.script_root }}/api/career/profile"
     data-materials-endpoint="{{ request.script_root }}/api/career/application-materials"
-    data-context-storage-scope="{{ assistant_context_storage_scope | default(session.get('user_id') or 'default') }}"
-    data-context-enabled="{{ 'true' if assistant_context_enabled | default(true) else 'false' }}"
-    data-context-company="{{ assistant_context_company | default('') | e }}"
-    data-context-reference-link="{{ assistant_context_reference_link | default('') | e }}"
-    data-context-role="{{ assistant_context_role | default('') | e }}"
-    data-context-type="{{ assistant_context_type | default('') | e }}"
-    data-context-domain="{{ assistant_context_domain | default('') | e }}"
-    data-context-audience="{{ assistant_context_audience | default('') | e }}"
-    data-context-answer-style="{{ assistant_context_answer_style | default('') | e }}"
-    data-context-response-mode="{{ assistant_context_response_mode | default('ready_to_say') | e }}"
-    data-context-audio-response-instructions="{{ assistant_context_audio_response_instructions | default('') | e }}"
-    data-context-clipboard-response-instructions="{{ assistant_context_clipboard_response_instructions | default('') | e }}"
-    data-context-objective="{{ assistant_context_objective | default('') | e }}"
-    data-context-free-text="{{ assistant_context_free_text | default('') | e }}"
+    data-evidence-answers-endpoint="{{ request.script_root }}/api/career/evidence/answers"
 >
     <header class="page-hero knowledge-hero">
         <div class="page-hero-layout">
             <div class="page-hero-copy">
-                <p class="knowledge-hero-eyebrow">{{ page_eyebrow }}</p>
                 <h1>{{ page_title }}</h1>
                 <p>{{ page_description }}</p>
             </div>
@@ -68,17 +55,16 @@
                     Upload Files
                 </button>
                 {% elif preparation_view == 'materials' %}
-                <button class="btn knowledge-hero-button knowledge-hero-button-primary" type="button" data-open-upcoming-meeting-modal>
-                    <span aria-hidden="true">＋</span>
-                    Create Application Workspace
-                </button>
+                <a class="btn knowledge-hero-button knowledge-hero-button-primary" href="{{ request.script_root }}/applications/?tab=applications">
+                    Manage Job Applications
+                </a>
                 {% elif preparation_view == 'context' %}
                 <span class="context-button-status" id="contextStatusBadge">Optional</span>
-                <button class="btn knowledge-hero-button knowledge-hero-button-primary" type="submit" form="assistantContextForm">
+                <button class="btn knowledge-hero-button knowledge-hero-button-primary" id="saveContextButton" type="submit" form="assistantContextForm" disabled aria-disabled="true">
                     Save Career Profile
                 </button>
                 {% else %}
-                <a class="btn knowledge-hero-button knowledge-hero-button-secondary" href="{{ request.script_root }}/application-materials{% if guided_flow %}?guided=1{% endif %}">
+                <a class="btn knowledge-hero-button knowledge-hero-button-secondary" href="{{ request.script_root }}/application-materials">
                     Review Application Materials
                 </a>
                 {% endif %}
@@ -87,70 +73,117 @@
 
     </header>
 
-    {% if guided_flow %}
-    <section class="guided-flow-panel" aria-label="Guided application setup">
-        <div class="guided-flow-heading">
-            <div>
-                <span>Guided application flow</span>
-                <strong>Build the application, prepare evidence, then practice</strong>
-            </div>
-            <a href="{{ request.script_root }}/app">Exit guided flow</a>
-        </div>
-        <ol class="guided-flow-progress">
-            <li class="{% if preparation_view == 'materials' %}active{% elif preparation_view in ['context', 'search'] %}complete{% endif %}">
-                <span>{% if preparation_view in ['context', 'search'] %}✓{% else %}1{% endif %}</span>
-                <div><strong>Application Materials</strong><small>Optional</small></div>
-            </li>
-            <li class="{% if preparation_view == 'context' %}active{% elif preparation_view == 'search' %}complete{% endif %}">
-                <span>{% if preparation_view == 'search' %}✓{% else %}2{% endif %}</span>
-                <div><strong>Career Profile</strong><small>Optional</small></div>
-            </li>
-            <li class="{% if preparation_view == 'search' %}active{% endif %}">
-                <span>3</span>
-                <div><strong>Evidence Check</strong><small>Optional</small></div>
-            </li>
-            <li>
-                <span>4</span>
-                <div><strong>Record</strong><small>Required</small></div>
-            </li>
-        </ol>
-    </section>
-    {% else %}
-
-    <nav class="preparation-subnav" aria-label="Career preparation sections">
-        <a href="{{ request.script_root }}/career-evidence-library" class="preparation-subnav-link {% if preparation_view == 'library' %}active{% endif %}" {% if preparation_view == 'library' %}aria-current="page"{% endif %}>
-            <span class="preparation-subnav-icon" aria-hidden="true">▦</span>
-            <span>
-                <strong>Career Evidence Library</strong>
-                <small>Verified projects, achievements, and experience</small>
-            </span>
-        </a>
-        <a href="{{ request.script_root }}/application-materials" class="preparation-subnav-link {% if preparation_view == 'materials' %}active{% endif %}" {% if preparation_view == 'materials' %}aria-current="page"{% endif %}>
-            <span class="preparation-subnav-icon" aria-hidden="true">◫</span>
-            <span>
-                <strong>Application Materials</strong>
-                <small>Resume, job posting, notes, and recruiter messages</small>
-            </span>
-        </a>
-        <a href="{{ request.script_root }}/career-profile" class="preparation-subnav-link {% if preparation_view == 'context' %}active{% endif %}" {% if preparation_view == 'context' %}aria-current="page"{% endif %}>
-            <span class="preparation-subnav-icon" aria-hidden="true">✦</span>
-            <span>
-                <strong>Career Profile</strong>
-                <small>Reusable and application-specific guidance</small>
-            </span>
-        </a>
-        <a href="{{ request.script_root }}/interview-preparation" class="preparation-subnav-link {% if preparation_view == 'search' %}active{% endif %}" {% if preparation_view == 'search' %}aria-current="page"{% endif %}>
-            <span class="preparation-subnav-icon" aria-hidden="true">⌕</span>
-            <span>
-                <strong>Interview Preparation</strong>
-                <small>Company, role, interviewers, likely questions, and evidence</small>
-            </span>
-        </a>
-    </nav>
+    {% if preparation_view == 'materials' and selected_application %}
+        {% set application_workspace_nav_application = selected_application %}
+        {% set application_workspace_nav_active = 'materials' %}
+        {% include 'components/application_workspace_nav.html' %}
     {% endif %}
 
     {% if preparation_view == 'library' %}
     <section class="preparation-view" id="document-library-view" aria-labelledby="documentLibraryTitle">
+        <section class="reusable-evidence-panel" aria-labelledby="reusableEvidenceTitle">
+            <div class="reusable-evidence-header">
+                <div>
+                    <p class="section-eyebrow">Additional and confirmed career evidence</p>
+                    <h2 id="reusableEvidenceTitle">Reusable confirmation answers</h2>
+                    <p>Answers saved from Confirm Relevant Experience are checked before future applications ask the same question.</p>
+                </div>
+                <div class="reusable-evidence-header-actions">
+                    <span class="reusable-evidence-count">{{ evidence_answers | default([]) | length }} saved</span>
+                    <button class="btn btn-primary" type="button" id="openEvidenceModal">
+                        <span aria-hidden="true">＋</span>
+                        Add confirmed evidence
+                    </button>
+                </div>
+            </div>
+
+            {% if evidence_answers | default([]) %}
+            <div class="reusable-evidence-table-wrapper">
+                <table class="reusable-evidence-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Question</th>
+                            <th scope="col">Saved answer</th>
+                            <th scope="col">Role and reuse</th>
+                            <th scope="col"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for answer in evidence_answers %}
+                        <tr
+                            data-evidence-answer-row
+                            data-evidence-id="{{ answer.evidence_id }}"
+                            data-evidence-entry-method="{{ answer.entry_method | e }}"
+                            data-evidence-title="{{ answer.question | e }}"
+                            data-evidence-employer="{{ answer.experience_employer | e }}"
+                            data-evidence-role="{{ answer.experience_title | e }}"
+                            data-evidence-dates="{{ answer.experience_dates | e }}"
+                            data-evidence-skills="{{ answer.supported_skills | e }}"
+                            data-evidence-source="{{ answer.source_note | e }}"
+                            data-evidence-limitations="{{ answer.evidence_limitations | e }}"
+                            data-evidence-confirmation-status="{{ answer.confirmation_status | e }}"
+                            data-evidence-yes-no="{% if answer.yes_no is sameas true %}true{% elif answer.yes_no is sameas false %}false{% endif %}"
+                        >
+                            <td class="reusable-question-cell">
+                                <strong>{{ answer.question }}</strong>
+                                {% if answer.entry_method == 'manual' %}<span class="evidence-origin-badge">Manually added</span>{% endif %}
+                                {% if answer.supported_skills %}<small>Supported skills: {{ answer.supported_skills }}</small>{% elif answer.requirement %}<small>Requirement: {{ answer.requirement }}</small>{% endif %}
+                                {% if answer.source_note %}<small>Source: {{ answer.source_note }}</small>{% endif %}
+                                {% if answer.evidence_limitations %}<small>Limitations: {{ answer.evidence_limitations }}</small>{% endif %}
+                                {% if answer.source_job_title or answer.source_company %}<small>Last confirmed for {{ answer.source_job_title }}{% if answer.source_company %} at {{ answer.source_company }}{% endif %}</small>{% endif %}
+                            </td>
+                            <td>
+                                {% if answer.entry_method == 'manual' %}
+                                <label class="sr-only" for="evidence-status-{{ answer.evidence_id }}">Confirmation status</label>
+                                <select id="evidence-status-{{ answer.evidence_id }}" name="confirmation_status" form="evidence-form-{{ answer.evidence_id }}" class="reusable-answer-status">
+                                    <option value="confirmed" {% if answer.confirmation_status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                                    <option value="needs_review" {% if answer.confirmation_status == 'needs_review' %}selected{% endif %}>Needs review</option>
+                                </select>
+                                {% else %}
+                                <label class="sr-only" for="evidence-status-{{ answer.evidence_id }}">Answer status</label>
+                                <select id="evidence-status-{{ answer.evidence_id }}" name="yes_no" form="evidence-form-{{ answer.evidence_id }}" class="reusable-answer-status">
+                                    <option value="" {% if answer.yes_no is none %}selected{% endif %}>Detailed answer</option>
+                                    <option value="true" {% if answer.yes_no is sameas true %}selected{% endif %}>Yes</option>
+                                    <option value="false" {% if answer.yes_no is sameas false %}selected{% endif %}>No relevant experience</option>
+                                </select>
+                                {% endif %}
+                                <label class="sr-only" for="evidence-answer-{{ answer.evidence_id }}">Saved answer</label>
+                                <textarea id="evidence-answer-{{ answer.evidence_id }}" name="answer_text" form="evidence-form-{{ answer.evidence_id }}" rows="3" maxlength="4000" placeholder="Add the factual detail that can be reused">{{ answer.answer_text }}</textarea>
+                            </td>
+                            <td>
+                                <strong>{{ answer.experience_label or 'No role required for this answer' }}</strong>
+                                {% if answer.experience_dates and answer.experience_dates not in (answer.experience_label or '') %}<small>{{ answer.experience_dates }}</small>{% endif %}
+                                <small>{{ answer.reuse_count }} future application reuse{% if answer.reuse_count != 1 %}s{% endif %}</small>
+                                <small data-evidence-updated>Updated {{ answer.updated_at }}</small>
+                            </td>
+                            <td class="reusable-evidence-actions">
+                                <form id="evidence-form-{{ answer.evidence_id }}" data-evidence-answer-form data-evidence-id="{{ answer.evidence_id }}"></form>
+                                <div class="reusable-evidence-action-row">
+                                    <button class="btn btn-primary" type="submit" form="evidence-form-{{ answer.evidence_id }}">Save</button>
+                                    <button class="btn btn-secondary" type="button" data-edit-evidence>Edit details</button>
+                                    <button
+                                        class="btn btn-secondary danger-action"
+                                        type="button"
+                                        data-delete-evidence-answer
+                                        data-evidence-question="{{ answer.question | e }}"
+                                        aria-label="Remove question: {{ answer.question | e }}"
+                                    >Remove question</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="reusable-evidence-empty">
+                <strong>No reusable confirmed evidence yet.</strong>
+                <p>Add a verified experience directly, or save an answer from Confirm Relevant Experience.</p>
+                <button class="btn btn-primary" type="button" data-open-evidence-modal>Add confirmed evidence</button>
+            </div>
+            {% endif %}
+        </section>
+
         <div class="knowledge-layout">
             <aside class="collections-panel" aria-label="Document collections">
                 <div class="panel-heading">
@@ -198,19 +231,14 @@
                     New Collection
                 </button>
 
-                <div class="library-help-card">
-                    <strong>Permanent storage</strong>
-                    <p>Files in this library can be reused across job applications and selected from Application Materials.</p>
-                </div>
             </aside>
 
             <main class="knowledge-main">
                 <section class="files-panel" aria-labelledby="documentLibraryTitle">
                     <div class="files-panel-header">
                         <div>
-                            <p class="section-eyebrow">General drive</p>
-                            <h2 id="documentLibraryTitle">My Documents</h2>
-                            <p id="selectedCollectionDescription">All permanent files in your document library</p>
+                            <h2 id="documentLibraryTitle">Documents</h2>
+                            <p id="selectedCollectionDescription">Reusable files available across job applications</p>
                         </div>
                     </div>
 
@@ -282,34 +310,17 @@
         <div class="workspace-toolbar-card meeting-package-toolbar-card">
             <div>
                 <p class="section-eyebrow">Application workspace</p>
-                <h2 id="meetingMaterialsTitle">Prepare for an upcoming interview</h2>
-                <p>Create an application workspace or select one you already scheduled. Completed recordings stay in Interview Review and are not shown here.</p>
+                <h2 id="meetingMaterialsTitle">Manage materials for a job application</h2>
+                <p>Select an existing job application. Application workspaces are created and managed from Job Applications.</p>
             </div>
             <div class="meeting-package-controls">
                 <label class="form-field meeting-selector-field">
-                    <span>Upcoming interview</span>
+                    <span>Job application</span>
                     <select id="meetingMaterialsMeeting" data-upcoming-meeting-select>
-                        <option value="">Select an application workspace</option>
+                        <option value="">Select a job application</option>
                     </select>
                 </label>
-                <button class="btn btn-secondary create-meeting-button" type="button" data-open-upcoming-meeting-modal>
-                    <span aria-hidden="true">＋</span>
-                    Create application workspace
-                </button>
-                <button
-                    class="delete-upcoming-meeting-button"
-                    type="button"
-                    id="deleteUpcomingMeeting"
-                    disabled
-                    aria-disabled="true"
-                    aria-label="Delete selected upcoming interview"
-                    title="Select an upcoming interview to delete"
-                >
-                    <svg class="delete-upcoming-meeting-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5" />
-                    </svg>
-                    <span class="sr-only">Delete selected upcoming interview</span>
-                </button>
+                <a class="btn btn-secondary" href="{{ request.script_root }}/applications/?tab=applications">Manage applications</a>
             </div>
         </div>
 
@@ -318,7 +329,7 @@
                 <div>
                     <p class="section-eyebrow">Target position</p>
                     <h2 id="meetingDetailsTitle">Application workspace details</h2>
-                    <p id="meetingDetailsStatus">Select an application workspace to view its target role, interviewers, objective, and interview date.</p>
+                    <p id="meetingDetailsStatus">Select a job application to view its target role, contacts, notes, and interview date.</p>
                 </div>
                 <button class="btn btn-secondary" type="button" id="saveUpcomingMeetingDetails" disabled aria-disabled="true">Save application details</button>
             </div>
@@ -359,7 +370,7 @@
                         >
                     </div>
                     <input type="hidden" id="meetingDetailsParticipants" disabled>
-                    <small class="participant-field-help">Press Enter or type a comma to add each participant. Names wrap automatically onto additional lines.</small>
+                    <small class="participant-field-help">Press Enter or type a comma to add each interviewer or recruiter contact.</small>
                 </div>
                 <label class="form-field meeting-details-wide">
                     <span>Interview objective or application notes <small>(optional)</small></span>
@@ -465,7 +476,7 @@
         <div class="materials-save-bar">
             <div>
                 <strong>Application evidence package</strong>
-                <span id="materialsPackageSummary">Create or select an upcoming interview to begin.</span>
+                <span id="materialsPackageSummary">Select a job application to begin.</span>
             </div>
             <button class="btn btn-primary" type="button" id="saveMeetingMaterials" disabled aria-disabled="true">Save Application Materials</button>
         </div>
@@ -475,233 +486,150 @@
     {% if preparation_view == 'context' %}
     <section class="preparation-view context-workspace" id="ai-context-view" aria-labelledby="aiContextTitle">
         <form id="assistantContextForm">
-            <div class="context-layout">
+            <div class="context-layout career-profile-layout">
                 <main class="context-main-column">
-                    <div class="context-scope-divider"><span>Applies across applications</span></div>
+                    <div class="career-profile-control-bar" aria-labelledby="aiContextTitle">
+                        <div>
+                            <h2 id="aiContextTitle">Career direction and preferences</h2>
+                            <p>Add reusable context that is not already documented in your Baseline Resume.</p>
+                        </div>
+                        <label class="context-enabled">
+                            <input type="checkbox" id="useAssistantContext" name="use_context" value="true" {% if assistant_context_enabled | default(true) %}checked{% endif %}>
+                            <span>Use in Career Bridge</span>
+                        </label>
+                    </div>
 
-                    <section class="workspace-card" aria-labelledby="aiContextTitle">
-                        <div class="workspace-card-header context-card-heading">
+                    <section class="career-profile-source-notice" role="note" aria-labelledby="careerProfileSourceTitle">
+                        <div class="career-profile-source-notice-copy">
+                            <span class="career-profile-source-icon" aria-hidden="true">↗</span>
                             <div>
-                                <h2 id="aiContextTitle">Your default context</h2>
-                                <p>These details are reused across applications unless application-specific guidance overrides them.</p>
+                                <h3 id="careerProfileSourceTitle">Resume facts are managed in Baseline Resume</h3>
+                                <p>Employment history, official job titles, professional summary, skills, languages, education, credentials, certifications, and resume accomplishments are extracted and edited in Baseline Resume.</p>
                             </div>
-                            <label class="context-enabled">
-                                <input type="checkbox" id="useAssistantContext" name="use_context" value="true" {% if assistant_context_enabled | default(true) %}checked{% endif %}>
-                                <span>Use context in AI requests</span>
+                        </div>
+                        <a class="btn btn-secondary career-profile-source-link" href="{{ request.script_root }}/applications/career-translation#professional-summary">Review extracted resume information</a>
+                    </section>
+
+                    <details class="workspace-card career-profile-section" open>
+                        <summary class="career-profile-section-summary">
+                            <span><strong id="careerDirectionTitle">Career direction</strong><small>How you want to position yourself and which opportunities you want to pursue.</small></span>
+                            <i aria-hidden="true">+</i>
+                        </summary>
+                        <div class="form-grid context-form-grid">
+                            <label class="form-field context-full-width-field">
+                                <span>Target professional headline</span>
+                                <input type="text" id="profileProfessionalHeadline" name="professional_headline" value="{{ assistant_context_professional_headline | default('') }}" placeholder="Example: Bilingual healthcare operations manager focused on patient access and clinic improvement">
+                                <small>This is your intended positioning, not the professional summary extracted from your resume.</small>
+                            </label>
+                            <label class="form-field">
+                                <span>Current location</span>
+                                <input type="text" id="profileCurrentLocation" name="current_location" value="{{ assistant_context_current_location | default('') }}" placeholder="Example: Minneapolis, Minnesota, United States" autocomplete="address-level2">
+                                <small>Supports location and relocation decisions without changing your resume.</small>
+                            </label>
+                            <label class="form-field">
+                                <span>Target country or job market</span>
+                                {% set selected_target_country = assistant_context_target_country | default('') %}
+                                <select id="profileTargetCountry" name="target_country">
+                                    <option value="" {% if not selected_target_country %}selected{% endif %}>Select a country</option>
+                                    {% if selected_target_country and selected_target_country not in country_options %}
+                                        <option value="{{ selected_target_country }}" selected>{{ selected_target_country }} (current value)</option>
+                                    {% endif %}
+                                    {% for country in country_options %}
+                                        <option value="{{ country }}" {% if selected_target_country == country %}selected{% endif %}>{{ country }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small>The market where your background needs to be understood and positioned.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Preferred roles</span>
+                                <textarea class="context-expanded-textarea" id="profilePreferredRoles" name="preferred_roles" rows="3" placeholder="Example: Clinic Operations Manager, Patient Access Manager, Community Health Program Lead">{{ assistant_context_preferred_roles | default('') }}</textarea>
+                                <small>Used for job discovery, fit ranking, application planning, and interview preparation.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Target industries</span>
+                                <textarea id="profileIndustries" name="industries" rows="3" placeholder="Example: Healthcare services, community health, nonprofit organizations">{{ assistant_context_industries | default('') }}</textarea>
+                                <small>List the industries you want to target. Industries documented in your work history remain in Baseline Resume.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Career goals</span>
+                                <textarea id="profileCareerGoals" name="career_goals" rows="4" placeholder="Example: Lead multi-site clinic operations and improve access for multilingual patient communities">{{ assistant_context_career_goals | default('') }}</textarea>
                             </label>
                         </div>
+                    </details>
 
+                    <details class="workspace-card career-profile-section">
+                        <summary class="career-profile-section-summary">
+                            <span><strong id="internationalTransitionTitle">International and transition context</strong><small>Context that cannot always be inferred reliably from the resume alone.</small></span>
+                            <i aria-hidden="true">+</i>
+                        </summary>
                         <div class="form-grid context-form-grid">
                             <label class="form-field">
-                                <span>Company or organization</span>
-                                <input type="text" id="contextCompany" name="context_company" value="{{ assistant_context_company | default('') }}" placeholder="Example: Blue Unicorn Industries" autocomplete="organization">
+                                <span>Countries where you have worked</span>
+                                <textarea id="profileCountriesWorked" name="countries_worked" rows="3" placeholder="Example: Philippines, United Arab Emirates, Canada">{{ assistant_context_countries_worked | default('') }}</textarea>
+                                <small>Include remote or cross-border experience when a resume location may be ambiguous.</small>
                             </label>
                             <label class="form-field">
-                                <span>Role or position</span>
-                                <input type="text" id="contextRole" name="context_role" value="{{ assistant_context_role | default('') }}" placeholder="Example: Chemical Engineer" autocomplete="organization-title">
+                                <span>Experience in the target country</span>
+                                <textarea id="profileTargetCountryExperience" name="target_country_experience" rows="3" placeholder="Example: Two years supporting Canadian clinics; no U.S. work experience yet">{{ assistant_context_target_country_experience | default('') }}</textarea>
                             </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Other terminology requiring explanation</span>
+                                <textarea id="profileTitlesNeedingTranslation" name="titles_needing_translation" rows="4" placeholder="Example: PhilHealth accreditation, barangay health programs, or regional credentials unfamiliar to employers.">{{ assistant_context_titles_needing_translation | default('') }}</textarea>
+                                <small>Job-title interpretations are managed with the employment records in Baseline Resume.</small>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Career transition context</span>
+                                <textarea id="profileCareerTransition" name="career_transition" rows="4" placeholder="Example: Returning to healthcare operations after a family relocation and one year away from full-time work.">{{ assistant_context_career_transition | default('') }}</textarea>
+                            </label>
+                        </div>
+                    </details>
+
+                    <details class="workspace-card career-profile-section">
+                        <summary class="career-profile-section-summary">
+                            <span><strong id="preferencesConstraintsTitle">Preferences and constraints</strong><small>Practical requirements that should shape recommendations and application decisions.</small></span>
+                            <i aria-hidden="true">+</i>
+                        </summary>
+                        <div class="form-grid context-form-grid">
                             <label class="form-field">
-                                <span>Career activity type</span>
-                                <select id="contextType" name="context_type">
-                                    <option value="">Select a type</option>
-                                    <option value="interview" {% if assistant_context_type | default('') == 'interview' %}selected{% endif %}>Interview preparation</option>
-                                    <option value="meeting" {% if assistant_context_type | default('') == 'meeting' %}selected{% endif %}>Job application</option>
-                                    <option value="sales" {% if assistant_context_type | default('') == 'sales' %}selected{% endif %}>Sales conversation</option>
-                                    <option value="presentation" {% if assistant_context_type | default('') == 'presentation' %}selected{% endif %}>Career presentation</option>
-                                    <option value="project" {% if assistant_context_type | default('') == 'project' %}selected{% endif %}>Project discussion</option>
-                                    <option value="research" {% if assistant_context_type | default('') == 'research' %}selected{% endif %}>Research</option>
-                                    <option value="support" {% if assistant_context_type | default('') == 'support' %}selected{% endif %}>Customer support</option>
-                                    <option value="other" {% if assistant_context_type | default('') == 'other' %}selected{% endif %}>Other</option>
+                                <span>Work arrangement preferences</span>
+                                <select id="profileWorkPreferences" name="work_preferences">
+                                    <option value="" {% if not assistant_context_work_preferences | default('') %}selected{% endif %}>No general preference</option>
+                                    <option value="remote" {% if assistant_context_work_preferences | default('') == 'remote' %}selected{% endif %}>Remote</option>
+                                    <option value="hybrid" {% if assistant_context_work_preferences | default('') == 'hybrid' %}selected{% endif %}>Hybrid</option>
+                                    <option value="onsite" {% if assistant_context_work_preferences | default('') == 'onsite' %}selected{% endif %}>Onsite</option>
+                                    <option value="flexible" {% if assistant_context_work_preferences | default('') == 'flexible' %}selected{% endif %}>Flexible</option>
                                 </select>
                             </label>
                             <label class="form-field">
-                                <span>Industry or domain</span>
-                                <input type="text" id="contextDomain" name="context_domain" value="{{ assistant_context_domain | default('') }}" placeholder="Example: Aerospace, banking, healthcare">
+                                <span>Relocation preferences</span>
+                                <textarea id="profileRelocationPreferences" name="relocation_preferences" rows="3" placeholder="Example: Open to Minnesota or Wisconsin; prefer hybrid roles near public transit">{{ assistant_context_relocation_preferences | default('') }}</textarea>
                             </label>
                             <label class="form-field context-full-width-field">
-                                <span>Default audience</span>
-                                <textarea class="context-expanded-textarea" id="contextPreferred roles and audiences" name="context_audience" rows="3" placeholder="Example: Hiring manager and engineering panel">{{ assistant_context_audience | default('') }}</textarea>
+                                <span>Work authorization or sponsorship context</span>
+                                <textarea id="profileWorkAuthorization" name="work_authorization" rows="3" placeholder="Example: Authorized to work in Canada; sponsorship may be required for roles in the United States.">{{ assistant_context_work_authorization | default('') }}</textarea>
+                            </label>
+                            <label class="form-field context-full-width-field">
+                                <span>Other constraints or considerations</span>
+                                <textarea id="profileConstraints" name="constraints" rows="4" placeholder="Example: Able to travel up to 20%; unavailable for rotating overnight shifts; requires two weeks notice for relocation">{{ assistant_context_constraints | default('') }}</textarea>
                             </label>
                         </div>
-
-
-                        <label class="form-field">
-                            <span>Reference Link</span>
-                            <input type="url" id="contextReferenceLink" name="context_reference_link" value="{{ assistant_context_reference_link | default('') }}" placeholder="Example: https://company.com/job-posting-or-reference-page" inputmode="url" autocomplete="url">
-                        </label>
-
-                        <label class="form-field">
-                            <span>Primary objective</span>
-                            <textarea class="context-expanded-textarea" id="contextObjective" name="context_objective" rows="3" placeholder="What should the AI generally help you accomplish?">{{ assistant_context_objective | default('') }}</textarea>
-                        </label>
-                        <label class="form-field">
-                            <span>Additional reusable context</span>
-                            <textarea id="contextFreeText" name="context_free_text" rows="6" placeholder="Add background, terminology, constraints, preferences, or instructions that are useful across applications.">{{ assistant_context_free_text | default('') }}</textarea>
-                        </label>
-                    </section>
-
-                    <section class="workspace-card response-preferences-card" aria-labelledby="responsePreferencesTitle">
-                        <div class="workspace-card-header response-preferences-header">
-                            <div>
-                                <h2 id="responsePreferencesTitle">Response preferences <span class="context-optional-label">Optional</span></h2>
-                                <p>Interview preparation uses concise, evidence-backed guidance by default. Customize these reusable preferences only when you want a different coaching style.</p>
-                            </div>
-                            <button
-                                class="response-preferences-toggle"
-                                type="button"
-                                id="responsePreferencesToggle"
-                                aria-expanded="false"
-                                aria-controls="responsePreferencesPanel"
-                            >
-                                <span class="response-preferences-toggle-copy">
-                                    <strong>Current preferences</strong>
-                                    <span id="responsePreferencesSummary">Balanced answers · Ready-to-say</span>
-                                </span>
-                                <span class="response-preferences-toggle-action">Customize</span>
-                                <span class="response-preferences-toggle-icon" aria-hidden="true">⌄</span>
-                            </button>
-                        </div>
-
-                        <div class="response-preferences-panel" id="responsePreferencesPanel" hidden>
-                            <div class="form-grid context-form-grid">
-                                <div class="context-response-options">
-                                    <label class="form-field">
-                                        <span>Preferred answer style</span>
-                                        <select id="contextAnswerStyle" name="context_answer_style">
-                                            <option value="">Balanced (default)</option>
-                                            <option value="concise" {% if assistant_context_answer_style | default('') == 'concise' %}selected{% endif %}>Concise</option>
-                                            <option value="detailed" {% if assistant_context_answer_style | default('') == 'detailed' %}selected{% endif %}>Detailed</option>
-                                            <option value="bullet_points" {% if assistant_context_answer_style | default('') == 'bullet_points' %}selected{% endif %}>Bullet points</option>
-                                            <option value="step_by_step" {% if assistant_context_answer_style | default('') == 'step_by_step' %}selected{% endif %}>Step by step</option>
-                                            <option value="action_oriented" {% if assistant_context_answer_style | default('') == 'action_oriented' %}selected{% endif %}>Action oriented</option>
-                                            <option value="professional" {% if assistant_context_answer_style | default('') == 'professional' %}selected{% endif %}>Professional</option>
-                                        </select>
-                                    </label>
-                                    <label class="form-field">
-                                        <span>Response mode</span>
-                                        <select id="contextResponseMode" name="context_response_mode">
-                                            <option value="ready_to_say" {% if assistant_context_response_mode | default('ready_to_say') == 'ready_to_say' %}selected{% endif %}>Ready-to-say answer (default)</option>
-                                            <option value="concise_structured_action" {% if assistant_context_response_mode | default('ready_to_say') == 'concise_structured_action' %}selected{% endif %}>Concise, structured, and action-oriented</option>
-                                            <option value="coaching" {% if assistant_context_response_mode | default('ready_to_say') == 'coaching' %}selected{% endif %}>Coaching guidance</option>
-                                        </select>
-                                        <small>Choose whether preparation produces a draft answer in your voice or coaching about how to answer.</small>
-                                    </label>
-                                </div>
-
-                                <div class="context-response-options">
-                                    <label class="form-field">
-                                        <span>Audio response instructions</span>
-                                        <textarea id="contextAudioResponseInstructions" name="context_audio_response_instructions" rows="4" placeholder="Example: Keep the answer conversational, use first-person language, and limit it to about 60 seconds.">{{ assistant_context_audio_response_instructions | default('') }}</textarea>
-                                        <small>Optional instructions applied when preparing or reviewing spoken interview answers.</small>
-                                    </label>
-                                    <label class="form-field">
-                                        <span>Clipboard response instructions</span>
-                                        <textarea id="contextClipboardResponseInstructions" name="context_clipboard_response_instructions" rows="4" placeholder="Example: Respond only using plain text, Python code, or SQL code. Do not include introductory text or concluding commentary.">{{ assistant_context_clipboard_response_instructions | default('') }}</textarea>
-                                        <small>Optional instructions applied when analyzing pasted job descriptions, recruiter messages, or interview questions.</small>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <div class="context-scope-divider context-scope-divider-meeting"><span>Applies only to this application</span></div>
-
-                    <section class="workspace-card meeting-context-card" aria-labelledby="meetingSpecificContextTitle">
-                        <div class="workspace-card-header meeting-override-header">
-                            <div>
-                                <h2 id="meetingSpecificContextTitle">Instructions for this application <span class="context-optional-label">Optional</span></h2>
-                                <p>Your default context and response preferences will continue to apply. Add only what is different for this application.</p>
-                            </div>
-                            <div class="meeting-override-controls">
-                                <label class="form-field compact-meeting-select">
-                                    <span>Upcoming interview</span>
-                                    <select id="contextMeetingSelect" data-upcoming-meeting-select>
-                                        <option value="">No upcoming interview selected</option>
-                                    </select>
-                                </label>
-                                <button
-                                    class="meeting-override-toggle"
-                                    type="button"
-                                    id="meetingOverrideToggle"
-                                    aria-expanded="false"
-                                    aria-controls="meetingOverridePanel"
-                                >
-                                    <span class="meeting-override-toggle-label">Add application-specific context</span>
-                                    <span class="meeting-override-toggle-icon" aria-hidden="true">＋</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="meeting-override-panel" id="meetingOverridePanel" hidden>
-                            <div class="form-grid context-form-grid">
-                                <label class="form-field">
-                                    <span>Interview objective</span>
-                                    <input type="text" id="meetingContextObjective" placeholder="What outcome should this application or interview achieve?">
-                                </label>
-                                <label class="form-field">
-                                    <span>Interviewer, recruiter, or audience</span>
-                                    <input type="text" id="meetingContextParticipants" placeholder="Interviewers, recruiters, hiring managers, or decision makers">
-                                </label>
-                            </div>
-
-                            <div class="meeting-instructions-disclosure">
-                                <button
-                                    class="meeting-instructions-toggle"
-                                    type="button"
-                                    id="meetingInstructionsToggle"
-                                    aria-expanded="false"
-                                    aria-controls="meetingInstructionsPanel"
-                                >
-                                    <span>
-                                        <strong>Application and interview constraints</strong>
-                                        <small>Optional · priorities, sensitivities, terminology, or temporary response changes</small>
-                                    </span>
-                                    <span class="meeting-instructions-toggle-icon" aria-hidden="true">＋</span>
-                                </button>
-
-                                <div class="meeting-instructions-panel" id="meetingInstructionsPanel" hidden>
-                                    <div class="meeting-instructions-heading">
-                                        <div>
-                                            <strong>Application and interview constraints</strong>
-                                            <small>Use one open-ended field instead of configuring separate priority, constraint, and instruction inputs.</small>
-                                        </div>
-                                        <button class="text-button" type="button" id="clearMeetingInstructions" hidden>Clear</button>
-                                    </div>
-                                    <textarea
-                                        id="meetingContextSpecialInstructions"
-                                        rows="6"
-                                        placeholder="Example: Prioritize pricing objections, keep answers concise, and avoid discussing the upcoming reorganization."
-                                    ></textarea>
-                                    <div class="meeting-instruction-suggestions" aria-label="Suggested instructions">
-                                        <button type="button" data-meeting-instruction="Focus on the role requirements and likely concerns.">Focus on role requirements</button>
-                                        <button type="button" data-meeting-instruction="Keep answers concise and ready to say aloud.">Keep answers concise</button>
-                                        <button type="button" data-meeting-instruction="Highlight evidence gaps and concrete next steps.">Highlight evidence gaps</button>
-                                        <button type="button" data-meeting-instruction="Avoid unsupported, confidential, or sensitive claims.">Protect sensitive topics</button>
-                                    </div>
-                                    <p class="meeting-instructions-note">Your normal Interview Response Preferences still apply unless you add an application-specific exception here.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+                    </details>
                 </main>
 
-                <aside class="context-preview-card" aria-labelledby="effectiveContextTitle">
+                <aside class="context-preview-card career-profile-summary-card" aria-labelledby="effectiveContextTitle">
                     <div class="context-preview-header">
-                        <span class="context-preview-icon" aria-hidden="true">✦</span>
-                        <div>
-                            <p class="section-eyebrow">Career foundation</p>
-                            <h2 id="effectiveContextTitle">Effective Career Profile</h2>
-                        </div>
+                        <h2 id="effectiveContextTitle">Profile summary</h2>
                     </div>
-                    <p class="context-preview-description">This preview combines your reusable defaults, response preferences, and the selected application’s overrides.</p>
-                    <div class="context-preview-status" id="effectiveContextStatus">Context is enabled</div>
+                    <p class="context-preview-description">Review the career direction, international context, preferences, and constraints Career Bridge will reuse. Blank fields are ignored.</p>
+                    <div class="context-preview-status" id="effectiveContextStatus">Profile is enabled</div>
                     <div class="context-preview-chips" id="effectiveContextChips"></div>
                     <dl class="context-preview-list" id="effectiveContextPreview"></dl>
-                    <div class="context-priority-note">
-                        <strong>How Career Bridge uses this</strong>
-                        <span>Reusable context and Interview Response Preferences guide every application. Application-specific context is attached only to the selected application and takes priority when it provides a different value.</span>
-                    </div>
-                    <button class="btn btn-primary context-save-button" type="submit" id="saveContextButton" disabled aria-disabled="true">Save Career Profile</button>
+                    <details class="context-priority-note career-profile-usage-note">
+                        <summary>Where this information is used</summary>
+                        <span><b>Job Discovery:</b> preferred roles, target industries, location, and work preferences.</span>
+                        <span><b>Baseline Resume:</b> employment, summary, skills, languages, education, credentials, and resume accomplishments.</span>
+                        <span><b>Applications and interviews:</b> target market, transition context, goals, authorization, and constraints.</span>
+                    </details>
                 </aside>
             </div>
         </form>
@@ -736,12 +664,12 @@
                         <label class="search-scope-option">
                             <input type="radio" name="search_scope" value="meetings">
                             <span class="scope-option-icon" aria-hidden="true">◴</span>
-                            <span><strong>Previous Mock Interviews</strong><small>Transcripts, summaries, decisions, and actions</small></span>
+                            <span><strong>Previous Mock Interviews</strong><small>Transcripts, scorecards, coaching, and practice actions</small></span>
                         </label>
                         <label class="search-scope-option">
                             <input type="radio" name="search_scope" value="all">
                             <span class="scope-option-icon" aria-hidden="true">✦</span>
-                            <span><strong>All Knowledge</strong><small>Search every available source</small></span>
+                            <span><strong>All Career Sources</strong><small>Search the selected application, verified evidence, and mock-interview history</small></span>
                         </label>
                     </fieldset>
 
@@ -750,7 +678,7 @@
                             <label class="form-field" data-search-filter="package">
                                 <span>Application workspace</span>
                                 <select id="knowledgeSearchPackage" data-upcoming-meeting-select>
-                                    <option value="">Select an application workspace</option>
+                                    <option value="">Select a job application</option>
                                 </select>
                             </label>
                             <label class="form-field" data-search-filter="meeting">
@@ -787,9 +715,9 @@
                                 <select id="knowledgeSearchContentType">
                                     <option value="all">All interview content</option>
                                     <option value="transcript">Transcript</option>
-                                    <option value="summary">Summary</option>
-                                    <option value="decisions">Decisions</option>
-                                    <option value="actions">Action items</option>
+                                    <option value="summary">Review summary</option>
+                                    <option value="decisions">Answer feedback</option>
+                                    <option value="actions">Practice actions</option>
                                     <option value="questions">Questions</option>
                                 </select>
                             </label>
@@ -817,9 +745,35 @@
                 <section class="answer-panel unified-answer-panel" id="answerPanel" aria-live="polite" hidden>
                     <div class="answer-header">
                         <h3>Answer</h3>
-                        <button type="button" class="copy-button" id="copyAnswerButton">Copy</button>
+                        <button type="button" class="copy-button" id="copyAnswerButton" hidden>Copy</button>
                     </div>
-                    <div class="answer-content" id="answerContent"></div>
+                    {{ workspace_state(
+                        'knowledge-answer-loading',
+                        'loading',
+                        'Searching verified career evidence',
+                        'Reviewing the selected documents, application materials, and mock-interview history.',
+                        hidden=true,
+                        compact=true
+                    ) }}
+                    {{ workspace_state(
+                        'knowledge-answer-empty',
+                        'empty',
+                        'No grounded answer was returned',
+                        'Try a narrower question, select another source scope, or add more verified evidence.',
+                        hidden=true,
+                        compact=true
+                    ) }}
+                    {{ workspace_state(
+                        'knowledge-answer-error',
+                        'error',
+                        'The evidence search could not be completed',
+                        'Your documents were not changed. Retry the same question or adjust the selected sources.',
+                        hidden=true,
+                        action_label='Retry question',
+                        action_id='knowledge-answer-retry',
+                        compact=true
+                    ) }}
+                    <div class="answer-content" id="answerContent" hidden></div>
                     <div class="sources-section" id="sourcesSection" hidden>
                         <h4>Sources</h4>
                         <div class="knowledge-source-list" id="sourceList"></div>
@@ -833,7 +787,7 @@
                     <h2>Career Profile</h2>
                     <p>Your saved default and application-specific context will be included automatically when enabled.</p>
                     <div class="context-preview-status" id="searchContextStatus">Loading context…</div>
-                    <a class="text-link" href="{{ request.script_root }}/career-profile{% if guided_flow %}?guided=1{% endif %}">Review Career Profile</a>
+                    <a class="text-link" href="{{ request.script_root }}/career-profile">Review Career Profile</a>
                 </section>
                 <section class="workspace-card source-guide-card">
                     <h2>Source guide</h2>
@@ -846,32 +800,91 @@
     </section>
     {% endif %}
 
-    {% if guided_flow and preparation_view in ['materials', 'context', 'search'] %}
-    <nav class="guided-flow-actions" aria-label="Guided application flow actions">
-        {% if preparation_view == 'materials' %}
-        <a class="guided-flow-back" href="{{ request.script_root }}/app">← Back to home</a>
-        <div>
-            <a class="guided-flow-skip" href="{{ request.script_root }}/career-profile?guided=1">Skip this step</a>
-            <a class="guided-flow-continue" href="{{ request.script_root }}/career-profile?guided=1">Continue to Career Profile <span aria-hidden="true">→</span></a>
-        </div>
-        {% elif preparation_view == 'context' %}
-        <a class="guided-flow-back" href="{{ request.script_root }}/application-materials?guided=1">← Application Materials</a>
-        <div>
-            <a class="guided-flow-skip" href="{{ request.script_root }}/interview-preparation?guided=1">Skip this step</a>
-            <a class="guided-flow-continue" href="{{ request.script_root }}/interview-preparation?guided=1">Continue to Evidence Check <span aria-hidden="true">→</span></a>
-        </div>
-        {% else %}
-        <a class="guided-flow-back" href="{{ request.script_root }}/career-profile?guided=1">← Career Profile</a>
-        <div>
-            <a class="guided-flow-skip" href="{{ request.script_root }}/mock-interview?guided=1">Skip this step</a>
-            <a class="guided-flow-continue" href="{{ request.script_root }}/mock-interview?guided=1">Continue to Mock Interview <span aria-hidden="true">→</span></a>
-        </div>
-        {% endif %}
-    </nav>
-    {% endif %}
 </div>
 
 <div id="contextSummaryValues" class="sr-only" aria-live="polite">No context details added yet.</div>
+
+<div class="modal-backdrop" id="evidenceModal" hidden>
+    <section class="modal-card evidence-modal-card" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="evidenceModalTitle">
+        <div class="modal-header">
+            <div>
+                <h2 id="evidenceModalTitle">Add confirmed evidence</h2>
+                <p>Record a factual experience that can be reused across applications. Do not add unsupported metrics or qualifications.</p>
+            </div>
+            <button type="button" class="modal-close" data-close-modal aria-label="Close">×</button>
+        </div>
+
+        <form id="manualEvidenceForm">
+            <input type="hidden" id="manualEvidenceId" name="evidence_id">
+            <label class="form-field">
+                <span>Evidence title</span>
+                <input type="text" id="manualEvidenceTitle" name="evidence_title" maxlength="240" placeholder="Example: SEO and paid-search acquisition strategy" required>
+            </label>
+            <label class="form-field">
+                <span>Confirmed statement</span>
+                <textarea id="manualEvidenceStatement" name="confirmed_statement" rows="5" maxlength="4000" placeholder="State only the experience the candidate can confirm as accurate." required></textarea>
+            </label>
+
+            {% if career_roles | default([]) %}
+            <label class="form-field">
+                <span>Use an existing Baseline Resume role <span class="optional-label">(optional)</span></span>
+                <select id="manualEvidenceRoleSelect">
+                    <option value="">Enter role details manually</option>
+                    {% for role in career_roles %}
+                    <option
+                        value="{{ role.role_id | e }}"
+                        data-employer="{{ role.employer | e }}"
+                        data-role="{{ role.official_title | e }}"
+                        data-dates="{{ role.dates | e }}"
+                    >{{ role.employer }} — {{ role.official_title }}{% if role.dates %} ({{ role.dates }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            {% endif %}
+
+            <div class="form-grid evidence-form-grid">
+                <label class="form-field">
+                    <span>Employer <span class="optional-label">(optional)</span></span>
+                    <input type="text" id="manualEvidenceEmployer" name="experience_employer" maxlength="200" placeholder="Example: Fausse-Boîte Inc.">
+                </label>
+                <label class="form-field">
+                    <span>Role <span class="optional-label">(optional)</span></span>
+                    <input type="text" id="manualEvidenceRole" name="experience_title" maxlength="200" placeholder="Example: Responsable Marketing Digital">
+                </label>
+                <label class="form-field">
+                    <span>Dates <span class="optional-label">(optional)</span></span>
+                    <input type="text" id="manualEvidenceDates" name="experience_dates" maxlength="160" placeholder="Example: September 2018–Present">
+                </label>
+                <label class="form-field" id="manualEvidenceStatusField">
+                    <span>Confirmation status</span>
+                    <select id="manualEvidenceStatus" name="confirmation_status">
+                        <option value="confirmed">Confirmed</option>
+                        <option value="needs_review">Needs review</option>
+                    </select>
+                    <small id="workflowEvidenceStatusNote" hidden>For evidence saved from Additional experience confirmation, change Yes, No, or Detailed answer in the evidence table.</small>
+                </label>
+            </div>
+
+            <label class="form-field">
+                <span>Supported skills <span class="optional-label">(optional)</span></span>
+                <input type="text" id="manualEvidenceSkills" name="supported_skills" maxlength="1200" placeholder="Example: SEO, SEA, paid search, digital acquisition strategy">
+                <small>Separate skills with commas. These terms help future applications find relevant evidence.</small>
+            </label>
+            <label class="form-field">
+                <span>Source <span class="optional-label">(optional)</span></span>
+                <input type="text" id="manualEvidenceSource" name="source_note" maxlength="600" placeholder="Example: Imported French résumé and candidate confirmation">
+            </label>
+            <label class="form-field">
+                <span>Evidence limitations <span class="optional-label">(optional)</span></span>
+                <textarea id="manualEvidenceLimitations" name="evidence_limitations" rows="3" maxlength="2000" placeholder="List details that remain unverified and must not be invented."></textarea>
+            </label>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button type="submit" class="btn btn-primary" id="saveManualEvidenceButton">Add confirmed evidence</button>
+            </div>
+        </form>
+    </section>
+</div>
 
 <div class="modal-backdrop" id="uploadModal" hidden>
     <section class="modal-card" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="uploadModalTitle">
@@ -946,69 +959,11 @@
 </div>
 
 
-{% if preparation_view in ['materials', 'context'] %}
-<div class="modal-backdrop" id="upcomingMeetingModal" hidden>
-    <section class="modal-card modal-card-small" role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="upcomingMeetingModalTitle">
-        <div class="modal-header">
-            <div>
-                <h2 id="upcomingMeetingModalTitle">Create an Application Workspace</h2>
-                <p>Add the target role now. Interview date, interviewers, and notes are optional.</p>
-            </div>
-            <button type="button" class="modal-close" data-close-modal aria-label="Close">×</button>
-        </div>
-        <form id="upcomingMeetingForm">
-            <label class="form-field">
-                <span>Target role or application name</span>
-                <input type="text" id="upcomingMeetingTitle" maxlength="120" placeholder="Example: Senior Software Engineer — Acme" required>
-            </label>
-            <label class="form-field">
-                <span>Date and time <small>(optional)</small></span>
-                <input type="datetime-local" id="upcomingMeetingDate">
-            </label>
-            <div class="form-field participant-field">
-                <div class="participant-field-heading">
-                    <label for="upcomingMeetingParticipantEntry">Interviewers or contacts <small>(optional)</small></label>
-                    <span class="participant-total" aria-label="Interviewer or contact count">
-                        <span aria-hidden="true">·</span>
-                        <strong id="upcomingMeetingParticipantCount">0</strong>
-                    </span>
-                </div>
-                <div
-                    class="participant-chip-editor"
-                    id="upcomingMeetingParticipantEditor"
-                    data-participant-editor
-                    data-value-input="upcomingMeetingParticipants"
-                    data-count-target="upcomingMeetingParticipantCount"
-                >
-                    <div class="participant-chip-list" data-participant-list aria-live="polite"></div>
-                    <input
-                        class="participant-chip-entry"
-                        type="text"
-                        id="upcomingMeetingParticipantEntry"
-                        maxlength="200"
-                        placeholder="Add an interviewer or recruiter"
-                        autocomplete="off"
-                    >
-                </div>
-                <input type="hidden" id="upcomingMeetingParticipants">
-                <small class="participant-field-help">Press Enter or type a comma to add each interviewer or contact. You can also paste a comma-separated list.</small>
-            </div>
-            <label class="form-field">
-                <span>Interview objective or application notes <small>(optional)</small></span>
-                <textarea id="upcomingMeetingPurpose" rows="4" maxlength="1200" placeholder="What should you demonstrate, clarify, or accomplish?"></textarea>
-            </label>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                <button type="submit" class="btn btn-primary">Create Application Workspace</button>
-            </div>
-        </form>
-    </section>
-</div>
-{% endif %}
 
 <div class="knowledge-toast" id="toast" role="status" aria-live="polite" hidden></div>
 {% endblock %}
 
 {% block page_scripts %}
 <script src="{{ static_asset('js/pages/knowledge.js') }}" defer></script>
+{% if preparation_view == 'library' %}<script src="{{ static_asset('js/pages/knowledge-evidence.js') }}" defer></script>{% endif %}
 {% endblock %}

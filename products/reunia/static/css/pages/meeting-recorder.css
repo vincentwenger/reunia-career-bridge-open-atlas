@@ -1,861 +1,108 @@
-.recorder-page {
-    max-width: 1420px;
+.mock-interview-page{display:grid;gap:22px}.mock-interview-page [hidden]{display:none!important}.mock-setup-card,.mock-session-card,.mock-history-card,.mock-complete-card{border:1px solid var(--cb-p-d8e3eb);border-radius:20px;background:var(--cb-color-surface);box-shadow:0 14px 38px rgba(20, 58, 90,.08)}.mock-setup-card{padding:24px}.mock-card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;margin-bottom:22px}.mock-eyebrow,.mock-session-format{display:block;margin-bottom:5px;color:var(--cb-p-247c69);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.mock-card-heading h2,.mock-complete-card h2{margin:0;color:var(--cb-color-ink-strong);font-size:24px}.mock-card-heading p,.mock-complete-card p{max-width:760px;margin:7px 0 0;color:var(--cb-p-6d7f92);font-size:13px;line-height:1.55}.mock-status-badge{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;padding:8px 12px;border:1px solid var(--cb-p-d2eae2);border-radius:999px;background:var(--cb-p-f8fdfb);color:var(--cb-p-4a6177);font-size:12px;font-weight:700}.mock-status-badge i{width:8px;height:8px;border-radius:50%;background:var(--cb-p-8aa0b3)}.mock-status-badge[data-state=active]{border-color:var(--cb-p-9dd3c0);background:var(--cb-p-edf9f4);color:var(--cb-color-emerald)}.mock-status-badge[data-state=active] i{background:var(--cb-p-12a574);box-shadow:0 0 0 5px rgba(18,165,116,.12)}.mock-status-badge[data-state=processing]{border-color:var(--cb-p-bde8da);background:var(--cb-p-f1fbf8);color:var(--cb-p-238364)}.mock-status-badge[data-state=processing] i{background:var(--cb-color-teal);animation:mockPulse 1.2s ease-in-out infinite}.mock-status-badge[data-state=complete]{border-color:var(--cb-p-9dd3c0);background:var(--cb-p-edf9f4);color:var(--cb-color-emerald)}.mock-status-badge[data-state=complete] i{background:var(--cb-p-10a36f)}.mock-status-badge[data-state=error]{border-color:var(--cb-p-f2b6bd);background:var(--cb-p-fff3f4);color:var(--cb-p-a3202d)}.mock-status-badge[data-state=error] i{background:var(--cb-p-dc3545)}.mock-setup-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.72fr);gap:18px}.mock-field,.mock-switch-field{display:grid;gap:8px}.mock-field-wide{grid-column:1/-1}.mock-field>span,.mock-type-fieldset legend{color:var(--cb-color-ink-strong);font-size:12px;font-weight:800}.mock-field>span small{color:var(--cb-p-7890a5);font-weight:600}.mock-field select,.mock-field textarea{width:100%;border:1px solid var(--cb-p-d0e5de);border-radius:12px;background:var(--cb-color-surface-faint);color:var(--cb-color-ink-strong);font:inherit;font-size:13px;outline:none;transition:border-color .18s,box-shadow .18s}.mock-field select{height:46px;padding:0 13px}.mock-field textarea{padding:12px 13px;resize:vertical;line-height:1.5}.mock-field select:focus,.mock-field textarea:focus{border-color:var(--cb-p-6ac6a8);box-shadow:0 0 0 4px rgba(15, 118, 110,.12)}.mock-field>small{color:var(--cb-p-7a8da0);font-size:11.5px;line-height:1.45}.mock-type-fieldset{grid-column:1/-1;margin:0;padding:0;border:0}.mock-type-fieldset legend{margin-bottom:9px}.mock-type-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.mock-type-option{position:relative;cursor:pointer}.mock-type-option input{position:absolute;opacity:0;pointer-events:none}.mock-type-option span{display:grid;gap:4px;min-height:88px;padding:14px;border:1px solid var(--cb-p-daece6);border-radius:14px;background:var(--cb-color-surface-faint);transition:.18s}.mock-type-option strong{color:var(--cb-color-ink-strong);font-size:13px}.mock-type-option small{color:var(--cb-p-788b9e);font-size:11.5px;line-height:1.4}.mock-type-option:hover span{border-color:var(--cb-p-9ad7c3);background:var(--cb-p-f5f9fa)}.mock-type-option input:checked+span{border-color:var(--cb-p-41b58f);background:var(--cb-p-f0fcf8);box-shadow:inset 0 0 0 1px var(--cb-p-41b58f)}.mock-type-option input:focus-visible+span{outline:3px solid rgba(15, 118, 110,.2);outline-offset:2px}.mock-switch-field{grid-template-columns:1fr auto;align-items:center;padding:13px 15px;border:1px solid var(--cb-p-daece6);border-radius:14px;background:var(--cb-color-surface-faint)}.mock-switch-field>span:first-child{display:grid;gap:3px}.mock-switch-field strong{color:var(--cb-color-ink-strong);font-size:12.5px}.mock-switch-field small{color:var(--cb-p-7b8da0);font-size:11px;line-height:1.4}.mock-switch{position:relative;width:44px;height:24px}.mock-switch input{position:absolute;opacity:0}.mock-switch i{position:absolute;inset:0;border-radius:999px;background:var(--cb-p-b8c6d1);transition:.2s}.mock-switch i:after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--cb-color-surface);box-shadow:0 2px 5px rgba(0,0,0,.18);transition:.2s}.mock-switch input:checked+i{background:var(--cb-color-teal)}.mock-switch input:checked+i:after{transform:translateX(20px)}.mock-switch input:focus-visible+i{outline:3px solid rgba(15, 118, 110,.2);outline-offset:2px}.mock-setup-actions,.mock-complete-actions{display:flex;justify-content:flex-end;align-items:center;gap:11px;margin-top:22px}.mock-button,.mock-link-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:10px 16px;border:0;border-radius:11px;font:inherit;font-size:12.5px;font-weight:800;text-decoration:none;cursor:pointer;transition:transform .16s,box-shadow .16s,opacity .16s}.mock-button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}.mock-button:hover:not(:disabled),.mock-link-button:hover{transform:translateY(-1px)}.mock-button:disabled{opacity:.5;cursor:not-allowed}.mock-button-primary{color:var(--cb-color-surface);background:linear-gradient(135deg,var(--cb-color-primary),var(--cb-color-teal));box-shadow:0 10px 24px rgba(29, 78, 120,.22)}.mock-button-secondary,.mock-link-button{border:1px solid var(--cb-p-c3e3d8);color:var(--cb-color-primary);background:var(--cb-p-f5fcfa)}.mock-button-stop{color:var(--cb-color-surface);background:linear-gradient(135deg,var(--cb-p-b42338),var(--cb-p-df3852));box-shadow:0 10px 22px rgba(180,35,56,.19)}.mock-session-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}.mock-session-card{overflow:hidden}.mock-session-topbar{display:grid;grid-template-columns:auto minmax(120px,1fr) auto;align-items:center;gap:18px;padding:17px 20px;border-bottom:1px solid var(--cb-p-e6f2ee);background:var(--cb-color-surface-faint)}.mock-session-topbar>div:first-child{display:grid;gap:2px}.mock-session-format{margin:0}.mock-session-topbar strong{color:var(--cb-color-ink-strong);font-size:12px}.mock-progress-track{height:7px;overflow:hidden;border-radius:999px;background:var(--cb-p-e5f3ee)}.mock-progress-track span{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--cb-color-primary),var(--cb-p-47cb9e));transition:width .3s}.mock-session-end-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:8px 11px;border:1px solid var(--cb-p-e4a7af);border-radius:10px;background:var(--cb-color-surface);color:var(--cb-p-a3202d);font:inherit;font-size:11px;font-weight:800;cursor:pointer}.mock-session-end-button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8}.mock-session-end-button:hover:not(:disabled){background:var(--cb-p-fff6f7)}.mock-session-end-button:disabled{opacity:.5;cursor:not-allowed}.mock-interviewer-panel{display:flex;gap:16px;padding:25px 24px 20px;background:linear-gradient(145deg,var(--cb-p-f5fcfa),var(--cb-color-surface))}.mock-avatar{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,var(--cb-color-primary),var(--cb-p-38bd91));color:var(--cb-color-surface);font-size:14px;font-weight:900;box-shadow:0 10px 24px rgba(29, 78, 120,.22)}.mock-question-copy{min-width:0}.mock-question-copy>span{color:var(--cb-color-teal);font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.mock-question-copy h2{margin:7px 0 0;color:var(--cb-color-ink-strong);font-size:23px;line-height:1.35}.mock-question-copy p{margin:9px 0 0;color:var(--cb-p-6f8193);font-size:12px;line-height:1.5}.mock-read-button{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:7px 10px;border:1px solid var(--cb-p-cee7df);border-radius:9px;background:var(--cb-color-surface);color:var(--cb-p-34856a);font:inherit;font-size:11px;font-weight:700;cursor:pointer}.mock-read-button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8}.mock-answer-panel{padding:20px 24px 24px;border-top:1px solid var(--cb-p-e6f2ee)}.mock-answer-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}.mock-answer-heading>div{display:grid;gap:3px}.mock-answer-heading span{color:var(--cb-p-718398);font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.mock-answer-heading strong{color:var(--cb-color-ink-strong);font-size:13px}.mock-answer-heading time{font-variant-numeric:tabular-nums;color:var(--cb-p-2f7e64);font-size:22px;font-weight:800}.mock-microphone-card{display:grid;grid-template-columns:auto auto minmax(120px,1fr);align-items:center;gap:12px;margin-top:15px;padding:13px 14px;border:1px solid var(--cb-p-daebe5);border-radius:14px;background:var(--cb-color-surface-faint)}.mock-microphone-card[data-state=recording]{border-color:var(--cb-p-f0a9b4);background:var(--cb-p-fff7f8)}.mock-microphone-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--cb-p-ecf9f5);color:var(--cb-p-279772)}.mock-microphone-card[data-state=recording] .mock-microphone-icon{background:var(--cb-p-ffe7eb);color:var(--cb-p-bd2940)}.mock-microphone-icon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8}.mock-microphone-card>div:nth-child(2){display:grid;gap:2px}.mock-microphone-card strong{color:var(--cb-p-354f47);font-size:12.5px}.mock-microphone-card small{color:var(--cb-p-7b8da0);font-size:11px}.mock-audio-meter{height:8px;overflow:hidden;border-radius:999px;background:var(--cb-p-e4f1ed)}.mock-audio-meter span{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--cb-p-37a66f),var(--cb-p-75d89d));transition:width .06s}.mock-answer-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:18px}.mock-answer-tip{margin:12px auto 0;max-width:680px;color:var(--cb-p-7b8b9d);font-size:11px;line-height:1.5;text-align:center}.mock-processing-panel{display:flex;align-items:center;gap:14px;margin:0 24px 24px;padding:16px;border:1px solid var(--cb-p-c2e8dc);border-radius:14px;background:var(--cb-p-f2fcf9);color:var(--cb-p-2b7c61)}.mock-processing-panel>div{display:grid;gap:4px}.mock-processing-panel strong{font-size:13px}.mock-processing-panel p{margin:0;color:var(--cb-p-5d7890);font-size:11.5px;line-height:1.45}.mock-spinner{width:25px;height:25px;border:3px solid var(--cb-p-d0ede3);border-top-color:var(--cb-color-teal);border-radius:50%;animation:mockSpin .8s linear infinite}.mock-evaluation-panel{display:grid;grid-template-columns:auto 1fr;gap:17px;margin:0 24px 24px;padding:18px;border:1px solid var(--cb-p-dbece7);border-radius:16px;background:var(--cb-color-surface-faint)}.mock-evaluation-score{display:flex;align-items:baseline;justify-content:center;width:86px;height:86px;border-radius:18px;background:linear-gradient(145deg,var(--cb-p-ecfbf6),var(--cb-color-surface));color:var(--cb-p-248767);box-shadow:inset 0 0 0 1px var(--cb-p-cbeae0)}.mock-evaluation-score span{font-size:30px;font-weight:900}.mock-evaluation-score small{font-size:11px;font-weight:800}.mock-evaluation-copy{min-width:0}.mock-evaluation-heading{display:flex;justify-content:space-between;gap:12px;align-items:center}.mock-evaluation-heading strong{color:var(--cb-color-ink-strong);font-size:13px}.mock-evaluation-heading span{padding:5px 8px;border-radius:999px;background:var(--cb-color-surface-subtle);color:var(--cb-p-637587);font-size:10px;font-weight:800;text-transform:capitalize}.mock-evaluation-heading span[data-evidence=supported]{background:var(--cb-p-e3f7ef);color:var(--cb-color-emerald)}.mock-evaluation-heading span[data-evidence=partial]{background:var(--cb-p-fff4dc);color:var(--cb-p-9a6208)}.mock-evaluation-heading span[data-evidence=unsupported]{background:var(--cb-p-fff0f1);color:var(--cb-p-a3202d)}.mock-evaluation-copy>p{margin:8px 0 0;color:var(--cb-p-66798c);font-size:12px;line-height:1.5}.mock-evaluation-columns{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:13px}.mock-evaluation-columns>div>span{color:var(--cb-p-536c84);font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}.mock-evaluation-columns ul{display:grid;gap:5px;margin:7px 0 0;padding-left:18px;color:var(--cb-p-63778a);font-size:11.5px;line-height:1.4}.mock-error-panel{margin:0 24px 24px;padding:16px;border:1px solid var(--cb-p-efb2ba);border-radius:14px;background:var(--cb-p-fff3f4)}.mock-error-panel strong{color:var(--cb-p-9e2637);font-size:13px}.mock-error-panel p{margin:5px 0 12px;color:var(--cb-p-91505b);font-size:11.5px;line-height:1.45}.mock-history-card{position:sticky;top:86px;padding:18px}.mock-history-heading{display:grid;gap:3px;padding-bottom:13px;border-bottom:1px solid var(--cb-p-e7f2ee)}.mock-history-heading span{color:var(--cb-color-teal);font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.mock-history-heading strong{color:var(--cb-p-364f47);font-size:14px}.mock-history-list{display:grid;gap:10px;margin:15px 0 0;padding:0;list-style:none}.mock-history-list li{padding:11px;border:1px solid var(--cb-p-e0eeea);border-radius:12px;background:var(--cb-color-surface-faint)}.mock-history-list li strong{display:block;color:var(--cb-p-385149);font-size:11.5px;line-height:1.4}.mock-history-list li p{display:-webkit-box;overflow:hidden;margin:6px 0 0;color:var(--cb-p-748699);font-size:10.5px;line-height:1.4;-webkit-line-clamp:2;-webkit-box-orient:vertical}.mock-history-list li span{display:inline-flex;margin-top:8px;padding:4px 7px;border-radius:999px;background:var(--cb-p-eff9f6);color:var(--cb-p-2d9170);font-size:9.5px;font-weight:800}.mock-history-empty{color:var(--cb-p-7c8c9d);font-size:11px;line-height:1.5;text-align:center}.mock-history-note{margin-top:15px;padding:13px;border-radius:13px;background:var(--cb-p-f0fcf8)}.mock-history-note strong{color:var(--cb-p-2a8365);font-size:11.5px}.mock-history-note p{margin:5px 0 0;color:var(--cb-p-607f96);font-size:10.5px;line-height:1.45}.mock-complete-card{display:flex;align-items:flex-start;gap:18px;padding:25px}.mock-complete-icon{display:grid;place-items:center;flex:0 0 52px;width:52px;height:52px;border-radius:16px;background:var(--cb-p-def7ed);color:var(--cb-p-07815f);font-size:25px;font-weight:900}.mock-complete-card>div{flex:1}.mock-complete-actions{justify-content:flex-start}.mock-complete-actions .mock-button{text-decoration:none}.mock-complete-actions{margin-top:17px}@keyframes mockSpin{to{transform:rotate(360deg)}}@keyframes mockPulse{50%{opacity:.45;transform:scale(.8)}}@media(max-width:1050px){.mock-session-layout{grid-template-columns:1fr}.mock-history-card{position:static}.mock-type-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){.mock-setup-card{padding:18px}.mock-card-heading{display:grid}.mock-status-badge{justify-self:start}.mock-setup-grid{grid-template-columns:1fr}.mock-field-wide,.mock-type-fieldset{grid-column:auto}.mock-type-grid{grid-template-columns:1fr}.mock-setup-actions{flex-direction:column-reverse;align-items:stretch}.mock-session-topbar{grid-template-columns:1fr auto}.mock-session-topbar .mock-progress-track{grid-column:1/-1;grid-row:2}.mock-interviewer-panel{padding:20px 17px}.mock-question-copy h2{font-size:20px}.mock-answer-panel{padding:17px}.mock-microphone-card{grid-template-columns:auto 1fr}.mock-audio-meter{grid-column:1/-1}.mock-processing-panel,.mock-evaluation-panel,.mock-error-panel{margin-left:17px;margin-right:17px}.mock-evaluation-panel{grid-template-columns:1fr}.mock-evaluation-score{width:100%;height:58px}.mock-evaluation-columns{grid-template-columns:1fr}.mock-complete-card{padding:20px}.mock-complete-actions{flex-direction:column;align-items:stretch}}
+.mock-evaluation-actions{display:flex;justify-content:flex-end;margin-top:14px}
+
+/* Saved interview question library */
+.mock-question-set-panel{padding:18px;border:1px solid var(--cb-p-cfe7df);border-radius:16px;background:linear-gradient(145deg,var(--cb-p-f5fcfa),var(--cb-color-surface))}
+.mock-question-set-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.mock-question-set-heading h3{margin:5px 0 0;color:var(--cb-color-ink-strong);font-size:17px}
+.mock-question-set-heading p{max-width:720px;margin:7px 0 0;color:var(--cb-p-64778a);font-size:11.5px;line-height:1.55}
+.mock-question-count{flex:0 0 auto;padding:6px 10px;border-radius:999px;background:var(--cb-p-e7f7f1);color:var(--cb-p-167458);font-size:10.5px;font-weight:800}
+.mock-question-count[data-state=error]{background:var(--cb-p-fff0f1);color:var(--cb-p-a3202d)}
+.mock-question-set-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.mock-question-set-panel input{width:100%;padding:10px 11px;border:1px solid var(--cb-p-d4e7e1);border-radius:10px;background:var(--cb-color-surface);color:var(--cb-color-ink-strong);font:inherit;font-size:12px}
+.mock-question-set-panel input:focus,.mock-question-set-panel textarea:focus,.mock-question-set-panel select:focus{outline:2px solid rgba(29,78,120,.18);border-color:var(--cb-p-5db99e)}
+.mock-question-set-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:14px}
+.mock-question-set-status{margin:10px 0 0;color:var(--cb-p-657b8d);font-size:11px;line-height:1.45}
+.mock-question-set-status[data-state=saving]{color:var(--cb-color-primary)}
+.mock-question-set-status[data-state=saved]{color:var(--cb-color-emerald)}
+.mock-question-set-status[data-state=error]{color:var(--cb-p-a3202d)}
+@media(max-width:720px){.mock-question-set-heading{display:grid}.mock-question-set-grid{grid-template-columns:1fr}.mock-question-set-actions{display:grid;grid-template-columns:1fr}.mock-question-set-actions .mock-button{justify-content:center}}
+
+/* Compact blue mock-interview workspace. */
+.mock-interview-page {
+    width: min(1180px, calc(100% - 48px));
+    margin: 28px auto 64px;
 }
 
-.recorder-page [hidden] {
-    display: none !important;
-}
-
-.recorder-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    gap: 24px;
-    align-items: start;
-}
-
-.recorder-card,
-.recorder-guide-card,
-.recorder-desktop-card,
-.recorder-privacy-card {
-    border: 1px solid #dfe8f2;
-    background: #ffffff;
-    box-shadow: 0 18px 48px rgba(28, 55, 86, 0.08);
-}
-
-.recorder-card {
-    overflow: hidden;
-    border-radius: 22px;
-}
-
-.recorder-card-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 25px 27px 22px;
-    border-bottom: 1px solid #e7edf4;
-}
-
-.recorder-eyebrow {
-    color: #1976d2;
-    font-size: 12px;
-    font-weight: 900;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-}
-
-.recorder-card-header h2 {
-    margin: 7px 0 0;
-    color: #18283b;
-    font-size: clamp(1.45rem, 2vw, 1.85rem);
-    letter-spacing: -.025em;
-}
-
-.recorder-card-header p {
-    max-width: 710px;
-    margin: 8px 0 0;
-    color: #66788c;
-    font-size: 14px;
-    line-height: 1.65;
-}
-
-.recorder-status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    flex: 0 0 auto;
-    min-height: 36px;
-    padding: 7px 11px;
-    border: 1px solid #d8e3ee;
-    border-radius: 999px;
-    color: #516277;
-    background: #f7fafc;
-    font-size: 12px;
-    font-weight: 850;
-}
-
-.recorder-status-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: #8da0b5;
-}
-
-.recorder-status-badge[data-state="recording"] {
-    color: #a3202d;
-    border-color: #fecdd3;
-    background: #fff1f2;
-}
-
-.recorder-status-badge[data-state="recording"] .recorder-status-dot {
-    background: #e11d48;
-    box-shadow: 0 0 0 5px rgba(225, 29, 72, .12);
-    animation: recorder-pulse 1.35s infinite;
-}
-
-.recorder-status-badge[data-state="processing"],
-.recorder-status-badge[data-state="connecting"],
-.recorder-status-badge[data-state="stopping"],
-.recorder-status-badge[data-state="discarding"] {
-    color: #0f4c81;
-    border-color: #bfdbfe;
-    background: #eff6ff;
-}
-
-.recorder-status-badge[data-state="processing"] .recorder-status-dot,
-.recorder-status-badge[data-state="connecting"] .recorder-status-dot,
-.recorder-status-badge[data-state="stopping"] .recorder-status-dot,
-.recorder-status-badge[data-state="discarding"] .recorder-status-dot {
-    background: #1976d2;
-}
-
-.recorder-status-badge[data-state="complete"] {
-    color: #087055;
-    border-color: #a7f3d0;
-    background: #ecfdf5;
-}
-
-.recorder-status-badge[data-state="complete"] .recorder-status-dot { background: #10b981; }
-.recorder-status-badge[data-state="error"] { color: #a3202d; border-color: #fecaca; background: #fef2f2; }
-.recorder-status-badge[data-state="error"] .recorder-status-dot { background: #dc2626; }
-
-.recorder-form-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
-    padding: 22px 27px;
-    border-bottom: 1px solid #e7edf4;
-    background: #fbfdff;
-}
-
-.recorder-field > span {
-    display: block;
-    margin-bottom: 8px;
-    color: #334155;
-    font-size: 13px;
-    font-weight: 850;
-}
-
-.recorder-field input {
-    width: 100%;
-    min-height: 48px;
-    padding: 0 14px;
-    border: 1px solid #cfdae6;
-    border-radius: 12px;
-    color: #17283d;
-    background: #ffffff;
-    outline: none;
-    transition: border-color .18s ease, box-shadow .18s ease;
-}
-
-.recorder-field input:focus {
-    border-color: #1976d2;
-    box-shadow: 0 0 0 4px rgba(25, 118, 210, .11);
-}
-
-.recorder-field input:disabled { color: #64748b; background: #f1f5f9; }
-
-.recorder-switch-row {
-    min-height: 75px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 14px 15px;
-    border: 1px solid #dce6ef;
-    border-radius: 14px;
-    background: #ffffff;
-    cursor: pointer;
-}
-
-.recorder-switch-copy { display: grid; gap: 4px; }
-.recorder-switch-copy strong { color: #26384c; font-size: 13px; }
-.recorder-switch-copy small { color: #708196; font-size: 11.5px; line-height: 1.45; }
-
-.recorder-switch { position: relative; flex: 0 0 auto; }
-.recorder-switch input { position: absolute; opacity: 0; pointer-events: none; }
-.recorder-switch > span {
-    width: 44px;
-    height: 24px;
-    display: block;
-    border-radius: 999px;
-    background: #cbd5e1;
-    transition: background .2s ease;
-}
-.recorder-switch > span::after {
-    content: "";
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #ffffff;
-    box-shadow: 0 2px 7px rgba(15, 23, 42, .22);
-    transition: transform .2s ease;
-}
-.recorder-switch input:checked + span { background: #1976d2; }
-.recorder-switch input:checked + span::after { transform: translateX(20px); }
-.recorder-switch input:focus-visible + span { outline: 3px solid rgba(25, 118, 210, .2); outline-offset: 3px; }
-
-.recorder-stage {
-    padding: 30px 27px 28px;
-    text-align: center;
-}
-
-.recorder-timer {
-    color: #132a43;
-    font-variant-numeric: tabular-nums;
-    font-size: clamp(2.7rem, 6vw, 4.8rem);
-    font-weight: 850;
-    line-height: 1;
-    letter-spacing: .04em;
-}
-
-.recorder-stage-title {
-    margin: 14px 0 0;
-    color: #26384c;
-    font-size: 19px;
-    font-weight: 850;
-}
-
-.recorder-stage-description {
-    max-width: 720px;
-    margin: 7px auto 0;
-    color: #6d7e91;
-    font-size: 13.5px;
-    line-height: 1.6;
-}
-
-.audio-source-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-    margin-top: 27px;
-    text-align: left;
-}
-
-.audio-source-card {
-    padding: 15px;
-    border: 1px solid #dce6ef;
-    border-radius: 15px;
-    background: #fbfdff;
-    transition: opacity .2s ease;
-}
-.audio-source-card.is-disabled { opacity: .55; }
-.audio-source-heading { display: flex; align-items: center; gap: 10px; }
-.audio-source-icon {
-    width: 38px;
-    height: 38px;
-    display: grid;
-    place-items: center;
-    flex: 0 0 38px;
-    border-radius: 12px;
-    background: #eaf4ff;
-    font-size: 17px;
-}
-.audio-source-heading > div { min-width: 0; display: grid; gap: 2px; }
-.audio-source-heading > div:not(.audio-source-controls) { flex: 1 1 auto; }
-.audio-source-heading strong { color: #26384c; font-size: 13px; }
-.audio-source-heading small { color: #7b8a9c; font-size: 11px; }
-.audio-source-controls {
-    display: flex !important;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px !important;
-    margin-left: auto;
-}
-.source-state {
-    margin-left: 0;
-    color: #7b8a9c;
-    font-size: 10.5px;
-    font-weight: 800;
-    white-space: nowrap;
-}
-.source-state.is-live { color: #078461; }
-.source-state.is-muted { color: #9a5b0a; }
-.audio-source-card.is-muted { border-color: #f0c98a; background: #fffbf3; }
-.audio-source-card.is-muted .audio-meter span { width: 0 !important; }
-.audio-source-mute {
-    min-height: 30px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    padding: 4px 9px;
-    border: 1px solid #cbd8e5;
-    border-radius: 9px;
-    color: #41566d;
-    background: #ffffff;
-    font: inherit;
-    font-size: 10.5px;
-    font-weight: 850;
-    cursor: pointer;
-    transition: border-color .18s ease, background .18s ease, color .18s ease, opacity .18s ease;
-}
-.audio-source-mute svg {
-    width: 14px;
-    height: 14px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-.audio-source-mute:hover:not(:disabled) { border-color: #8fb6d8; color: #0f4c81; background: #f2f8fd; }
-.audio-source-mute:focus-visible { outline: 3px solid rgba(25, 118, 210, .18); outline-offset: 2px; }
-.audio-source-mute:disabled { opacity: .45; cursor: not-allowed; }
-.audio-source-mute.is-muted { color: #8a4c00; border-color: #e7b76c; background: #fff5df; }
-.audio-meter {
-    height: 6px;
-    overflow: hidden;
-    margin-top: 13px;
-    border-radius: 999px;
-    background: #e4ebf2;
-}
-.audio-meter span {
-    width: 0;
-    height: 100%;
-    display: block;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #16a085, #1976d2);
-    transition: width .08s linear;
-}
-
-.recorder-actions {
-    display: flex;
-    justify-content: center;
-    gap: 11px;
-    flex-wrap: wrap;
-    margin-top: 27px;
-}
-
-.recorder-button {
-    min-height: 46px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    padding: 0 18px;
-    border: 0;
-    border-radius: 12px;
-    font-weight: 850;
-    text-decoration: none;
-    cursor: pointer;
-    transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
-}
-.recorder-button[hidden] { display: none; }
-.recorder-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
-.recorder-button:hover:not(:disabled) { transform: translateY(-1px); }
-.recorder-button:disabled { opacity: .45; cursor: not-allowed; }
-.recorder-button-primary { color: #ffffff; background: linear-gradient(135deg, #0f4c81, #1976d2); box-shadow: 0 11px 26px rgba(15, 76, 129, .22); }
-.recorder-button-danger { color: #ffffff; background: linear-gradient(135deg, #be2740, #e11d48); box-shadow: 0 11px 26px rgba(190, 39, 64, .2); }
-.recorder-button-danger-outline {
-    color: #b42336;
-    border: 1px solid #f1a8b2;
-    background: #fff7f8;
-    box-shadow: 0 8px 20px rgba(180, 35, 54, .08);
-}
-.recorder-button-danger-outline:hover:not(:disabled) {
-    border-color: #df7180;
-    background: #fff0f2;
-    box-shadow: 0 10px 24px rgba(180, 35, 54, .13);
-}
-.recorder-button-secondary { color: #0f4c81; border: 1px solid #bed5ea; background: #f2f8fd; }
-
-.recorder-progress,
-.recorder-result {
-    max-width: 760px;
-    margin: 24px auto 0;
-    padding: 16px;
-    border-radius: 15px;
-    text-align: left;
-}
-.recorder-progress {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    border: 1px solid #bfdbfe;
-    color: #1e4d78;
-    background: #eff6ff;
-}
-.recorder-progress > span {
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
-    border: 3px solid #bfd7ef;
-    border-top-color: #1976d2;
-    border-radius: 50%;
-    animation: recorder-spin .8s linear infinite;
-}
-.recorder-progress div { display: grid; gap: 4px; }
-.recorder-progress strong { font-size: 13px; }
-.recorder-progress small { color: #587492; font-size: 11.5px; line-height: 1.45; }
-
-.recorder-result {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 13px;
-    border: 1px solid #a7f3d0;
-    background: #ecfdf5;
-}
-.recorder-result-icon {
-    width: 34px;
-    height: 34px;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    color: #ffffff;
-    background: #10b981;
-    font-weight: 900;
-}
-.recorder-result strong { color: #075c46; font-size: 14px; }
-.recorder-result p { margin: 3px 0 0; color: #397565; font-size: 11.5px; line-height: 1.45; }
-.recorder-result .recorder-quality-warning {
-    margin-top: 7px;
-    padding: 7px 9px;
-    border: 1px solid #f5d58c;
-    border-radius: 8px;
-    color: #7a5415;
-    background: #fffbeb;
-    font-weight: 700;
-}
-.recorder-result a {
-    min-height: 38px;
-    display: inline-flex;
-    align-items: center;
-    padding: 0 13px;
-    border-radius: 10px;
-    color: #ffffff;
-    background: #087055;
-    font-size: 11px;
-    font-weight: 850;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-.recorder-guide { display: grid; gap: 13px; }
-.recorder-guide-card,
-.recorder-desktop-card,
-.recorder-privacy-card { border-radius: 17px; }
-.recorder-guide-card {
-    display: flex;
-    gap: 13px;
-    padding: 18px;
-}
-.recorder-guide-card-accent { border-color: #bcd9f2; background: linear-gradient(145deg, #f3f9ff, #ffffff); }
-.recorder-guide-number {
-    width: 32px;
-    height: 32px;
-    display: grid;
-    place-items: center;
-    flex: 0 0 32px;
-    border-radius: 10px;
-    color: #ffffff;
-    background: #1976d2;
-    font-size: 12px;
-    font-weight: 900;
-}
-.recorder-guide h3 { margin: 1px 0 0; color: #26384c; font-size: 14px; }
-.recorder-guide p { margin: 6px 0 0; color: #6c7e92; font-size: 12px; line-height: 1.55; }
-.recorder-desktop-card {
-    display: flex;
-    gap: 12px;
-    padding: 18px;
-    border-color: #bfdbfe;
-    background: linear-gradient(145deg, #eff6ff, #ffffff);
-}
-.recorder-desktop-card svg {
-    width: 25px;
-    height: 25px;
-    flex: 0 0 25px;
-    fill: none;
-    stroke: #1976d2;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-.recorder-desktop-card div { display: grid; gap: 8px; }
-.recorder-desktop-card strong { color: #23496f; font-size: 13px; line-height: 1.45; }
-.recorder-desktop-card a {
-    color: #0f5f9f;
-    font-size: 12px;
-    font-weight: 850;
-    line-height: 1.45;
-    text-underline-offset: 3px;
-}
-.recorder-desktop-card a:hover { color: #0b4778; }
-.recorder-privacy-card {
-    display: flex;
-    gap: 12px;
-    padding: 18px;
-    border-color: #fde2a8;
-    background: #fffbeb;
-}
-.recorder-privacy-card svg { width: 24px; height: 24px; flex: 0 0 24px; fill: none; stroke: #b7791f; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.recorder-privacy-card strong { color: #8a5a15; font-size: 13px; }
-.recorder-privacy-card p { color: #8c6b36; }
-
-@keyframes recorder-pulse { 50% { box-shadow: 0 0 0 9px rgba(225, 29, 72, 0); } }
-@keyframes recorder-spin { to { transform: rotate(360deg); } }
-
-@media (max-width: 1100px) {
-    .recorder-layout { grid-template-columns: 1fr; }
-    .recorder-guide { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .recorder-desktop-card,
-    .recorder-privacy-card { grid-column: 1 / -1; }
-}
-
-@media (max-width: 760px) {
-    .recorder-card-header { flex-direction: column; padding: 21px; }
-    .recorder-form-grid { grid-template-columns: 1fr; padding: 19px 21px; }
-    .recorder-stage { padding: 26px 21px 23px; }
-    .audio-source-grid { grid-template-columns: 1fr; }
-    .recorder-guide { grid-template-columns: 1fr; }
-    .recorder-desktop-card,
-    .recorder-privacy-card { grid-column: auto; }
-    .recorder-result { grid-template-columns: auto 1fr; }
-    .recorder-result a { grid-column: 1 / -1; justify-content: center; }
-}
-
-
-.recorder-error-panel {
-    max-width: 760px;
-    margin: 24px auto 0;
-    padding: 18px;
-    border: 1px solid #fecaca;
+.mock-setup-card,
+.mock-session-card,
+.mock-history-card,
+.mock-complete-card {
+    border-color: var(--cb-p-d7e3ed);
     border-radius: 16px;
-    background: #fff7f7;
-    text-align: left;
-    box-shadow: 0 12px 30px rgba(153, 27, 27, .08);
+    box-shadow: 0 8px 24px rgba(20, 58, 90, .08);
 }
 
-.recorder-error-heading {
-    display: flex;
-    align-items: flex-start;
-    gap: 13px;
+.mock-setup-card {
+    padding: 20px;
+    border-top: 4px solid var(--cb-color-primary);
 }
 
-.recorder-error-icon {
-    width: 36px;
-    height: 36px;
-    display: grid;
-    place-items: center;
-    flex: 0 0 36px;
-    border-radius: 50%;
-    color: #ffffff;
-    background: #dc2626;
-    font-size: 18px;
-    font-weight: 900;
+.mock-card-heading {
+    margin-bottom: 18px;
 }
 
-.recorder-error-heading strong { color: #991b1b; font-size: 15px; }
-.recorder-error-heading p {
-    margin: 5px 0 0;
-    color: #7f1d1d;
-    font-size: 12.5px;
-    line-height: 1.55;
+.mock-card-heading h2,
+.mock-complete-card h2,
+.mock-question-copy h2,
+.mock-answer-heading strong {
+    color: var(--cb-color-primary-dark);
 }
 
-.recorder-error-summary {
-    display: grid;
+.mock-type-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin: 17px 0 0;
-}
-
-.recorder-error-summary > div {
-    min-width: 0;
-    padding: 11px 12px;
-    border: 1px solid #fee2e2;
-    border-radius: 11px;
-    background: #ffffff;
-}
-
-.recorder-error-summary dt {
-    color: #9f4b4b;
-    font-size: 10px;
-    font-weight: 850;
-    letter-spacing: .04em;
-    text-transform: uppercase;
-}
-
-.recorder-error-summary dd {
-    margin: 4px 0 0;
-    color: #532626;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 11.5px;
-    overflow-wrap: anywhere;
-}
-
-.recorder-error-details {
-    margin-top: 14px;
-    border: 1px solid #f5caca;
-    border-radius: 11px;
-    background: #ffffff;
-}
-
-.recorder-error-details summary {
-    padding: 11px 13px;
-    color: #7f1d1d;
-    font-size: 11.5px;
-    font-weight: 850;
-    cursor: pointer;
-}
-
-.recorder-error-details pre {
-    max-height: 260px;
-    overflow: auto;
-    margin: 0;
-    padding: 13px;
-    border-top: 1px solid #fee2e2;
-    color: #4b2830;
-    background: #fffafa;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 10.5px;
-    line-height: 1.55;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
-.recorder-error-actions {
-    display: flex;
-    flex-wrap: wrap;
     gap: 9px;
-    margin-top: 15px;
 }
 
-.recorder-error-actions .recorder-button {
-    min-height: 40px;
-    padding: 0 13px;
-    font-size: 11.5px;
+.mock-type-option span {
+    min-height: 66px;
+    padding: 11px 12px;
+    border-color: var(--cb-p-d7e3ed);
+    border-radius: 11px;
+    background: var(--cb-color-surface);
 }
 
-.recorder-support-status {
-    margin: 12px 0 0;
-    padding: 10px 12px;
-    border: 1px solid #d7e2ec;
-    border-radius: 10px;
-    color: #41556b;
-    background: #f7fafc;
-    font-size: 10.8px;
-    font-weight: 700;
-    line-height: 1.5;
+.mock-type-option input:checked + span {
+    border-color: var(--cb-color-primary);
+    background: var(--cb-color-primary-soft);
+    box-shadow: inset 3px 0 0 var(--cb-color-primary);
 }
 
-.recorder-support-status.is-sending {
-    border-color: #bfdbfe;
-    color: #1e5f9e;
-    background: #eff6ff;
+.mock-type-option input:checked + span strong {
+    color: var(--cb-color-primary-dark);
 }
 
-.recorder-support-status.is-success {
-    border-color: #bbf7d0;
-    color: #166534;
-    background: #f0fdf4;
+.mock-switch-field,
+.mock-field select,
+.mock-field textarea,
+.mock-question-set-panel {
+    border-color: var(--cb-p-d7e3ed);
+    background: var(--cb-p-f9fbfd);
 }
 
-.recorder-support-status.is-error {
-    border-color: #fecaca;
-    color: #991b1b;
-    background: #fff7f7;
+.mock-setup-actions {
+    margin-top: 18px;
 }
 
-.recorder-support-status[hidden] {
-    display: none;
+.mock-session-topbar,
+.mock-interviewer-panel {
+    background: var(--cb-color-primary-soft);
 }
 
-.recorder-error-retention {
-    margin: 12px 0 0;
-    color: #8d4a4a;
-    font-size: 10.8px;
-    line-height: 1.5;
+.mock-avatar {
+    background: linear-gradient(145deg, var(--cb-color-primary-dark), var(--cb-color-primary-bright));
 }
 
 @media (max-width: 760px) {
-    .recorder-error-summary { grid-template-columns: 1fr; }
-    .recorder-error-actions { flex-direction: column; }
-    .recorder-error-actions .recorder-button { width: 100%; }
-}
-
-.recorder-progress[hidden],
-.recorder-result[hidden],
-.recorder-error-panel[hidden] {
-    display: none;
-}
-
-/* Prepared meeting package */
-.recorder-package-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-        "field link"
-        "help help";
-    align-items: end;
-    gap: 14px;
-}
-
-.recorder-package-field {
-    grid-area: field;
-    min-width: 0;
-}
-
-.recorder-field select {
-    width: 100%;
-    min-height: 48px;
-    padding: 0 40px 0 14px;
-    border: 1px solid #cfdae6;
-    border-radius: 12px;
-    color: #17283d;
-    background: #ffffff;
-    outline: none;
-    transition: border-color .18s ease, box-shadow .18s ease;
-}
-
-.recorder-field select:focus {
-    border-color: #1976d2;
-    box-shadow: 0 0 0 4px rgba(25, 118, 210, .11);
-}
-
-.recorder-field select:disabled {
-    color: #64748b;
-    background: #f1f5f9;
-}
-
-.recorder-package-help {
-    grid-area: help;
-    display: block;
-    color: #708196;
-    font-size: 11.5px;
-    line-height: 1.45;
-}
-
-.recorder-package-link {
-    grid-area: link;
-    min-height: 48px;
-    padding: 0 15px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    border: 1px solid #cbd9e7;
-    border-radius: 12px;
-    color: #1769aa;
-    background: #ffffff;
-    font-size: 12.5px;
-    font-weight: 800;
-    text-decoration: none;
-}
-
-.recorder-package-link:hover {
-    border-color: #1976d2;
-    background: #eff6ff;
-}
-
-@media (max-width: 680px) {
-    .recorder-package-row {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-areas:
-            "field"
-            "help"
-            "link";
-        align-items: stretch;
+    .mock-interview-page {
+        width: min(100% - 24px, 1180px);
+        margin-top: 16px;
     }
 
-    .recorder-package-link {
-        width: 100%;
+    .mock-type-grid {
+        grid-template-columns: 1fr;
     }
 }
 
-
-@media (max-width: 720px) {
-    .audio-source-heading { align-items: flex-start; flex-wrap: wrap; }
-    .audio-source-controls { width: 100%; justify-content: space-between; margin: 8px 0 0 48px; }
-}
-
-/* Final step of the guided meeting flow */
-.recorder-guided-flow {
-    margin: 0 0 22px;
-    padding: 18px 20px;
-    border: 1px solid #cfe0ee;
-    border-radius: 18px;
-    background: linear-gradient(135deg, #ffffff 0%, #f3f9ff 100%);
-    box-shadow: 0 10px 28px rgba(31,68,102,.07);
-}
-.recorder-guided-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 15px;
-}
-.recorder-guided-heading > div { display: grid; gap: 4px; }
-.recorder-guided-heading > div > span {
-    color: #1976d2;
-    font-size: 11px;
-    font-weight: 900;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-}
-.recorder-guided-heading strong { color: #24384f; font-size: 16px; }
-.recorder-required-badge {
-    padding: 7px 10px;
-    border-radius: 999px;
-    background: #0f4c81;
-    color: #fff;
-    font-size: 10px;
-    font-weight: 900;
-    letter-spacing: .07em;
-    text-transform: uppercase;
-}
-.recorder-guided-flow ol {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0,1fr));
-    gap: 10px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-.recorder-guided-flow li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    padding: 11px 12px;
-    border: 1px solid #dfe8f0;
-    border-radius: 13px;
-    background: rgba(255,255,255,.82);
-}
-.recorder-guided-flow li > span {
-    width: 29px;
-    height: 29px;
-    flex: 0 0 auto;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: #edf2f7;
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 900;
-}
-.recorder-guided-flow li div { min-width: 0; }
-.recorder-guided-flow li strong,
-.recorder-guided-flow li small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.recorder-guided-flow li strong { color: #516277; font-size: 12px; }
-.recorder-guided-flow li small { margin-top: 2px; color: #94a3b8; font-size: 10px; }
-.recorder-guided-flow li.complete > span { background: #dff7ee; color: #087055; }
-.recorder-guided-flow li.active { border-color: #68a9df; background: #edf7ff; }
-.recorder-guided-flow li.active > span { background: #0f4c81; color: #fff; }
-.recorder-guided-flow li.active strong { color: #0f4c81; }
-.recorder-guided-flow > p { margin: 13px 0 0; color: #6c7c8f; font-size: 12px; }
-
-@media (max-width: 850px) {
-    .recorder-guided-flow ol { grid-template-columns: repeat(2, minmax(0,1fr)); }
-}
-@media (max-width: 620px) {
-    .recorder-guided-heading { align-items: flex-start; }
-    .recorder-guided-flow ol { grid-template-columns: 1fr; }
-    .recorder-guided-flow li:not(.active) { display: none; }
-}
-
+.mock-history-list li[data-state=skipped]{border-style:dashed;background:var(--cb-color-surface)}
+.mock-history-list li[data-state=skipped] span{background:var(--cb-color-surface-subtle);color:var(--cb-p-637587)}

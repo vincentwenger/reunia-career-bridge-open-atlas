@@ -1,0 +1,14 @@
+{
+  "name": "reunia-career-bridge-static-quality",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint:css": "stylelint \"products/**/*.css\" --config config/quality/stylelint.config.mjs"
+  },
+  "devDependencies": {
+    "stylelint": "^17.0.0"
+  }
+}

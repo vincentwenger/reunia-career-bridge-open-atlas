@@ -1,0 +1,17 @@
+{% extends "application_builder/base.html" %}
+
+{% block head_page_scripts %}
+<script defer src="{{ application_builder_asset('app-job-discovery.js') }}"></script>
+{% endblock %}
+
+
+{% block title %}Job Discovery · Réunia Career Bridge{% endblock %}
+
+{% block content %}
+<span class="sr-only">Manage catalog &amp; preferences</span>
+{% if discovery_view == 'settings' %}
+  {% include "application_builder/_discovery_settings.html" %}
+{% else %}
+  {% include "application_builder/_discovery_results.html" %}
+{% endif %}
+{% endblock %}

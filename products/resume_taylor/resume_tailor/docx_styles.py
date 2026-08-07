@@ -148,9 +148,9 @@ EARLY_CAREER_STYLE = ResumeStyleTheme(
 )
 
 
-# This style intentionally recreates the visual language of the user's original
-# resume: centered blue headings, expanded lettering, a ruled title block,
-# compact Calibri typography, underlined employer names, and concise spacing.
+# This style preserves the centered blue visual language of the user's original
+# resume while keeping the Word and PDF exports visually consistent: a ruled
+# title block, compact Arial typography, bold employer names, and concise spacing.
 PROFESSIONAL_STYLE = ResumeStyleTheme(
     key="professional",
     label="Mid-Career Professional",
@@ -159,8 +159,8 @@ PROFESSIONAL_STYLE = ResumeStyleTheme(
         "A polished, compact style based on your original resume, with centered "
         "blue headings and a familiar experience-first structure."
     ),
-    body_font="Calibri",
-    heading_font="Calibri",
+    body_font="Arial",
+    heading_font="Arial",
     accent_color=RGBColor(0, 85, 161),
     text_color=RGBColor(0, 0, 0),
     link_color="2E687C",
@@ -947,10 +947,11 @@ def configure_resume_document(
         bold=not theme.is_mid_career_corporate,
         color=theme.accent_color,
     )
-    _set_character_spacing(style, 100 if theme.is_mid_career_corporate else None)
+    _set_character_spacing(style, None)
     _set_small_caps(style, False)
     style.paragraph_format.alignment = theme.header_alignment
     style.paragraph_format.space_after = Pt(3 if theme.is_mid_career_corporate else 1)
+    style.paragraph_format.line_spacing = Pt(theme.name_size * 1.08)
     style.paragraph_format.keep_with_next = True
     _remove_paragraph_borders(style)
     _remove_paragraph_shading(style)
@@ -963,10 +964,11 @@ def configure_resume_document(
         bold=not theme.is_mid_career_corporate,
         color=theme.text_color if theme.is_mid_career_corporate else theme.accent_color,
     )
-    _set_character_spacing(style, 100 if theme.is_mid_career_corporate else None)
+    _set_character_spacing(style, None)
     _set_small_caps(style, False)
     style.paragraph_format.alignment = theme.header_alignment
     style.paragraph_format.space_after = Pt(3 if theme.is_mid_career_corporate else 1)
+    style.paragraph_format.line_spacing = Pt(theme.target_size * 1.18)
     style.paragraph_format.keep_with_next = True
     if theme.is_mid_career_corporate:
         _set_bottom_border(
@@ -986,10 +988,11 @@ def configure_resume_document(
         size=theme.contact_size,
         color=theme.text_color,
     )
-    _set_character_spacing(style, 26 if theme.is_mid_career_corporate else None)
+    _set_character_spacing(style, None)
     _set_small_caps(style, False)
     style.paragraph_format.alignment = theme.header_alignment
     style.paragraph_format.space_after = Pt(2 if theme.is_mid_career_corporate else 5)
+    style.paragraph_format.line_spacing = Pt(theme.contact_size * 1.15)
     style.paragraph_format.keep_with_next = True
     _remove_paragraph_shading(style)
     if theme.is_executive and theme.is_corporate:
@@ -1005,8 +1008,8 @@ def configure_resume_document(
         bold=True,
         color=theme.accent_color,
     )
-    _set_character_spacing(style, 60 if theme.is_mid_career_corporate else None)
-    _set_small_caps(style, theme.is_mid_career_corporate)
+    _set_character_spacing(style, None)
+    _set_small_caps(style, False)
     style.paragraph_format.alignment = (
         WD_ALIGN_PARAGRAPH.CENTER
         if theme.is_mid_career_corporate
@@ -1014,6 +1017,7 @@ def configure_resume_document(
     )
     style.paragraph_format.space_before = Pt(theme.section_space_before)
     style.paragraph_format.space_after = Pt(theme.section_space_after)
+    style.paragraph_format.line_spacing = Pt(theme.section_size * 1.08)
     style.paragraph_format.keep_with_next = True
     style.paragraph_format.widow_control = True
     if theme.is_early_career and theme.is_corporate:
@@ -1040,13 +1044,9 @@ def configure_resume_document(
         size=theme.body_size,
         color=theme.text_color,
     )
-    style.paragraph_format.alignment = (
-        WD_ALIGN_PARAGRAPH.JUSTIFY
-        if theme.is_mid_career_corporate
-        else WD_ALIGN_PARAGRAPH.LEFT
-    )
+    style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
     style.paragraph_format.space_after = Pt(2 if theme.is_mid_career_corporate else 3)
-    style.paragraph_format.line_spacing = 1.0
+    style.paragraph_format.line_spacing = Pt(theme.body_size * 1.18)
     style.paragraph_format.widow_control = True
 
     style = _get_or_add_paragraph_style(document, STYLE_SKILL_LINE)
@@ -1058,7 +1058,7 @@ def configure_resume_document(
     )
     style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
     style.paragraph_format.space_after = Pt(0 if theme.is_mid_career_corporate else 1)
-    style.paragraph_format.line_spacing = 1.0
+    style.paragraph_format.line_spacing = Pt(theme.skill_size * 1.17)
     style.paragraph_format.widow_control = True
 
     style = _get_or_add_paragraph_style(document, STYLE_EMPLOYER_LINE)
@@ -1069,8 +1069,11 @@ def configure_resume_document(
         color=theme.text_color,
     )
     style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    style.paragraph_format.space_before = Pt(7 if theme.is_mid_career_corporate else 4.5 if theme.is_executive else 4)
+    # Entry-level spacing is applied per paragraph by the exporter so the
+    # first employer does not receive an unnecessary leading gap.
+    style.paragraph_format.space_before = Pt(0)
     style.paragraph_format.space_after = Pt(0)
+    style.paragraph_format.line_spacing = Pt(theme.employer_size * 1.12)
     style.paragraph_format.keep_with_next = True
     style.paragraph_format.widow_control = True
 
@@ -1084,6 +1087,7 @@ def configure_resume_document(
     )
     style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
     style.paragraph_format.space_after = Pt(0 if theme.is_mid_career_corporate else 1)
+    style.paragraph_format.line_spacing = Pt(theme.role_size * 1.12)
     style.paragraph_format.keep_with_next = True
     style.paragraph_format.widow_control = True
 
@@ -1094,15 +1098,11 @@ def configure_resume_document(
         size=theme.bullet_size,
         color=theme.text_color,
     )
-    style.paragraph_format.alignment = (
-        WD_ALIGN_PARAGRAPH.JUSTIFY
-        if theme.is_mid_career_corporate
-        else WD_ALIGN_PARAGRAPH.LEFT
-    )
+    style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
     style.paragraph_format.left_indent = Inches(0.22 if theme.is_mid_career_corporate else 0.18)
     style.paragraph_format.first_line_indent = Inches(-0.17 if theme.is_mid_career_corporate else -0.13)
     style.paragraph_format.space_after = Pt(theme.bullet_space_after)
-    style.paragraph_format.line_spacing = 1.0
+    style.paragraph_format.line_spacing = Pt(theme.bullet_size * 1.18)
     style.paragraph_format.widow_control = True
 
     style = _get_or_add_paragraph_style(document, STYLE_EDUCATION)
@@ -1115,6 +1115,7 @@ def configure_resume_document(
     style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
     style.paragraph_format.space_before = Pt(1 if theme.is_mid_career_corporate else 2)
     style.paragraph_format.space_after = Pt(0)
+    style.paragraph_format.line_spacing = Pt(theme.education_size * 1.15)
     style.paragraph_format.widow_control = True
 
     style = _get_or_add_paragraph_style(document, STYLE_EDUCATION_META)
@@ -1126,6 +1127,7 @@ def configure_resume_document(
     )
     style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
     style.paragraph_format.space_after = Pt(0)
+    style.paragraph_format.line_spacing = Pt(theme.education_size * 1.12)
     style.paragraph_format.widow_control = True
 
     style = _get_or_add_paragraph_style(document, STYLE_EDUCATION_DETAIL)
@@ -1140,6 +1142,7 @@ def configure_resume_document(
     style.paragraph_format.left_indent = Inches(0.22 if theme.is_mid_career_corporate else 0.18)
     style.paragraph_format.first_line_indent = Inches(-0.17 if theme.is_mid_career_corporate else 0)
     style.paragraph_format.space_after = Pt(1)
+    style.paragraph_format.line_spacing = Pt(theme.education_size * 1.14)
     style.paragraph_format.widow_control = True
     return theme
 

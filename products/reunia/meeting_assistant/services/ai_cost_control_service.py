@@ -165,33 +165,6 @@ class AICostControlService:
             reservation.usage_entries = ((key, delta, ttl),)
         return reservation
 
-    def ensure_live_qa_duration(self, elapsed_seconds: float) -> None:
-        maximum_minutes = float(
-            current_app.config.get("AI_LIVE_QA_MAX_MINUTES_PER_MEETING", 60) or 0
-        )
-        if maximum_minutes > 0 and float(elapsed_seconds or 0) >= maximum_minutes * 60:
-            raise RateLimitError(
-                "Automatic Live Q&A reached its per-meeting time limit and was stopped to control AI cost."
-            )
-
-    def reserve_live_qa_answer(self, user_id: str, recording_id: str) -> None:
-        limit = int(current_app.config.get("AI_LIVE_QA_MAX_ANSWERS_PER_MEETING", 25) or 0)
-        if limit <= 0:
-            return
-        self._reserve_entries(
-            (
-                (
-                    self._key("live-qa-answers", self._user_key(user_id), recording_id),
-                    1,
-                    limit,
-                    2 * 24 * 60 * 60,
-                ),
-            ),
-            message=(
-                "Automatic Live Q&A reached its answer limit for this meeting and was stopped to control AI cost."
-            ),
-        )
-
     def text_cost_usd(
         self,
         model: str,

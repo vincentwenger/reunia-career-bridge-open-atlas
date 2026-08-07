@@ -1,0 +1,200 @@
+{
+  "name": "Alex Morgan",
+  "contact": {
+    "location": "Seattle, WA",
+    "phone": "555-010-2468",
+    "email": "alex.morgan@example.com",
+    "linkedin_label": "LinkedIn",
+    "github_label": "GitHub",
+    "linkedin_url": "https://www.linkedin.com/in/career-bridge-demo-candidate/",
+    "github_url": "https://github.com/career-bridge-demo-candidate"
+  },
+  "current_summary": "Experienced technology professional with more than 12 years across application delivery, data integration, operational support, and regulated-industry systems. Hands-on experience with SQL, Python, cloud migration, release automation, testing, incident resolution, stakeholder communication, and technical project delivery. Additional experience includes IT controls, risk assessment, and process improvement.",
+  "skills": {
+    "hard_skills": [
+      "API Development",
+      "Data Cleansing",
+      "Data Integration",
+      "Data Modeling",
+      "Data Transformation",
+      "Data Validation",
+      "ETL Workflows",
+      "Feature Engineering",
+      "Internal Controls",
+      "Issue Resolution",
+      "Performance Optimization",
+      "Regression Testing",
+      "Release Planning",
+      "Requirements Gathering",
+      "Risk Assessment",
+      "Software Configuration",
+      "Software Testing",
+      "Unit Testing"
+    ],
+    "soft_skills": [
+      "Client Training",
+      "Cross-functional Collaboration",
+      "Executive Communication",
+      "Stakeholder Communication",
+      "Technical Leadership"
+    ],
+    "tools_software": [
+      "RegulaFlow reporting platform",
+      "AWS Cloud",
+      "Excel",
+      "FastAPI",
+      "GitHub",
+      "Jenkins",
+      "Jira",
+      "Jupyter Notebooks",
+      "MySQL",
+      "Oracle",
+      "PHP",
+      "PostgreSQL",
+      "Python",
+      "Scikit-learn",
+      "SQL",
+      "SQL Server",
+      "Streamlit",
+      "XHTML",
+      "XML"
+    ],
+    "industry_knowledge": [
+      "Agile Scrum",
+      "Asset Management Reporting",
+      "Banking Operations",
+      "Credit Risk Reporting",
+      "Data Governance",
+      "Financial Services",
+      "IT Auditing",
+      "IT General Controls",
+      "Operational Risk",
+      "Regulatory Reporting",
+      "Service Management"
+    ],
+    "languages": [
+      "English (Professional)",
+      "French (Native)"
+    ]
+  },
+  "education": [
+    {
+      "credential": "Professional Certificate in Machine Learning and Artificial Intelligence",
+      "institution": "Redwood Institute of Technology",
+      "location": "Seattle, WA",
+      "date": "01/2026",
+      "detail": ""
+    },
+    {
+      "credential": "Master of Science (M.S.), Engineering",
+      "institution": "Lyon Institute of Engineering",
+      "location": "Lyon, France",
+      "date": "09/2007",
+      "detail": "Emphasis in information systems engineering."
+    },
+    {
+      "credential": "Bachelor of Science (B.S.), Engineering",
+      "institution": "Bordeaux School of Technology",
+      "location": "Bordeaux, France",
+      "date": "09/2003",
+      "detail": ""
+    }
+  ],
+  "experiences": [
+    {
+      "id": "northstar",
+      "employer": "Northstar Financial Systems",
+      "location": "Seattle, WA",
+      "dates": "09/2013 - 05/2025",
+      "title": "Senior Application Engineer",
+      "bullets": [
+        {
+          "id": "NFS-01",
+          "text": "Led delivery of a regulatory reporting enhancement, coordinating implementation, testing, and release activities to meet a fixed client deadline"
+        },
+        {
+          "id": "NFS-02",
+          "text": "Supported reporting workflows for multiple financial-services clients across risk, operations, and compliance use cases"
+        },
+        {
+          "id": "NFS-03",
+          "text": "Designed ETL workflows that loaded, validated, transformed, and reconciled data from multiple source systems"
+        },
+        {
+          "id": "NFS-04",
+          "text": "Built SQL and Python data transformations and supported integrations across relational database platforms"
+        },
+        {
+          "id": "NFS-05",
+          "text": "Optimized SQL queries and application workflows during a cloud migration, reducing batch-processing time and improving platform reliability"
+        },
+        {
+          "id": "NFS-06",
+          "text": "Delivered software changes in Agile sprints while coordinating with product, QA, support, and client teams"
+        },
+        {
+          "id": "NFS-07",
+          "text": "Implemented Jenkins-based CI/CD checks that improved repeatability of validation and release packaging"
+        },
+        {
+          "id": "NFS-08",
+          "text": "Investigated production issues through structured ticket workflows and communicated status and resolution steps to stakeholders"
+        },
+        {
+          "id": "NFS-09",
+          "text": "Supported end-to-end testing and user training to improve rollout quality and adoption"
+        }
+      ]
+    },
+    {
+      "id": "harbor",
+      "employer": "Harbor Mutual",
+      "location": "Paris, France",
+      "dates": "08/2010 - 08/2011",
+      "title": "IT Auditor",
+      "bullets": [
+        {
+          "id": "HBR-01",
+          "text": "Evaluated infrastructure, IT processes, and internal controls to identify operational and compliance risks"
+        },
+        {
+          "id": "HBR-02",
+          "text": "Performed control testing using recognized governance and IT-control frameworks"
+        },
+        {
+          "id": "HBR-03",
+          "text": "Presented findings and practical remediation recommendations to management"
+        },
+        {
+          "id": "HBR-04",
+          "text": "Maintained stakeholder communication throughout audit planning, fieldwork, and follow-up"
+        }
+      ]
+    },
+    {
+      "id": "bluepeak",
+      "employer": "BluePeak Consulting",
+      "location": "Paris, France",
+      "dates": "10/2007 - 08/2010",
+      "title": "QA Engineer",
+      "bullets": [
+        {
+          "id": "BPK-01",
+          "text": "Performed functional and regression testing for a high-volume operational application"
+        },
+        {
+          "id": "BPK-02",
+          "text": "Created automated and manual test scenarios covering unit, integration, regression, and end-to-end behavior"
+        },
+        {
+          "id": "BPK-03",
+          "text": "Documented defects and collaborated with developers to validate fixes before release"
+        },
+        {
+          "id": "BPK-04",
+          "text": "Tested database and XML-based integrations to verify data integrity and interface behavior"
+        }
+      ]
+    }
+  ]
+}

@@ -6,6 +6,10 @@
     const refreshButton = document.getElementById('admin-refresh');
     const exportLink = document.getElementById('admin-export');
     const status = document.getElementById('admin-status');
+    const adminLoadingState = document.getElementById('admin-loading-state');
+    const adminEmptyState = document.getElementById('admin-empty-state');
+    const adminErrorState = document.getElementById('admin-error-state');
+    const adminRetryStateButton = document.getElementById('admin-retry-state-button');
     const searchInput = document.getElementById('admin-user-search');
     const activationFilter = document.getElementById('admin-user-activation-filter');
     const activityFilter = document.getElementById('admin-user-activity-filter');
@@ -44,7 +48,6 @@
     const usageDialogContent = document.getElementById('admin-usage-dialog-content');
     const detailDocumentList = document.getElementById('admin-detail-document-list');
     const detailMeetingList = document.getElementById('admin-detail-meeting-list');
-    const liveQaTrackingNote = document.getElementById('admin-live-qa-tracking-note');
     const desktopTrackingNote = document.getElementById('admin-desktop-tracking-note');
     const recordingDurationTrackingNote = document.getElementById('admin-recording-duration-tracking-note');
 
@@ -221,6 +224,34 @@
         }
     };
 
+    const showAdminWorkspaceState = (state, message = '') => {
+        [adminLoadingState, adminEmptyState, adminErrorState].forEach((element) => {
+            if (element) element.hidden = true;
+        });
+        if (state === 'loading' && adminLoadingState) adminLoadingState.hidden = false;
+        if (state === 'empty' && adminEmptyState) adminEmptyState.hidden = false;
+        if (state === 'error' && adminErrorState) {
+            window.AppUI?.showWorkspaceState(adminErrorState, {state: 'error', message});
+        }
+    };
+
+    const dashboardHasData = (data) => {
+        const summary = data?.summary || {};
+        const summaryKeys = [
+            'unique_guests',
+            'registered_users',
+            'active_registered_users',
+            'document_count',
+            'saved_meeting_count',
+            'career_action_count'
+        ];
+        if (users.length) return true;
+        if (summaryKeys.some((key) => Number(summary[key] || 0) > 0)) return true;
+        return Array.isArray(data?.daily) && data.daily.some((item) =>
+            Number(item?.guests || 0) > 0 || Number(item?.registered_users || item?.users || 0) > 0
+        );
+    };
+
     const setLoading = (loading) => {
         refreshButton.disabled = loading;
         refreshButton.textContent = loading ? 'Refreshing…' : 'Refresh';
@@ -265,7 +296,6 @@
         document.getElementById('admin-total-documents').textContent = formatNumber.format(summary.document_count || 0);
         document.getElementById('admin-total-document-size').textContent = formatFileSize(summary.document_total_bytes || 0);
         document.getElementById('admin-total-meetings').textContent = formatNumber.format(summary.saved_meeting_count || 0);
-        document.getElementById('admin-total-live-qa-answers').textContent = formatNumber.format(summary.live_qa_answer_count || 0);
         document.getElementById('admin-total-desktop-downloads').textContent = formatNumber.format(summary.desktop_download_count || 0);
         document.getElementById('admin-total-desktop-uses').textContent = formatNumber.format(summary.desktop_use_count || 0);
         renderComparison('admin-unique-guests-trend', data.comparisons?.unique_guests);
@@ -273,9 +303,10 @@
         renderComparison('admin-active-time-trend', data.comparisons?.registered_active_seconds);
 
         const sourceLabels = {
-            documents: 'Document Library',
-            meetings: 'saved meetings',
-            live_qa_answers: 'Live Q&A answers',
+            activity: 'visitor and session activity',
+            users: 'registered users',
+            documents: 'Career Evidence Library',
+            meetings: 'saved mock interviews',
             desktop_downloads: 'desktop downloads',
             desktop_uses: 'desktop client uses',
             recording_durations: 'recording-length statistics',
@@ -393,33 +424,31 @@
         <div class="admin-stat-row"><span><strong>${escapeHtml(label)}</strong>${note ? `<small>${escapeHtml(note)}</small>` : ''}</span><b>${escapeHtml(value)}</b></div>`;
 
     const funnelDescriptions = {
-        'Recording started': 'Recording sessions that users started during the selected period.',
-        'Recording completed': 'Recordings that reached the stop or completion step.',
-        'Recording uploaded': 'Completed recordings successfully sent to Réunia for processing.',
-        'Processing succeeded': 'Meeting-processing attempts that finished without a recorded error.',
-        'Meeting saved': 'Processed meetings stored and available in Meeting Review.',
-        'Meeting Review opened': 'Times users opened the review experience for a meeting.',
-        'Action created': 'Follow-up tasks created from meetings during the selected period.',
+        'Mock interview started': 'Mock interview recording sessions started during the selected period.',
+        'Mock interview completed': 'Mock interview recordings that reached the stop or completion step.',
+        'Recording uploaded': 'Completed mock interview recordings successfully sent to Réunia for processing.',
+        'Interview processing succeeded': 'Mock interview processing attempts that finished without a recorded error.',
+        'Mock interview saved': 'Processed mock interviews stored and available in Interview Review.',
+        'Interview Review opened': 'Times users opened Interview Review for a completed mock interview.',
+        'Career action created': 'Career Action Plan tasks created from interview findings during the selected period.',
     };
 
     const featureDescriptions = {
-        'Meeting Preparation': 'Accounts that opened or used the meeting-preparation area.',
-        'Document Library': 'Accounts that used their reusable document library.',
-        'Meeting Materials': 'Accounts that selected or uploaded materials for a meeting.',
-        'AI Context': 'Accounts that configured context or response preferences for the AI.',
-        'Knowledge Search': 'Accounts that searched or asked questions across their knowledge sources.',
-        'Browser Recorder': 'Accounts that used the recorder built into the web application.',
-        'Desktop Client': 'Accounts that successfully signed in through the desktop application.',
-        'Live Q&A': 'Accounts that started a Live Q&A session or requested an AI answer.',
-        'Meeting Review': 'Accounts that opened a saved meeting for review and follow-up.',
-        'Action Center': 'Accounts that opened or used the centralized action-management area.',
-        'Analytics': 'Accounts that opened the user-facing Analytics area.',
+        'Interview Preparation': 'Accounts that opened or used the interview-preparation area.',
+        'Career Evidence Library': 'Accounts that used reusable verified career evidence.',
+        'Application Materials': 'Accounts that selected or uploaded materials for a job application.',
+        'AI Configuration': 'Accounts that configured model or response preferences for career AI workflows.',
+        'Career Evidence Search': 'Accounts that searched or asked questions across verified career evidence.',
+        'Mock Interview': 'Accounts that used the browser-based adaptive mock interview experience.',
+        'Mock Interview Desktop Recorder': 'Accounts that successfully used the optional desktop interview recorder.',
+        'Interview Review': 'Accounts that opened a saved mock interview for review and follow-up.',
+        'Career Action Plan': 'Accounts that opened or used the application-linked career planning area.',
+        'Progress & Outcomes': 'Accounts that opened the user-facing Progress & Outcomes area.',
     };
 
     const operationDescriptions = {
-        'Meeting processing': 'Turning a completed recording into a saved meeting and review.',
+        'Interview processing': 'Turning a completed mock interview recording into a saved Interview Review.',
         'Document processing': 'Preparing an uploaded document so it can be searched or used by AI.',
-        'Live Q&A': 'Generating an AI answer for a question during a live meeting.',
         'AI requests': 'Measured AI calls across supported Réunia features.',
     };
 
@@ -463,10 +492,10 @@
         ].join('');
 
         document.getElementById('admin-activation-retention').innerHTML = [
-            statRow('Activated users', formatNumber.format(activation.activated_users || 0), 'Accounts that saved at least one meeting and opened Meeting Review.'),
-            statRow('Activated within 1 day', formatNumber.format(activation.activated_within_1_day || 0), 'Activated accounts whose first saved meeting was created within 24 hours of registration.'),
-            statRow('Activated within 7 days', formatNumber.format(activation.activated_within_7_days || 0), 'Activated accounts whose first saved meeting was created within seven days of registration.'),
-            statRow('Average time to activation', activation.average_hours_to_activation == null ? '—' : `${activation.average_hours_to_activation} hr`, 'Average time from account creation to the first saved meeting among users with measurable activation dates.'),
+            statRow('Activated users', formatNumber.format(activation.activated_users || 0), 'Accounts that completed at least one mock interview and opened Interview Review.'),
+            statRow('Activated within 1 day', formatNumber.format(activation.activated_within_1_day || 0), 'Activated accounts whose first saved mock interview was created within 24 hours of registration.'),
+            statRow('Activated within 7 days', formatNumber.format(activation.activated_within_7_days || 0), 'Activated accounts whose first saved mock interview was created within seven days of registration.'),
+            statRow('Average time to activation', activation.average_hours_to_activation == null ? '—' : `${activation.average_hours_to_activation} hr`, 'Average time from account creation to the first saved mock interview among users with measurable activation dates.'),
             statRow('Next-day return', formatPercent(retention.return_next_day_rate), 'Percentage of eligible accounts that were active again exactly one day after registration.'),
             statRow('7-day return', formatPercent(retention.return_7_day_rate), 'Percentage of accounts at least seven days old that returned on any day from day 1 through day 7.'),
             statRow('30-day return', formatPercent(retention.return_30_day_rate), 'Percentage of accounts at least 30 days old that returned on any day from day 1 through day 30.'),
@@ -478,15 +507,15 @@
             const index = funnel.indexOf(item);
             return `
                 <div class="admin-progress-row">
-                    <div><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(funnelDescriptions[item.label] || 'A measured step in the meeting workflow.')}</small></span><strong>${formatNumber.format(item.count || 0)}</strong></div>
+                    <div><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(funnelDescriptions[item.label] || 'A measured step in the interview-practice workflow.')}</small></span><strong>${formatNumber.format(item.count || 0)}</strong></div>
                     <div class="admin-progress-track"><i style="width:${Number(item.count || 0) > 0 ? Math.max(2, Number(item.count || 0) / funnelMax * 100) : 0}%"></i></div>
                     <small>${index === 0 ? 'This is the starting point for the funnel.' : `${Number(item.from_previous_rate || 0).toFixed(1)}% compared with the previous workflow step.`}</small>
                 </div>`;
         };
         document.getElementById('admin-meeting-funnel').innerHTML = renderProgressCollection(
             funnel, (item) => item.count, funnelRow,
-            'No meeting workflow activity yet',
-            'Recorded funnel steps will appear after users begin and complete meetings.',
+            'No interview-practice activity yet',
+            'Recorded funnel steps will appear after users begin and complete mock interviews.',
             'steps',
         );
 
@@ -535,15 +564,8 @@
             statRow('Average time to complete (lifetime)', formatCompletionTime(actions.average_completion_hours), completionTimeNote),
         ].join('');
 
-        const live = data.live_qa_health || {};
         const ai = data.ai_usage || {};
         document.getElementById('admin-live-ai-health').innerHTML = [
-            statRow('Live Q&A sessions', formatNumber.format(live.sessions || 0), 'Distinct Live Q&A sessions started during the selected period.'),
-            statRow('Questions/requests', formatNumber.format(live.requests || 0), 'Questions sent to Live Q&A for an AI-generated response.'),
-            statRow('AI answers', formatNumber.format(live.answers || 0), 'Live Q&A requests that produced and saved an AI answer.'),
-            statRow('Live Q&A failures', formatNumber.format(live.failures || 0), 'Live Q&A requests that ended with a recorded error.'),
-            statRow('Live Q&A success rate', formatPercent(live.success_rate), 'Successful AI answers divided by successful answers plus recorded failures.'),
-            statRow('Average response time', formatMilliseconds(live.average_response_ms), 'Average measured time between a Live Q&A request and its result.'),
             statRow('Measured AI requests', formatNumber.format(ai.requests || 0), 'AI and transcription calls recorded during the selected period across supported features.'),
             statRow(
                 'Estimated AI cost',
@@ -913,6 +935,10 @@
             incidentMetaChip('HTTP', httpStatus),
             incidentMetaChip('Reference', incident.reference_id),
             incidentMetaChip('Source', incident.source),
+            incidentMetaChip('Exception', incident.exception_type),
+            incidentMetaChip('Request', [incident.request_method, incident.request_path].filter(Boolean).join(' ')),
+            incidentMetaChip('Endpoint', incident.endpoint),
+            incidentMetaChip('Blueprint', incident.blueprint),
             incidentMetaChip('Model', incident.model),
             incidentMetaChip('Duration', duration > 0 ? formatMilliseconds(duration) : ''),
         ].filter(Boolean).join('');
@@ -941,6 +967,13 @@
                         </section>
                     </div>
                     ${metadata ? `<div class="admin-failure-meta">${metadata}</div>` : ''}
+                    ${incident.technical_details ? `
+                        <details class="admin-failure-support-report admin-incident-technical-details">
+                            <summary>Sanitized technical details</summary>
+                            <div class="admin-failure-support-report-body">
+                                <pre>${escapeHtml(incident.technical_details)}</pre>
+                            </div>
+                        </details>` : ''}
                     <section class="admin-failure-section admin-incident-support-section">
                         <header><h3>Related automated support reports</h3><p>Reports are matched using the reference ID or a nearby submission time.</p></header>
                         <div class="admin-failure-event-list">${reports.length ? reports.map(renderIncidentSupportReport).join('') : '<div class="admin-incident-no-report">No related automated support report was found.</div>'}</div>
@@ -1042,6 +1075,7 @@
             incidentSourcesAvailable = {
                 events: data.events_available !== false,
                 support: data.support_reports_available !== false,
+                users: data.users_available !== false,
             };
             document.getElementById('admin-incident-total').textContent = formatNumber.format(data.incident_count || incidents.length);
             document.getElementById('admin-incident-users').textContent = formatNumber.format(data.affected_user_count || 0);
@@ -1057,6 +1091,7 @@
             const unavailable = [];
             if (!incidentSourcesAvailable.events) unavailable.push('failure events');
             if (!incidentSourcesAvailable.support) unavailable.push('support reports');
+            if (!incidentSourcesAvailable.users) unavailable.push('registered-user details');
             incidentsStatus.hidden = unavailable.length === 0;
             incidentsStatus.textContent = unavailable.length ? `Some incident details are unavailable: ${unavailable.join(', ')}.` : '';
         } catch (error) {
@@ -1089,7 +1124,7 @@
 
     const renderUsageItems = (items, kind) => {
         if (!Array.isArray(items) || items.length === 0) {
-            return `<div class="admin-usage-list-empty">No ${kind === 'documents' ? 'documents' : 'saved meetings'} for this user.</div>`;
+            return `<div class="admin-usage-list-empty">No ${kind === 'documents' ? 'documents' : 'saved mock interviews'} for this user.</div>`;
         }
         if (kind === 'documents') {
             return items.map((item) => `
@@ -1104,7 +1139,7 @@
         return items.map((item) => `
             <div class="admin-usage-list-item">
                 <span>
-                    <strong>${escapeHtml(item.title || 'Unnamed Meeting')}</strong>
+                    <strong>${escapeHtml(item.title || 'Unnamed Mock Interview')}</strong>
                     <small>${escapeHtml(formatIsoDateTime(item.timestamp))}</small>
                 </span>
             </div>`).join('');
@@ -1140,7 +1175,6 @@
             document.getElementById('admin-detail-recording-average').textContent = formatRecordingDuration(summary.average_recording_duration_seconds);
             document.getElementById('admin-detail-recording-maximum').textContent = formatRecordingDuration(summary.maximum_recording_duration_seconds);
             document.getElementById('admin-detail-recording-minimum').textContent = formatRecordingDuration(summary.minimum_recording_duration_seconds);
-            document.getElementById('admin-detail-answers').textContent = formatNumber.format(summary.live_qa_answer_count || 0);
             document.getElementById('admin-detail-desktop-downloads').textContent = formatNumber.format(summary.desktop_download_count || 0);
             document.getElementById('admin-detail-desktop-uses').textContent = formatNumber.format(summary.desktop_use_count || 0);
             document.getElementById('admin-detail-active-days').textContent = formatNumber.format(user?.active_day_count || 0);
@@ -1161,7 +1195,6 @@
             );
             detailDocumentList.innerHTML = renderUsageItems(usage.documents, 'documents');
             detailMeetingList.innerHTML = renderUsageItems(usage.meetings, 'meetings');
-            liveQaTrackingNote.textContent = usage.live_qa_tracking_note || '';
             desktopTrackingNote.textContent = usage.desktop_tracking_note || '';
             const recordingSampleCount = Number(summary.recording_duration_sample_count || 0);
             recordingDurationTrackingNote.textContent = recordingSampleCount
@@ -1172,8 +1205,7 @@
                 .filter(([, available]) => !available)
                 .map(([source]) => ({
                     documents: 'documents',
-                    meetings: 'saved meetings',
-                    live_qa_answers: 'Live Q&A totals',
+                    meetings: 'saved mock interviews',
                     desktop_downloads: 'desktop downloads',
                     desktop_uses: 'desktop client uses',
                     recording_durations: 'recording-length statistics',
@@ -1191,6 +1223,7 @@
     };
 
     const loadAnalytics = async () => {
+        showAdminWorkspaceState('loading');
         status.hidden = false;
         status.classList.remove('is-error');
         status.textContent = 'Loading admin analytics…';
@@ -1211,10 +1244,13 @@
             renderUsers();
             const generated = new Date(data.generated_at);
             status.textContent = `Last updated ${new Intl.DateTimeFormat(window.AppI18n?.locale || undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(generated)}`;
+            showAdminWorkspaceState(dashboardHasData(data) ? 'ready' : 'empty');
         } catch (error) {
             status.hidden = false;
             status.classList.add('is-error');
-            status.textContent = 'Admin analytics could not be loaded. Check the application configuration and access permissions.';
+            const message = 'Admin analytics could not be loaded. Check the application configuration and access permissions.';
+            status.textContent = message;
+            showAdminWorkspaceState('error', message);
         }
     };
 
@@ -1226,6 +1262,7 @@
 
     periodSelect.addEventListener('change', loadAnalytics);
     refreshButton.addEventListener('click', loadAll);
+    adminRetryStateButton?.addEventListener('click', loadAll);
     searchInput.addEventListener('input', renderUsers);
     activationFilter?.addEventListener('change', renderUsers);
     activityFilter?.addEventListener('change', renderUsers);

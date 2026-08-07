@@ -19,13 +19,17 @@ document.addEventListener('DOMContentLoaded', function () {
             title: 'General & AI',
             description: 'Set your application language and the default AI performance level used across Réunia.'
         },
+        'ai-coaching-settings': {
+            title: 'AI Coaching Preferences',
+            description: 'Choose the default answer style, response mode, and reusable audio or clipboard instructions.'
+        },
         'meeting-review-settings': {
             title: 'Review & follow-up',
-            description: 'Choose how mock interviews generate coaching, action items, and interview scorecards.'
+            description: 'Choose how mock interviews generate answer coaching, practice actions, and interview scorecards.'
         },
         'privacy-sharing-settings': {
-            title: 'Privacy & sharing',
-            description: 'Set retention periods for new content and secure defaults for newly created public links.'
+            title: 'Data & privacy',
+            description: 'Set retention periods for newly saved mock interviews and uploaded documents.'
         }
     };
 
@@ -248,13 +252,29 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const selectedScorecardSource = document.querySelector('input[name="scorecard_source"]:checked');
-        const scorecardSourceValue = selectedScorecardSource ? selectedScorecardSource.value : '';
+        const selectedScorecardSource = document.querySelector('input[name="scorecard_source"]:checked')
+            || document.querySelector('input[name="scorecard_source"]');
+        const scorecardSourceValue = selectedScorecardSource ? selectedScorecardSource.value : 'microphone';
         const languageValue = document.getElementById('language')?.value || 'en';
         const meetingRetentionDays = parseInt(document.getElementById('meetingRetentionDays').value, 10);
         const documentRetentionDays = parseInt(document.getElementById('documentRetentionDays').value, 10);
-        const shareDefaultExpirationDays = parseInt(document.getElementById('shareDefaultExpirationDays').value, 10);
         const meetingSummaryDetail = document.getElementById('meetingSummaryDetail').value;
+        const coachingAnswerStyle = document.getElementById('aiCoachingAnswerStyle')?.value || 'balanced';
+        const coachingResponseMode = document.getElementById('aiCoachingResponseMode')?.value || 'ready_to_say';
+
+        if (!['balanced', 'concise', 'detailed', 'bullet_points', 'step_by_step', 'action_oriented', 'professional'].includes(coachingAnswerStyle)) {
+            showToast('error', translate('Please select a valid answer style.'));
+            showSettingsScope('ai-coaching-settings');
+            document.getElementById('aiCoachingAnswerStyle')?.focus();
+            return;
+        }
+
+        if (!['ready_to_say', 'concise_structured_action', 'coaching'].includes(coachingResponseMode)) {
+            showToast('error', translate('Please select a valid response mode.'));
+            showSettingsScope('ai-coaching-settings');
+            document.getElementById('aiCoachingResponseMode')?.focus();
+            return;
+        }
 
         if (!['en', 'fr'].includes(languageValue)) {
             showToast('error', window.AppI18n?.t('Please select a valid application language.') || 'Please select a valid application language.');
@@ -280,12 +300,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (![0, 7, 30, 90].includes(shareDefaultExpirationDays)) {
-            showToast('error', 'Please select a valid default share-link expiration.');
-            showSettingsScope('privacy-sharing-settings');
-            return;
-        }
-
         if (!['brief', 'standard', 'detailed'].includes(meetingSummaryDetail)) {
             showToast('error', 'Please select a valid interview-review summary detail level.');
             showSettingsScope('meeting-review-settings');
@@ -294,18 +308,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const settingsData = {
             language: languageValue,
-            aiModelPreset: document.getElementById('aiModelPreset').value,
+            aiCoachingAnswerStyle: coachingAnswerStyle,
+            aiCoachingResponseMode: coachingResponseMode,
+            aiCoachingAudioInstructions: document.getElementById('aiCoachingAudioInstructions')?.value.trim() || '',
+            aiCoachingClipboardInstructions: document.getElementById('aiCoachingClipboardInstructions')?.value.trim() || '',
             scorecard_source: scorecardSourceValue,
             meetingRetentionDays,
             documentRetentionDays,
-            shareDefaultExpirationDays,
-            shareRequirePassword: document.getElementById('shareRequirePassword').checked,
-            shareAllowDownload: document.getElementById('shareAllowDownload').checked,
-            shareIncludeScorecard: document.getElementById('shareIncludeScorecard').checked,
             meetingSummaryDetail,
             meetingExtractActionItems: document.getElementById('meetingExtractActionItems').checked,
             meetingGenerateScorecard: document.getElementById('meetingGenerateScorecard').checked
         };
+        const aiModelPresetInput = document.getElementById('aiModelPreset');
+        if (aiModelPresetInput) {
+            settingsData.aiModelPreset = aiModelPresetInput.value;
+        }
 
         isSaving = true;
         saveSettingsBtn.textContent = translate('Saving...');

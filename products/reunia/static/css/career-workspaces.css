@@ -1,0 +1,1070 @@
+/*
+ * Réunia Career Bridge — unified career workspace UI
+ *
+ * This layer is intentionally loaded after feature styles. It gives the core
+ * career journey one visual language without changing page content or behavior.
+ */
+
+body.career-workspace-ui {
+    --cb-workspace-bg: var(--cb-p-f3f5f2);
+    --cb-workspace-bg-deep: var(--cb-p-e9ede8);
+    --cb-workspace-surface: var(--cb-color-surface);
+    --cb-workspace-surface-soft: var(--cb-p-f8faf8);
+    --cb-workspace-surface-tint: var(--cb-p-edf4f0);
+    --cb-workspace-ink: var(--cb-p-17231f);
+    --cb-workspace-ink-soft: var(--cb-p-44544d);
+    --cb-workspace-muted: var(--cb-p-68766f);
+    --cb-workspace-line: var(--cb-p-d9e1dc);
+    --cb-workspace-line-strong: var(--cb-p-c5d0ca);
+    --cb-workspace-brand: var(--cb-p-245b4b);
+    --cb-workspace-brand-strong: var(--cb-p-163f34);
+    --cb-workspace-brand-soft: var(--cb-p-e6f0eb);
+    --cb-workspace-accent: var(--cb-p-b86f36);
+    --cb-workspace-accent-soft: var(--cb-p-fff3e9);
+    --cb-workspace-success: var(--cb-p-277354);
+    --cb-workspace-warning: var(--cb-p-98631b);
+    --cb-workspace-danger: var(--cb-p-a33b35);
+    --cb-workspace-shadow-sm: 0 4px 14px rgba(28, 48, 39, 0.055);
+    --cb-workspace-shadow-md: 0 14px 34px rgba(28, 48, 39, 0.075);
+    --cb-workspace-shadow-lg: 0 24px 54px rgba(28, 48, 39, 0.10);
+    --cb-workspace-radius-sm: 10px;
+    --cb-workspace-radius: 16px;
+    --cb-workspace-radius-lg: 22px;
+    min-height: 100vh;
+    color: var(--cb-workspace-ink);
+    background:
+        radial-gradient(circle at 8% 0%, rgba(36, 91, 75, 0.065), transparent 25rem),
+        linear-gradient(180deg, var(--cb-p-f7f8f6) 0, var(--cb-workspace-bg) 28rem, var(--cb-p-f6f7f5) 100%);
+}
+
+body.career-workspace-ui * {
+    box-sizing: border-box;
+}
+
+body.career-workspace-ui :focus-visible {
+    outline: 3px solid rgba(36, 91, 75, 0.24);
+    outline-offset: 2px;
+}
+
+body.career-workspace-ui ::selection {
+    color: var(--cb-workspace-brand-strong);
+    background: var(--cb-p-d8e8df);
+}
+
+/* Shared navigation treatment */
+body.career-workspace-ui .navbar-minimal {
+    border-bottom: 1px solid rgba(197, 208, 202, 0.88);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 6px 24px rgba(28, 48, 39, 0.055);
+    backdrop-filter: blur(16px);
+}
+
+body.career-workspace-ui .navbar-minimal.is-scrolled {
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 8px 26px rgba(28, 48, 39, 0.075);
+}
+
+body.career-workspace-ui .navbar-minimal .brand-title {
+    color: var(--cb-workspace-brand-strong);
+    letter-spacing: -0.015em;
+}
+
+body.career-workspace-ui .navbar-minimal .nav-group-trigger,
+body.career-workspace-ui .navbar-minimal .nav-link {
+    color: var(--cb-workspace-ink-soft);
+    border-radius: 9px;
+}
+
+body.career-workspace-ui .navbar-minimal .nav-group-trigger:hover,
+body.career-workspace-ui .navbar-minimal .nav-group-trigger:focus-visible,
+body.career-workspace-ui .navbar-minimal .nav-group.open .nav-group-trigger,
+body.career-workspace-ui .navbar-minimal .nav-group-trigger.active,
+body.career-workspace-ui .navbar-minimal .nav-link:hover,
+body.career-workspace-ui .navbar-minimal .nav-link.active {
+    color: var(--cb-workspace-brand-strong) !important;
+    background: var(--cb-workspace-brand-soft);
+}
+
+body.career-workspace-ui .navbar-minimal .nav-group-menu {
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.99);
+    box-shadow: var(--cb-workspace-shadow-lg);
+}
+
+body.career-workspace-ui .navbar-minimal .nav-group-link {
+    color: var(--cb-workspace-ink-soft);
+    border-radius: 9px;
+}
+
+body.career-workspace-ui .navbar-minimal .nav-group-link:hover,
+body.career-workspace-ui .navbar-minimal .nav-group-link.active {
+    color: var(--cb-workspace-brand-strong) !important;
+    background: var(--cb-workspace-brand-soft);
+}
+
+/* One page frame for all ten workspaces */
+body.career-workspace-ui .app-page {
+    width: min(1440px, calc(100% - 48px));
+    max-width: 1440px;
+    margin: 28px auto 72px;
+}
+
+body.career-workspace-ui .application-builder-content {
+    display: grid;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+body.career-workspace-ui .page-hero {
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+    margin: 0 0 22px;
+    padding: 28px 30px;
+    color: var(--cb-workspace-ink);
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: var(--cb-workspace-radius-lg);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--cb-workspace-shadow-md);
+}
+
+body.career-workspace-ui .page-hero::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 6px;
+    content: "";
+    background: linear-gradient(180deg, var(--cb-workspace-brand), var(--cb-p-6d9687));
+}
+
+body.career-workspace-ui .page-hero::after {
+    position: absolute;
+    top: -110px;
+    right: -70px;
+    width: 260px;
+    height: 260px;
+    content: "";
+    border: 1px solid rgba(36, 91, 75, 0.10);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(36, 91, 75, 0.075), transparent 67%);
+    pointer-events: none;
+}
+
+body.career-workspace-ui .page-hero-layout {
+    position: relative;
+    z-index: 1;
+    gap: 24px;
+    align-items: center;
+}
+
+body.career-workspace-ui .page-hero-copy {
+    max-width: 850px;
+}
+
+body.career-workspace-ui .page-hero-copy h1 {
+    margin: 0;
+    color: var(--cb-workspace-ink);
+    font-size: clamp(1.85rem, 2.5vw, 2.55rem);
+    font-weight: 760;
+    line-height: 1.08;
+    letter-spacing: -0.035em;
+}
+
+body.career-workspace-ui .page-hero-copy p {
+    max-width: 760px;
+    margin: 10px 0 0;
+    color: var(--cb-workspace-muted);
+    font-size: 0.98rem;
+    line-height: 1.62;
+}
+
+body.career-workspace-ui .page-hero-actions {
+    position: relative;
+    z-index: 2;
+}
+
+/* Shared surfaces */
+body.career-workspace-ui :is(
+    .card,
+    .workspace-card,
+    .workspace-toolbar-card,
+    .reusable-evidence-panel,
+    .context-preview-card,
+    .collections-panel,
+    .files-panel,
+    .mock-setup-card,
+    .mock-session-card,
+    .mock-history-card,
+    .mock-complete-card,
+    .details-panel,
+    .tab-shell,
+    .action-command-bar,
+    .action-kpi-card,
+    .action-filter-bar,
+    .action-workspace,
+    .action-application-overview,
+    .impact-toolbar,
+    .impact-metric-card,
+    .impact-panel,
+    .impact-integrity
+) {
+    color: var(--cb-workspace-ink);
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: var(--cb-workspace-radius);
+    background: var(--cb-workspace-surface);
+    box-shadow: var(--cb-workspace-shadow-sm);
+}
+
+body.career-workspace-ui :is(
+    .card,
+    .workspace-card,
+    .reusable-evidence-panel,
+    .mock-setup-card,
+    .mock-session-card,
+    .mock-history-card,
+    .mock-complete-card,
+    .impact-panel,
+    .impact-integrity
+) {
+    padding: 22px;
+}
+
+body.career-workspace-ui :is(
+    .section-heading,
+    .workspace-card-header,
+    .mock-card-heading,
+    .impact-panel-header,
+    .action-workspace-header
+) {
+    border-color: var(--cb-workspace-line);
+}
+
+body.career-workspace-ui :is(h1, h2, h3, h4, strong) {
+    color: var(--cb-workspace-ink);
+}
+
+body.career-workspace-ui :is(
+    .caption,
+    .form-help,
+    .section-description,
+    .workspace-card-header p,
+    .section-heading p,
+    .mock-card-heading p,
+    .impact-panel-header p,
+    .interview-generation-copy p,
+    .application-card-header p
+) {
+    color: var(--cb-workspace-muted);
+}
+
+body.career-workspace-ui .section-eyebrow,
+body.career-workspace-ui .eyebrow,
+body.career-workspace-ui .mock-eyebrow,
+body.career-workspace-ui .impact-eyebrow,
+body.career-workspace-ui .action-section-kicker,
+body.career-workspace-ui .interview-card-kicker {
+    color: var(--cb-workspace-brand);
+    font-size: 0.73rem;
+    font-weight: 780;
+    letter-spacing: 0.085em;
+    text-transform: uppercase;
+}
+
+/* Forms */
+body.career-workspace-ui :is(input, select, textarea) {
+    min-height: 43px;
+    color: var(--cb-workspace-ink);
+    border: 1px solid var(--cb-workspace-line-strong);
+    border-radius: var(--cb-workspace-radius-sm);
+    background: var(--cb-workspace-surface-soft);
+    box-shadow: inset 0 1px 1px rgba(28, 48, 39, 0.025);
+}
+
+body.career-workspace-ui textarea {
+    min-height: 104px;
+    resize: vertical;
+}
+
+body.career-workspace-ui :is(input, select, textarea):hover:not(:disabled) {
+    border-color: var(--cb-p-aebeb5);
+    background: var(--cb-color-surface);
+}
+
+body.career-workspace-ui :is(input, select, textarea):focus {
+    border-color: var(--cb-workspace-brand);
+    background: var(--cb-color-surface);
+    box-shadow: 0 0 0 3px rgba(36, 91, 75, 0.12);
+    outline: none;
+}
+
+body.career-workspace-ui :is(input, select, textarea):disabled {
+    color: var(--cb-p-89958f);
+    background: var(--cb-p-eef1ef);
+}
+
+body.career-workspace-ui label,
+body.career-workspace-ui legend,
+body.career-workspace-ui dt {
+    color: var(--cb-workspace-ink-soft);
+    font-weight: 680;
+}
+
+body.career-workspace-ui input[type="checkbox"],
+body.career-workspace-ui input[type="radio"] {
+    min-height: auto;
+    accent-color: var(--cb-workspace-brand);
+}
+
+/* Buttons and links */
+body.career-workspace-ui :is(
+    .button,
+    .btn,
+    .mock-button,
+    .action-primary-button,
+    .action-secondary-button,
+    .impact-refresh,
+    .application-builder-hero-button,
+    .knowledge-hero-button,
+    button.tab-button
+) {
+    min-height: 42px;
+    border-radius: 10px;
+    font-weight: 720;
+    letter-spacing: -0.005em;
+    box-shadow: none;
+    transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+body.career-workspace-ui :is(
+    .button.primary,
+    .btn-primary,
+    .mock-button-primary,
+    .action-primary-button,
+    .interview-generate-button,
+    .application-builder-content .button.primary,
+    .application-builder-hero-button-primary,
+    .knowledge-hero-button-primary
+) {
+    color: var(--cb-color-surface) !important;
+    border: 1px solid var(--cb-workspace-brand-strong) !important;
+    background: var(--cb-workspace-brand) !important;
+    box-shadow: 0 7px 16px rgba(36, 91, 75, 0.16) !important;
+}
+
+body.career-workspace-ui :is(
+    .button.primary,
+    .btn-primary,
+    .mock-button-primary,
+    .action-primary-button,
+    .interview-generate-button,
+    .application-builder-content .button.primary,
+    .application-builder-hero-button-primary,
+    .knowledge-hero-button-primary
+):hover:not(:disabled) {
+    color: var(--cb-color-surface) !important;
+    border-color: var(--cb-workspace-brand-strong) !important;
+    background: var(--cb-workspace-brand-strong) !important;
+    box-shadow: 0 9px 20px rgba(36, 91, 75, 0.20) !important;
+    transform: translateY(-1px);
+}
+
+body.career-workspace-ui :is(
+    .button.secondary,
+    .btn-secondary,
+    .mock-button-secondary,
+    .action-secondary-button,
+    .application-builder-hero-button-secondary,
+    .knowledge-hero-button-secondary,
+    .impact-refresh
+) {
+    color: var(--cb-workspace-brand-strong) !important;
+    border: 1px solid var(--cb-workspace-line-strong) !important;
+    background: var(--cb-color-surface) !important;
+}
+
+body.career-workspace-ui :is(
+    .button.secondary,
+    .btn-secondary,
+    .mock-button-secondary,
+    .action-secondary-button,
+    .application-builder-hero-button-secondary,
+    .knowledge-hero-button-secondary,
+    .impact-refresh
+):hover:not(:disabled) {
+    border-color: var(--cb-p-9fb4a8) !important;
+    background: var(--cb-workspace-brand-soft) !important;
+    transform: translateY(-1px);
+}
+
+body.career-workspace-ui :is(.button.text, .text-link, .action-secondary-link, a:not([class])) {
+    color: var(--cb-workspace-brand);
+}
+
+body.career-workspace-ui :is(.button.text, .text-link, .action-secondary-link, a:not([class])):hover {
+    color: var(--cb-workspace-brand-strong);
+}
+
+body.career-workspace-ui button:disabled,
+body.career-workspace-ui .button[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none !important;
+}
+
+/* Statuses, counters, and alerts */
+body.career-workspace-ui :is(
+    .application-status,
+    .resume-import-status,
+    .context-button-status,
+    .reusable-evidence-count,
+    .collection-count,
+    .discovery-count,
+    .mock-status-badge,
+    .impact-count-badge,
+    .interview-stale-badge,
+    .discovery-scan-badge
+) {
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 999px;
+    color: var(--cb-workspace-brand-strong);
+    background: var(--cb-workspace-brand-soft);
+    box-shadow: none;
+}
+
+body.career-workspace-ui :is(.alert, .app-state, .empty-state, .inline-empty-state) {
+    border-radius: 13px;
+    box-shadow: none;
+}
+
+body.career-workspace-ui :is(.alert-success, .app-state--success) {
+    color: var(--cb-p-1e6248);
+    border-color: var(--cb-p-b9d9c9);
+    background: var(--cb-p-eff8f3);
+}
+
+body.career-workspace-ui :is(.alert-warning, .app-state--warning) {
+    color: var(--cb-p-805518);
+    border-color: var(--cb-p-ead3ac);
+    background: var(--cb-p-fff8eb);
+}
+
+body.career-workspace-ui :is(.alert-error, .alert-danger, .app-state--error) {
+    color: var(--cb-p-8f332f);
+    border-color: var(--cb-p-e7c2bf);
+    background: var(--cb-p-fff5f4);
+}
+
+/* Tables */
+body.career-workspace-ui :is(
+    .files-table-wrapper,
+    .reusable-evidence-table-wrapper,
+    .action-table-shell,
+    .impact-table-scroll
+) {
+    overflow: auto;
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 13px;
+    background: var(--cb-color-surface);
+}
+
+body.career-workspace-ui :is(
+    .files-table,
+    .reusable-evidence-table,
+    .action-table,
+    .impact-table
+) {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+body.career-workspace-ui :is(
+    .files-table,
+    .reusable-evidence-table,
+    .action-table,
+    .impact-table
+) thead th {
+    color: var(--cb-workspace-ink-soft);
+    border-bottom: 1px solid var(--cb-workspace-line);
+    background: var(--cb-workspace-surface-tint);
+    font-size: 0.76rem;
+    font-weight: 760;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+}
+
+body.career-workspace-ui :is(
+    .files-table,
+    .reusable-evidence-table,
+    .action-table,
+    .impact-table
+) :is(th, td) {
+    border-color: var(--cb-workspace-line);
+}
+
+body.career-workspace-ui :is(
+    .files-table,
+    .reusable-evidence-table,
+    .action-table,
+    .impact-table
+) tbody tr:hover {
+    background: var(--cb-p-fafcfb);
+}
+
+/* Details and menus */
+body.career-workspace-ui details {
+    border-color: var(--cb-workspace-line);
+}
+
+body.career-workspace-ui details > summary {
+    color: var(--cb-workspace-ink);
+    font-weight: 700;
+}
+
+body.career-workspace-ui :is(
+    .application-card-more-menu,
+    .file-menu,
+    .action-modal-card,
+    .modal-card
+) {
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 14px;
+    background: var(--cb-color-surface);
+    box-shadow: var(--cb-workspace-shadow-lg);
+}
+
+/* Application Builder: Baseline Resume, Job Discovery, Job Applications, Interview Preparation */
+body.career-workspace-ui.application-builder-body .application-builder-page {
+    gap: 0;
+}
+
+body.career-workspace-ui.application-builder-body .application-builder-hero {
+    margin-bottom: 18px;
+}
+
+body.career-workspace-ui.application-builder-body .active-application-banner,
+body.career-workspace-ui .application-workspace-nav {
+    border-color: var(--cb-workspace-line);
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: var(--cb-workspace-shadow-sm);
+}
+
+body.career-workspace-ui.application-builder-body .application-builder-content > * {
+    min-width: 0;
+}
+
+body.career-workspace-ui .application-metric-grid,
+body.career-workspace-ui .impact-metric-grid,
+body.career-workspace-ui .action-kpi-grid {
+    gap: 14px;
+}
+
+body.career-workspace-ui :is(.metric-card, .application-card, .discovery-job-card) {
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: var(--cb-workspace-radius);
+    background: var(--cb-color-surface);
+    box-shadow: var(--cb-workspace-shadow-sm);
+}
+
+body.career-workspace-ui .metric-card {
+    padding: 18px 20px;
+}
+
+body.career-workspace-ui .metric-card span {
+    color: var(--cb-workspace-muted);
+}
+
+body.career-workspace-ui .metric-card strong {
+    color: var(--cb-workspace-brand-strong);
+    font-size: 1.8rem;
+}
+
+body.career-workspace-ui .application-card {
+    overflow: visible;
+    padding: 0;
+}
+
+body.career-workspace-ui .application-card-header {
+    padding: 22px 22px 18px;
+    border-bottom: 1px solid var(--cb-workspace-line);
+    background: linear-gradient(180deg, var(--cb-color-surface), var(--cb-p-fbfcfb));
+}
+
+body.career-workspace-ui .application-card-header h3 {
+    margin-top: 10px;
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+}
+
+body.career-workspace-ui .application-dashboard-fields {
+    padding: 18px 22px;
+}
+
+body.career-workspace-ui .application-dashboard-fields > div {
+    border-color: var(--cb-workspace-line);
+    background: var(--cb-workspace-surface-soft);
+}
+
+body.career-workspace-ui .application-card-actions {
+    padding: 16px 22px 22px;
+    border-top: 1px solid var(--cb-workspace-line);
+}
+
+body.career-workspace-ui .baseline-language-context,
+body.career-workspace-ui .career-translation-source-summary,
+body.career-workspace-ui .interview-readiness-compact,
+body.career-workspace-ui .interview-generation-card {
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 14px;
+    background: var(--cb-workspace-surface-soft);
+    box-shadow: none;
+}
+
+body.career-workspace-ui .baseline-creation-options,
+body.career-workspace-ui .interview-summary-grid,
+body.career-workspace-ui .interview-final-grid,
+body.career-workspace-ui .interview-gap-grid {
+    gap: 16px;
+}
+
+body.career-workspace-ui .baseline-creation-option,
+body.career-workspace-ui .interview-point-card,
+body.career-workspace-ui .interview-question-card,
+body.career-workspace-ui .interview-gap-card,
+body.career-workspace-ui .interview-introduction-card {
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 14px;
+    background: var(--cb-color-surface);
+    box-shadow: none;
+}
+
+body.career-workspace-ui .baseline-creation-option:hover,
+body.career-workspace-ui .discovery-job-card:hover {
+    border-color: var(--cb-p-abc0b5);
+    box-shadow: var(--cb-workspace-shadow-md);
+    transform: translateY(-1px);
+}
+
+body.career-workspace-ui .discovery-results-heading,
+body.career-workspace-ui .discovery-ranking-filters,
+body.career-workspace-ui .discovery-refresh-progress,
+body.career-workspace-ui .discovery-settings-panel,
+body.career-workspace-ui .discovery-schedule-card,
+body.career-workspace-ui .discovery-source-manager {
+    border-color: var(--cb-workspace-line);
+    border-radius: 14px;
+    background: var(--cb-color-surface);
+    box-shadow: var(--cb-workspace-shadow-sm);
+}
+
+body.career-workspace-ui .discovery-result-tabs {
+    gap: 5px;
+    padding: 5px;
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 12px;
+    background: var(--cb-workspace-bg-deep);
+}
+
+body.career-workspace-ui .discovery-result-tabs .button,
+body.career-workspace-ui .tab-button {
+    color: var(--cb-workspace-muted);
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+body.career-workspace-ui .discovery-result-tabs .button.primary,
+body.career-workspace-ui .tab-button.active {
+    color: var(--cb-workspace-brand-strong) !important;
+    background: var(--cb-color-surface) !important;
+    box-shadow: 0 2px 8px rgba(28, 48, 39, 0.08) !important;
+}
+
+body.career-workspace-ui .discovery-job-card {
+    padding: 22px;
+    transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+body.career-workspace-ui .discovery-badges > *,
+body.career-workspace-ui .discovery-posted-age,
+body.career-workspace-ui .interview-evidence-chip > summary {
+    border-color: var(--cb-workspace-line);
+    background: var(--cb-workspace-surface-soft);
+}
+
+body.career-workspace-ui .interview-readiness-item {
+    border-color: var(--cb-workspace-line);
+    background: var(--cb-color-surface);
+}
+
+body.career-workspace-ui .interview-readiness-item.is-ready > span {
+    color: var(--cb-workspace-success);
+    background: var(--cb-p-eaf5ef);
+}
+
+body.career-workspace-ui .interview-readiness-item.is-missing > span {
+    color: var(--cb-workspace-warning);
+    background: var(--cb-p-fff4df);
+}
+
+/* Career Profile and Career Evidence Library */
+body.knowledge-workspace-ui .knowledge-layout,
+body.knowledge-workspace-ui .context-layout,
+body.knowledge-workspace-ui .search-layout {
+    gap: 20px;
+}
+
+body.knowledge-workspace-ui .reusable-evidence-header,
+body.knowledge-workspace-ui .files-panel-header,
+body.knowledge-workspace-ui .workspace-card-header {
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--cb-workspace-line);
+}
+
+body.knowledge-workspace-ui .career-profile-control-bar,
+body.knowledge-workspace-ui .materials-save-bar,
+body.knowledge-workspace-ui .files-toolbar,
+body.knowledge-workspace-ui .materials-filter-row {
+    border-color: var(--cb-workspace-line);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: var(--cb-workspace-shadow-sm);
+}
+
+body.knowledge-workspace-ui .career-profile-section {
+    overflow: hidden;
+    padding: 0;
+}
+
+body.knowledge-workspace-ui .career-profile-section > summary {
+    padding: 19px 21px;
+    background: var(--cb-color-surface);
+}
+
+body.knowledge-workspace-ui .career-profile-section[open] > summary {
+    border-bottom: 1px solid var(--cb-workspace-line);
+    background: var(--cb-workspace-surface-tint);
+}
+
+body.knowledge-workspace-ui .career-profile-section > :not(summary) {
+    margin-right: 21px;
+    margin-left: 21px;
+}
+
+body.knowledge-workspace-ui .career-profile-source-notice,
+body.knowledge-workspace-ui .career-profile-usage-note,
+body.knowledge-workspace-ui .context-priority-note {
+    border-color: var(--cb-p-cbdad2);
+    border-radius: 12px;
+    background: var(--cb-workspace-brand-soft);
+}
+
+body.knowledge-workspace-ui .collection-item,
+body.knowledge-workspace-ui .library-picker-item,
+body.knowledge-workspace-ui .source-guide-item,
+body.knowledge-workspace-ui .material-stat-card {
+    border-color: var(--cb-workspace-line);
+    border-radius: 12px;
+    background: var(--cb-workspace-surface-soft);
+}
+
+body.knowledge-workspace-ui .drop-zone,
+body.knowledge-workspace-ui .temporary-drop-zone {
+    border: 1px dashed var(--cb-p-aabbb1);
+    border-radius: 14px;
+    background: var(--cb-p-f8faf8);
+}
+
+body.knowledge-workspace-ui .drop-zone:hover,
+body.knowledge-workspace-ui .temporary-drop-zone:hover {
+    border-color: var(--cb-workspace-brand);
+    background: var(--cb-workspace-brand-soft);
+}
+
+/* Adaptive Mock Interview */
+body.mock-interview-workspace-ui .mock-interview-page {
+    display: grid;
+    gap: 20px;
+}
+
+body.mock-interview-workspace-ui .mock-setup-card {
+    border-top: 1px solid var(--cb-workspace-line);
+}
+
+body.mock-interview-workspace-ui .mock-setup-grid,
+body.mock-interview-workspace-ui .mock-question-set-grid,
+body.mock-interview-workspace-ui .mock-evaluation-columns {
+    gap: 16px;
+}
+
+body.mock-interview-workspace-ui .mock-type-option,
+body.mock-interview-workspace-ui .mock-question-set-panel,
+body.mock-interview-workspace-ui .mock-microphone-card,
+body.mock-interview-workspace-ui .mock-interviewer-panel,
+body.mock-interview-workspace-ui .mock-answer-panel,
+body.mock-interview-workspace-ui .mock-evaluation-panel {
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 14px;
+    background: var(--cb-workspace-surface-soft);
+    box-shadow: none;
+}
+
+body.mock-interview-workspace-ui .mock-type-option:hover {
+    border-color: var(--cb-p-aabfb4);
+    background: var(--cb-workspace-brand-soft);
+}
+
+body.mock-interview-workspace-ui .mock-type-option:has(input:checked) {
+    border-color: var(--cb-workspace-brand);
+    background: var(--cb-workspace-brand-soft);
+    box-shadow: 0 0 0 2px rgba(36, 91, 75, 0.08);
+}
+
+body.mock-interview-workspace-ui .mock-avatar,
+body.mock-interview-workspace-ui .mock-microphone-icon,
+body.mock-interview-workspace-ui .mock-complete-icon {
+    color: var(--cb-workspace-brand-strong);
+    background: var(--cb-workspace-brand-soft);
+}
+
+body.mock-interview-workspace-ui .mock-progress-track {
+    background: var(--cb-workspace-bg-deep);
+}
+
+body.mock-interview-workspace-ui .mock-progress-track > span,
+body.mock-interview-workspace-ui .mock-audio-meter > span {
+    background: var(--cb-workspace-brand);
+}
+
+/* Interview Review */
+body.interview-review-workspace-ui .content-grid {
+    gap: 20px;
+}
+
+body.interview-review-workspace-ui .meeting-sidebar,
+body.interview-review-workspace-ui .details-panel {
+    overflow: hidden;
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: var(--cb-workspace-radius);
+    background: var(--cb-color-surface);
+    box-shadow: var(--cb-workspace-shadow-sm);
+}
+
+body.interview-review-workspace-ui .tab-shell {
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+body.interview-review-workspace-ui .tab-nav {
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid var(--cb-workspace-line);
+    background: var(--cb-workspace-surface-soft);
+}
+
+body.interview-review-workspace-ui .tab-button-group {
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 11px;
+    background: var(--cb-workspace-bg-deep);
+}
+
+body.interview-review-workspace-ui :is(
+    .summary-card,
+    .scorecard-card,
+    .transcript-card,
+    .ask-ai-card,
+    .meeting-list-item
+) {
+    border-color: var(--cb-workspace-line);
+    border-radius: 13px;
+    box-shadow: none;
+}
+
+/* Career Action Plan */
+body.action-plan-workspace-ui .action-command-bar,
+body.action-plan-workspace-ui .action-filter-bar,
+body.action-plan-workspace-ui .action-workspace {
+    padding: 18px 20px;
+}
+
+body.action-plan-workspace-ui .action-kpi-card {
+    padding: 18px;
+    text-align: left;
+}
+
+body.action-plan-workspace-ui .action-kpi-card:hover,
+body.action-plan-workspace-ui .action-kpi-card.is-active {
+    border-color: var(--cb-p-a8bdb2);
+    background: var(--cb-workspace-brand-soft);
+    box-shadow: var(--cb-workspace-shadow-sm);
+}
+
+body.action-plan-workspace-ui .action-kpi-icon {
+    color: var(--cb-workspace-brand-strong);
+    background: var(--cb-workspace-brand-soft);
+}
+
+body.action-plan-workspace-ui .action-view-toggle {
+    padding: 4px;
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 11px;
+    background: var(--cb-workspace-bg-deep);
+}
+
+body.action-plan-workspace-ui .action-view-toggle button {
+    border: 0;
+    border-radius: 8px;
+    color: var(--cb-workspace-muted);
+    background: transparent;
+}
+
+body.action-plan-workspace-ui .action-view-toggle button.is-active {
+    color: var(--cb-workspace-brand-strong);
+    background: var(--cb-color-surface);
+    box-shadow: 0 2px 8px rgba(28, 48, 39, 0.08);
+}
+
+body.action-plan-workspace-ui .action-advanced-filters {
+    border-color: var(--cb-workspace-line);
+    background: var(--cb-workspace-surface-soft);
+}
+
+/* Progress & Outcomes */
+body.progress-workspace-ui .impact-toolbar {
+    padding: 20px 22px;
+}
+
+body.progress-workspace-ui .impact-status {
+    color: var(--cb-workspace-muted);
+}
+
+body.progress-workspace-ui .impact-metric-card {
+    padding: 20px;
+}
+
+body.progress-workspace-ui .impact-metric-card strong {
+    color: var(--cb-workspace-brand-strong);
+    font-size: clamp(1.65rem, 2.4vw, 2.2rem);
+}
+
+body.progress-workspace-ui .impact-metric-icon,
+body.progress-workspace-ui .impact-integrity-icon {
+    color: var(--cb-workspace-brand-strong);
+    background: var(--cb-workspace-brand-soft);
+}
+
+body.progress-workspace-ui .impact-more-metrics {
+    border-color: var(--cb-workspace-line);
+    border-radius: 14px;
+    background: var(--cb-workspace-surface-soft);
+}
+
+body.progress-workspace-ui .impact-story-card,
+body.progress-workspace-ui .impact-application-panel,
+body.progress-workspace-ui .impact-interview-summary {
+    border: 1px solid var(--cb-workspace-line);
+    border-radius: 13px;
+    background: var(--cb-workspace-surface-soft);
+    box-shadow: none;
+}
+
+body.progress-workspace-ui .impact-before,
+body.progress-workspace-ui .impact-after {
+    border-radius: 11px;
+}
+
+body.progress-workspace-ui .impact-after {
+    border-color: var(--cb-p-bfd6c9);
+    background: var(--cb-p-eef7f2);
+}
+
+/* Motion and responsive behavior */
+@media (max-width: 1000px) {
+    body.career-workspace-ui .app-page {
+        width: min(1440px, calc(100% - 32px));
+        margin-top: 22px;
+    }
+
+    body.career-workspace-ui .page-hero {
+        padding: 24px;
+    }
+
+    body.career-workspace-ui .page-hero-layout {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 720px) {
+    body.career-workspace-ui .app-page {
+        width: min(1440px, calc(100% - 20px));
+        margin: 14px auto 44px;
+    }
+
+    body.career-workspace-ui .page-hero {
+        margin-bottom: 16px;
+        padding: 21px 19px 21px 23px;
+        border-radius: 17px;
+    }
+
+    body.career-workspace-ui .page-hero::before {
+        width: 4px;
+    }
+
+    body.career-workspace-ui .page-hero-copy h1 {
+        font-size: 1.75rem;
+    }
+
+    body.career-workspace-ui .page-hero-actions {
+        width: 100%;
+    }
+
+    body.career-workspace-ui .page-hero-actions > * {
+        width: 100%;
+        justify-content: center;
+    }
+
+    body.career-workspace-ui :is(
+        .card,
+        .workspace-card,
+        .reusable-evidence-panel,
+        .mock-setup-card,
+        .mock-session-card,
+        .mock-history-card,
+        .mock-complete-card,
+        .impact-panel,
+        .impact-integrity
+    ) {
+        padding: 18px;
+        border-radius: 14px;
+    }
+
+    body.career-workspace-ui .application-card-header,
+    body.career-workspace-ui .application-dashboard-fields,
+    body.career-workspace-ui .application-card-actions {
+        padding-right: 18px;
+        padding-left: 18px;
+    }
+
+    body.interview-review-workspace-ui .tab-nav {
+        align-items: stretch;
+    }
+
+    body.interview-review-workspace-ui .tab-button-group {
+        overflow-x: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.career-workspace-ui *,
+    body.career-workspace-ui *::before,
+    body.career-workspace-ui *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}

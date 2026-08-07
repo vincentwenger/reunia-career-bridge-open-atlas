@@ -9,12 +9,6 @@ let meetingsData = [];
     let meetingSortDirection = 'newest';
     let topicManagerPreviousFocus = null;
     let topicManagerBusy = false;
-    let meetingShareDefaults = {
-        shareDefaultExpirationDays: 30,
-        shareRequirePassword: false,
-        shareAllowDownload: false,
-        shareIncludeScorecard: false
-    };
 
     
 
@@ -60,7 +54,7 @@ let meetingsData = [];
 
         const urlParameters = new URLSearchParams(window.location.search);
         const requestedTab = urlParameters.get('tab');
-        const requestedMeeting = urlParameters.get('meeting');
+        const requestedMeeting = urlParameters.get('meeting') || urlParameters.get('meeting_id');
         switchTab(['summary', 'scorecard', 'transcript', 'ask-ai'].includes(requestedTab) ? requestedTab : 'summary', false);
 
         try {
@@ -1014,93 +1008,42 @@ let meetingsData = [];
             return;
         }
 
-        const meetingId = getMeetingKnowledgeId(meeting, index);
-        link.href = `${baseUrl}?meeting=${encodeURIComponent(meetingId)}`;
-        link.setAttribute('aria-label', `Manage actions from ${getMeetingName(meeting, index)} in Career Action Plan`);
+        const applicationId = String(getValue(meeting?.career_application_id, '') || '').trim();
+        if (applicationId) {
+            link.href = `${baseUrl}?application_id=${encodeURIComponent(applicationId)}`;
+            link.setAttribute('aria-label', `Manage application actions from ${getMeetingName(meeting, index)} in Career Action Plan`);
+        } else {
+            link.href = baseUrl;
+            link.setAttribute('aria-label', 'Open Career Action Plan');
+        }
     }
 
     function clearMeetingReview() {
         currentTranscript = '';
         updateActionCenterLink();
         document.getElementById('summary-content').textContent =
-            'Select a mock interview from the library to view its executive summary, key wins, improvement areas, action items, and open questions.';
+            'Select a mock interview from the library to view its interview summary, key wins, improvement areas, practice actions, and follow-up questions.';
 
         document.getElementById('final-weighted-grade').textContent = '-';
-        document.getElementById('overall-score-title').textContent = 'Overall Performance Score';
+        document.getElementById('overall-score-title').textContent = 'Overall Interview Score';
         document.getElementById('overall-evidence-badge').textContent = 'Insufficient evidence';
         document.getElementById('overall-evidence-badge').className = 'score-evidence-badge evidence-insufficient';
         document.getElementById('score-circle-label').textContent = 'out of 100';
         document.getElementById('score-description').textContent =
-            'Select a mock interview to view the weighted aggregate of answer relevance, evidence, structure, clarity, and delivery.';
-        document.getElementById('content-average-score').textContent = '-';
-        document.getElementById('form-average-score').textContent = '-';
-        document.getElementById('content-evidence-status').textContent = 'Insufficient evidence';
-        document.getElementById('form-evidence-status').textContent = 'Insufficient evidence';
-        document.getElementById('content-evidence-note').hidden = true;
-        document.getElementById('form-evidence-note').hidden = true;
+            'Select a mock interview to view the eight interview-specific criteria and answer-by-answer coaching.';
 
         const scoreCard = document.getElementById('overall-score-card');
         scoreCard.classList.remove('score-green', 'score-orange', 'score-neutral');
-        scoreCard.classList.add('score-red');
+        scoreCard.classList.add('score-neutral');
         updateScoreCircle(null);
 
-        document.getElementById('content-grading-container').innerHTML = `
-            <div class="no-records-state">
-                <strong>No mock interview selected</strong>
-                Select a mock interview from the library to view content grading.
-            </div>
-        `;
+        clearInterviewScorecard();
 
-        [
-            ['key-wins-list', 'No mock interview selected.'],
-            ['improvement-areas-list', 'No mock interview selected.'],
-            ['action-items-list', 'No mock interview selected.'],
-            ['open-questions-list', 'No mock interview selected.']
-        ].forEach(([elementId, message]) => {
-            document.getElementById(elementId).innerHTML =
-                `<li class="empty-message">${escapeHtml(message)}</li>`;
-        });
-
-        [
-            'form-pace-value',
-            'form-filler-value',
-            'form-power-value',
-            'form-negative-words-value',
-            'form-negative-tone-value',
-            'form-pauses-value'
-        ].forEach(elementId => {
-            document.getElementById(elementId).textContent = '-';
-        });
-
-        [
-            'form-pace-grade',
-            'form-filler-grade',
-            'form-power-grade',
-            'form-negative-words-grade',
-            'form-negative-tone-grade',
-            'form-pauses-grade'
-        ].forEach(elementId => {
-            document.getElementById(elementId).textContent = 'N/A';
-        });
-
-        [
-            'form-filler-rate',
-            'form-power-rate',
-            'form-negative-words-rate',
-            'form-negative-tone-rate',
-            'form-pauses-rate'
-        ].forEach(elementId => {
-            document.getElementById(elementId).textContent = 'Rate unavailable';
-        });
-
-        document.getElementById('form-overall-assessment').textContent = 'N/A';
-        resetFormMetricDetails();
         document.getElementById('transcript-search').value = '';
         document.getElementById('transcript-content').textContent =
             'Select a mock interview from the library to view the full transcript.';
         clearMeetingAskContext();
         renderSelectedMeetingTopics(null);
-        updateMeetingShareContext(null, null);
     }
 
     function updateMeetingReview(index) {
@@ -1115,34 +1058,23 @@ let meetingsData = [];
         scoreCard.classList.add(getScoreCardClass(finalScore));
 
         document.getElementById('final-weighted-grade').textContent = getScoreText(finalScore);
-        renderScorecardEvidence(meeting);
+        renderInterviewScorecard(meeting);
         document.getElementById('score-description').textContent = getScoreDescription(finalScore, meeting);
         updateScoreCircle(finalScore);
 
         document.getElementById('summary-content').textContent = getMeetingSummary(meeting) || 'No interview summary provided.';
         renderSelectedMeetingTopics(meeting);
 
-        const contentAverageScore = parseFloat(getValue(meeting.content_average_score, ''));
-        document.getElementById('content-average-score').textContent =
-            !isNaN(contentAverageScore) ? contentAverageScore.toFixed(2) : 'N/A';
-
-        const formAverageScore = parseFloat(getValue(meeting.form_average_score, ''));
-        document.getElementById('form-average-score').textContent =
-            !isNaN(formAverageScore) ? formAverageScore.toFixed(2) : 'N/A';
-
         currentTranscript = getMeetingTranscript(meeting) || 'No transcript available.';
         document.getElementById('transcript-search').value = '';
         renderTranscriptContent();
 
         renderMeetingList();
-        renderContentGrades(meeting);
-        renderFormMetrics(meeting);
         renderKeyWins(meeting);
         renderImprovementAreas(meeting);
         renderActionItems(meeting, index);
         renderOpenQuestions(meeting);
         updateMeetingAskContext(meeting, index);
-        updateMeetingShareContext(meeting, index);
     }
 
     function switchTab(tabName, updateUrl = true) {
@@ -1193,7 +1125,7 @@ let meetingsData = [];
             : normalizeDynamoDBList(meeting.action_items);
 
         if (actions.length === 0) {
-            actionsEl.innerHTML = `<li class="empty-message">No explicit action items assigned.</li>`;
+            actionsEl.innerHTML = `<li class="empty-message">No practice actions were generated.</li>`;
             return;
         }
 
@@ -1205,9 +1137,6 @@ let meetingsData = [];
             const task = objectValue
                 ? (getValue(objectValue.description, '') || getValue(objectValue.task, '') || getValue(objectValue.text, '') || getValue(objectValue.action, '') || JSON.stringify(objectValue))
                 : String(itemData);
-            const owner = objectValue
-                ? (getValue(objectValue.owner, '') || getValue(objectValue.assignee, '') || 'Unassigned')
-                : 'Unassigned';
             const dueDate = objectValue
                 ? (getValue(objectValue.due_date, '') || getValue(objectValue.deadline, '') || getValue(objectValue.due, ''))
                 : '';
@@ -1241,10 +1170,6 @@ let meetingsData = [];
             const metadata = document.createElement('span');
             metadata.className = 'meeting-action-meta';
 
-            const ownerBadge = document.createElement('span');
-            ownerBadge.className = 'badge badge-owner';
-            ownerBadge.textContent = owner;
-            metadata.appendChild(ownerBadge);
 
             if (dueDate) {
                 const dueBadge = document.createElement('span');
@@ -1545,381 +1470,4 @@ let meetingsData = [];
         });
 
         clearMeetingAskContext();
-    });
-
-
-
-    let meetingSharePreviousFocus = null;
-    let meetingShareRecords = [];
-
-    function getMeetingShareIdentity(meeting) {
-        if (!meeting) return null;
-        const meetingId = String(
-            getValue(meeting.meeting_id, '') ||
-            getValue(meeting.transcript_id, '') ||
-            getValue(meeting.id, '')
-        ).trim();
-        const timestamp = String(getMeetingDate(meeting) || '').trim();
-        if (!meetingId || !timestamp) return null;
-        return {meetingId, timestamp};
-    }
-
-    function updateMeetingShareContext(meeting, index) {
-        const trigger = document.getElementById('meeting-share-trigger');
-        const title = document.getElementById('meeting-share-meeting-name');
-        const identity = getMeetingShareIdentity(meeting);
-        if (trigger) {
-            trigger.disabled = !identity;
-            trigger.setAttribute(
-                'aria-label',
-                identity ? `Share ${getMeetingName(meeting, index)}` : 'Select a mock interview before sharing'
-            );
-        }
-        if (title) {
-            title.textContent = identity
-                ? `${getMeetingName(meeting, index)} · ${formatUserFriendlyDate(identity.timestamp)}`
-                : 'Select a mock interview before creating a share link.';
-        }
-    }
-
-    function openMeetingShareModal() {
-        if (selectedMeetingIndex === null) {
-            window.AppUI?.showToast('Select a mock interview before sharing.', {type: 'error'});
-            return;
-        }
-        const meeting = meetingsData[selectedMeetingIndex];
-        if (!getMeetingShareIdentity(meeting)) {
-            window.AppUI?.showToast('This mock interview is missing the information required to create a share link.', {type: 'error'});
-            return;
-        }
-        const modal = document.getElementById('meeting-share-modal');
-        if (!modal) return;
-        meetingSharePreviousFocus = document.activeElement;
-        modal.hidden = false;
-        document.body.classList.add('meeting-share-modal-open');
-        document.getElementById('meeting-share-created').hidden = true;
-        document.getElementById('meeting-share-password').value = '';
-        applyMeetingShareDefaults();
-        modal.querySelector('.meeting-share-dialog')?.focus();
-        loadMeetingShares();
-    }
-
-    async function loadMeetingShareDefaults() {
-        try {
-            const endpoint = window.AppUI?.appUrl('/api/settings') || '/api/settings';
-            const response = await fetch(endpoint);
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) return;
-            const settings = result.settings || {};
-            meetingShareDefaults = {...meetingShareDefaults, ...settings};
-        } catch (error) {
-            // The sharing dialog remains usable with conservative local defaults.
-        }
-    }
-
-    function applyMeetingShareDefaults() {
-        const expiration = document.getElementById('meeting-share-expiration');
-        const password = document.getElementById('meeting-share-password');
-        const passwordLabel = document.getElementById('meeting-share-password-label');
-        const expirationDays = Number(meetingShareDefaults.shareDefaultExpirationDays);
-        if (expiration) expiration.value = expirationDays === 0 ? 'never' : String(expirationDays || 30);
-        const passwordRequired = meetingShareDefaults.shareRequirePassword === true;
-        if (password) {
-            password.required = passwordRequired;
-            password.placeholder = passwordRequired ? 'Enter a password for this link' : 'Leave blank for no password';
-        }
-        if (passwordLabel) passwordLabel.textContent = passwordRequired ? 'Password (required)' : 'Optional password';
-        const scorecard = document.getElementById('meeting-share-scorecard');
-        const download = document.getElementById('meeting-share-download');
-        if (scorecard) scorecard.checked = meetingShareDefaults.shareIncludeScorecard === true;
-        if (download) download.checked = meetingShareDefaults.shareAllowDownload === true;
-    }
-
-    function closeMeetingShareModal() {
-        const modal = document.getElementById('meeting-share-modal');
-        if (!modal || modal.hidden) return;
-        modal.hidden = true;
-        document.body.classList.remove('meeting-share-modal-open');
-        meetingSharePreviousFocus?.focus?.();
-        meetingSharePreviousFocus = null;
-    }
-
-    async function loadMeetingShares() {
-        const list = document.getElementById('meeting-share-list');
-        if (!list || selectedMeetingIndex === null) return;
-        const identity = getMeetingShareIdentity(meetingsData[selectedMeetingIndex]);
-        if (!identity) return;
-        list.innerHTML = '<p class="meeting-share-empty">Loading share links...</p>';
-        try {
-            const endpoint = window.AppUI?.appUrl(
-                `/api/meetings/${encodeURIComponent(identity.meetingId)}/shares?timestamp=${encodeURIComponent(identity.timestamp)}`
-            ) || `/api/meetings/${encodeURIComponent(identity.meetingId)}/shares?timestamp=${encodeURIComponent(identity.timestamp)}`;
-            const response = await fetch(endpoint);
-            const result = await response.json().catch(() => []);
-            if (!response.ok) throw new Error(result.error || 'Share links could not be loaded.');
-            meetingShareRecords = Array.isArray(result) ? result : [];
-            renderMeetingShareList();
-        } catch (error) {
-            list.innerHTML = `<p class="meeting-share-empty meeting-share-error">${escapeHtml(error.message)}</p>`;
-        }
-    }
-
-    function renderMeetingShareList() {
-        const list = document.getElementById('meeting-share-list');
-        if (!list) return;
-        if (!meetingShareRecords.length) {
-            list.innerHTML = '<p class="meeting-share-empty">No share links created for this mock interview.</p>';
-            return;
-        }
-        list.replaceChildren();
-        meetingShareRecords.forEach(share => {
-            const card = document.createElement('article');
-            card.className = 'meeting-share-record';
-            const inactive = !share.is_active || share.is_expired;
-            if (inactive) card.classList.add('is-inactive');
-
-            const heading = document.createElement('div');
-            heading.className = 'meeting-share-record-heading';
-            const title = document.createElement('div');
-            const status = share.is_expired ? 'Expired' : share.is_active ? 'Active' : 'Revoked';
-            title.innerHTML = `
-                <strong>${escapeHtml(status)} link</strong>
-                <span>${escapeHtml(formatShareExpiration(share))}</span>
-            `;
-            const badge = document.createElement('span');
-            badge.className = `meeting-share-status ${inactive ? 'is-inactive' : 'is-active'}`;
-            badge.textContent = status;
-            heading.append(title, badge);
-
-            const details = document.createElement('div');
-            details.className = 'meeting-share-record-details';
-            const content = ['Summary'];
-            if (share.include_scorecard) content.push('Scorecard');
-            if (share.include_transcript) content.push('Transcript');
-            const lastViewed = share.last_accessed_at
-                ? `Last viewed ${formatShareDateTime(share.last_accessed_at)}`
-                : 'Not viewed yet';
-            details.innerHTML = `
-                <span>${escapeHtml(content.join(' + '))}</span>
-                <span>${share.password_protected ? 'Password protected' : 'No password'}</span>
-                <span>${Number(share.access_count || 0)} view${Number(share.access_count || 0) === 1 ? '' : 's'}</span>
-                <span>${escapeHtml(lastViewed)}</span>
-            `;
-
-            const actions = document.createElement('div');
-            actions.className = 'meeting-share-record-actions';
-            if (!inactive) {
-                actions.append(
-                    createShareActionButton('Copy', () => copyMeetingShareUrl(share.public_url)),
-                    createShareActionLink('Open', share.public_url),
-                    createShareActionButton('Refresh snapshot', () => updateMeetingShare(share.share_id, {refresh_snapshot: true})),
-                    createShareExpirationControl(share),
-                    createShareActionButton('Revoke', () => revokeMeetingShare(share), true)
-                );
-            }
-            card.append(heading, details, actions);
-            list.appendChild(card);
-        });
-    }
-
-    function createShareActionButton(label, handler, danger = false) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.textContent = label;
-        if (danger) button.classList.add('is-danger');
-        button.addEventListener('click', handler);
-        return button;
-    }
-
-    function createShareActionLink(label, href) {
-        const link = document.createElement('a');
-        link.textContent = label;
-        link.href = href;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        return link;
-    }
-
-    function createShareExpirationControl(share) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'meeting-share-expiration-control';
-        const select = document.createElement('select');
-        select.setAttribute('aria-label', 'Change share-link expiration');
-        [
-            ['7', '7 days'],
-            ['30', '30 days'],
-            ['90', '90 days'],
-            ['never', 'Never']
-        ].forEach(([value, label]) => {
-            const option = document.createElement('option');
-            option.value = value;
-            option.textContent = label;
-            if (value === '30') option.selected = true;
-            select.appendChild(option);
-        });
-        const button = createShareActionButton('Set expiration', () => {
-            updateMeetingShare(share.share_id, {expires_in_days: select.value});
-        });
-        wrapper.append(select, button);
-        return wrapper;
-    }
-
-    function formatShareDateTime(value) {
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return 'at an unknown time';
-        return date.toLocaleString(window.AppI18n?.locale || undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit'
-        });
-    }
-
-    function formatShareExpiration(share) {
-        if (!share.expires_at) return 'Does not expire';
-        const date = new Date(share.expires_at);
-        if (Number.isNaN(date.getTime())) return 'Expiration unavailable';
-        return `${share.is_expired ? 'Expired' : 'Expires'} ${date.toLocaleDateString(window.AppI18n?.locale || undefined, {year: 'numeric', month: 'short', day: 'numeric'})}`;
-    }
-
-    async function createMeetingShare(event) {
-        event.preventDefault();
-        if (selectedMeetingIndex === null) return;
-        const meeting = meetingsData[selectedMeetingIndex];
-        const identity = getMeetingShareIdentity(meeting);
-        if (!identity) return;
-        const button = document.getElementById('meeting-share-create');
-        const transcriptIncluded = document.getElementById('meeting-share-transcript').checked;
-        const sharePassword = document.getElementById('meeting-share-password').value;
-        if (meetingShareDefaults.shareRequirePassword === true && !sharePassword) {
-            window.AppUI?.showToast('Enter a password before creating this share link.', {type: 'error'});
-            document.getElementById('meeting-share-password').focus();
-            return;
-        }
-        if (transcriptIncluded) {
-            const confirmed = await window.AppUI?.confirm({
-                title: 'Include the full transcript?',
-                message: 'The transcript may contain confidential or personal information. Anyone with the link can read it.',
-                confirmLabel: 'Include transcript',
-                cancelLabel: 'Go back'
-            });
-            if (!confirmed) return;
-        }
-        const payload = {
-            timestamp: identity.timestamp,
-            language: window.AppI18n?.language || document.documentElement.lang || 'en',
-            include_scorecard: document.getElementById('meeting-share-scorecard').checked,
-            include_transcript: transcriptIncluded,
-            allow_download: document.getElementById('meeting-share-download').checked,
-            expires_in_days: document.getElementById('meeting-share-expiration').value,
-            password: sharePassword
-        };
-        const originalText = button.textContent;
-        button.disabled = true;
-        button.textContent = 'Creating...';
-        try {
-            const endpoint = window.AppUI?.appUrl(`/api/meetings/${encodeURIComponent(identity.meetingId)}/shares`)
-                || `/api/meetings/${encodeURIComponent(identity.meetingId)}/shares`;
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.error || 'The share link could not be created.');
-            showCreatedMeetingShare(result);
-            window.AppUI?.showToast('Share link created.', {type: 'success'});
-            await loadMeetingShares();
-        } catch (error) {
-            window.AppUI?.showToast(error.message, {type: 'error'});
-        } finally {
-            button.disabled = false;
-            button.textContent = originalText;
-        }
-    }
-
-    function showCreatedMeetingShare(share) {
-        const panel = document.getElementById('meeting-share-created');
-        const input = document.getElementById('meeting-share-created-url');
-        const link = document.getElementById('meeting-share-open-link');
-        if (!panel || !input || !link) return;
-        input.value = share.public_url || '';
-        link.href = share.public_url || '#';
-        panel.hidden = false;
-        input.focus();
-        input.select();
-    }
-
-    async function copyMeetingShareUrl(url) {
-        try {
-            await navigator.clipboard.writeText(url || '');
-            window.AppUI?.showToast('Share link copied.', {type: 'success'});
-        } catch {
-            const input = document.getElementById('meeting-share-created-url');
-            if (input) {
-                input.value = url || '';
-                input.select();
-            }
-            window.AppUI?.showToast('Select and copy the displayed link.', {type: 'info'});
-        }
-    }
-
-    async function updateMeetingShare(shareId, payload) {
-        try {
-            const endpoint = window.AppUI?.appUrl(`/api/meeting-shares/${encodeURIComponent(shareId)}`)
-                || `/api/meeting-shares/${encodeURIComponent(shareId)}`;
-            const response = await fetch(endpoint, {
-                method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.error || 'The share link could not be updated.');
-            window.AppUI?.showToast(payload.refresh_snapshot ? 'Shared content refreshed.' : 'Share link updated.', {type: 'success'});
-            await loadMeetingShares();
-        } catch (error) {
-            window.AppUI?.showToast(error.message, {type: 'error'});
-        }
-    }
-
-    async function revokeMeetingShare(share) {
-        const confirmed = await window.AppUI?.confirm({
-            title: 'Revoke this share link?',
-            message: 'Anyone using this link will immediately lose access. This cannot be undone for the same link.',
-            confirmLabel: 'Revoke link',
-            cancelLabel: 'Keep link',
-            danger: true
-        });
-        if (!confirmed) return;
-        try {
-            const endpoint = window.AppUI?.appUrl(`/api/meeting-shares/${encodeURIComponent(share.share_id)}`)
-                || `/api/meeting-shares/${encodeURIComponent(share.share_id)}`;
-            const response = await fetch(endpoint, {method: 'DELETE'});
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(result.error || 'The share link could not be revoked.');
-            window.AppUI?.showToast('Share link revoked.', {type: 'success'});
-            await loadMeetingShares();
-        } catch (error) {
-            window.AppUI?.showToast(error.message, {type: 'error'});
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const modal = document.getElementById('meeting-share-modal');
-        document.getElementById('meeting-share-trigger')?.addEventListener('click', openMeetingShareModal);
-        document.getElementById('meeting-share-close')?.addEventListener('click', closeMeetingShareModal);
-        document.getElementById('meeting-share-cancel')?.addEventListener('click', closeMeetingShareModal);
-        document.getElementById('meeting-share-form')?.addEventListener('submit', createMeetingShare);
-        document.getElementById('meeting-share-copy-link')?.addEventListener('click', () => {
-            copyMeetingShareUrl(document.getElementById('meeting-share-created-url')?.value || '');
-        });
-        modal?.addEventListener('mousedown', event => {
-            if (event.target === modal) closeMeetingShareModal();
-        });
-        document.addEventListener('keydown', event => {
-            if (event.key === 'Escape' && modal && !modal.hidden) closeMeetingShareModal();
-        });
-        updateMeetingShareContext(null, null);
-        loadMeetingShareDefaults();
     });

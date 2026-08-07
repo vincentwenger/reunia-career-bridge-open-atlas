@@ -1,0 +1,20 @@
+<section class="card baseline-structured-evidence baseline-summary-panel" id="professional-summary" data-baseline-summary-endpoint="{{ url_for('application_builder.update_baseline_summary') }}" aria-labelledby="professionalSummaryTitle">
+  <div class="reusable-evidence-header">
+    <div>
+      <p class="section-eyebrow">Baseline Resume information</p>
+      <h2 id="professionalSummaryTitle">Professional summary</h2>
+      <p>{% if baseline_creation_method == 'manual' %}Write the professional summary that should appear in your reusable Baseline Resume.{% elif baseline_creation_method == 'mixed' %}Review the summary retained from manual entry and the imported resume.{% else %}Review and edit the summary extracted from the imported resume.{% endif %}</p>
+      <p class="caption">Saving automatically updates the reusable Baseline Resume.{% if state.profile_upload_name %} The originally imported resume remains preserved as source evidence.{% else %} Manually entered information is treated as directly confirmed by you.{% endif %}</p>
+    </div>
+    <span class="reusable-evidence-count">{{ source_profile.current_summary.split() | length }} words</span>
+  </div>
+
+  <form class="baseline-summary-form" data-baseline-summary-form>
+    <label for="baseline-professional-summary">Summary</label>
+    <textarea id="baseline-professional-summary" name="current_summary" rows="6" maxlength="6000" placeholder="Add a concise professional summary describing your experience, strengths, and career focus.">{{ source_profile.current_summary }}</textarea>
+    <div class="baseline-structured-action-row">
+      <button class="btn btn-primary" type="submit">Save summary</button>
+    </div>
+  </form>
+  <div class="baseline-structured-feedback" data-baseline-summary-feedback role="status" aria-live="polite" hidden></div>
+</section>

@@ -60,7 +60,7 @@ def _report_fix_instruction(section_name: str) -> str:
         ),
         "Formatting": (
             "Correct text-level spacing, punctuation, capitalization, and consistency issues that "
-            "can be fixed inside the proposal. Preserve dates and facts from the source profile."
+            "can be fixed inside the proposal. Preserve dates and facts from the verified resume evidence."
         ),
         "Soft skills": (
             "Use only verified, job-relevant soft skills and demonstrate them conservatively in "

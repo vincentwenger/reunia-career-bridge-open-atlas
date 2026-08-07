@@ -1,0 +1,24 @@
+[
+  {
+    "id": "lever-101",
+    "text": "Senior Data Platform Engineer",
+    "hostedUrl": "https://jobs.lever.co/examplebank/lever-101?utm_campaign=fixture",
+    "applyUrl": "https://jobs.lever.co/examplebank/lever-101/apply",
+    "descriptionPlain": "Build regulated data platforms with SQL.",
+    "createdAt": 1785326400000,
+    "workplaceType": "HYBRID",
+    "categories": {
+      "location": "Portland, OR",
+      "allLocations": ["Portland, OR"],
+      "department": "Technology",
+      "team": "Data Platform",
+      "commitment": "fulltime"
+    },
+    "salaryRange": {
+      "min": 150000,
+      "max": 190000,
+      "currency": "USD",
+      "interval": "year"
+    }
+  }
+]

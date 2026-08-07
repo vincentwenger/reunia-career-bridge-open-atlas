@@ -1,0 +1,256 @@
+{% extends 'application_builder/base.html' %}
+{% from 'macros/ui.html' import workspace_state %}
+
+{% block title %}Interview Preparation · Réunia Career Bridge{% endblock %}
+{% block head_page_scripts %}
+{{ super() }}
+<script defer src="{{ application_builder_asset('interview-preparation.js') }}"></script>
+{% endblock %}
+
+{% macro evidence_references(ids) -%}
+  {% if ids %}
+    <div class="interview-evidence-list" aria-label="Verified evidence references">
+      {% for evidence_id in ids %}
+        <details class="interview-evidence-chip">
+          <summary>{{ evidence_id }}</summary>
+          <p>{{ evidence_lookup.get(evidence_id, 'Verified evidence reference') }}</p>
+        </details>
+      {% endfor %}
+    </div>
+  {% else %}
+    <span class="interview-evidence-none">No verified answer evidence identified</span>
+  {% endif %}
+{%- endmacro %}
+
+{% block content %}
+<section class="card interview-application-selector" aria-labelledby="interview-application-title">
+  <div class="section-heading compact-heading">
+    <h2 id="interview-application-title">Application</h2>
+  </div>
+  {% if applications %}
+    <form method="get" action="{{ url_for('application_builder.interview_preparation_workspace') }}" class="interview-selector-form">
+      <label class="sr-only" for="interview-application-select">Job application</label>
+      <div class="interview-selector-row">
+        <select id="interview-application-select" name="application_id">
+          {% for application in applications %}
+            <option value="{{ application.id }}" {% if selected_application and selected_application.id == application.id %}selected{% endif %}>{{ application.company }} · {{ application.role }}</option>
+          {% endfor %}
+        </select>
+        <button class="button secondary" type="submit">Open</button>
+      </div>
+    </form>
+  {% else %}
+    {{ workspace_state(
+      'interview-application-empty-state',
+      'empty',
+      'Create an application first',
+      'Interview preparation needs a saved role and job description.',
+      hidden=false,
+      action_label='Create application',
+      action_href=url_for('application_builder.index', tab='applications') ~ '#new-application',
+      extra_class='empty-state interview-empty-state'
+    ) }}
+  {% endif %}
+</section>
+
+{% if selected_application %}
+<section class="card interview-readiness-compact" aria-label="Preparation readiness">
+  <div class="interview-readiness-item {{ 'is-ready' if selected_application.job_description else 'is-missing' }}">
+    <span aria-hidden="true">{{ '✓' if selected_application.job_description else '!' }}</span>
+    <div><strong>Job description</strong><small>{{ 'Ready' if selected_application.job_description else 'Required' }}</small></div>
+  </div>
+  <div class="interview-readiness-item {{ 'is-ready' if evidence and evidence.count else 'is-missing' }}">
+    <span aria-hidden="true">{{ '✓' if evidence and evidence.count else '!' }}</span>
+    <div><strong>Verified evidence</strong><small>{% if evidence and evidence.count %}{{ evidence.count }} item{% if evidence.count != 1 %}s{% endif %}{% else %}Required{% endif %}</small></div>
+  </div>
+  <div class="interview-readiness-item {% if preparation_is_stale %}is-warning{% elif preparation %}is-ready{% endif %}">
+    <span aria-hidden="true">{% if preparation_is_stale %}↻{% elif preparation %}✓{% else %}○{% endif %}</span>
+    <div><strong>Preparation</strong><small>{% if preparation_is_stale %}Update recommended{% elif preparation %}Generated{% else %}Not generated{% endif %}</small></div>
+  </div>
+  <a class="text-link" href="{{ url_for('application_builder.index', tab='applications') }}#edit-application-{{ selected_application.id }}">Edit application</a>
+</section>
+
+<section class="card interview-generation-card" aria-labelledby="interview-generate-title">
+  <div class="interview-generation-copy">
+    <h2 id="interview-generate-title">Prepare for {{ selected_application.role }}</h2>
+    <p>Build role-specific questions and evidence-backed answer guidance.</p>
+  </div>
+  <form
+    method="post"
+    action="{{ url_for('application_builder.generate_interview_preparation') }}"
+    class="interview-generate-form"
+    data-interview-preparation-job-form
+    data-active-job-id="{{ active_interview_preparation_job.id if active_interview_preparation_job else '' }}"
+    data-active-job-status-url="{% if active_interview_preparation_job %}{{ url_for('application_builder.interview_preparation_job_status', job_id=active_interview_preparation_job.id) }}{% endif %}"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="application_id" value="{{ selected_application.id }}">
+    <button class="button primary interview-generate-button" type="submit" data-interview-preparation-submit {% if active_interview_preparation_job or not selected_application.job_description or not evidence or not evidence.count %}disabled{% endif %}>{% if preparation %}Regenerate{% else %}Generate preparation{% endif %}</button>
+    {% if not selected_application.job_description %}
+      <a class="button secondary" href="{{ url_for('application_builder.index', tab='applications') }}#job-description-{{ selected_application.id }}">Add job description</a>
+    {% elif not evidence or not evidence.count %}
+      <a class="button secondary" href="{{ url_for('application_builder.open_application_builder', application_id=selected_application.id) }}">Confirm evidence</a>
+    {% endif %}
+  </form>
+  <div class="discovery-refresh-progress interview-background-progress" data-interview-preparation-job-progress hidden aria-live="polite">
+    <div class="discovery-refresh-progress-heading">
+      <div>
+        <strong data-interview-preparation-job-title>Preparing background generation…</strong>
+        <p data-interview-preparation-job-message>The AI worker will continue even if you leave this page.</p>
+      </div>
+      <button class="button text" type="button" data-interview-preparation-job-cancel hidden>Stop after current operation</button>
+    </div>
+    <progress value="0" max="1" data-interview-preparation-job-meter></progress>
+    <div class="discovery-refresh-progress-summary" data-interview-preparation-job-summary></div>
+    <div class="discovery-refresh-issues" data-interview-preparation-job-issues hidden></div>
+  </div>
+</section>
+
+{% if preparation_load_error %}
+  <div class="alert alert-error">{{ preparation_load_error }}</div>
+{% endif %}
+
+{% if preparation %}
+<section id="interview-workspace" class="interview-workspace" aria-labelledby="interview-workspace-title">
+  <header class="interview-workspace-header">
+    <div>
+      <span class="eyebrow">{{ selected_application.company }} · {{ selected_application.role }}</span>
+      <h2 id="interview-workspace-title">Interview preparation workspace</h2>
+      <p>Generated from the saved job description, reusable Career Profile context, {{ preparation_record.evidence_source_label if preparation_record else evidence.source_label }}, and the application’s structured resume findings.</p>
+    </div>
+    {% if preparation_is_stale %}<span class="interview-stale-badge">Inputs changed · regenerate</span>{% endif %}
+  </header>
+
+  <div class="interview-summary-grid">
+    <article class="card interview-summary-card">
+      <span class="interview-card-kicker">Role summary</span>
+      <h3>What this role is designed to do</h3>
+      <p>{{ preparation.role_summary }}</p>
+    </article>
+    <article class="card interview-summary-card">
+      <span class="interview-card-kicker">Company summary</span>
+      <h3>What the posting says about the employer</h3>
+      <p>{{ preparation.company_summary }}</p>
+    </article>
+  </div>
+
+  <article class="card interview-section-card">
+    <div class="interview-section-title"><span aria-hidden="true">◎</span><div><span>Role expectations</span><h3>Expected responsibilities</h3></div></div>
+    <ul class="interview-clean-list">
+      {% for item in preparation.expected_responsibilities %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  </article>
+
+  <div class="interview-question-columns">
+    <article class="card interview-section-card">
+      <div class="interview-section-title"><span aria-hidden="true">⌘</span><div><span>Role-specific practice</span><h3>Likely technical questions</h3></div></div>
+      <div class="interview-question-list">
+        {% for item in preparation.likely_technical_questions %}
+          <details class="interview-question-card" {% if loop.first %}open{% endif %}>
+            <summary><span>{{ loop.index }}</span><strong>{{ item.question }}</strong></summary>
+            <div class="interview-question-body">
+              <p><b>Why it is likely:</b> {{ item.why_likely }}</p>
+              <p><b>Evidence-safe answer focus:</b> {{ item.answer_focus }}</p>
+              {{ evidence_references(item.evidence_ids) }}
+            </div>
+          </details>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="card interview-section-card">
+      <div class="interview-section-title"><span aria-hidden="true">◇</span><div><span>Experience stories</span><h3>Likely behavioral questions</h3></div></div>
+      <div class="interview-question-list">
+        {% for item in preparation.likely_behavioral_questions %}
+          <details class="interview-question-card" {% if loop.first %}open{% endif %}>
+            <summary><span>{{ loop.index }}</span><strong>{{ item.question }}</strong></summary>
+            <div class="interview-question-body">
+              <p><b>Why it is likely:</b> {{ item.why_likely }}</p>
+              <p><b>Evidence-safe answer focus:</b> {{ item.answer_focus }}</p>
+              {{ evidence_references(item.evidence_ids) }}
+            </div>
+          </details>
+        {% endfor %}
+      </div>
+    </article>
+  </div>
+
+  <div class="interview-evidence-columns">
+    <article class="card interview-section-card">
+      <div class="interview-section-title"><span aria-hidden="true">★</span><div><span>Lead with these</span><h3>Candidate strengths to emphasize</h3></div></div>
+      <div class="interview-point-list">
+        {% for item in preparation.candidate_strengths %}
+          <section class="interview-point-card">
+            <h4>{{ item.title }}</h4>
+            <p>{{ item.detail }}</p>
+            {{ evidence_references(item.evidence_ids) }}
+          </section>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="card interview-section-card">
+      <div class="interview-section-title"><span aria-hidden="true">?</span><div><span>Prepare for probing</span><h3>Resume areas an interviewer may challenge</h3></div></div>
+      <div class="interview-point-list">
+        {% for item in preparation.resume_challenge_areas %}
+          <section class="interview-point-card">
+            <h4>{{ item.title }}</h4>
+            <p>{{ item.detail }}</p>
+            {{ evidence_references(item.evidence_ids) }}
+          </section>
+        {% endfor %}
+      </div>
+    </article>
+  </div>
+
+  <article class="card interview-section-card">
+    <div class="interview-section-title"><span aria-hidden="true">△</span><div><span>Honest gap planning</span><h3>Potential experience gaps</h3></div></div>
+    {% if preparation.potential_experience_gaps %}
+      <div class="interview-gap-grid">
+        {% for item in preparation.potential_experience_gaps %}
+          <section class="interview-gap-card">
+            <span class="interview-gap-status">{{ 'Partial verified match' if item.evidence_status == 'partial_verified_evidence' else 'No verified evidence found' }}</span>
+            <h4>{{ item.requirement }}</h4>
+            <p>{{ item.explanation }}</p>
+            <div><b>Preparation action</b><span>{{ item.preparation_action }}</span></div>
+          </section>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="interview-empty-copy">No material evidence gaps were identified from the supplied job description and verified evidence.</p>
+    {% endif %}
+  </article>
+
+  <div class="interview-final-grid">
+    <article class="card interview-section-card">
+      <div class="interview-section-title"><span aria-hidden="true">→</span><div><span>Evaluate the opportunity</span><h3>Questions to ask the interviewer</h3></div></div>
+      <ol class="interview-numbered-list">
+        {% for question in preparation.questions_to_ask %}<li>{{ question }}</li>{% endfor %}
+      </ol>
+    </article>
+
+    <article class="card interview-section-card interview-introduction-card">
+      <div class="interview-section-title"><span aria-hidden="true">“</span><div><span>60–90 second outline</span><h3>Tell me about yourself</h3></div></div>
+      <ol class="interview-introduction-steps">
+        <li><span>1</span><div><b>Opening</b><p>{{ preparation.personal_introduction.opening }}</p></div></li>
+        <li><span>2</span><div><b>Current value</b><p>{{ preparation.personal_introduction.current_value }}</p></div></li>
+        <li><span>3</span><div><b>Relevant background</b><p>{{ preparation.personal_introduction.relevant_background }}</p></div></li>
+        <li><span>4</span><div><b>Connection to this role</b><p>{{ preparation.personal_introduction.role_connection }}</p></div></li>
+        <li><span>5</span><div><b>Closing</b><p>{{ preparation.personal_introduction.closing }}</p></div></li>
+      </ol>
+      {{ evidence_references(preparation.personal_introduction.evidence_ids) }}
+    </article>
+  </div>
+</section>
+{% else %}
+{{ workspace_state(
+  'interview-workspace',
+  'empty',
+  'No preparation generated yet',
+  'Once the job description and verified evidence are ready, generate a workspace containing role research, likely questions, strengths, gaps, challenge areas, interviewer questions, and a personal introduction outline.',
+  hidden=false,
+  extra_class='card empty-state interview-workspace-empty'
+) }}
+{% endif %}
+{% endif %}
+{% endblock %}

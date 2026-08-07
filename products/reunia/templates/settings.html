@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% block feature_id %}settings{% endblock %}
+
 {% from 'macros/ui.html' import page_hero %}
 
 {% block title %}Réunia - Application Settings{% endblock %}
@@ -12,7 +14,7 @@
 
     {{ page_hero(
         'Settings',
-        'Manage AI preferences, interview review, career follow-up, privacy, and sharing defaults.'
+        'Manage AI preferences, interview review, career follow-up, privacy, and retention.'
     ) }}
 
     <div class="settings-layout">
@@ -27,8 +29,9 @@
                 <span class="settings-mobile-label">Settings category <span class="settings-mobile-dirty" hidden>· Unsaved changes</span></span>
                 <select id="settings-category-select" class="form-control">
                     <option value="global-settings">General &amp; AI</option>
+                    <option value="ai-coaching-settings">AI Coaching Preferences</option>
                     <option value="meeting-review-settings">Interview review &amp; action plan</option>
-                    <option value="privacy-sharing-settings">Privacy &amp; sharing</option>
+                    <option value="privacy-sharing-settings">Data &amp; privacy</option>
                 </select>
             </label>
 
@@ -51,6 +54,22 @@
 
                 <button
                     type="button"
+                    class="scope-card ai-coaching"
+                    data-settings-target="ai-coaching-settings"
+                    aria-controls="ai-coaching-settings"
+                    aria-pressed="false"
+                >
+                    <span class="scope-card-icon" aria-hidden="true">✨</span>
+                    <span class="scope-card-copy">
+                        <span class="scope-card-title">AI Coaching Preferences</span>
+                        <span class="scope-card-description">Answer style, response mode, and source-specific instructions</span>
+                    </span>
+                    <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
+                    <span class="scope-arrow" aria-hidden="true">›</span>
+                </button>
+
+                <button
+                    type="button"
                     class="scope-card meeting-review"
                     data-settings-target="meeting-review-settings"
                     aria-controls="meeting-review-settings"
@@ -59,7 +78,7 @@
                     <span class="scope-card-icon" aria-hidden="true">📊</span>
                     <span class="scope-card-copy">
                         <span class="scope-card-title">Interview review &amp; action plan</span>
-                        <span class="scope-card-description">Coaching, action items, and scorecards</span>
+                        <span class="scope-card-description">Answer coaching, practice actions, and scorecards</span>
                     </span>
                     <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
                     <span class="scope-arrow" aria-hidden="true">›</span>
@@ -69,13 +88,13 @@
                     type="button"
                     class="scope-card privacy-sharing"
                     data-settings-target="privacy-sharing-settings"
-                    aria-controls="data-privacy-settings sharing-settings"
+                    aria-controls="data-privacy-settings"
                     aria-pressed="false"
                 >
                     <span class="scope-card-icon" aria-hidden="true">🔒</span>
                     <span class="scope-card-copy">
-                        <span class="scope-card-title">Privacy &amp; sharing</span>
-                        <span class="scope-card-description">Retention and new link defaults</span>
+                        <span class="scope-card-title">Data &amp; privacy</span>
+                        <span class="scope-card-description">Retention controls for saved content</span>
                     </span>
                     <span class="scope-dirty" data-settings-dirty hidden>Unsaved</span>
                     <span class="scope-arrow" aria-hidden="true">›</span>
@@ -83,7 +102,7 @@
             </nav>
 
             <div class="scope-note">
-                Changes affect future activity unless a setting says otherwise. Existing mock-interview reviews and links stay unchanged.
+                Changes affect future activity unless a setting says otherwise. Existing saved records stay unchanged.
             </div>
         </aside>
 
@@ -144,33 +163,96 @@
                                 <div class="subsection-heading">
                                     <div class="subsection-number">2</div>
                                     <div>
-                                        <h3>Default AI model</h3>
-                                        <p>Choose the default performance level used for AI-powered features.</p>
+                                        <h3>Candidate Answer Evaluation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
+                                        <p>The scorecard evaluates only the candidate answers recorded during mock-interview practice.</p>
+                                    </div>
+                                </div>
+                                <div class="settings-box highlight-box">
+                                    <input type="hidden" name="scorecard_source" value="microphone">
+                                    <p class="form-help">Interviewer prompts provide question context but are not scored as candidate performance.</p>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="category-section" id="ai-coaching-settings" hidden>
+                        <div class="category-header ai-coaching">
+                            <div class="category-heading">
+                                <div class="category-icon">✨</div>
+                                <div>
+                                    <div class="category-eyebrow">AI preferences</div>
+                                    <h2>AI Coaching Preferences</h2>
+                                    <p>
+                                        Control how Réunia structures coaching and generated answers. These preferences are reusable
+                                        across Career Evidence Search and Mock Interview features.
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="scope-badge">Reusable across applications</span>
+                        </div>
+
+                        <div class="category-body">
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">1</div>
+                                    <div>
+                                        <h3>Answer format</h3>
+                                        <p>Choose the default level of detail and whether answers should be ready to say or presented as coaching guidance.</p>
+                                    </div>
+                                </div>
+
+                                <div class="settings-box highlight-box">
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label class="form-label" for="aiCoachingAnswerStyle">Preferred answer style</label>
+                                            <select id="aiCoachingAnswerStyle" name="aiCoachingAnswerStyle" class="form-control">
+                                                <option value="balanced" {% if not settings or settings.aiCoachingAnswerStyle == 'balanced' %}selected{% endif %}>Balanced</option>
+                                                <option value="concise" {% if settings and settings.aiCoachingAnswerStyle == 'concise' %}selected{% endif %}>Concise</option>
+                                                <option value="detailed" {% if settings and settings.aiCoachingAnswerStyle == 'detailed' %}selected{% endif %}>Detailed</option>
+                                                <option value="bullet_points" {% if settings and settings.aiCoachingAnswerStyle == 'bullet_points' %}selected{% endif %}>Bullet points</option>
+                                                <option value="step_by_step" {% if settings and settings.aiCoachingAnswerStyle == 'step_by_step' %}selected{% endif %}>Step by step</option>
+                                                <option value="action_oriented" {% if settings and settings.aiCoachingAnswerStyle == 'action_oriented' %}selected{% endif %}>Action oriented</option>
+                                                <option value="professional" {% if settings and settings.aiCoachingAnswerStyle == 'professional' %}selected{% endif %}>Professional</option>
+                                            </select>
+                                            <span class="form-help">Used as the default presentation style. Application facts and verified evidence still control the content.</span>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label class="form-label" for="aiCoachingResponseMode">Response mode</label>
+                                            <select id="aiCoachingResponseMode" name="aiCoachingResponseMode" class="form-control">
+                                                <option value="ready_to_say" {% if not settings or settings.aiCoachingResponseMode == 'ready_to_say' %}selected{% endif %}>Ready-to-say answer</option>
+                                                <option value="concise_structured_action" {% if settings and settings.aiCoachingResponseMode == 'concise_structured_action' %}selected{% endif %}>Concise, structured, and action-oriented</option>
+                                                <option value="coaching" {% if settings and settings.aiCoachingResponseMode == 'coaching' %}selected{% endif %}>Coaching guidance</option>
+                                            </select>
+                                            <span class="form-help">Ready-to-say produces candidate wording; coaching mode explains how to build or improve the answer.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="subsection">
+                                <div class="subsection-heading">
+                                    <div class="subsection-number">2</div>
+                                    <div>
+                                        <h3>Source-specific instructions</h3>
+                                        <p>Add reusable guidance for spoken questions and clipboard text. Leave either field blank to use Réunia defaults.</p>
                                     </div>
                                 </div>
 
                                 <div class="settings-box">
                                     <div class="form-grid">
                                         <div class="form-group full-span">
-                                            <label class="form-label" for="aiModelPreset">Default AI model</label>
-
-                                            <select id="aiModelPreset" name="aiModelPreset" class="form-control">
-                                                <option value="fast" {% if not settings or settings.aiModelPreset == 'fast' %}selected{% endif %}>
-                                                    Fast — recommended for lowest cost
-                                                </option>
-                                                <option value="balanced" {% if settings and settings.aiModelPreset == 'balanced' %}selected{% endif %} {% if config.AI_MAX_MODEL_PRESET == 'fast' %}disabled{% endif %}>
-                                                    Balanced — higher cost{% if config.AI_MAX_MODEL_PRESET == 'fast' %} (disabled by cost policy){% endif %}
-                                                </option>
-                                                <option value="advanced" {% if settings and settings.aiModelPreset == 'advanced' %}selected{% endif %} {% if config.AI_MAX_MODEL_PRESET != 'advanced' %}disabled{% endif %}>
-                                                    Advanced — highest cost{% if config.AI_MAX_MODEL_PRESET != 'advanced' %} (disabled by cost policy){% endif %}
-                                                </option>
-                                            </select>
-
-                                            <span class="form-help">
-                                                Used by Career Profile, Career Evidence Library, interview preparation, and review unless a feature-specific model is configured. The server-side cost policy can restrict higher-cost presets.
-                                            </span>
+                                            <label class="form-label" for="aiCoachingAudioInstructions">Audio response instructions</label>
+                                            <textarea id="aiCoachingAudioInstructions" name="aiCoachingAudioInstructions" class="form-control" rows="5" placeholder="Example: Keep spoken answers natural, under 90 seconds, and grounded in verified career evidence.">{{ settings.aiCoachingAudioInstructions if settings else '' }}</textarea>
+                                            <span class="form-help">Applied when Réunia generates coaching from microphone or speaker audio.</span>
                                         </div>
 
+                                        <div class="form-group full-span">
+                                            <label class="form-label" for="aiCoachingClipboardInstructions">Clipboard response instructions</label>
+                                            <textarea id="aiCoachingClipboardInstructions" name="aiCoachingClipboardInstructions" class="form-control" rows="5" placeholder="Example: Answer pasted interview questions directly, then provide two evidence points I can choose from.">{{ settings.aiCoachingClipboardInstructions if settings else '' }}</textarea>
+                                            <span class="form-help">Applied when Réunia generates coaching from pasted or captured clipboard text.</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -185,8 +267,8 @@
                                     <div class="category-eyebrow">Category 2</div>
                                     <h2>Interview Review Settings</h2>
                                     <p>
-                                        These settings affect only the Scorecard tab on the Interview Review page.
-                                        Choose which recorded audio source or sources should be evaluated.
+                                        These settings affect mock-interview reviews, practice actions, and the interview-specific scorecard.
+                                        The scorecard evaluates candidate answers only.
                                     </p>
                                 </div>
                             </div>
@@ -206,11 +288,11 @@
                                 <div class="settings-box highlight-box">
                                     <div class="form-grid">
                                         <div class="form-group full-span">
-                                            <label class="form-label" for="meetingSummaryDetail">Summary detail</label>
+                                            <label class="form-label" for="meetingSummaryDetail">Review detail</label>
                                             <select id="meetingSummaryDetail" name="meetingSummaryDetail" class="form-control">
-                                                <option value="brief" {% if not settings or settings.meetingSummaryDetail == 'brief' %}selected{% endif %}>Brief — 2 or 3 concise sentences</option>
-                                                <option value="standard" {% if settings and settings.meetingSummaryDetail == 'standard' %}selected{% endif %}>Standard — one clear paragraph</option>
-                                                <option value="detailed" {% if settings and settings.meetingSummaryDetail == 'detailed' %}selected{% endif %}>Detailed — discussion, decisions, risks, and next steps</option>
+                                                <option value="brief" {% if not settings or settings.meetingSummaryDetail == 'brief' %}selected{% endif %}>Brief — key strengths and improvements</option>
+                                                <option value="standard" {% if settings and settings.meetingSummaryDetail == 'standard' %}selected{% endif %}>Standard — strengths, gaps, and next steps</option>
+                                                <option value="detailed" {% if settings and settings.meetingSummaryDetail == 'detailed' %}selected{% endif %}>Detailed — answer-by-answer coaching and practice priorities</option>
                                             </select>
                                         </div>
                                     </div>
@@ -220,7 +302,7 @@
                                             <label class="source-toggle" for="meetingExtractActionItems">
                                                 <div class="source-text">
                                                     <div class="source-icon" aria-hidden="true">📝</div>
-                                                    <div><span class="source-title">Extract action items</span><span class="source-description">Add detected improvement tasks to Interview Review and Career Action Plan.</span></div>
+                                                    <div><span class="source-title">Generate practice actions</span><span class="source-description">Add application-specific practice and follow-up tasks to Interview Review and Career Action Plan.</span></div>
                                                 </div>
                                                 <input type="checkbox" id="meetingExtractActionItems" name="meetingExtractActionItems" {% if not settings or settings.meetingExtractActionItems %}checked{% endif %}>
                                                 <span class="switch"></span>
@@ -242,80 +324,14 @@
                                 <div class="subsection-heading">
                                     <div class="subsection-number">2</div>
                                     <div>
-                                        <h3>Scorecard Evaluation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
-                                        <p>Select the audio source containing the answers that the scorecard should evaluate.</p>
+                                        <h3>Candidate Answer Evaluation <span class="field-scope">INTERVIEW REVIEW ONLY</span></h3>
+                                        <p>The scorecard evaluates only the candidate answers recorded during mock-interview practice.</p>
                                     </div>
                                 </div>
 
                                 <div class="settings-box highlight-box">
-                                    <div class="form-grid">
-                                        <div class="form-group full-span">
-                                            <label class="form-label" for="scorecard_source">Scorecard Source</label>
-
-                                            <div class="scorecard-source-selector" id="scorecard-source-selector" role="radiogroup" aria-label="Scorecard Source">
-                                                <label class="scorecard-source-option" for="scorecardSourceAll">
-                                                    <input
-                                                        type="radio"
-                                                        id="scorecardSourceAll"
-                                                        name="scorecard_source"
-                                                        value="all"
-                                                        {% if settings and settings.scorecard_source == 'all' %}checked{% endif %}
-                                                    >
-                                                    <span class="scorecard-source-choice">
-                                                        <span class="scorecard-source-icon scorecard-source-icon-pair" aria-hidden="true">🎙️🔊</span>
-                                                        <span class="scorecard-source-copy">
-                                                            <span class="scorecard-source-title">All Audio Sources</span>
-                                                            <span class="scorecard-source-description">
-                                                                Evaluate candidate and interviewer-prompt audio, using either or both when available.
-                                                            </span>
-                                                        </span>
-                                                    </span>
-                                                </label>
-
-                                                <label class="scorecard-source-option" for="scorecardSourceMicrophone">
-                                                    <input
-                                                        type="radio"
-                                                        id="scorecardSourceMicrophone"
-                                                        name="scorecard_source"
-                                                        value="microphone"
-                                                        {% if not settings or not settings.scorecard_source or settings.scorecard_source == 'microphone' %}checked{% endif %}
-                                                    >
-                                                    <span class="scorecard-source-choice">
-                                                        <span class="scorecard-source-icon" aria-hidden="true">🎙</span>
-                                                        <span class="scorecard-source-copy">
-                                                            <span class="scorecard-source-title">Score my answers</span>
-                                                            <span class="scorecard-source-description">
-                                                                Use the audio captured from my microphone.
-                                                            </span>
-                                                        </span>
-                                                    </span>
-                                                </label>
-
-                                                <label class="scorecard-source-option" for="scorecardSourceSpeaker">
-                                                    <input
-                                                        type="radio"
-                                                        id="scorecardSourceSpeaker"
-                                                        name="scorecard_source"
-                                                        value="speaker"
-                                                        {% if settings and settings.scorecard_source == 'speaker' %}checked{% endif %}
-                                                    >
-                                                    <span class="scorecard-source-choice">
-                                                        <span class="scorecard-source-icon" aria-hidden="true">🔊</span>
-                                                        <span class="scorecard-source-copy">
-                                                            <span class="scorecard-source-title">Score the other participant</span>
-                                                            <span class="scorecard-source-description">
-                                                                Use the audio captured from the computer speakers.
-                                                            </span>
-                                                        </span>
-                                                    </span>
-                                                </label>
-                                            </div>
-
-                                            <span class="form-help">
-                                                Choose microphone, speaker, or all available audio sources for scorecard evaluation.
-                                            </span>
-                                        </div>
-                                    </div>
+                                    <input type="hidden" name="scorecard_source" value="microphone">
+                                    <p class="form-help">Interviewer prompts provide question context but are not scored as candidate performance.</p>
                                 </div>
                             </div>
                         </div>
@@ -356,13 +372,13 @@
                                         <div class="form-group retention-control" data-retention-control>
                                             <label class="form-label" for="documentRetentionDays">Uploaded documents</label>
                                             <select id="documentRetentionDays" name="documentRetentionDays" class="form-control">
-                                                <option value="0" {% if settings and settings.documentRetentionDays == 0 %}selected{% endif %}>Keep until I delete them</option>
-                                                <option value="7" {% if not settings or settings.documentRetentionDays == 7 %}selected{% endif %}>Delete after 7 days</option>
+                                                <option value="0" {% if not settings or settings.documentRetentionDays == 0 %}selected{% endif %}>Keep until I delete them — recommended</option>
+                                                <option value="7" {% if settings and settings.documentRetentionDays == 7 %}selected{% endif %}>Delete after 7 days</option>
                                                 <option value="30" {% if settings and settings.documentRetentionDays == 30 %}selected{% endif %}>Delete after 30 days</option>
                                                 <option value="90" {% if settings and settings.documentRetentionDays == 90 %}selected{% endif %}>Delete after 90 days</option>
                                                 <option value="365" {% if settings and settings.documentRetentionDays == 365 %}selected{% endif %}>Delete after 1 year</option>
                                             </select>
-                                            <span class="form-help">Applies only to newly uploaded documents. Temporary recorder uploads already follow system cleanup rules.</span>
+                                            <span class="form-help">Career Evidence Library documents are kept until you delete them by default. A selected automatic period applies only to newly uploaded documents.</span>
                                             <span class="retention-warning" data-retention-warning hidden>Automatic deletion is enabled for newly uploaded documents.</span>
                                         </div>
                                     </div>
@@ -370,70 +386,6 @@
                             </div>
                         </div>
                     </section>
-
-                    <section class="category-section" id="sharing-settings" data-settings-category="privacy-sharing-settings" hidden>
-                        <div class="category-header sharing">
-                            <div class="category-heading">
-                                <div class="category-icon">🔗</div>
-                                <div>
-                                    <div class="category-eyebrow">Category 5</div>
-                                    <h2>Sharing Defaults</h2>
-                                    <p>These values prefill and secure new public Interview Review links.</p>
-                                </div>
-                            </div>
-                            <span class="scope-badge">New links only</span>
-                        </div>
-                        <div class="category-body">
-                            <div class="subsection">
-                                <div class="subsection-heading">
-                                    <div class="subsection-number">2</div>
-                                    <div><h3>New link defaults</h3><p>These defaults apply only to newly created public links. You can change them before creating each link.</p></div>
-                                </div>
-                                <div class="settings-box highlight-box">
-                                    <div class="form-grid">
-                                        <div class="form-group full-span">
-                                            <label class="form-label" for="shareDefaultExpirationDays">Default expiration</label>
-                                            <select id="shareDefaultExpirationDays" name="shareDefaultExpirationDays" class="form-control">
-                                                <option value="7" {% if settings and settings.shareDefaultExpirationDays == 7 %}selected{% endif %}>After 7 days</option>
-                                                <option value="30" {% if not settings or settings.shareDefaultExpirationDays == 30 %}selected{% endif %}>After 30 days</option>
-                                                <option value="90" {% if settings and settings.shareDefaultExpirationDays == 90 %}selected{% endif %}>After 90 days</option>
-                                                <option value="0" {% if settings and settings.shareDefaultExpirationDays == 0 %}selected{% endif %}>Never</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="automation-settings">
-                                        <div class="source-toggle-list">
-                                            <label class="source-toggle" for="shareRequirePassword">
-                                                <div class="source-text"><div class="source-icon">🔑</div><div><span class="source-title">Require a password</span><span class="source-description">Do not create a public link until a password is entered.</span></div></div>
-                                                <input type="checkbox" id="shareRequirePassword" name="shareRequirePassword" {% if settings and settings.shareRequirePassword %}checked{% endif %}><span class="switch"></span>
-                                            </label>
-                                            <label class="source-toggle" for="shareIncludeScorecard">
-                                                <div class="source-text"><div class="source-icon">📊</div><div><span class="source-title">Include scorecard</span><span class="source-description">Select the scorecard automatically in the sharing dialog.</span></div></div>
-                                                <input type="checkbox" id="shareIncludeScorecard" name="shareIncludeScorecard" {% if settings and settings.shareIncludeScorecard %}checked{% endif %}><span class="switch"></span>
-                                            </label>
-                                            <label class="source-toggle" for="shareAllowDownload">
-                                                <div class="source-text"><div class="source-icon">⬇️</div><div><span class="source-title">Allow downloads and printing</span><span class="source-description">Enable recipient downloads by default for new links.</span></div></div>
-                                                <input type="checkbox" id="shareAllowDownload" name="shareAllowDownload" {% if settings and settings.shareAllowDownload %}checked{% endif %}><span class="switch"></span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    <div class="save-bar" id="settings-save-bar">
-                        <div class="save-note" id="save-note">No unsaved changes</div>
-
-                        <div class="save-actions">
-                            <button type="button" class="btn btn-secondary" id="resetSettingsBtn" disabled>
-                                Reset changes
-                            </button>
-                            <button type="submit" class="btn" id="saveSettingsBtn" disabled>
-                                Save changes
-                            </button>
-                        </div>
-                    </div>
 
                 </form>
             </div>

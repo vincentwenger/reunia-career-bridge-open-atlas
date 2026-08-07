@@ -1,0 +1,276 @@
+{
+  "scenario_id": "unsupported_target_requirements",
+  "label": "Candidate with unsupported target-job requirements",
+  "profile": {
+    "name": "Maria Santos",
+    "contact": {
+      "location": "Manila, Philippines",
+      "phone": "+1 555 010 0000",
+      "email": "maria.santos@example.test",
+      "linkedin_label": "LinkedIn",
+      "linkedin_url": "",
+      "github_label": "GitHub",
+      "github_url": ""
+    },
+    "current_summary": "Hospital nurse experienced in adult medical-surgical care, patient education, medication administration, and interdisciplinary handoffs in the Philippines.",
+    "skills": {
+      "hard_skills": [
+        "Patient assessment",
+        "Medication administration",
+        "Patient education"
+      ],
+      "soft_skills": [
+        "Clinical communication",
+        "Team collaboration"
+      ],
+      "tools_software": [
+        "Hospital information system"
+      ],
+      "industry_knowledge": [
+        "Medical-surgical nursing"
+      ],
+      "languages": [
+        "Filipino",
+        "English"
+      ]
+    },
+    "education": [
+      {
+        "credential": "Bachelor of Science in Nursing",
+        "institution": "University of Santo Tomas",
+        "location": "Manila, Philippines",
+        "date": "2015",
+        "detail": ""
+      }
+    ],
+    "experiences": [
+      {
+        "id": "EXP-NURSING-1",
+        "employer": "Manila General Hospital",
+        "location": "Manila, Philippines",
+        "dates": "2015–2026",
+        "title": "Staff Nurse",
+        "bullets": [
+          {
+            "id": "NUR-1",
+            "text": "Assessed adult medical-surgical patients and documented changes for interdisciplinary care teams."
+          },
+          {
+            "id": "NUR-2",
+            "text": "Administered prescribed medications and educated patients about treatment and discharge instructions."
+          },
+          {
+            "id": "NUR-3",
+            "text": "Coordinated shift handoffs and escalated safety concerns using hospital protocols."
+          },
+          {
+            "id": "NUR-4",
+            "text": "Monitored patient responses to treatment and communicated changes during clinical rounds."
+          },
+          {
+            "id": "NUR-5",
+            "text": "Maintained complete nursing documentation in the hospital information system."
+          },
+          {
+            "id": "NUR-6",
+            "text": "Participated in unit safety reviews and implemented approved workflow updates."
+          }
+        ]
+      }
+    ],
+    "supplemental_evidence": []
+  },
+  "career_background": {
+    "countries_worked": [
+      "Philippines"
+    ],
+    "industries": [
+      "Hospital care"
+    ],
+    "roles": [
+      "Staff Nurse"
+    ],
+    "languages": [
+      "Filipino",
+      "English"
+    ],
+    "target_country": "United States",
+    "target_role": "Registered Nurse",
+    "international_credentials": [
+      "Bachelor of Science in Nursing"
+    ],
+    "professional_certifications": [
+      "Philippine Registered Nurse license"
+    ],
+    "unfamiliar_job_titles": [],
+    "career_transitions": [],
+    "us_employment_experience": "No U.S. clinical employment."
+  },
+  "job_description": "Oregon Community Hospital is hiring a Registered Nurse.\n\nKey requirements:\n- Assess adult medical-surgical patients and coordinate care\n- Administer medications and provide patient education\n- Active Oregon RN license required\n\nCandidates should present only experience and qualifications they can verify.",
+  "job_analysis": {
+    "target_title": "Registered Nurse",
+    "target_company": "Oregon Community Hospital",
+    "requirements": [
+      {
+        "id": "REQ-1",
+        "category": "responsibility",
+        "priority": "critical",
+        "requirement": "Assess adult medical-surgical patients and coordinate care",
+        "keywords": [
+          "assess",
+          "medical-surgical",
+          "coordinate care"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "category": "responsibility",
+        "priority": "important",
+        "requirement": "Administer medications and provide patient education",
+        "keywords": [
+          "medications",
+          "patient education"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "category": "qualification",
+        "priority": "critical",
+        "requirement": "Active Oregon RN license required",
+        "keywords": [
+          "Oregon RN license",
+          "license required"
+        ]
+      }
+    ],
+    "ignored_boilerplate": []
+  },
+  "proposal": {
+    "professional_summary": "Hospital nurse with verified experience assessing medical-surgical patients, administering medications, providing patient education, and coordinating interdisciplinary handoffs in the Philippines. Holds a documented Bachelor of Science in Nursing and communicates professionally in Filipino and English. Targets a Registered Nurse role while explicitly treating an active Oregon RN license as a mandatory unsupported requirement that must be verified before applying.",
+    "skills": {
+      "hard_skills": [
+        "Patient assessment",
+        "Medication administration",
+        "Patient education"
+      ],
+      "soft_skills": [
+        "Clinical communication",
+        "Team collaboration"
+      ],
+      "tools_software": [
+        "Hospital information system"
+      ],
+      "industry_knowledge": [
+        "Medical-surgical nursing"
+      ]
+    },
+    "bullet_proposals": [
+      {
+        "source_bullet_id": "NUR-1",
+        "include": true,
+        "proposed_text": "Assessed adult medical-surgical patients and documented changes for interdisciplinary care teams.",
+        "matched_requirement_ids": [
+          "REQ-1"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "NUR-2",
+        "include": true,
+        "proposed_text": "Administered prescribed medications and educated patients about treatment and discharge instructions.",
+        "matched_requirement_ids": [
+          "REQ-2"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "NUR-3",
+        "include": true,
+        "proposed_text": "Coordinated shift handoffs and escalated safety concerns using hospital protocols.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "NUR-4",
+        "include": true,
+        "proposed_text": "Monitored patient responses to treatment and communicated changes during clinical rounds.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "NUR-5",
+        "include": true,
+        "proposed_text": "Maintained complete nursing documentation in the hospital information system.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "NUR-6",
+        "include": true,
+        "proposed_text": "Participated in unit safety reviews and implemented approved workflow updates.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "requirement_id": "REQ-1",
+        "status": "supported",
+        "evidence_ids": [
+          "NUR-1"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-2",
+        "status": "supported",
+        "evidence_ids": [
+          "NUR-2"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-3",
+        "status": "unsupported",
+        "evidence_ids": [],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      }
+    ],
+    "unsupported_requirements": [
+      "Active Oregon RN license required"
+    ],
+    "candidate_questions": [],
+    "career_translation_assessment": {
+      "summary": "",
+      "target_country": "",
+      "target_role": "",
+      "findings": []
+    }
+  },
+  "expectations": {
+    "expected_findings": [
+      {
+        "category": "credential_explanation",
+        "source_text": "Bachelor of Science in Nursing",
+        "disposition": "confirmed_experience"
+      },
+      {
+        "category": "credential_explanation",
+        "source_text": "Philippine Registered Nurse license",
+        "disposition": "user_clarification_required"
+      },
+      {
+        "category": "unsupported_requirement",
+        "source_text": "Active Oregon RN license required",
+        "disposition": "unsupported_claim"
+      }
+    ],
+    "expected_min_transferable_findings": 1,
+    "expected_hard_blockers": 1,
+    "forbidden_evidence_phrases": [
+      "Philippine Registered Nurse license",
+      "No U.S. clinical employment."
+    ],
+    "unicode_tokens": []
+  }
+}

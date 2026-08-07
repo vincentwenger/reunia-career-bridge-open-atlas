@@ -2,7 +2,7 @@
 
 The imported Resume Taylor product remains the delivery adapter. These definitions
 keep its six-step workflow and multi-application dashboard aligned with the shared
-``JobApplication`` aggregate without making the core depend on Flask or SQLite.
+``JobApplication`` aggregate without making the core depend on Flask or a storage adapter.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ APPLICATION_BUILDER_STEPS: tuple[ApplicationBuilderStep, ...] = (
             "resume_id",
             "target_job_description_id",
         ),
-        description="Select the candidate background and source resume, then capture the target company, role, and job description.",
+        description="Select the candidate background and imported resume, then capture the target company, role, and job description.",
     ),
     ApplicationBuilderStep(
         key="confirmation",

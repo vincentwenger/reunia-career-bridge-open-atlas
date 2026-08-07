@@ -5,6 +5,8 @@ from flask import Flask
 
 import redis
 
+from job_discovery.storage import DynamoDBDiscoveryStore, InMemoryDiscoveryStore
+
 from meeting_assistant.repositories.action_repository import (
     DynamoActionRepository,
     InMemoryActionRepository,
@@ -12,11 +14,6 @@ from meeting_assistant.repositories.action_repository import (
 from meeting_assistant.repositories.analytics_repository import (
     DynamoAnalyticsRepository,
     InMemoryAnalyticsRepository,
-)
-from meeting_assistant.repositories.live_qa_repository import (
-    DynamoLiveQARepository,
-    InMemoryLiveQARepository,
-    RedisLiveQARepository,
 )
 from meeting_assistant.repositories.knowledge_file_store import (
     LocalKnowledgeFileStore,
@@ -27,18 +24,9 @@ from meeting_assistant.repositories.knowledge_repository import (
     InMemoryKnowledgeRepository,
     LocalKnowledgeRepository,
 )
-from meeting_assistant.repositories.recorder_job_store import (
-    LocalRecorderJobStore,
-    S3RecorderJobStore,
-)
 from meeting_assistant.repositories.support_repository import (
     DynamoSupportRepository,
     InMemorySupportRepository,
-)
-from meeting_assistant.services.recorder_job_queue import RedisRecorderJobQueue
-from meeting_assistant.services.recorder_live_state_store import (
-    MemoryRecorderLiveStateStore,
-    RedisRecorderLiveStateStore,
 )
 from meeting_assistant.services.security_service import (
     MemoryRateLimiter,
@@ -51,9 +39,6 @@ from meeting_assistant.services.security_service import (
 
 def _initialize_shared_infrastructure(app: Flask) -> None:
     redis_backends = {
-        str(app.config.get("LIVE_QA_STORAGE_BACKEND", "")).lower(),
-        str(app.config.get("RECORDER_LIVE_STATE_BACKEND", "")).lower(),
-        str(app.config.get("RECORDER_JOB_QUEUE_BACKEND", "")).lower(),
         str(app.config.get("RATE_LIMIT_STORAGE_BACKEND", "")).lower(),
         str(app.config.get("ADMIN_ANALYTICS_CACHE_BACKEND", "")).lower(),
     }
@@ -66,10 +51,7 @@ def _initialize_shared_infrastructure(app: Flask) -> None:
             redis_url,
             decode_responses=True,
             socket_connect_timeout=3,
-            # Blocking queue operations wait up to five seconds for work.
-            # Keep the socket timeout comfortably above that window so an
-            # empty queue is returned normally instead of raising TimeoutError.
-            socket_timeout=30,
+            socket_timeout=10,
             health_check_interval=30,
         )
         try:
@@ -104,52 +86,24 @@ def _initialize_shared_infrastructure(app: Flask) -> None:
     else:
         raise RuntimeError("ADMIN_ANALYTICS_CACHE_BACKEND must be 'memory' or 'redis'.")
 
-    state_backend = str(app.config.get("RECORDER_LIVE_STATE_BACKEND", "memory")).lower()
-    if state_backend == "redis":
-        if redis_client is None:
-            raise RuntimeError("Redis recorder state requires an available Redis connection.")
-        app.extensions["recorder_live_state_store"] = RedisRecorderLiveStateStore(redis_client)
-    elif state_backend == "memory":
-        app.extensions["recorder_live_state_store"] = MemoryRecorderLiveStateStore()
-    else:
-        raise RuntimeError("RECORDER_LIVE_STATE_BACKEND must be 'memory' or 'redis'.")
-
-    job_storage_backend = str(app.config.get("RECORDER_JOB_STORAGE_BACKEND", "local")).lower()
-    if job_storage_backend == "s3":
-        bucket = str(app.config.get("RECORDER_JOBS_BUCKET") or "").strip()
-        if not bucket:
-            raise RuntimeError("RECORDER_JOBS_BUCKET is required for S3 recorder job storage.")
-        app.extensions["recorder_job_store"] = S3RecorderJobStore(
-            bucket,
-            app.config["AWS_REGION"],
-            prefix=str(app.config.get("RECORDER_JOBS_S3_PREFIX") or "recorder-jobs"),
-            access_key_id=str(app.config.get("RECORDER_S3_ACCESS_KEY_ID") or ""),
-            secret_access_key=str(app.config.get("RECORDER_S3_SECRET_ACCESS_KEY") or ""),
-            session_token=str(app.config.get("RECORDER_S3_SESSION_TOKEN") or ""),
-        )
-    elif job_storage_backend == "local":
-        app.extensions["recorder_job_store"] = LocalRecorderJobStore(
-            app.config.get("RECORDER_JOB_DIR", "/tmp/meeting-assistant-recorder-jobs")
-        )
-    else:
-        raise RuntimeError("RECORDER_JOB_STORAGE_BACKEND must be 'local' or 's3'.")
-
-    queue_backend = str(app.config.get("RECORDER_JOB_QUEUE_BACKEND", "inline")).lower()
-    if queue_backend == "redis":
-        if redis_client is None:
-            raise RuntimeError("Redis recorder queue requires an available Redis connection.")
-        app.extensions["recorder_job_queue"] = RedisRecorderJobQueue(
-            redis_client,
-            lease_seconds=int(app.config.get("RECORDER_JOB_LEASE_SECONDS", 120)),
-        )
-    elif queue_backend == "inline":
-        app.extensions["recorder_job_queue"] = None
-    else:
-        raise RuntimeError("RECORDER_JOB_QUEUE_BACKEND must be 'inline' or 'redis'.")
-
 
 def init_extensions(app: Flask) -> None:
     _initialize_shared_infrastructure(app)
+
+    discovery_backend = str(
+        app.config.get("CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", "memory")
+    ).strip().lower()
+    if discovery_backend == "dynamodb":
+        discovery_store = DynamoDBDiscoveryStore(app.config)
+    elif discovery_backend == "memory":
+        discovery_store = InMemoryDiscoveryStore()
+    else:
+        raise RuntimeError(
+            "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND must be either "
+            "'memory' or 'dynamodb'."
+        )
+    app.extensions["career_bridge_job_discovery_store"] = discovery_store
+
     analytics_backend = str(
         app.config.get("ANALYTICS_STORAGE_BACKEND", "memory")
     ).strip().lower()
@@ -173,47 +127,6 @@ def init_extensions(app: Flask) -> None:
             "Admin analytics persistence is in memory; activity will be lost on restart."
         )
 
-    backend = str(
-        app.config.get("LIVE_QA_STORAGE_BACKEND", "dynamodb")
-    ).strip().lower()
-
-    if backend == "dynamodb":
-        repository = DynamoLiveQARepository(
-            cache_ttl_seconds=app.config.get(
-                "LIVE_QA_DYNAMO_CACHE_TTL_SECONDS",
-                2.0,
-            )
-        )
-    elif backend == "redis":
-        try:
-            repository = RedisLiveQARepository(app.config["REDIS_URL"], redis_client=app.extensions.get("redis_client"))
-        except (ImportError, ValueError) as exc:
-            if not app.debug and not app.testing:
-                raise RuntimeError("Redis Live Q&A storage could not be initialized.") from exc
-            app.logger.warning("Falling back to in-memory Live Q&A storage: %s", exc)
-            repository = InMemoryLiveQARepository()
-    elif backend == "memory":
-        repository = InMemoryLiveQARepository()
-    else:
-        raise RuntimeError(
-            "LIVE_QA_STORAGE_BACKEND must be 'dynamodb', 'redis', or 'memory'."
-        )
-
-    app.extensions["live_qa_repository"] = repository
-    if backend == "dynamodb":
-        app.logger.info(
-            "Live Q&A persistence: DynamoDB table %s in %s",
-            app.config["LIVE_QA_TABLE_NAME"],
-            app.config["AWS_REGION"],
-        )
-    elif backend == "redis":
-        app.logger.info("Live Q&A persistence: Redis")
-    else:
-        app.logger.warning(
-            "Live Q&A persistence is in memory; feed entries will be lost on "
-            "restart and will not be shared across Gunicorn workers."
-        )
-
     actions_backend = str(
         app.config.get("ACTIONS_STORAGE_BACKEND", "dynamodb")
     ).strip().lower()
@@ -229,13 +142,13 @@ def init_extensions(app: Flask) -> None:
     app.extensions["action_repository"] = action_repository
     if actions_backend == "dynamodb":
         app.logger.info(
-            "Action Center persistence: DynamoDB table %s in %s",
+            "Career Action Plan persistence: DynamoDB table %s in %s",
             app.config["ACTIONS_TABLE_NAME"],
             app.config["AWS_REGION"],
         )
     else:
         app.logger.warning(
-            "Action Center persistence is in memory; changes will be lost on restart."
+            "Career Action Plan persistence is in memory; changes will be lost on restart."
         )
 
     support_backend = str(

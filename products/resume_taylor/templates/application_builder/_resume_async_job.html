@@ -1,0 +1,54 @@
+{% if resume_async_job %}
+<section
+  class="card resume-async-job-card"
+  data-resume-async-job
+  data-status-url="{{ resume_async_job.status_url }}"
+  data-cancel-url="{{ resume_async_job.cancel_url }}"
+  data-retry-url="{{ resume_async_job.retry_url }}"
+  data-result-url="{{ resume_async_job.result_url }}"
+  data-terminal="{{ 'true' if resume_async_job.terminal else 'false' }}"
+  aria-live="polite"
+  aria-labelledby="resume-async-job-title"
+>
+  <div class="section-heading compact-section-heading">
+    <div>
+      <span class="eyebrow">Resume update</span>
+      <h2 id="resume-async-job-title">{{ 'Your resume is ready' if resume_async_job.terminal and resume_async_job.ok else ('Resume update needs attention' if resume_async_job.terminal else 'Preparing your resume') }}</h2>
+      <p data-resume-job-message>{{ resume_async_job.message }}</p>
+    </div>
+    <span class="resume-import-status {{ 'is-ready' if resume_async_job.terminal and resume_async_job.ok else 'is-pending' }}" data-resume-job-status>
+      {{ {'queued': 'Starting', 'running': 'In progress', 'completed': 'Ready', 'failed': 'Needs attention', 'canceled': 'Canceled'}.get(resume_async_job.status, resume_async_job.status|replace('_', ' ')|title) }}
+    </span>
+  </div>
+  <div class="resume-async-job-progress-row">
+    <progress
+      max="100"
+      value="{{ resume_async_job.progress_percent }}"
+      data-resume-job-progress
+      aria-label="Resume processing progress"
+    >{{ resume_async_job.progress_percent }}%</progress>
+    <strong data-resume-job-percent>{{ resume_async_job.progress_percent }}%</strong>
+  </div>
+  {% if not resume_async_job.terminal %}<p class="caption">You can leave this page and come back later.</p>{% endif %}
+  <div class="button-row">
+    <button
+      type="button"
+      class="button secondary compact-button"
+      data-resume-job-cancel
+      {% if resume_async_job.terminal %}hidden{% endif %}
+    >Cancel processing</button>
+    <button
+      type="button"
+      class="button secondary compact-button"
+      data-resume-job-retry
+      {% if not resume_async_job.terminal or resume_async_job.ok %}hidden{% endif %}
+    >Retry processing</button>
+    <a
+      class="button primary compact-button"
+      href="{{ resume_async_job.result_url or request.full_path }}"
+      data-resume-job-result
+      {% if not resume_async_job.terminal or not resume_async_job.ok %}hidden{% endif %}
+    >Open result</a>
+  </div>
+</section>
+{% endif %}

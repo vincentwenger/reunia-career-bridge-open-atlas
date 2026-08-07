@@ -2,328 +2,183 @@
     <section class="marketing-hero" id="product" aria-labelledby="marketing-title">
         <div class="marketing-shell marketing-hero-grid">
             <div class="marketing-hero-copy">
-                <span class="marketing-eyebrow">
-                    <span class="marketing-eyebrow-dot" aria-hidden="true"></span>
-                    AI Career Bridge
-                </span>
-                <h1 id="marketing-title">Build stronger applications. Practice better interviews.</h1>
+                <span class="marketing-eyebrow">AI career support for newcomer inclusion</span>
+                <h1 id="marketing-title">Make international experience clear, credible, and job-ready.</h1>
                 <p class="marketing-hero-lead">
-                    Réunia Career Bridge connects your career profile, application materials, verified evidence,
-                    tailored resume work, mock interviews, coaching, and follow-up actions around each target job.
+                    Réunia Career Bridge helps immigrants and newcomers translate their international experience into applications that U.S. employers can understand and evaluate—without inventing qualifications.
                 </p>
                 <div class="marketing-hero-actions" aria-label="Get started with Réunia Career Bridge">
                     <a class="marketing-button marketing-button-primary" href="{{ request.script_root }}/login.html">
-                        Get started
+                        Open the app
                         <span aria-hidden="true">→</span>
                     </a>
-                    <a class="marketing-button marketing-button-secondary" href="#how-it-works">See how it works</a>
+                    <a class="marketing-button marketing-button-secondary" href="#features">See what it does</a>
                 </div>
-                <ul class="marketing-hero-points" aria-label="Product highlights">
-                    <li>
-                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7"></path></svg>
-                        One workspace per target job
-                    </li>
-                    <li>
-                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7"></path></svg>
-                        Evidence-backed interview preparation
-                    </li>
-                    <li>
-                        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7"></path></svg>
-                        Mock-interview coaching and progress
-                    </li>
+                <ul class="marketing-trust-list" aria-label="Product principles">
+                    <li><span aria-hidden="true">✓</span> Candidate-confirmed evidence</li>
+                    <li><span aria-hidden="true">✓</span> U.S.-market context</li>
+                    <li><span aria-hidden="true">✓</span> No invented qualifications</li>
                 </ul>
             </div>
 
-            <div class="marketing-hero-preview" aria-label="Réunia Career Bridge product preview">
+            <div class="marketing-preview" aria-label="Fictional Career Bridge profile example">
                 <div class="marketing-preview-window">
-                    <div class="marketing-preview-toolbar">
+                    <div class="marketing-preview-topbar">
                         <div class="marketing-preview-brand">
                             <img src="{{ static_asset('icons/favicon-64.png') }}" alt="">
-                            <span>Réunia</span>
+                            <span><strong>Career Bridge</strong><small>Application workspace</small></span>
                         </div>
-                        <div class="marketing-preview-status"><span aria-hidden="true"></span> Application ready</div>
+                        <span class="marketing-preview-state"><i aria-hidden="true"></i> Evidence verified</span>
                     </div>
-                    <div class="marketing-preview-body">
-                        <aside class="marketing-preview-sidebar" aria-hidden="true">
-                            <span class="is-active"></span><span></span><span></span><span></span>
-                        </aside>
-                        <div class="marketing-preview-content">
-                            <div class="marketing-preview-heading">
-                                <div>
-                                    <small>Senior Software Engineer</small>
-                                    <strong>Application overview</strong>
-                                </div>
-                                <span class="marketing-score-pill">84 / 100</span>
-                            </div>
-                            <div class="marketing-preview-grid">
-                                <article class="marketing-preview-card marketing-preview-summary">
-                                    <span class="marketing-preview-label">Preparation focus</span>
-                                    <p>Strengthen the leadership example, quantify delivery impact, and prepare a concise system-design story.</p>
-                                    <div class="marketing-preview-lines" aria-hidden="true"><span></span><span></span><span></span></div>
-                                </article>
-                                <article class="marketing-preview-card">
-                                    <span class="marketing-preview-label">Next actions</span>
-                                    <ul>
-                                        <li><span>01</span> Refine tailored resume <strong>Today</strong></li>
-                                        <li><span>02</span> Practice STAR answer <strong>Wed</strong></li>
-                                        <li><span>03</span> Follow up with recruiter <strong>Fri</strong></li>
-                                    </ul>
-                                </article>
-                            </div>
-                            <div class="marketing-preview-insights">
-                                <span><strong>9</strong> Evidence examples</span>
-                                <span><strong>6</strong> Likely questions</span>
-                                <span><strong>3</strong> Improvement actions</span>
-                            </div>
+
+                    <div class="marketing-profile-card">
+                        <div class="marketing-avatar" aria-hidden="true">TM</div>
+                        <div>
+                            <span class="marketing-example-label">Fictional example</span>
+                            <h2>Thomas MARTIN</h2>
+                            <p>Application Production &amp; Support Specialist</p>
+                        </div>
+                        <span class="marketing-route">France <i aria-hidden="true">→</i> United States</span>
+                    </div>
+
+                    <div class="marketing-preview-metrics">
+                        <article><span>Target role</span><strong>Senior Application Support Engineer</strong></article>
+                        <article><span>Job fit</span><strong>84%</strong></article>
+                        <article><span>Verified examples</span><strong>7</strong></article>
+                    </div>
+
+                    <div class="marketing-translation-card">
+                        <div class="marketing-card-heading">
+                            <span>Career translation</span>
+                            <small>Candidate confirmed</small>
+                        </div>
+                        <div class="marketing-translation-row">
+                            <div><small>International experience</small><strong>Responsable de Production Applicative</strong></div>
+                            <span aria-hidden="true">→</span>
+                            <div><small>Employer-ready explanation</small><strong>Production support coordination across incidents, releases, and service continuity</strong></div>
+                        </div>
+                        <div class="marketing-tool-row" aria-label="Example tools">
+                            <span>SQL</span><span>Oracle</span><span>Linux</span><span>Shell</span>
                         </div>
                     </div>
-                </div>
-                <div class="marketing-float-card marketing-float-card-left" aria-hidden="true">
-                    <span class="marketing-float-icon">✓</span>
-                    <span><strong>Evidence linked</strong><small>Verified achievement selected</small></span>
-                </div>
-                <div class="marketing-float-card marketing-float-card-right" aria-hidden="true">
-                    <span class="marketing-live-wave"><i></i><i></i><i></i><i></i></span>
-                    <span><strong>Practice analyzed</strong><small>Interview scorecard ready</small></span>
+
+                    <div class="marketing-next-step">
+                        <span aria-hidden="true">01</span>
+                        <div><small>Next best action</small><strong>Practice a story about coordinating a production incident</strong></div>
+                        <b>Interview</b>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="marketing-section marketing-section-muted" id="how-it-works" aria-labelledby="workflow-title">
-        <div class="marketing-shell">
-            <div class="marketing-section-heading marketing-section-heading-centered">
-                <span class="marketing-kicker">One connected career workflow</span>
-                <h2 id="workflow-title">From target job to stronger interview performance</h2>
-                <p>Every resume version, preparation note, practice session, and improvement action stays connected to the job application it supports.</p>
-            </div>
-
-            <div class="marketing-workflow">
-                <article class="marketing-workflow-card">
-                    <div class="marketing-workflow-topline"><span>01</span><small>Build</small></div>
-                    <div class="marketing-icon marketing-icon-book" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"></path><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H20M9 7h7M9 11h5"></path></svg>
-                    </div>
-                    <span class="marketing-workflow-stage">Application Builder</span>
-                    <h3>Create the application workspace</h3>
-                    <p>Add the target job description, resume, company notes, recruiter messages, and relevant evidence.</p>
-                    <a href="{{ request.script_root }}/login.html">Build an application <span aria-hidden="true">→</span></a>
-                </article>
-
-                <div class="marketing-workflow-connector" aria-hidden="true"><span>→</span></div>
-
-                <article class="marketing-workflow-card marketing-workflow-card-featured">
-                    <div class="marketing-workflow-topline"><span>02</span><small>Practice</small></div>
-                    <div class="marketing-icon marketing-icon-mic" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="12" rx="4"></rect><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path></svg>
-                    </div>
-                    <span class="marketing-workflow-stage">Interview Preparation</span>
-                    <h3>Prepare and run a mock interview</h3>
-                    <p>Research likely questions, retrieve verified examples, and record a practice session in the browser.</p>
-                    <a href="{{ request.script_root }}/login.html">Practice an interview <span aria-hidden="true">→</span></a>
-                </article>
-
-                <div class="marketing-workflow-connector" aria-hidden="true"><span>→</span></div>
-
-                <article class="marketing-workflow-card">
-                    <div class="marketing-workflow-topline"><span>03</span><small>Improve</small></div>
-                    <div class="marketing-icon marketing-icon-chart" aria-hidden="true">
-                        <svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path><path d="m4 6 5-3 6 5 6-5"></path></svg>
-                    </div>
-                    <span class="marketing-workflow-stage">Interview Review</span>
-                    <h3>Review, act, and track progress</h3>
-                    <p>Evaluate relevance, evidence, structure, clarity, and delivery, then convert coaching into an action plan.</p>
-                    <a href="{{ request.script_root }}/login.html">Review progress <span aria-hidden="true">→</span></a>
-                </article>
-            </div>
-        </div>
-    </section>
-
-    <section class="marketing-section" id="benefits" aria-labelledby="benefits-title">
+    <section class="marketing-feature-section" id="features" aria-labelledby="features-title">
         <div class="marketing-shell">
             <div class="marketing-section-heading">
-                <span class="marketing-kicker">Designed around the job application</span>
-                <h2 id="benefits-title">Keep every career decision in context</h2>
-                <p>Stop treating resumes, interview notes, practice recordings, and follow-ups as disconnected files.</p>
+                <span class="marketing-eyebrow">One connected career journey</span>
+                <h2 id="features-title">From international background to a stronger next step.</h2>
+                <p>Career Bridge keeps the candidate’s real evidence connected across the job search instead of treating every resume, interview, and follow-up as a separate task.</p>
             </div>
-            <div class="marketing-benefit-grid">
-                <article class="marketing-benefit-card">
-                    <div class="marketing-benefit-number">01</div>
-                    <h3>Reuse your strongest evidence</h3>
-                    <p>Maintain a verified Career Evidence Library of projects, achievements, metrics, and work examples.</p>
-                </article>
-                <article class="marketing-benefit-card">
-                    <div class="marketing-benefit-number">02</div>
-                    <h3>Prepare for the actual role</h3>
-                    <p>Connect the job posting and company context to likely questions, answer guidance, and tailored resume work.</p>
-                </article>
-                <article class="marketing-benefit-card">
-                    <div class="marketing-benefit-number">03</div>
-                    <h3>Turn coaching into action</h3>
-                    <p>Track resume changes, practice needs, applications, recruiter follow-ups, and completed improvements.</p>
-                </article>
-            </div>
-        </div>
-    </section>
 
-    <section class="marketing-section marketing-section-muted" id="features" aria-labelledby="features-title">
-        <div class="marketing-shell">
-            <div class="marketing-section-heading marketing-section-heading-centered">
-                <span class="marketing-kicker">Career Bridge workspaces</span>
-                <h2 id="features-title">One product across the application journey</h2>
-                <p>Use only the workspace you need, while every activity remains tied to the selected job application.</p>
-            </div>
             <div class="marketing-feature-grid">
-                <article class="marketing-feature-card"><h3>Career Profile</h3><p>Professional background, accomplishments, preferences, constraints, and reusable guidance.</p></article>
-                <article class="marketing-feature-card"><h3>Application Builder</h3><p>One Application Workspace for the target job, resume, company notes, and recruiter messages.</p></article>
-                <article class="marketing-feature-card"><h3>Interview Preparation</h3><p>Likely questions, company research, verified evidence, and answer planning.</p></article>
-                <article class="marketing-feature-card"><h3>Mock Interview Recorder</h3><p>Browser audio recording and transcription for practice sessions.</p></article>
-                <article class="marketing-feature-card"><h3>Interview Review</h3><p>Transcript, coaching, and an Interview Scorecard based on five practical dimensions.</p></article>
-                <article class="marketing-feature-card"><h3>Career Action Plan</h3><p>Resume updates, practice tasks, applications, and recruiter follow-ups.</p></article>
-                <article class="marketing-feature-card"><h3>Career Progress</h3><p>Readiness and improvement trends across applications and mock interviews.</p></article>
-                <article class="marketing-feature-card"><h3>Admin Analytics</h3><p>Administrator-only product operations and technical incident monitoring.</p></article>
+                <article>
+                    <span class="marketing-feature-number">01</span>
+                    <h3>Translate career context</h3>
+                    <p>Explain unfamiliar titles, credentials, terminology, and achievements in language U.S. employers can evaluate.</p>
+                </article>
+                <article>
+                    <span class="marketing-feature-number">02</span>
+                    <h3>Build verified evidence</h3>
+                    <p>Save confirmed accomplishments and examples once, then reuse them across future applications.</p>
+                </article>
+                <article>
+                    <span class="marketing-feature-number">03</span>
+                    <h3>Tailor each application</h3>
+                    <p>Assess job fit, align the resume to supported requirements, and keep every claim traceable.</p>
+                </article>
+                <article>
+                    <span class="marketing-feature-number">04</span>
+                    <h3>Practice with an AI interviewer</h3>
+                    <p>Prepare for likely questions, complete adaptive mock interviews, and improve weak answers.</p>
+                </article>
+                <article>
+                    <span class="marketing-feature-number">05</span>
+                    <h3>Build professional connections</h3>
+                    <p>Create evidence-based introductions, recruiter follow-ups, and networking actions without exaggeration.</p>
+                </article>
+                <article>
+                    <span class="marketing-feature-number">06</span>
+                    <h3>Turn feedback into action</h3>
+                    <p>Connect resume gaps, interview findings, deadlines, and follow-ups in one career action plan.</p>
+                </article>
             </div>
         </div>
     </section>
 
-    <section class="marketing-section marketing-tour" id="tour" aria-labelledby="tour-title">
+    <section class="marketing-inclusion-section" id="inclusion" aria-labelledby="inclusion-title">
         <div class="marketing-shell">
-            <div class="marketing-section-heading marketing-section-heading-centered">
-                <span class="marketing-kicker">Product tour</span>
-                <h2 id="tour-title">See the connected workflow</h2>
-                <p>Move from application context to practice and measurable improvement.</p>
+            <div class="marketing-section-heading marketing-section-heading-light">
+                <span class="marketing-eyebrow">Designed for workforce inclusion</span>
+                <h2 id="inclusion-title">Career intelligence that can support the whole newcomer journey.</h2>
             </div>
-            <div class="marketing-tour-tabs" role="tablist" aria-label="Career Bridge product tour">
-                <button type="button" class="marketing-tour-tab is-active" id="tour-tab-prepare" role="tab" aria-selected="true" aria-controls="tour-panel-prepare" data-tour-tab="prepare">Build &amp; prepare</button>
-                <button type="button" class="marketing-tour-tab" id="tour-tab-live" role="tab" aria-selected="false" aria-controls="tour-panel-live" data-tour-tab="live" tabindex="-1">Mock interview</button>
-                <button type="button" class="marketing-tour-tab" id="tour-tab-review" role="tab" aria-selected="false" aria-controls="tour-panel-review" data-tour-tab="review" tabindex="-1">Review &amp; improve</button>
-            </div>
-            <div class="marketing-tour-panels">
-                <section class="marketing-tour-panel is-active" id="tour-panel-prepare" role="tabpanel" aria-labelledby="tour-tab-prepare" data-tour-panel="prepare">
-                    <div class="marketing-tour-copy">
-                        <span class="marketing-tour-step">Application workspace</span>
-                        <h3>Collect the right context for one target job</h3>
-                        <p>Connect the resume, job posting, company notes, recruiter messages, Career Profile, and verified evidence.</p>
-                        <ul><li>Application Materials</li><li>Career Profile</li><li>Career Evidence Library</li></ul>
+
+            <div class="marketing-inclusion-grid">
+                <article>
+                    <div class="marketing-category-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M4 20h16M6 20V8l6-4 6 4v12M9 12h6M9 16h6"></path></svg>
                     </div>
-                    <div class="marketing-ui marketing-ui-knowledge" aria-label="Application preparation interface preview">
-                        <div class="marketing-ui-tabs"><span>Evidence</span><span class="active">Application materials</span><span>Career profile</span></div>
-                        <div class="marketing-ui-card"><strong>Senior Software Engineer</strong><small>Target application workspace</small></div>
-                        <div class="marketing-ui-file-list"><div><i>PDF</i><span><strong>Resume.pdf</strong><small>Source resume</small></span><b>✓</b></div><div><i>TXT</i><span><strong>Job description</strong><small>Target role</small></span><b>✓</b></div></div>
+                    <span class="marketing-category-label">Career &amp; Talent AI</span>
+                    <h3>Help employers see transferable talent.</h3>
+                    <p>Resume translation, evidence-aware job matching, mock interview agents, and networking support help foreign-trained and underrepresented candidates compete on what they can actually do.</p>
+                </article>
+                <article>
+                    <div class="marketing-category-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M12 21s7-5.2 7-12a7 7 0 1 0-14 0c0 6.8 7 12 7 12Z"></path><circle cx="12" cy="9" r="2.2"></circle></svg>
                     </div>
-                </section>
-                <section class="marketing-tour-panel" id="tour-panel-live" role="tabpanel" aria-labelledby="tour-tab-live" data-tour-panel="live" hidden>
-                    <div class="marketing-tour-copy">
-                        <span class="marketing-tour-step">Practice session</span>
-                        <h3>Record a realistic mock interview</h3>
-                        <p>Practice aloud, capture your answers, and keep the session attached to the selected application.</p>
-                        <ul><li>Browser microphone recording</li><li>Optional interviewer prompt audio</li><li>Automatic transcription</li></ul>
-                    </div>
-                    <div class="marketing-ui marketing-ui-live" aria-label="Mock interview interface preview">
-                        <div class="marketing-ui-top"><span>Mock Interview</span><small class="marketing-ui-recording"><i></i> Recording 18:42</small></div>
-                        <div class="marketing-live-card"><strong>Senior Software Engineer</strong><small>Practice session connected</small></div>
-                        <div class="marketing-live-waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-                    </div>
-                </section>
-                <section class="marketing-tour-panel" id="tour-panel-review" role="tabpanel" aria-labelledby="tour-tab-review" data-tour-panel="review" hidden>
-                    <div class="marketing-tour-copy">
-                        <span class="marketing-tour-step">Coaching loop</span>
-                        <h3>Understand what improved and what to do next</h3>
-                        <p>Review the transcript and scorecard, then create practical improvement actions for the application.</p>
-                        <ul><li>Relevance and evidence</li><li>Structure, clarity, and delivery</li><li>Career Action Plan</li></ul>
-                    </div>
-                    <div class="marketing-ui marketing-ui-review" aria-label="Interview review interface preview">
-                        <div class="marketing-review-score"><small>Interview score</small><strong>84</strong><span>Strong foundation</span></div>
-                        <div class="marketing-review-bars"><span><i style="width: 88%"></i></span><span><i style="width: 82%"></i></span><span><i style="width: 79%"></i></span></div>
-                    </div>
-                </section>
+                    <span class="marketing-category-label">Newcomer Settlement Tools</span>
+                    <h3>Connect the job search to real landing decisions.</h3>
+                    <p>Career Bridge provides verified job, location, timing, work-authorization, and relocation context that can guide housing search agents, logistics copilots for international students, and neighborhood matching tools.</p>
+                </article>
             </div>
         </div>
     </section>
 
-    <section class="marketing-section" id="use-cases" aria-labelledby="use-cases-title">
-        <div class="marketing-shell">
+    <section class="marketing-process-section" id="how-it-works" aria-labelledby="process-title">
+        <div class="marketing-shell marketing-process-layout">
             <div class="marketing-section-heading">
-                <span class="marketing-kicker">Built for career transitions</span>
-                <h2 id="use-cases-title">Support for the applications that matter most</h2>
-                <p>Use the same evidence-backed process whether you are advancing, changing industries, or returning to work.</p>
+                <span class="marketing-eyebrow">How it works</span>
+                <h2 id="process-title">A simple, evidence-first path.</h2>
+                <p>The candidate stays in control of what is confirmed, reused, tailored, and shared.</p>
             </div>
-            <div class="marketing-use-case-grid">
-                <article class="marketing-use-case marketing-use-case-interview"><span class="marketing-use-case-label">01</span><h3>Competitive job applications</h3><p>Keep role-specific materials, tailored versions, preparation, and follow-ups together.</p><span class="marketing-use-case-tag">Application + interview</span></article>
-                <article class="marketing-use-case marketing-use-case-sales"><span class="marketing-use-case-label">02</span><h3>Career changers</h3><p>Translate transferable experience into verified evidence and role-relevant interview stories.</p><span class="marketing-use-case-tag">Evidence + positioning</span></article>
-                <article class="marketing-use-case marketing-use-case-project"><span class="marketing-use-case-label">03</span><h3>Returning professionals</h3><p>Organize recent learning, earlier achievements, constraints, and confidence-building practice.</p><span class="marketing-use-case-tag">Profile + practice</span></article>
-                <article class="marketing-use-case marketing-use-case-coaching"><span class="marketing-use-case-label">04</span><h3>Career coaching</h3><p>Use repeatable scorecards and action plans to make improvement visible over time.</p><span class="marketing-use-case-tag">Coaching + progress</span></article>
-            </div>
-        </div>
-    </section>
-
-    <section class="marketing-section marketing-trust" id="privacy" aria-labelledby="trust-title">
-        <div class="marketing-shell marketing-trust-grid">
-            <div class="marketing-trust-visual" aria-hidden="true">
-                <div class="marketing-shield"><svg viewBox="0 0 48 48"><path d="M24 5 9 11v11c0 10.6 6.2 17.7 15 22 8.8-4.3 15-11.4 15-22V11L24 5Z"></path><path d="m17 24 5 5 10-11"></path></svg></div>
-                <div class="marketing-trust-card"><span>Recording control</span><strong>You choose when mock-interview recording starts and stops.</strong></div>
-                <div class="marketing-trust-card"><span>Evidence control</span><strong>You choose which career evidence supports each application.</strong></div>
-            </div>
-            <div class="marketing-trust-copy">
-                <span class="marketing-kicker">Responsible interview preparation</span>
-                <h2 id="trust-title">Practice support without hidden real-interview assistance</h2>
-                <p>Réunia Career Bridge is designed for preparation, mock interviews, and post-practice coaching. Candidate-facing Live Q&amp;A is not part of the product.</p>
-                <ul>
-                    <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7"></path></svg><span><strong>Practice-only recording</strong> — record mock sessions you deliberately start.</span></li>
-                    <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7"></path></svg><span><strong>Selected evidence</strong> — choose the documents and examples used for coaching.</span></li>
-                    <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7"></path></svg><span><strong>No desktop client in the MVP</strong> — the browser recorder is the supported path.</span></li>
-                    <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 10 3 3 7-7"></path></svg><span><strong>Separate administration</strong> — operational analytics and incidents remain administrator-only.</span></li>
-                </ul>
-                <a class="marketing-text-link" href="{{ request.script_root }}/help-support.html">Ask about privacy or data handling <span aria-hidden="true">→</span></a>
-            </div>
-        </div>
-    </section>
-
-    <section class="marketing-section marketing-faq" id="faq" aria-labelledby="faq-title">
-        <div class="marketing-shell marketing-faq-grid">
-            <div class="marketing-section-heading">
-                <span class="marketing-kicker">Frequently asked questions</span>
-                <h2 id="faq-title">What to know before your first application</h2>
-                <p>These answers describe the current Career Bridge MVP.</p>
-                <a class="marketing-text-link" href="{{ request.script_root }}/help-support.html">Still have a question? Contact support <span aria-hidden="true">→</span></a>
-            </div>
-            <div class="marketing-faq-list">
-                <details open><summary>What is an Application Workspace?<span aria-hidden="true">+</span></summary><p>It is the job-specific workspace connecting the target job, resume, materials, evidence, interview preparation, practice sessions, actions, and status.</p></details>
-                <details><summary>Can I reuse my background and evidence?<span aria-hidden="true">+</span></summary><p>Yes. Career Profile and Career Evidence Library are reusable, while each application selects only the context relevant to that target role.</p></details>
-                <details><summary>Do I need to install a recorder?<span aria-hidden="true">+</span></summary><p>No. Mock Interview Recorder runs in the browser. The Windows Desktop Recorder is excluded from the Career Bridge MVP.</p></details>
-                <details><summary>Does Réunia answer questions during a real interview?<span aria-hidden="true">+</span></summary><p>No. The product supports preparation, mock interviews, and review. Candidate-facing real-time answer generation is retired.</p></details>
-                <details><summary>What does the Interview Scorecard measure?<span aria-hidden="true">+</span></summary><p>It evaluates answer relevance, evidence, structure, clarity, and delivery.</p></details>
-                <details><summary>Where do improvement tasks go?<span aria-hidden="true">+</span></summary><p>Career Action Plan tracks resume changes, practice needs, applications, and recruiter follow-ups.</p></details>
-            </div>
+            <ol class="marketing-process-list">
+                <li><span>1</span><div><strong>Add your career foundation</strong><p>Profile, international resume, goals, credentials, and constraints.</p></div></li>
+                <li><span>2</span><div><strong>Confirm the meaning and evidence</strong><p>Review translations and answer only the questions needed to close important gaps.</p></div></li>
+                <li><span>3</span><div><strong>Build and practice for a target job</strong><p>Create a supported resume, interview plan, and adaptive practice session.</p></div></li>
+                <li><span>4</span><div><strong>Take the next best action</strong><p>Track follow-ups, learning priorities, networking, and application outcomes.</p></div></li>
+            </ol>
         </div>
     </section>
 
     <section class="marketing-final-cta" aria-labelledby="final-cta-title">
         <div class="marketing-shell marketing-final-cta-inner">
             <div>
-                <span class="marketing-kicker">Build your next application deliberately</span>
-                <h2 id="final-cta-title">Connect your evidence, preparation, practice, and progress.</h2>
+                <span class="marketing-eyebrow">Experience should travel</span>
+                <h2 id="final-cta-title">Build an application that employers can understand and candidates can defend.</h2>
             </div>
-            <div class="marketing-final-actions">
-                <a class="marketing-button marketing-button-light" href="{{ request.script_root }}/login.html">Get started <span aria-hidden="true">→</span></a>
-                <a class="marketing-button marketing-button-ghost" href="{{ request.script_root }}/login.html">Sign in</a>
-            </div>
+            <a class="marketing-button marketing-button-light" href="{{ request.script_root }}/login.html">
+                Start with Career Bridge
+                <span aria-hidden="true">→</span>
+            </a>
         </div>
     </section>
 
     <footer class="marketing-footer">
-        <div class="marketing-shell marketing-footer-grid">
+        <div class="marketing-shell">
             <div class="marketing-footer-brand">
-                <a href="#product" aria-label="Réunia Career Bridge home">
-                    <img src="{{ static_asset('icons/favicon-64.png') }}" alt="">
-                    <span><strong>Réunia</strong><small>AI Career Bridge</small></span>
-                </a>
-                <p>Connect job applications, evidence, interview practice, coaching, and follow-up in one focused workflow.</p>
+                <img src="{{ static_asset('icons/favicon-64.png') }}" alt="">
+                <span><strong>Réunia Career Bridge</strong><small>Evidence-grounded AI for newcomer career mobility.</small></span>
             </div>
-            <nav aria-label="Product links"><strong>Product</strong><a href="#how-it-works">How it works</a><a href="#features">Features</a><a href="#tour">Product tour</a></nav>
-            <nav aria-label="Use case links"><strong>Use cases</strong><a href="#use-cases">Job applications</a><a href="#use-cases">Career changes</a><a href="#use-cases">Career coaching</a></nav>
-            <nav aria-label="Help links"><strong>Resources</strong><a href="{{ request.script_root }}/user-guide.html">User guide</a><a href="{{ request.script_root }}/help-support.html">Help &amp; support</a><a href="#privacy">Responsible practice</a><a href="#faq">FAQ</a></nav>
+            <a href="{{ request.script_root }}/login.html">Sign in</a>
         </div>
-        <div class="marketing-shell marketing-footer-bottom"><span>© 2026 Réunia</span><span>Use recording only for authorized mock-interview practice.</span></div>
     </footer>
 </main>

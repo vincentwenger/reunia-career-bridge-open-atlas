@@ -1,0 +1,14 @@
+# Treat document/media artifacts as binary so Git does not run text whitespace checks on them.
+*.pdf binary
+*.docx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+
+# Keep Windows command files normalized in Git and checked out with CRLF on Windows-compatible clients.
+*.bat text eol=crlf

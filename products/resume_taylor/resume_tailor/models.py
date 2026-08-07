@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 
 class StrictModel(BaseModel):
@@ -140,6 +141,150 @@ class CandidateProfile(StrictModel):
         return skills
 
 
+CareerTranslationCategory = Literal[
+    "job_title_translation",
+    "credential_explanation",
+    "regional_terminology",
+    "hidden_accomplishment",
+    "transferable_skill",
+    "unsupported_requirement",
+    "missing_evidence",
+]
+
+CareerEvidenceDisposition = Literal[
+    "confirmed_experience",
+    "reasonable_rephrasing",
+    "user_clarification_required",
+    "unsupported_claim",
+    "recommended_learning_or_future_action",
+]
+
+
+class NewcomerCareerProfile(StrictModel):
+    """Reusable career context used for translation and tailoring, never as claim evidence."""
+
+    professional_headline: str = ""
+    current_role: str = ""
+    years_experience: str = ""
+    current_location: str = ""
+    preferred_roles: list[str] = Field(default_factory=list)
+    core_skills: list[str] = Field(default_factory=list)
+    key_accomplishments: list[str] = Field(default_factory=list)
+    countries_worked: list[str] = Field(default_factory=list)
+    industries: list[str] = Field(default_factory=list)
+    roles: list[str] = Field(default_factory=list)
+    languages: list[str] = Field(default_factory=list)
+    target_country: str = ""
+    resume_language: str = ""
+    target_country_experience: str = ""
+    target_role: str = ""
+    international_credentials: list[str] = Field(default_factory=list)
+    professional_certifications: list[str] = Field(default_factory=list)
+    unfamiliar_job_titles: list[str] = Field(default_factory=list)
+    career_transitions: list[str] = Field(default_factory=list)
+    us_employment_experience: str = ""
+    work_preferences: str = ""
+    relocation_preferences: str = ""
+    work_authorization: str = ""
+    career_goals: str = ""
+    constraints: str = ""
+    career_profile_fingerprint: str = ""
+
+    @field_validator(
+        "preferred_roles",
+        "core_skills",
+        "key_accomplishments",
+        "countries_worked",
+        "industries",
+        "roles",
+        "languages",
+        "international_credentials",
+        "professional_certifications",
+        "unfamiliar_job_titles",
+        "career_transitions",
+    )
+    @classmethod
+    def normalize_list_values(cls, value: list[str]) -> list[str]:
+        seen: set[str] = set()
+        normalized: list[str] = []
+        for raw in value:
+            item = " ".join(str(raw).split())
+            key = item.casefold()
+            if item and key not in seen:
+                normalized.append(item)
+                seen.add(key)
+        return normalized
+
+    @field_validator(
+        "professional_headline",
+        "current_role",
+        "years_experience",
+        "current_location",
+        "target_country",
+        "resume_language",
+        "target_country_experience",
+        "target_role",
+        "us_employment_experience",
+        "work_preferences",
+        "relocation_preferences",
+        "work_authorization",
+        "career_goals",
+        "constraints",
+        "career_profile_fingerprint",
+    )
+    @classmethod
+    def normalize_text_values(cls, value: str) -> str:
+        return " ".join(value.split())
+
+    def has_context(self) -> bool:
+        return any(
+            (
+                self.professional_headline,
+                self.current_role,
+                self.years_experience,
+                self.current_location,
+                self.preferred_roles,
+                self.core_skills,
+                self.key_accomplishments,
+                self.countries_worked,
+                self.industries,
+                self.roles,
+                self.languages,
+                self.target_country,
+                self.resume_language,
+                self.target_country_experience,
+                self.target_role,
+                self.international_credentials,
+                self.professional_certifications,
+                self.unfamiliar_job_titles,
+                self.career_transitions,
+                self.us_employment_experience,
+                self.work_preferences,
+                self.relocation_preferences,
+                self.work_authorization,
+                self.career_goals,
+                self.constraints,
+            )
+        )
+
+
+class CareerTranslationFinding(StrictModel):
+    category: CareerTranslationCategory
+    source_text: str
+    translated_meaning: str = ""
+    disposition: CareerEvidenceDisposition
+    evidence_ids: list[str] = Field(default_factory=list)
+    rationale: str
+    recommended_action: str = ""
+
+
+class CareerTranslationAssessment(StrictModel):
+    summary: str = ""
+    target_country: str = ""
+    target_role: str = ""
+    findings: list[CareerTranslationFinding] = Field(default_factory=list)
+
+
 RequirementCategory = Literal[
     "technical_skill",
     "domain_knowledge",
@@ -208,6 +353,18 @@ class BulletProposal(StrictModel):
     proposed_text: str
     matched_requirement_ids: list[str] = Field(default_factory=list)
     evidence_note: str
+    # Deterministic Job Alignment metadata. The AI never controls these fields;
+    # they are populated after selection so the UI can explain which bullets won
+    # the available resume space and why.
+    # These fields are populated only by deterministic application logic after
+    # the AI response has been parsed. Excluding them from the generated JSON
+    # schema prevents OpenAI structured-output validation from treating internal
+    # comparison metadata as model-generated response fields. They remain normal
+    # Pydantic fields for persistence, rendering, and manual overrides.
+    selected_instead_ids: SkipJsonSchema[list[str]] = Field(default_factory=list)
+    selection_comparison_reasons: SkipJsonSchema[dict[str, list[str]]] = Field(
+        default_factory=dict
+    )
 
 
 QuestionAnswerType = Literal[
@@ -240,6 +397,8 @@ class CandidateAnswer(StrictModel):
     text: str = ""
     experience_id: str = ""
     placement: ConfirmationPlacement = "auto"
+    reused_from_library: bool = False
+    library_evidence_id: str = ""
 
 
 class TailoringProposal(StrictModel):
@@ -249,6 +408,9 @@ class TailoringProposal(StrictModel):
     evidence_matches: list[EvidenceMatch]
     unsupported_requirements: list[str] = Field(default_factory=list)
     candidate_questions: list[CandidateQuestion] = Field(default_factory=list)
+    career_translation_assessment: CareerTranslationAssessment = Field(
+        default_factory=CareerTranslationAssessment
+    )
 
 
 IssueSeverity = Literal["blocking", "warning"]

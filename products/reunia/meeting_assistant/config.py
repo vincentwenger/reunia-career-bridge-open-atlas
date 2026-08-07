@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import os
 
-
 def _pricing_table_from_env(
     environment_variable: str,
     defaults: dict[str, dict[str, float] | float],
@@ -52,6 +51,91 @@ class BaseConfig:
 
     AWS_REGION = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-west-2"))
 
+    # Career Bridge storage adapters. Application records always use DynamoDB;
+    # production also requires durable workflow and document storage.
+    CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "memory"
+    ).strip().lower()
+    CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "dynamodb"
+    ).strip().lower()
+    CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", "memory"
+    ).strip().lower()
+    CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_ASYNC_JOB_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_ASYNC_JOB_STORAGE_BACKEND",
+        CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND,
+    ).strip().lower()
+    CAREER_BRIDGE_ASYNC_JOBS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_ASYNC_JOBS_TABLE_NAME",
+        CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME,
+    ).strip()
+    CAREER_BRIDGE_ASYNC_JOB_LEASE_SECONDS = int(
+        os.getenv("CAREER_BRIDGE_ASYNC_JOB_LEASE_SECONDS", "900")
+    )
+    CAREER_BRIDGE_ASYNC_WORKER_HEARTBEAT_INTERVAL_SECONDS = int(
+        os.getenv("CAREER_BRIDGE_ASYNC_WORKER_HEARTBEAT_INTERVAL_SECONDS", "15")
+    )
+    CAREER_BRIDGE_ASYNC_WORKER_MAX_AGE_SECONDS = int(
+        os.getenv("CAREER_BRIDGE_ASYNC_WORKER_MAX_AGE_SECONDS", "90")
+    )
+    CAREER_BRIDGE_ASYNC_WORKER_HEALTH_CACHE_SECONDS = int(
+        os.getenv("CAREER_BRIDGE_ASYNC_WORKER_HEALTH_CACHE_SECONDS", "10")
+    )
+    CAREER_BRIDGE_JOB_DISCOVERY_SLOW_REQUEST_MS = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_SLOW_REQUEST_MS", "1000"
+    ).strip()
+    CAREER_BRIDGE_APPLICATIONS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_WORKFLOWS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS = int(
+        os.getenv(
+            "CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS",
+            os.getenv("CAREER_BRIDGE_WORKFLOW_TTL_SECONDS", str(8 * 60 * 60)),
+        )
+    )
+    # Backward-compatible alias. It now controls scratch workflows only.
+    CAREER_BRIDGE_WORKFLOW_TTL_SECONDS = CAREER_BRIDGE_SCRATCH_WORKFLOW_TTL_SECONDS
+    # Zero retains application-linked workflows until explicit deletion.
+    CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS = int(
+        os.getenv("CAREER_BRIDGE_APPLICATION_WORKFLOW_TTL_SECONDS", "0")
+    )
+    CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", "local"
+    ).strip().lower()
+    CAREER_BRIDGE_DOCUMENTS_BUCKET = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_BUCKET", ""
+    ).strip()
+    CAREER_BRIDGE_DOCUMENTS_PREFIX = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_PREFIX", "career-bridge"
+    ).strip("/")
+    CAREER_BRIDGE_DOCUMENTS_LOCAL_PATH = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_LOCAL_PATH", ""
+    ).strip()
+    CAREER_BRIDGE_DOCUMENTS_KMS_KEY_ID = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_KMS_KEY_ID", ""
+    ).strip()
+    # Narrow emergency/demo escape hatch. This bypasses only the Career Bridge
+    # persistence requirement; all other Réunia production safeguards remain active.
+    CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION = os.getenv(
+        "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION", "false"
+    ).strip().casefold() in {"1", "true", "yes", "on"}
+    CAREER_BRIDGE_S3_ACCESS_KEY_ID = os.getenv(
+        "CAREER_BRIDGE_S3_ACCESS_KEY_ID", ""
+    ).strip()
+    CAREER_BRIDGE_S3_SECRET_ACCESS_KEY = os.getenv(
+        "CAREER_BRIDGE_S3_SECRET_ACCESS_KEY", ""
+    ).strip()
+    CAREER_BRIDGE_S3_SESSION_TOKEN = os.getenv(
+        "CAREER_BRIDGE_S3_SESSION_TOKEN", ""
+    ).strip()
+
     # User-facing AI model presets. The Settings page displays simple capability
     # choices while the backend maps each choice to a deployment-configured model ID.
     AI_MODEL_FAST = os.getenv("AI_MODEL_FAST", "gpt-4o-mini").strip()
@@ -79,135 +163,22 @@ class BaseConfig:
             AI_MODEL_PRESETS[DEFAULT_AI_MODEL_PRESET],
         ),
     ).strip()
-    # Final recordings keep Whisper's timestamped segments. Short Live Q&A
-    # windows use the lower-cost transcription model and do not request timestamps.
-    FINAL_TRANSCRIPTION_MODEL = os.getenv(
-        "FINAL_TRANSCRIPTION_MODEL",
-        os.getenv("AUDIO_TRANSCRIPTION_MODEL", "whisper-1"),
-    ).strip()
-    LIVE_TRANSCRIPTION_MODEL = os.getenv(
-        "LIVE_TRANSCRIPTION_MODEL",
+    # Adaptive Mock Interview records one short answer at a time.
+    SHORT_TRANSCRIPTION_MODEL = os.getenv(
+        "SHORT_TRANSCRIPTION_MODEL",
         "gpt-4o-mini-transcribe",
     ).strip()
-    # Backward-compatible alias used by older integrations.
-    AUDIO_TRANSCRIPTION_MODEL = FINAL_TRANSCRIPTION_MODEL
+    SHORT_TRANSCRIPTION_ESTIMATED_SECONDS = float(
+        os.getenv("SHORT_TRANSCRIPTION_ESTIMATED_SECONDS", "90")
+    )
     AUDIO_TRANSCRIPTION_LANGUAGE = os.getenv(
         "AUDIO_TRANSCRIPTION_LANGUAGE",
         "en",
     ).strip()
-    RECORDER_NO_SPEECH_PROBABILITY_THRESHOLD = float(
-        os.getenv("RECORDER_NO_SPEECH_PROBABILITY_THRESHOLD", "0.60")
-    )
-    RECORDER_HIGH_NO_SPEECH_PROBABILITY_THRESHOLD = float(
-        os.getenv("RECORDER_HIGH_NO_SPEECH_PROBABILITY_THRESHOLD", "0.80")
-    )
-    RECORDER_MIN_AVG_LOGPROB = float(
-        os.getenv("RECORDER_MIN_AVG_LOGPROB", "-1.0")
-    )
-    RECORDER_VERY_LOW_AVG_LOGPROB = float(
-        os.getenv("RECORDER_VERY_LOW_AVG_LOGPROB", "-1.5")
-    )
-    RECORDER_MAX_COMPRESSION_RATIO = float(
-        os.getenv("RECORDER_MAX_COMPRESSION_RATIO", "2.4")
-    )
-    RECORDER_REPEAT_MIN_WORDS = int(
-        os.getenv("RECORDER_REPEAT_MIN_WORDS", "5")
-    )
-    RECORDER_REPEAT_ALLOW_COUNT = int(
-        os.getenv("RECORDER_REPEAT_ALLOW_COUNT", "1")
-    )
-    RECORDER_REPEAT_TRIGGER_COUNT = int(
-        os.getenv("RECORDER_REPEAT_TRIGGER_COUNT", "3")
-    )
-    RECORDER_REPEAT_WINDOW_SECONDS = float(
-        os.getenv("RECORDER_REPEAT_WINDOW_SECONDS", "180")
-    )
-    # Each final browser recording segment must remain below both the application
-    # upload ceiling and the transcription provider's per-request file limit.
-    RECORDER_MAX_FILE_BYTES = int(
-        os.getenv("RECORDER_MAX_FILE_BYTES", str(24_000_000))
-    )
-    RECORDER_FINAL_SEGMENT_SECONDS = int(
-        os.getenv("RECORDER_FINAL_SEGMENT_SECONDS", "600")
-    )
-    RECORDER_FINAL_SEGMENT_RETRY_COUNT = int(
-        os.getenv("RECORDER_FINAL_SEGMENT_RETRY_COUNT", "3")
-    )
-    RECORDER_FINAL_SEGMENT_RETRY_BASE_MILLISECONDS = int(
-        os.getenv("RECORDER_FINAL_SEGMENT_RETRY_BASE_MILLISECONDS", "1000")
-    )
-    RECORDER_FINAL_MIN_SEGMENT_BYTES = int(
-        os.getenv("RECORDER_FINAL_MIN_SEGMENT_BYTES", "800")
-    )
-    RECORDER_MAX_SEGMENTS_PER_SOURCE = int(
-        os.getenv("RECORDER_MAX_SEGMENTS_PER_SOURCE", "18")
-    )
-    RECORDER_MAX_TOTAL_BYTES = int(
-        os.getenv("RECORDER_MAX_TOTAL_BYTES", str(750_000_000))
+    SHORT_AUDIO_MAX_FILE_BYTES = int(
+        os.getenv("SHORT_AUDIO_MAX_FILE_BYTES", str(24_000_000))
     )
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", str(60_000_000)))
-    RECORDER_JOB_DIR = os.getenv(
-        "RECORDER_JOB_DIR",
-        "/tmp/meeting-assistant-recorder-jobs",
-    )
-    RECORDER_JOB_RETENTION_SECONDS = int(
-        os.getenv("RECORDER_JOB_RETENTION_SECONDS", "86400")
-    )
-    RECORDER_JOB_IDEMPOTENCY_CHECK = os.getenv(
-        "RECORDER_JOB_IDEMPOTENCY_CHECK", "true"
-    ).strip().lower() == "true"
-    RECORDER_JOB_STORAGE_BACKEND = os.getenv(
-        "RECORDER_JOB_STORAGE_BACKEND", "local"
-    ).strip().lower()
-    RECORDER_JOB_QUEUE_BACKEND = os.getenv(
-        "RECORDER_JOB_QUEUE_BACKEND", "inline"
-    ).strip().lower()
-    RECORDER_LIVE_STATE_BACKEND = os.getenv(
-        "RECORDER_LIVE_STATE_BACKEND", "memory"
-    ).strip().lower()
-    RECORDER_JOBS_BUCKET = os.getenv("RECORDER_JOBS_BUCKET", "").strip()
-    RECORDER_JOBS_S3_PREFIX = os.getenv(
-        "RECORDER_JOBS_S3_PREFIX", "recorder-jobs"
-    ).strip().strip("/")
-    RECORDER_JOB_LEASE_SECONDS = int(
-        os.getenv("RECORDER_JOB_LEASE_SECONDS", "120")
-    )
-    RECORDER_S3_ACCESS_KEY_ID = os.getenv(
-        "RECORDER_S3_ACCESS_KEY_ID",
-        os.getenv("KNOWLEDGE_S3_ACCESS_KEY_ID", ""),
-    ).strip()
-    RECORDER_S3_SECRET_ACCESS_KEY = os.getenv(
-        "RECORDER_S3_SECRET_ACCESS_KEY",
-        os.getenv("KNOWLEDGE_S3_SECRET_ACCESS_KEY", ""),
-    ).strip()
-    RECORDER_S3_SESSION_TOKEN = os.getenv(
-        "RECORDER_S3_SESSION_TOKEN",
-        os.getenv("KNOWLEDGE_S3_SESSION_TOKEN", ""),
-    ).strip()
-
-    # Browser Recorder live-audio windows. A 10-second window starts every
-    # 9 seconds, preserving a small boundary overlap without rebilling 25% of audio.
-    RECORDER_LIVE_CHUNK_WINDOW_SECONDS = float(
-        os.getenv("RECORDER_LIVE_CHUNK_WINDOW_SECONDS", "10")
-    )
-    RECORDER_LIVE_CHUNK_INTERVAL_SECONDS = float(
-        os.getenv("RECORDER_LIVE_CHUNK_INTERVAL_SECONDS", "9")
-    )
-    RECORDER_LIVE_QUEUE_LIMIT = int(
-        os.getenv("RECORDER_LIVE_QUEUE_LIMIT", "3")
-    )
-    RECORDER_LIVE_RETRY_COUNT = int(
-        os.getenv("RECORDER_LIVE_RETRY_COUNT", "2")
-    )
-    RECORDER_LIVE_RETRY_BASE_MILLISECONDS = int(
-        os.getenv("RECORDER_LIVE_RETRY_BASE_MILLISECONDS", "600")
-    )
-    RECORDER_LIVE_MIN_CHUNK_BYTES = int(
-        os.getenv("RECORDER_LIVE_MIN_CHUNK_BYTES", "800")
-    )
-    RECORDER_LIVE_OVERLAP_MIN_WORDS = int(
-        os.getenv("RECORDER_LIVE_OVERLAP_MIN_WORDS", "3")
-    )
 
 
     # Cost controls. Values of 0 disable the corresponding limit. Defaults are
@@ -219,20 +190,11 @@ class BaseConfig:
     AI_USER_DAILY_TRANSCRIPTION_MINUTES = float(
         os.getenv("AI_USER_DAILY_TRANSCRIPTION_MINUTES", "180")
     )
-    AI_LIVE_QA_MAX_MINUTES_PER_MEETING = float(
-        os.getenv("AI_LIVE_QA_MAX_MINUTES_PER_MEETING", "60")
-    )
-    AI_LIVE_QA_MAX_ANSWERS_PER_MEETING = int(
-        os.getenv("AI_LIVE_QA_MAX_ANSWERS_PER_MEETING", "25")
-    )
     AI_UNPRICED_TEXT_REQUEST_RESERVE_USD = float(
         os.getenv("AI_UNPRICED_TEXT_REQUEST_RESERVE_USD", "0.05")
     )
     AI_UNPRICED_TRANSCRIPTION_RESERVE_PER_MINUTE_USD = float(
         os.getenv("AI_UNPRICED_TRANSCRIPTION_RESERVE_PER_MINUTE_USD", "0.02")
-    )
-    AI_MAX_OUTPUT_TOKENS_LIVE_QA = int(
-        os.getenv("AI_MAX_OUTPUT_TOKENS_LIVE_QA", "400")
     )
     AI_MAX_OUTPUT_TOKENS_KNOWLEDGE_SEARCH = int(
         os.getenv("AI_MAX_OUTPUT_TOKENS_KNOWLEDGE_SEARCH", "700")
@@ -240,16 +202,39 @@ class BaseConfig:
     AI_MAX_OUTPUT_TOKENS_MEETING_ANALYSIS = int(
         os.getenv("AI_MAX_OUTPUT_TOKENS_MEETING_ANALYSIS", "2600")
     )
+    # Application Builder structured-output ceilings. These values are used both
+    # for provider requests and conservative pre-request budget reservations.
+    AI_MAX_OUTPUT_TOKENS_APPLICATION_BUILDER = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_APPLICATION_BUILDER", "4000")
+    )
+    AI_MAX_OUTPUT_TOKENS_RESUME_IMPORT = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_RESUME_IMPORT", "3200")
+    )
+    AI_MAX_OUTPUT_TOKENS_RESUME_JOB_ANALYSIS = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_RESUME_JOB_ANALYSIS", "2400")
+    )
+    AI_MAX_OUTPUT_TOKENS_RESUME_TAILORING = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_RESUME_TAILORING", "5200")
+    )
+    AI_MAX_OUTPUT_TOKENS_RESUME_EVIDENCE_REVIEW = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_RESUME_EVIDENCE_REVIEW", "3600")
+    )
+    AI_MAX_OUTPUT_TOKENS_INTERVIEW_PREPARATION = int(
+        os.getenv("AI_MAX_OUTPUT_TOKENS_INTERVIEW_PREPARATION", "4200")
+    )
+    AI_APPLICATION_BUILDER_MAX_ATTEMPTS = int(
+        os.getenv("AI_APPLICATION_BUILDER_MAX_ATTEMPTS", "2")
+    )
+    AI_APPLICATION_BUILDER_CACHE_SECONDS = int(
+        os.getenv(
+            "AI_APPLICATION_BUILDER_CACHE_SECONDS",
+            os.getenv("AI_RESPONSE_CACHE_SECONDS", "3600"),
+        )
+    )
     AI_COMBINE_MEETING_ANALYSIS_REQUESTS = (
         os.getenv("AI_COMBINE_MEETING_ANALYSIS_REQUESTS", "true").strip().lower() == "true"
     )
     AI_RESPONSE_CACHE_SECONDS = int(os.getenv("AI_RESPONSE_CACHE_SECONDS", "3600"))
-    RECORDER_LIVE_SPEECH_LEVEL_THRESHOLD = float(
-        os.getenv("RECORDER_LIVE_SPEECH_LEVEL_THRESHOLD", "8")
-    )
-    RECORDER_LIVE_MIN_SPEECH_RATIO = float(
-        os.getenv("RECORDER_LIVE_MIN_SPEECH_RATIO", "0.08")
-    )
 
     USERS_TABLE_NAME = os.getenv("USERS_TABLE_NAME", "").strip()
     TRANSCRIPTS_TABLE_NAME = os.getenv("TRANSCRIPTS_TABLE_NAME", "").strip()
@@ -263,6 +248,23 @@ class BaseConfig:
     ADMIN_USER_IDS = tuple(
         value.strip().lower()
         for value in os.getenv("ADMIN_USER_IDS", "").split(",")
+        if value.strip()
+    )
+
+    # The public job catalog is centrally curated. Administrators always have
+    # management access; optional groups or individual accounts may also add
+    # sources, configure the shared schedule, and run manual refreshes.
+    JOB_CATALOG_MANAGER_GROUPS = tuple(
+        value.strip().lower()
+        for value in os.getenv(
+            "JOB_CATALOG_MANAGER_GROUPS",
+            "job_curators,career_coaches",
+        ).split(",")
+        if value.strip()
+    )
+    JOB_CATALOG_MANAGER_USER_IDS = tuple(
+        value.strip().lower()
+        for value in os.getenv("JOB_CATALOG_MANAGER_USER_IDS", "").split(",")
         if value.strip()
     )
     ANALYTICS_TABLE_NAME = os.getenv("ANALYTICS_TABLE_NAME", "").strip()
@@ -310,6 +312,28 @@ class BaseConfig:
     ANALYTICS_AI_MODEL_PRICING = _pricing_table_from_env(
         "ANALYTICS_AI_PRICING_JSON",
         {
+            # Standard direct-API prices per one million tokens. Keep this table
+            # overridable through ANALYTICS_AI_PRICING_JSON as provider prices evolve.
+            "gpt-5.6-sol": {
+                "input": 5.00,
+                "cached_input": 0.50,
+                "output": 30.00,
+            },
+            "gpt-5.6-terra": {
+                "input": 2.50,
+                "cached_input": 0.25,
+                "output": 15.00,
+            },
+            "gpt-5.6-luna": {
+                "input": 1.00,
+                "cached_input": 0.10,
+                "output": 6.00,
+            },
+            "gpt-5-nano": {
+                "input": 0.05,
+                "cached_input": 0.005,
+                "output": 0.40,
+            },
             "gpt-4o-mini": {
                 "input": 0.15,
                 "cached_input": 0.075,
@@ -339,51 +363,6 @@ class BaseConfig:
         "ACTIONS_STORAGE_BACKEND",
         "dynamodb",
     ).strip().lower()
-
-    MEETING_SHARES_TABLE_NAME = os.getenv(
-        "MEETING_SHARES_TABLE_NAME", ""
-    ).strip()
-    MEETING_SHARES_STORAGE_BACKEND = os.getenv(
-        "MEETING_SHARES_STORAGE_BACKEND",
-        "dynamodb",
-    ).strip().lower()
-    MEETING_SHARES_LOCAL_PATH = os.getenv(
-        "MEETING_SHARES_LOCAL_PATH",
-        "instance/meeting_shares.json",
-    )
-
-    LIVE_QA_TABLE_NAME = os.getenv("LIVE_QA_TABLE_NAME", "").strip()
-    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    LIVE_QA_STORAGE_BACKEND = os.getenv(
-        "LIVE_QA_STORAGE_BACKEND",
-        "dynamodb",
-    ).strip().lower()
-    # Backward-compatible base interval. New deployments should use the active
-    # and idle interval settings below.
-    LIVE_QA_STREAM_INTERVAL_SECONDS = float(
-        os.getenv("LIVE_QA_STREAM_INTERVAL_SECONDS", "2.0")
-    )
-    LIVE_QA_STREAM_ACTIVE_INTERVAL_SECONDS = float(
-        os.getenv(
-            "LIVE_QA_STREAM_ACTIVE_INTERVAL_SECONDS",
-            str(LIVE_QA_STREAM_INTERVAL_SECONDS),
-        )
-    )
-    LIVE_QA_STREAM_IDLE_INTERVAL_SECONDS = float(
-        os.getenv("LIVE_QA_STREAM_IDLE_INTERVAL_SECONDS", "10.0")
-    )
-    LIVE_QA_STREAM_ACTIVE_WINDOW_SECONDS = float(
-        os.getenv("LIVE_QA_STREAM_ACTIVE_WINDOW_SECONDS", "8.0")
-    )
-    LIVE_QA_STREAM_HEARTBEAT_SECONDS = float(
-        os.getenv("LIVE_QA_STREAM_HEARTBEAT_SECONDS", "15.0")
-    )
-    LIVE_QA_PERSIST_INTERVAL_SECONDS = float(
-        os.getenv("LIVE_QA_PERSIST_INTERVAL_SECONDS", "2.0")
-    )
-    LIVE_QA_DYNAMO_CACHE_TTL_SECONDS = float(
-        os.getenv("LIVE_QA_DYNAMO_CACHE_TTL_SECONDS", "2.0")
-    )
 
     API_TOKEN_MAX_AGE_SECONDS = int(os.getenv("API_TOKEN_MAX_AGE_SECONDS", "86400"))
     ALLOW_PASSWORD_AUTH_IN_API_BODY = (
@@ -512,12 +491,7 @@ class DevelopmentConfig(BaseConfig):
     DEBUG = True
     SESSION_COOKIE_SECURE = False
     PREFERRED_URL_SCHEME = "http"
-    LIVE_QA_STORAGE_BACKEND = os.getenv("LIVE_QA_STORAGE_BACKEND", "memory").strip().lower()
     KNOWLEDGE_STORAGE_BACKEND = os.getenv("KNOWLEDGE_STORAGE_BACKEND", "local").strip().lower()
-    MEETING_SHARES_STORAGE_BACKEND = os.getenv(
-        "MEETING_SHARES_STORAGE_BACKEND",
-        "local",
-    ).strip().lower()
 
 
 class ProductionConfig(BaseConfig):
@@ -525,20 +499,50 @@ class ProductionConfig(BaseConfig):
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "").strip()
     REDIS_URL = os.getenv("REDIS_URL", "").strip()
 
+    # Durable Career Bridge persistence is the production baseline. Local
+    # memory/filesystem adapters remain available only when explicitly
+    # selected together with the narrow non-durable-storage override.
+    CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "dynamodb"
+    ).strip().lower()
+    CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "dynamodb"
+    ).strip().lower()
+    CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND", "dynamodb"
+    ).strip().lower()
+    CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND", "s3"
+    ).strip().lower()
+
     USERS_TABLE_NAME = os.getenv("USERS_TABLE_NAME", "").strip()
     TRANSCRIPTS_TABLE_NAME = os.getenv("TRANSCRIPTS_TABLE_NAME", "").strip()
     ACTIONS_TABLE_NAME = os.getenv("ACTIONS_TABLE_NAME", "").strip()
     ANALYTICS_TABLE_NAME = os.getenv("ANALYTICS_TABLE_NAME", "").strip()
-    MEETING_SHARES_TABLE_NAME = os.getenv("MEETING_SHARES_TABLE_NAME", "").strip()
-    LIVE_QA_TABLE_NAME = os.getenv("LIVE_QA_TABLE_NAME", "").strip()
     SUPPORT_REQUESTS_TABLE_NAME = os.getenv("SUPPORT_REQUESTS_TABLE_NAME", "").strip()
     KNOWLEDGE_TABLE_NAME = os.getenv("KNOWLEDGE_TABLE_NAME", "").strip()
+    CAREER_BRIDGE_APPLICATIONS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_ASYNC_JOB_STORAGE_BACKEND = os.getenv(
+        "CAREER_BRIDGE_ASYNC_JOB_STORAGE_BACKEND", "dynamodb"
+    ).strip().lower()
+    CAREER_BRIDGE_ASYNC_JOBS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_ASYNC_JOBS_TABLE_NAME",
+        CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME,
+    ).strip()
+    CAREER_BRIDGE_WORKFLOWS_TABLE_NAME = os.getenv(
+        "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME", ""
+    ).strip()
+    CAREER_BRIDGE_DOCUMENTS_BUCKET = os.getenv(
+        "CAREER_BRIDGE_DOCUMENTS_BUCKET", ""
+    ).strip()
 
     ANALYTICS_STORAGE_BACKEND = os.getenv(
         "ANALYTICS_STORAGE_BACKEND", "dynamodb"
-    ).strip().lower()
-    LIVE_QA_STORAGE_BACKEND = os.getenv(
-        "LIVE_QA_STORAGE_BACKEND", "dynamodb"
     ).strip().lower()
     SUPPORT_STORAGE_BACKEND = os.getenv(
         "SUPPORT_STORAGE_BACKEND", "dynamodb"
@@ -551,48 +555,34 @@ class ProductionConfig(BaseConfig):
         "KNOWLEDGE_FILE_STORAGE_BACKEND", "s3"
     ).strip().lower()
 
+    # Redis is optional for shared rate limits and analytics/AI response caches.
     RATE_LIMIT_STORAGE_BACKEND = os.getenv(
-        "RATE_LIMIT_STORAGE_BACKEND", "redis"
+        "RATE_LIMIT_STORAGE_BACKEND", "memory"
     ).strip().lower()
     ADMIN_ANALYTICS_CACHE_BACKEND = os.getenv(
-        "ADMIN_ANALYTICS_CACHE_BACKEND", "redis"
+        "ADMIN_ANALYTICS_CACHE_BACKEND", "memory"
     ).strip().lower()
-    RECORDER_LIVE_STATE_BACKEND = os.getenv(
-        "RECORDER_LIVE_STATE_BACKEND", "redis"
-    ).strip().lower()
-    RECORDER_JOB_STORAGE_BACKEND = os.getenv(
-        "RECORDER_JOB_STORAGE_BACKEND", "s3"
-    ).strip().lower()
-    RECORDER_JOB_QUEUE_BACKEND = os.getenv(
-        "RECORDER_JOB_QUEUE_BACKEND", "redis"
-    ).strip().lower()
-    RECORDER_JOBS_BUCKET = os.getenv("RECORDER_JOBS_BUCKET", "").strip()
-    RECORDER_JOB_IDEMPOTENCY_CHECK = True
     TRUSTED_PROXY_HOPS = int(os.getenv("TRUSTED_PROXY_HOPS", "1"))
 
 
 class TestingConfig(BaseConfig):
     TESTING = True
+    CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND = "memory"
+    CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND = "dynamodb"
+    CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND = "local"
     ANALYTICS_STORAGE_BACKEND = "memory"
     SESSION_COOKIE_SECURE = False
     PREFERRED_URL_SCHEME = "http"
-    LIVE_QA_STORAGE_BACKEND = "memory"
     ACTIONS_STORAGE_BACKEND = "memory"
     SUPPORT_STORAGE_BACKEND = "memory"
     KNOWLEDGE_STORAGE_BACKEND = "memory"
     KNOWLEDGE_FILE_STORAGE_BACKEND = "local"
-    MEETING_SHARES_STORAGE_BACKEND = "memory"
-    RECORDER_LIVE_STATE_BACKEND = "memory"
-    RECORDER_JOB_STORAGE_BACKEND = "local"
-    RECORDER_JOB_QUEUE_BACKEND = "inline"
     RATE_LIMIT_STORAGE_BACKEND = "memory"
     ADMIN_ANALYTICS_CACHE_BACKEND = "memory"
     AI_GLOBAL_DAILY_BUDGET_USD = 0
     AI_GLOBAL_MONTHLY_BUDGET_USD = 0
     AI_USER_DAILY_BUDGET_USD = 0
     AI_USER_DAILY_TRANSCRIPTION_MINUTES = 0
-    AI_LIVE_QA_MAX_MINUTES_PER_MEETING = 0
-    AI_LIVE_QA_MAX_ANSWERS_PER_MEETING = 0
     AI_MAX_MODEL_PRESET = "advanced"
     CSRF_ENABLED = False
     SUPPORT_EMAIL = ""

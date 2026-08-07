@@ -37,7 +37,8 @@ def settings_page():
 @users_bp.get("/api/settings")
 @login_required
 def get_settings():
-    return jsonify({"settings": UserService().get_settings(session["user_id"])})
+    settings = UserService().get_settings(session["user_id"])
+    return jsonify({"settings": settings})
 
 
 @users_bp.post("/update-settings")

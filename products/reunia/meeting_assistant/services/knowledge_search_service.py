@@ -12,8 +12,8 @@ from openai import OpenAI
 
 from meeting_assistant.i18n import ai_language_instruction, normalize_language
 from meeting_assistant.services.knowledge_service import KnowledgeService
-from meeting_assistant.services.meeting_materials_service import (
-    MeetingMaterialsService,
+from meeting_assistant.services.application_materials_service import (
+    ApplicationMaterialsService,
     _context_match_score,
     _entry_context_text,
     _extract_material_entries,
@@ -56,13 +56,13 @@ class KnowledgeSearchService:
         *,
         client: OpenAI | None = None,
         knowledge_service: KnowledgeService | None = None,
-        meeting_materials_service: MeetingMaterialsService | None = None,
+        application_materials_service: ApplicationMaterialsService | None = None,
         transcript_service: TranscriptService | None = None,
         user_service: UserService | None = None,
     ) -> None:
         self._client = client
         self.knowledge = knowledge_service or KnowledgeService()
-        self.materials = meeting_materials_service or MeetingMaterialsService()
+        self.materials = application_materials_service or ApplicationMaterialsService()
         self.transcripts = transcript_service or TranscriptService()
         self.users = user_service or UserService()
 
@@ -278,11 +278,11 @@ class KnowledgeSearchService:
         payload: dict[str, Any],
     ) -> list[dict[str, Any]]:
         meeting_id = str(payload.get("meeting_package_id") or "").strip()
-        selected_id, meeting = self.materials._resolve_meeting(user_id, meeting_id)
+        selected_id, meeting = self.materials._resolve_application(user_id, meeting_id)
         if not meeting:
             return []
 
-        meeting_title = str(meeting.get("title") or "Current meeting")
+        meeting_title = str(meeting.get("application_title") or "Current application")
         entries = self.materials._ensure_material_index(user_id, meeting)
         evidence: list[dict[str, Any]] = []
         for entry in entries:
@@ -307,7 +307,7 @@ class KnowledgeSearchService:
                 }
             )
 
-        meeting_context = meeting.get("meeting_context")
+        meeting_context = meeting.get("application_context")
         if isinstance(meeting_context, dict):
             context_text = _mapping_text(meeting_context)
             if context_text:
@@ -658,7 +658,10 @@ class KnowledgeSearchService:
             if isinstance(assistant_context, dict):
                 context_text = _mapping_text(assistant_context)
                 if context_text:
-                    instructions.append("Reusable AI context:\n" + context_text)
+                    instructions.append(
+                        "Reusable Career Profile context (unverified; use only for personalization, "
+                        "never as evidence for a candidate claim):\n" + context_text
+                    )
         return "\n\n".join(instructions)
 
     @staticmethod

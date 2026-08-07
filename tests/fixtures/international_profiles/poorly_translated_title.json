@@ -1,0 +1,276 @@
+{
+  "scenario_id": "poorly_translated_title",
+  "label": "Candidate whose title translates poorly into U.S. terminology",
+  "profile": {
+    "name": "Wanjiku Njoroge",
+    "contact": {
+      "location": "Nairobi, Kenya",
+      "phone": "+1 555 010 0000",
+      "email": "wanjiku.njoroge@example.test",
+      "linkedin_label": "LinkedIn",
+      "linkedin_url": "",
+      "github_label": "GitHub",
+      "github_url": ""
+    },
+    "current_summary": "Procurement professional experienced in supplier evaluation, tender analysis, contract documentation, and spend reporting for public infrastructure projects.",
+    "skills": {
+      "hard_skills": [
+        "Supplier evaluation",
+        "Tender analysis",
+        "Spend analysis"
+      ],
+      "soft_skills": [
+        "Negotiation",
+        "Stakeholder coordination"
+      ],
+      "tools_software": [
+        "Microsoft Excel",
+        "ERP procurement module"
+      ],
+      "industry_knowledge": [
+        "Public procurement",
+        "Infrastructure"
+      ],
+      "languages": [
+        "English",
+        "Swahili"
+      ]
+    },
+    "education": [
+      {
+        "credential": "Bachelor of Commerce in Procurement and Supply Chain Management",
+        "institution": "Jomo Kenyatta University of Agriculture and Technology",
+        "location": "Nairobi, Kenya",
+        "date": "2017",
+        "detail": ""
+      }
+    ],
+    "experiences": [
+      {
+        "id": "EXP-PROCUREMENT-1",
+        "employer": "Kenya Urban Roads Authority",
+        "location": "Nairobi, Kenya",
+        "dates": "2017–2026",
+        "title": "Procurement Officer II",
+        "bullets": [
+          {
+            "id": "KEN-1",
+            "text": "Evaluated supplier submissions against tender requirements and documented selection recommendations."
+          },
+          {
+            "id": "KEN-2",
+            "text": "Prepared contract files and coordinated clarifications with engineering, legal, and finance stakeholders."
+          },
+          {
+            "id": "KEN-3",
+            "text": "Produced spend reports that identified supplier concentration and upcoming sourcing needs."
+          },
+          {
+            "id": "KEN-4",
+            "text": "Maintained supplier evaluation records and followed up missing compliance documents."
+          },
+          {
+            "id": "KEN-5",
+            "text": "Built Excel summaries for procurement pipelines, contract status, and sourcing deadlines."
+          },
+          {
+            "id": "KEN-6",
+            "text": "Explained public procurement procedures to internal requestors before tender submission."
+          }
+        ]
+      }
+    ],
+    "supplemental_evidence": []
+  },
+  "career_background": {
+    "countries_worked": [
+      "Kenya"
+    ],
+    "industries": [
+      "Public infrastructure"
+    ],
+    "roles": [
+      "Procurement Officer II"
+    ],
+    "languages": [
+      "English",
+      "Swahili"
+    ],
+    "target_country": "United States",
+    "target_role": "Strategic Sourcing Analyst",
+    "international_credentials": [
+      "Bachelor of Commerce in Procurement and Supply Chain Management"
+    ],
+    "professional_certifications": [],
+    "unfamiliar_job_titles": [
+      "Procurement Officer II"
+    ],
+    "career_transitions": [],
+    "us_employment_experience": ""
+  },
+  "job_description": "Cascade Transit is hiring a Strategic Sourcing Analyst.\n\nKey requirements:\n- Evaluate suppliers and support competitive sourcing events\n- Coordinate contract documentation with legal and finance\n- Analyze spend and supplier concentration\n\nCandidates should present only experience and qualifications they can verify.",
+  "job_analysis": {
+    "target_title": "Strategic Sourcing Analyst",
+    "target_company": "Cascade Transit",
+    "requirements": [
+      {
+        "id": "REQ-1",
+        "category": "responsibility",
+        "priority": "critical",
+        "requirement": "Evaluate suppliers and support competitive sourcing events",
+        "keywords": [
+          "evaluate suppliers",
+          "sourcing",
+          "tender"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "category": "responsibility",
+        "priority": "important",
+        "requirement": "Coordinate contract documentation with legal and finance",
+        "keywords": [
+          "contract documentation",
+          "legal",
+          "finance"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "category": "technical_skill",
+        "priority": "important",
+        "requirement": "Analyze spend and supplier concentration",
+        "keywords": [
+          "spend",
+          "supplier concentration",
+          "analyze"
+        ]
+      }
+    ],
+    "ignored_boilerplate": []
+  },
+  "proposal": {
+    "professional_summary": "Procurement professional with verified experience evaluating suppliers, analyzing tenders, coordinating contract documentation, and reporting spend risks for infrastructure projects. Has documented collaboration with engineering, legal, and finance stakeholders and a commerce degree focused on procurement and supply chain management. Targets Strategic Sourcing Analyst work by translating functional responsibilities clearly while preserving the official title Procurement Officer II.",
+    "skills": {
+      "hard_skills": [
+        "Supplier evaluation",
+        "Tender analysis",
+        "Spend analysis"
+      ],
+      "soft_skills": [
+        "Negotiation",
+        "Stakeholder coordination"
+      ],
+      "tools_software": [
+        "Microsoft Excel",
+        "ERP procurement module"
+      ],
+      "industry_knowledge": [
+        "Public procurement",
+        "Infrastructure"
+      ]
+    },
+    "bullet_proposals": [
+      {
+        "source_bullet_id": "KEN-1",
+        "include": true,
+        "proposed_text": "Evaluated supplier submissions against tender requirements and documented selection recommendations.",
+        "matched_requirement_ids": [
+          "REQ-1"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "KEN-2",
+        "include": true,
+        "proposed_text": "Prepared contract files and coordinated clarifications with engineering, legal, and finance stakeholders.",
+        "matched_requirement_ids": [
+          "REQ-2"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "KEN-3",
+        "include": true,
+        "proposed_text": "Produced spend reports that identified supplier concentration and upcoming sourcing needs.",
+        "matched_requirement_ids": [
+          "REQ-3"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "KEN-4",
+        "include": true,
+        "proposed_text": "Maintained supplier evaluation records and followed up missing compliance documents.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "KEN-5",
+        "include": true,
+        "proposed_text": "Built Excel summaries for procurement pipelines, contract status, and sourcing deadlines.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "KEN-6",
+        "include": true,
+        "proposed_text": "Explained public procurement procedures to internal requestors before tender submission.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "requirement_id": "REQ-1",
+        "status": "supported",
+        "evidence_ids": [
+          "KEN-1"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-2",
+        "status": "supported",
+        "evidence_ids": [
+          "KEN-2"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-3",
+        "status": "supported",
+        "evidence_ids": [
+          "KEN-3"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      }
+    ],
+    "unsupported_requirements": [],
+    "candidate_questions": [],
+    "career_translation_assessment": {
+      "summary": "",
+      "target_country": "",
+      "target_role": "",
+      "findings": []
+    }
+  },
+  "expectations": {
+    "expected_findings": [
+      {
+        "category": "credential_explanation",
+        "source_text": "Bachelor of Commerce in Procurement and Supply Chain Management",
+        "disposition": "confirmed_experience"
+      },
+      {
+        "category": "job_title_translation",
+        "source_text": "Procurement Officer II",
+        "disposition": "reasonable_rephrasing"
+      }
+    ],
+    "expected_min_transferable_findings": 2,
+    "expected_hard_blockers": 0,
+    "forbidden_evidence_phrases": [],
+    "unicode_tokens": []
+  }
+}

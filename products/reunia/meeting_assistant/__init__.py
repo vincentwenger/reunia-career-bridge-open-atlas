@@ -5,10 +5,13 @@ import hashlib
 import os
 import re
 import secrets
+import sys
 from pathlib import Path
 
 from flask import Flask, g, request, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+from career_bridge.static_assets import minified_asset_name
 
 from meeting_assistant.config import config_by_name
 from meeting_assistant.i18n import normalize_language, supported_language
@@ -50,13 +53,27 @@ def create_app(config_name: str | None = None) -> Flask:
         os.getenv("STATIC_ASSET_VERSION", "").strip()
         or _static_asset_fingerprint(Path(app.static_folder))
     )
+    minified_setting = os.getenv("STATIC_USE_MINIFIED", "").strip().lower()
+    app.config["STATIC_USE_MINIFIED"] = (
+        selected_config == "production"
+        if not minified_setting
+        else minified_setting in {"1", "true", "yes", "on"}
+    )
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
-    app.jinja_env.globals["static_asset"] = lambda filename: url_for(
-        "static",
-        filename=filename,
-        v=app.config["STATIC_ASSET_VERSION"],
-    )
+    def static_asset(filename: str) -> str:
+        selected_filename = minified_asset_name(
+            Path(app.static_folder),
+            filename,
+            enabled=bool(app.config.get("STATIC_USE_MINIFIED")),
+        )
+        return url_for(
+            "static",
+            filename=selected_filename,
+            v=app.config["STATIC_ASSET_VERSION"],
+        )
+
+    app.jinja_env.globals["static_asset"] = static_asset
 
     @app.before_request
     def create_security_nonce():
@@ -91,8 +108,9 @@ def create_app(config_name: str | None = None) -> Flask:
     init_csrf(app)
     init_extensions(app)
     register_blueprints(app)
+    register_application_builder(app, project_root)
     register_error_handlers(app)
-    register_legacy_endpoint_aliases(app)
+    register_endpoint_aliases(app)
     register_response_headers(app)
 
     return app
@@ -100,24 +118,38 @@ def create_app(config_name: str | None = None) -> Flask:
 
 
 def _validate_dynamodb_table_configuration(app: Flask) -> None:
-    """Require explicit table names for every active DynamoDB repository."""
+    """Require explicit table names only for repositories that actually boot."""
     if app.testing:
         return
 
+    # Users and Interview Review are part of the core Career Bridge journey.
     required = ["USERS_TABLE_NAME", "TRANSCRIPTS_TABLE_NAME"]
     conditional_requirements = (
-        ("ACTIONS_STORAGE_BACKEND", "ACTIONS_TABLE_NAME"),
-        ("ANALYTICS_STORAGE_BACKEND", "ANALYTICS_TABLE_NAME"),
-        ("MEETING_SHARES_STORAGE_BACKEND", "MEETING_SHARES_TABLE_NAME"),
-        ("LIVE_QA_STORAGE_BACKEND", "LIVE_QA_TABLE_NAME"),
-        ("SUPPORT_STORAGE_BACKEND", "SUPPORT_REQUESTS_TABLE_NAME"),
-        ("KNOWLEDGE_STORAGE_BACKEND", "KNOWLEDGE_TABLE_NAME"),
+        ("ACTIONS_STORAGE_BACKEND", "ACTIONS_TABLE_NAME", None),
+        ("ANALYTICS_STORAGE_BACKEND", "ANALYTICS_TABLE_NAME", None),
+        ("SUPPORT_STORAGE_BACKEND", "SUPPORT_REQUESTS_TABLE_NAME", None),
+        ("KNOWLEDGE_STORAGE_BACKEND", "KNOWLEDGE_TABLE_NAME", None),
+        (
+            "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND",
+            "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME",
+            None,
+        ),
+        (
+            "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND",
+            "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME",
+            None,
+        ),
+        (
+            "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND",
+            "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME",
+            None,
+        ),
     )
-    required.extend(
-        table_variable
-        for backend_variable, table_variable in conditional_requirements
-        if str(app.config.get(backend_variable) or "").strip().lower() == "dynamodb"
-    )
+    for backend_variable, table_variable, feature_flag in conditional_requirements:
+        if feature_flag and not _configuration_flag(app.config.get(feature_flag)):
+            continue
+        if str(app.config.get(backend_variable) or "").strip().lower() == "dynamodb":
+            required.append(table_variable)
 
     missing = [
         variable
@@ -132,47 +164,184 @@ def _validate_dynamodb_table_configuration(app: Flask) -> None:
             "does not generate fallback table names."
         )
 
+def _configuration_flag(value: object) -> bool:
+    """Return whether a configuration value explicitly enables a safety override."""
+
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().casefold() in {"1", "true", "yes", "on"}
+
+
+def _validate_career_bridge_production_storage(app: Flask) -> None:
+    """Require DynamoDB application records and durable production persistence."""
+
+    application_backend = str(
+        app.config.get("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND") or ""
+    ).strip().casefold()
+    if application_backend != "dynamodb":
+        raise RuntimeError(
+            "Unsafe Career Bridge production persistence configuration: "
+            "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND must be 'dynamodb'. "
+            "Application record storage cannot be downgraded by the demo override."
+        )
+
+    discovery_backend = str(
+        app.config.get("CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND") or ""
+    ).strip().casefold()
+    if discovery_backend != "dynamodb":
+        raise RuntimeError(
+            "Unsafe Career Bridge production persistence configuration: "
+            "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND must be 'dynamodb'. "
+            "Job Discovery postings, fit snapshots, and assessment progress "
+            "cannot be downgraded by the demo override."
+        )
+
+    async_job_backend = str(
+        app.config.get("CAREER_BRIDGE_ASYNC_JOB_STORAGE_BACKEND")
+        or discovery_backend
+    ).strip().casefold()
+    if async_job_backend != "dynamodb":
+        raise RuntimeError(
+            "Unsafe Career Bridge production background-processing configuration: "
+            "CAREER_BRIDGE_ASYNC_JOB_STORAGE_BACKEND must be 'dynamodb'. "
+            "Long AI jobs must survive browser closure, web-worker restarts, and redeployments."
+        )
+
+    required_backends = {
+        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND": "dynamodb",
+        "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND": "dynamodb",
+        "CAREER_BRIDGE_JOB_DISCOVERY_STORAGE_BACKEND": "dynamodb",
+        "CAREER_BRIDGE_ASYNC_JOB_STORAGE_BACKEND": "dynamodb",
+        "CAREER_BRIDGE_DOCUMENT_STORAGE_BACKEND": "s3",
+    }
+    required_resources = (
+        "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME",
+        "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME",
+        "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME",
+        "CAREER_BRIDGE_DOCUMENTS_BUCKET",
+    )
+    resolved_backends = {
+        key: (
+            async_job_backend
+            if key == "CAREER_BRIDGE_ASYNC_JOB_STORAGE_BACKEND"
+            else str(app.config.get(key) or "").strip().casefold()
+        )
+        for key in required_backends
+    }
+    invalid_backends = [
+        f"{key}={resolved_backends[key]!r} (expected {expected!r})"
+        for key, expected in required_backends.items()
+        if resolved_backends[key] != expected
+    ]
+    missing_resources = [
+        key for key in required_resources
+        if not str(app.config.get(key) or "").strip()
+    ]
+    table_resource_keys = (
+        "CAREER_BRIDGE_APPLICATIONS_TABLE_NAME",
+        "CAREER_BRIDGE_WORKFLOWS_TABLE_NAME",
+        "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME",
+        "CAREER_BRIDGE_ASYNC_JOBS_TABLE_NAME",
+    )
+    invalid_table_names = [
+        f"{key}={str(app.config.get(key) or '').strip()!r}"
+        for key in table_resource_keys
+        if str(app.config.get(key) or "").strip()
+        and not str(app.config.get(key) or "").strip().startswith("careerbridge_")
+    ]
+    if invalid_table_names:
+        raise RuntimeError(
+            "Unsafe Career Bridge DynamoDB table configuration: table names "
+            "must start with 'careerbridge_'. Legacy 'career-bridge-' names can "
+            "recreate duplicate tables. Invalid values: "
+            + "; ".join(invalid_table_names)
+        )
+    if not invalid_backends and not missing_resources:
+        return
+
+    override_key = "CAREER_BRIDGE_ALLOW_DEMO_STORAGE_IN_PRODUCTION"
+    details: list[str] = []
+    if invalid_backends:
+        details.append("unsafe backends: " + "; ".join(invalid_backends))
+    if missing_resources:
+        details.append("missing resources: " + ", ".join(missing_resources))
+    rendered_details = "; ".join(details)
+
+    if _configuration_flag(app.config.get(override_key)):
+        if "CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME" in missing_resources:
+            raise RuntimeError(
+                "Unsafe Career Bridge production persistence configuration: "
+                + rendered_details
+                + ". CAREER_BRIDGE_JOB_DISCOVERY_TABLE_NAME cannot be omitted "
+                "or downgraded by the demo override."
+            )
+        logger = getattr(app, "logger", None)
+        if logger is not None:
+            logger.warning(
+                "UNSAFE CAREER BRIDGE DEMO STORAGE OVERRIDE ENABLED: %s. "
+                "This deployment is demo-only, may lose records during container "
+                "replacement, and must remain at one worker and one node.",
+                rendered_details,
+            )
+        return
+
+    raise RuntimeError(
+        "Unsafe Career Bridge production persistence configuration: "
+        + rendered_details
+        + ". Production requires DynamoDB application/workflow storage, "
+        "DynamoDB Job Discovery storage, and S3 document storage with explicit "
+        "table and bucket names. Set "
+        f"{override_key}=true only for an intentional demo deployment that accepts "
+        "ephemeral data and single-process limitations."
+    )
+
 
 def _validate_production_configuration(app: Flask) -> None:
+    _validate_career_bridge_production_storage(app)
     _validate_dynamodb_table_configuration(app)
-    required = (
-        "SECRET_KEY",
-        "REDIS_URL",
-        "KNOWLEDGE_FILES_BUCKET",
-        "RECORDER_JOBS_BUCKET",
-    )
+
+    required = ["SECRET_KEY"]
+    if str(app.config.get("KNOWLEDGE_FILE_STORAGE_BACKEND") or "").lower() == "s3":
+        required.append("KNOWLEDGE_FILES_BUCKET")
+
+    redis_backends = {
+        str(app.config.get("RATE_LIMIT_STORAGE_BACKEND") or "").lower(),
+        str(app.config.get("ADMIN_ANALYTICS_CACHE_BACKEND") or "").lower(),
+    }
+    if "redis" in redis_backends:
+        required.append("REDIS_URL")
+
     missing = [key for key in required if not str(app.config.get(key) or "").strip()]
     if missing:
         raise RuntimeError(
-            "Missing required production configuration: " + ", ".join(missing)
+            "Missing required production configuration: "
+            + ", ".join(sorted(set(missing)))
         )
 
     secret = str(app.config["SECRET_KEY"])
     if len(secret) < 32 or secret == "development-only-change-me":
-        raise RuntimeError("FLASK_SECRET_KEY must be a unique random value of at least 32 characters.")
+        raise RuntimeError(
+            "FLASK_SECRET_KEY must be a unique random value of at least 32 characters."
+        )
 
     production_backends = {
-        "RATE_LIMIT_STORAGE_BACKEND": "redis",
-        "ADMIN_ANALYTICS_CACHE_BACKEND": "redis",
-        "RECORDER_LIVE_STATE_BACKEND": "redis",
-        "RECORDER_JOB_QUEUE_BACKEND": "redis",
-        "RECORDER_JOB_STORAGE_BACKEND": "s3",
         "KNOWLEDGE_FILE_STORAGE_BACKEND": "s3",
         "ANALYTICS_STORAGE_BACKEND": "dynamodb",
-        "LIVE_QA_STORAGE_BACKEND": "dynamodb",
         "ACTIONS_STORAGE_BACKEND": "dynamodb",
         "SUPPORT_STORAGE_BACKEND": "dynamodb",
         "KNOWLEDGE_STORAGE_BACKEND": "dynamodb",
-        "MEETING_SHARES_STORAGE_BACKEND": "dynamodb",
     }
     invalid = [
         f"{key}={app.config.get(key)!r} (expected {expected!r})"
         for key, expected in production_backends.items()
         if str(app.config.get(key) or "").strip().lower() != expected
     ]
+    for key in ("RATE_LIMIT_STORAGE_BACKEND", "ADMIN_ANALYTICS_CACHE_BACKEND"):
+        value = str(app.config.get(key) or "").strip().lower()
+        if value not in {"memory", "redis"}:
+            invalid.append(f"{key}={value!r} (expected 'memory' or 'redis')")
     if invalid:
         raise RuntimeError("Unsafe production storage configuration: " + "; ".join(invalid))
-
 
 def _static_asset_fingerprint(static_root: Path) -> str:
     """Return a stable version without rereading large bundled downloads."""
@@ -237,13 +406,6 @@ def register_response_headers(app: Flask) -> None:
                 "max-age=31536000; includeSubDomains",
             )
 
-        if request.path.startswith("/shared/meeting/"):
-            response.headers["Cache-Control"] = "private, no-store, max-age=0"
-            response.headers["Pragma"] = "no-cache"
-            response.headers["Expires"] = "0"
-            response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
-            return response
-
         if request.endpoint == "static":
             requested_version = request.args.get("v", "")
             current_version = app.config.get("STATIC_ASSET_VERSION", "")
@@ -277,45 +439,91 @@ def _environment_name() -> str:
 
 
 def register_blueprints(app: Flask) -> None:
+    """Register the canonical Career Bridge route surfaces."""
     from meeting_assistant.blueprints.actions import actions_bp
     from meeting_assistant.blueprints.admin_analytics import admin_analytics_bp
     from meeting_assistant.blueprints.analytics import analytics_bp
     from meeting_assistant.blueprints.auth import auth_bp
     from meeting_assistant.blueprints.knowledge import knowledge_bp
-    from meeting_assistant.blueprints.live_qa import live_qa_bp
     from meeting_assistant.blueprints.main import main_bp
-    from meeting_assistant.blueprints.meeting_shares import meeting_shares_bp
     from meeting_assistant.blueprints.recorder import recorder_bp
     from meeting_assistant.blueprints.support import support_bp
     from meeting_assistant.blueprints.transcripts import transcript_bp
     from meeting_assistant.blueprints.user_guide import user_guide_bp
     from meeting_assistant.blueprints.users import users_bp
 
-    app.register_blueprint(main_bp)
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(admin_analytics_bp)
-    app.register_blueprint(actions_bp)
-    app.register_blueprint(users_bp)
-    app.register_blueprint(live_qa_bp)
-    app.register_blueprint(transcript_bp)
-    app.register_blueprint(meeting_shares_bp)
-    app.register_blueprint(knowledge_bp)
-    app.register_blueprint(analytics_bp)
-    app.register_blueprint(support_bp)
-    app.register_blueprint(user_guide_bp)
-    app.register_blueprint(recorder_bp)
+    for blueprint in (
+        main_bp,
+        auth_bp,
+        admin_analytics_bp,
+        actions_bp,
+        users_bp,
+        transcript_bp,
+        knowledge_bp,
+        analytics_bp,
+        support_bp,
+        user_guide_bp,
+        recorder_bp,
+    ):
+        app.register_blueprint(blueprint)
 
     _validate_document_library_routes(app)
 
 
+def register_application_builder(app: Flask, project_root: Path) -> None:
+    """Register the Application Builder Blueprint on the Réunia application."""
+
+    repository_root = project_root.parent.parent
+    resume_taylor_root = repository_root / "products" / "resume_taylor"
+    resume_taylor_path = str(resume_taylor_root)
+    if resume_taylor_path not in sys.path:
+        sys.path.insert(0, resume_taylor_path)
+
+    from products.resume_taylor.app import (
+        application_builder_bp,
+        application_builder_storage_status,
+        async_worker_health_status,
+        init_application_builder,
+    )
+
+    app.config.setdefault("CAREER_BRIDGE_REQUIRE_AUTH", True)
+    app.config.setdefault("CAREER_BRIDGE_LOGIN_URL", "/login.html")
+    app.config.setdefault("CAREER_BRIDGE_HOME_URL", "/app")
+    app.config.setdefault(
+        "CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND",
+        os.getenv("CAREER_BRIDGE_WORKFLOW_STORAGE_BACKEND", "memory")
+        .strip()
+        .lower(),
+    )
+    app.config.setdefault(
+        "CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND",
+        os.getenv("CAREER_BRIDGE_APPLICATION_STORAGE_BACKEND", "dynamodb")
+        .strip()
+        .lower(),
+    )
+
+    init_application_builder(app)
+    app.register_blueprint(application_builder_bp, url_prefix="/applications")
+
+    @app.get("/health")
+    def health_check():
+        return {
+            "status": "ok",
+            "services": ["career-bridge", "application-builder"],
+            "application_builder": application_builder_storage_status(),
+            "async_worker": async_worker_health_status(),
+        }
+
+
 def _validate_document_library_routes(app: Flask) -> None:
     required = {
-        ("/api/knowledge/files", "GET"),
-        ("/api/knowledge/files", "POST"),
-        ("/api/knowledge/collections", "GET"),
-        ("/api/knowledge/collections", "POST"),
-        ("/api/knowledge/collections/<collection_id>", "DELETE"),
-        ("/api/knowledge/ask", "POST"),
+        ("/api/career/evidence", "GET"),
+        ("/api/career/evidence", "POST"),
+        ("/api/career/evidence/answers", "POST"),
+        ("/api/career/evidence/collections", "GET"),
+        ("/api/career/evidence/collections", "POST"),
+        ("/api/career/evidence/collections/<collection_id>", "DELETE"),
+        ("/api/career/evidence/search", "POST"),
     }
     registered = {
         (rule.rule, method)
@@ -326,12 +534,11 @@ def _validate_document_library_routes(app: Flask) -> None:
     if missing:
         missing_text = ", ".join(f"{method} {rule}" for rule, method in missing)
         raise RuntimeError(
-            "Document Library API routes were not registered: " + missing_text
+            "Career Evidence Library API routes were not registered: " + missing_text
         )
 
-
-def register_legacy_endpoint_aliases(app: Flask) -> None:
-    """Keep old `url_for()` endpoint names working while routes use Blueprints."""
+def register_endpoint_aliases(app: Flask) -> None:
+    """Register stable endpoint names used by existing templates and redirects."""
     aliases = {
         "view_index": "/app",
         "marketing_page": "/",
@@ -344,13 +551,10 @@ def register_legacy_endpoint_aliases(app: Flask) -> None:
         "settings_page": "/settings.html",
         "help_support_page": "/help-support.html",
         "user_guide_page": "/user-guide.html",
-        "meeting_recorder_page": "/meeting-recorder",
         "action_center_page": "/action-center.html",
         "admin_analytics_page": "/admin/analytics",
         "update_profile": "/update-profile",
         "handle_update_settings": "/update-settings",
-        "transcript.get_dynamodb_transcripts": "/api/transcripts",
     }
-
     for endpoint, rule in aliases.items():
         app.add_url_rule(rule, endpoint=endpoint, build_only=True)

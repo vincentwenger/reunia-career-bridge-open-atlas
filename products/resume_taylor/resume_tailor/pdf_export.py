@@ -2,22 +2,23 @@ from __future__ import annotations
 
 import os
 import unicodedata
+from dataclasses import dataclass
 from html import escape
 from io import BytesIO
 from pathlib import Path
 from typing import Iterable
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from pypdf import PdfReader
 from reportlab.platypus import (
     HRFlowable,
     KeepTogether,
-    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -25,7 +26,11 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from .bullet_text import has_bullet_structure_artifacts, normalize_resume_bullet_text
+from .bullet_text import (
+    has_bullet_structure_artifacts,
+    normalize_resume_bullet_terminal_punctuation,
+    normalize_resume_bullet_text,
+)
 from .docx_export import RESUME_FORMAT_SECTIONS, SKILL_CATEGORY_ORDER
 from .docx_styles import (
     compose_resume_theme,
@@ -35,6 +40,7 @@ from .docx_styles import (
     resume_preference_label,
 )
 from .models import ApprovedResume, CandidateProfile
+from .resume_language import resume_format_headings, resume_labels
 
 
 class PdfConversionError(RuntimeError):
@@ -50,6 +56,10 @@ _FONT_FAMILY = {
     "serif": "Times-Roman",
     "serif_bold": "Times-Bold",
 }
+
+# A subtle 6-point gap separates employers in the PDF without inserting a
+# literal blank paragraph. This mirrors the Word export while preserving space.
+EXPERIENCE_ENTRY_GAP_POINTS = 6
 
 
 def _first_existing(paths: Iterable[str]) -> str | None:
@@ -70,14 +80,14 @@ def _register_runtime_fonts() -> None:
     font_candidates = {
         "ResumeSans": (
             str(windows / "arial.ttf"),
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
             "/Library/Fonts/Arial.ttf",
         ),
         "ResumeSans-Bold": (
             str(windows / "arialbd.ttf"),
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
             "/Library/Fonts/Arial Bold.ttf",
         ),
         "ResumeSerif": (
@@ -211,11 +221,21 @@ def _font_names(theme) -> tuple[str, str, str, str]:
     return _FONT_FAMILY["sans"], _FONT_FAMILY["sans_bold"], heading_regular, heading_bold
 
 
-def _build_styles(theme) -> dict[str, ParagraphStyle]:
+def _build_styles(theme, *, compact: bool = False) -> dict[str, ParagraphStyle]:
     body_font, body_bold, heading_font, heading_bold = _font_names(theme)
     text_color = _rgb_color(theme.text_color)
     accent_color = _rgb_color(theme.accent_color)
     header_alignment = TA_CENTER if theme.header_alignment is not None and int(theme.header_alignment) == 1 else TA_LEFT
+    section_space_before = (
+        max(3.5, theme.section_space_before - 2.5) if compact else theme.section_space_before
+    )
+    section_space_after = (
+        max(1.0, theme.section_space_after - 1.5) if compact else theme.section_space_after
+    )
+    bullet_space_after = (
+        max(0.0, theme.bullet_space_after - 0.5) if compact else theme.bullet_space_after
+    )
+    header_space_reduction = 0.5 if compact else 0.0
 
     return {
         "name": _paragraph_style(
@@ -225,7 +245,7 @@ def _build_styles(theme) -> dict[str, ParagraphStyle]:
             text_color=accent_color,
             leading=theme.name_size * 1.08,
             alignment=header_alignment,
-            space_after=1.5,
+            space_after=max(1, (3 if theme.is_mid_career_corporate else 1) - header_space_reduction),
             keep_with_next=True,
         ),
         "target": _paragraph_style(
@@ -234,7 +254,7 @@ def _build_styles(theme) -> dict[str, ParagraphStyle]:
             font_size=theme.target_size,
             text_color=text_color if theme.is_mid_career_corporate else accent_color,
             alignment=header_alignment,
-            space_after=2,
+            space_after=max(1, (3 if theme.is_mid_career_corporate else 1) - header_space_reduction),
             keep_with_next=True,
         ),
         "contact": _paragraph_style(
@@ -243,18 +263,18 @@ def _build_styles(theme) -> dict[str, ParagraphStyle]:
             font_size=theme.contact_size,
             text_color=text_color,
             alignment=header_alignment,
-            leading=theme.contact_size * 1.15,
-            space_after=1.5,
+            leading=theme.contact_size * (1.10 if compact else 1.15),
+            space_after=max(1, (2 if theme.is_mid_career_corporate else 5) - header_space_reduction),
         ),
         "section": _paragraph_style(
             "PdfResumeSection",
             font_name=heading_bold,
             font_size=theme.section_size,
             text_color=accent_color,
-            leading=theme.section_size * 1.08,
+            leading=theme.section_size * (1.04 if compact else 1.08),
             alignment=TA_CENTER if theme.is_mid_career_corporate else TA_LEFT,
-            space_before=theme.section_space_before,
-            space_after=theme.section_space_after,
+            space_before=section_space_before,
+            space_after=section_space_after,
             keep_with_next=True,
         ),
         "body": _paragraph_style(
@@ -262,24 +282,24 @@ def _build_styles(theme) -> dict[str, ParagraphStyle]:
             font_name=body_font,
             font_size=theme.body_size,
             text_color=text_color,
-            leading=theme.body_size * 1.18,
-            alignment=TA_JUSTIFY if theme.is_mid_career_corporate else TA_LEFT,
-            space_after=2,
+            leading=theme.body_size * (1.10 if compact else 1.18),
+            alignment=TA_LEFT,
+            space_after=1.0 if compact else 2,
         ),
         "skill": _paragraph_style(
             "PdfResumeSkill",
             font_name=body_font,
             font_size=theme.skill_size,
             text_color=text_color,
-            leading=theme.skill_size * 1.17,
-            space_after=1.2,
+            leading=theme.skill_size * (1.10 if compact else 1.17),
+            space_after=0 if theme.is_mid_career_corporate else 1,
         ),
         "employer": _paragraph_style(
             "PdfResumeEmployer",
             font_name=body_font,
             font_size=theme.employer_size,
             text_color=text_color,
-            leading=theme.employer_size * 1.12,
+            leading=theme.employer_size * (1.06 if compact else 1.12),
             space_after=0,
             keep_with_next=True,
         ),
@@ -288,7 +308,7 @@ def _build_styles(theme) -> dict[str, ParagraphStyle]:
             font_name=body_font,
             font_size=theme.employer_size,
             text_color=text_color,
-            leading=theme.employer_size * 1.12,
+            leading=theme.employer_size * (1.06 if compact else 1.12),
             alignment=TA_RIGHT,
             keep_with_next=True,
         ),
@@ -297,8 +317,8 @@ def _build_styles(theme) -> dict[str, ParagraphStyle]:
             font_name=body_bold,
             font_size=theme.role_size,
             text_color=accent_color if (theme.is_executive or theme.is_early_career) else text_color,
-            leading=theme.role_size * 1.12,
-            space_after=1,
+            leading=theme.role_size * (1.06 if compact else 1.12),
+            space_after=0 if theme.is_mid_career_corporate else 1,
             keep_with_next=True,
         ),
         "bullet": _paragraph_style(
@@ -306,35 +326,35 @@ def _build_styles(theme) -> dict[str, ParagraphStyle]:
             font_name=body_font,
             font_size=theme.bullet_size,
             text_color=text_color,
-            leading=theme.bullet_size * 1.18,
-            alignment=TA_JUSTIFY if theme.is_mid_career_corporate else TA_LEFT,
-            left_indent=11,
-            first_line_indent=-8,
-            space_after=theme.bullet_space_after,
+            leading=theme.bullet_size * (1.10 if compact else 1.18),
+            alignment=TA_LEFT,
+            left_indent=(0.22 if theme.is_mid_career_corporate else 0.18) * inch,
+            first_line_indent=(-0.17 if theme.is_mid_career_corporate else -0.13) * inch,
+            space_after=bullet_space_after,
         ),
         "education": _paragraph_style(
             "PdfResumeEducation",
             font_name=body_font,
             font_size=theme.education_size,
             text_color=text_color,
-            leading=theme.education_size * 1.15,
-            keep_with_next=True,
+            leading=theme.education_size * (1.08 if compact else 1.15),
+            keep_with_next=False,
         ),
         "education_right": _paragraph_style(
             "PdfResumeEducationRight",
             font_name=body_font,
             font_size=theme.education_size,
             text_color=text_color,
-            leading=theme.education_size * 1.15,
+            leading=theme.education_size * (1.08 if compact else 1.15),
             alignment=TA_RIGHT,
-            keep_with_next=True,
+            keep_with_next=False,
         ),
         "education_meta": _paragraph_style(
             "PdfResumeEducationMeta",
             font_name=body_font,
             font_size=max(theme.education_size - 0.15, 8),
             text_color=text_color,
-            leading=theme.education_size * 1.12,
+            leading=theme.education_size * (1.07 if compact else 1.12),
             space_after=0.5,
         ),
         "education_detail": _paragraph_style(
@@ -342,10 +362,10 @@ def _build_styles(theme) -> dict[str, ParagraphStyle]:
             font_name=body_font,
             font_size=max(theme.education_size - 0.15, 8),
             text_color=text_color,
-            leading=theme.education_size * 1.14,
-            left_indent=11 if theme.is_mid_career_corporate else 0,
-            first_line_indent=-8 if theme.is_mid_career_corporate else 0,
-            space_after=1.5,
+            leading=theme.education_size * (1.08 if compact else 1.14),
+            left_indent=(0.22 * inch) if theme.is_mid_career_corporate else 0,
+            first_line_indent=(-0.17 * inch) if theme.is_mid_career_corporate else 0,
+            space_after=0.5 if compact else 1.5,
         ),
     }
 
@@ -425,13 +445,19 @@ def _add_summary(story: list, approved: ApprovedResume, theme, styles, heading: 
     story.append(Paragraph(_markup(summary), styles["body"]))
 
 
-def _skill_groups(profile: CandidateProfile, approved: ApprovedResume, resume_format: str):
+def _skill_groups(
+    profile: CandidateProfile,
+    approved: ApprovedResume,
+    resume_format: str,
+    resume_language: str,
+):
+    labels = resume_labels(resume_language)
     category_map = {
-        "hard": ("Hard Skills", approved.skills.hard_skills),
-        "soft": ("Soft Skills", approved.skills.soft_skills),
-        "tools": ("Tools & Software", approved.skills.tools_software),
-        "industry": ("Industry Knowledge", approved.skills.industry_knowledge),
-        "languages": ("Languages", profile.skills.languages),
+        "hard": (labels["hard_skills"], approved.skills.hard_skills),
+        "soft": (labels["soft_skills"], approved.skills.soft_skills),
+        "tools": (labels["tools_software"], approved.skills.tools_software),
+        "industry": (labels["industry_knowledge"], approved.skills.industry_knowledge),
+        "languages": (labels["languages"], profile.skills.languages),
     }
     groups = []
     for key in SKILL_CATEGORY_ORDER[resume_format]:
@@ -451,8 +477,9 @@ def _add_skills(
     *,
     heading: str,
     resume_format: str,
+    resume_language: str,
 ) -> None:
-    groups = _skill_groups(profile, approved, resume_format)
+    groups = _skill_groups(profile, approved, resume_format, resume_language)
     if not groups:
         return
     story.extend(_section_flowables(heading, theme, styles))
@@ -481,6 +508,7 @@ def _add_experience(
     *,
     heading: str,
     usable_width: float,
+    entry_gap_points: float = EXPERIENCE_ENTRY_GAP_POINTS,
 ) -> None:
     included = [
         (
@@ -498,21 +526,12 @@ def _add_experience(
         return
 
     story.extend(_section_flowables(heading, theme, styles))
-    balance_after_first = (
-        len(included) >= 2
-        and len(included[0][1]) >= 7
-        and sum(len(item) for item in included[0][1]) >= 1000
-    )
 
     for index, (experience, bullets) in enumerate(included):
-        if index == 1 and balance_after_first:
-            story.append(PageBreak())
-
-        employer_name = _markup(experience.employer)
-        if theme.is_mid_career_corporate:
-            employer_name = f"<u>{employer_name}</u>"
-        else:
-            employer_name = f"<b>{employer_name}</b>"
+        # Let ReportLab paginate naturally. The employer heading and role are
+        # kept together below, which prevents an orphaned heading without
+        # forcing the second employer onto a new page.
+        employer_name = f"<b>{_markup(experience.employer)}</b>"
         location = _normalize_pdf_text(experience.location)
         employer_left = employer_name + (f", {_markup(location)}" if location else "")
         date_text = _markup(experience.dates)
@@ -536,7 +555,11 @@ def _add_experience(
             )
         )
         role = Paragraph(_markup(experience.title), styles["role"])
-        story.append(KeepTogether([header_table, role]))
+        heading_flowables = []
+        if index > 0:
+            heading_flowables.append(Spacer(1, entry_gap_points))
+        heading_flowables.extend([header_table, role])
+        story.append(KeepTogether(heading_flowables))
 
         for bullet in bullets:
             rendered = (
@@ -544,6 +567,7 @@ def _add_experience(
                 if has_bullet_structure_artifacts(bullet)
                 else bullet
             )
+            rendered = normalize_resume_bullet_terminal_punctuation(rendered)
             rendered = _normalize_pdf_text(rendered)
             if rendered:
                 marker = "&bull;"
@@ -551,7 +575,6 @@ def _add_experience(
                     accent = _rgb_color(theme.accent_color).hexval()[2:]
                     marker = f'<font color="#{accent}"><b>&bull;</b></font>'
                 story.append(Paragraph(f"{marker} {_markup(rendered)}", styles["bullet"]))
-        story.append(Spacer(1, 2))
 
 
 def _add_education(
@@ -562,6 +585,8 @@ def _add_education(
     *,
     heading: str,
     usable_width: float,
+    item_gap_points: float = 1.5,
+    left_column_ratio: float = 0.88,
 ) -> None:
     if not profile.education:
         return
@@ -576,7 +601,9 @@ def _add_education(
         ]
         institution = ", ".join(institution_parts)
         date_text = _normalize_pdf_text(item.date)
-        detail = _normalize_pdf_text(item.detail)
+        detail = _normalize_pdf_text(
+            normalize_resume_bullet_terminal_punctuation(item.detail)
+        )
 
         if theme.is_mid_career_corporate:
             left_parts = []
@@ -588,7 +615,9 @@ def _add_education(
         else:
             left_text = f"<b>{_markup(credential)}</b>" if credential else _markup(institution)
 
-        left_width = usable_width * 0.78
+        # Mirror Word's right-aligned tab stop: reserve only the compact
+        # date column so credentials and institutions do not wrap prematurely.
+        left_width = usable_width * left_column_ratio
         table = Table(
             [[Paragraph(left_text, styles["education"]), Paragraph(_markup(date_text), styles["education_right"])]],
             colWidths=[left_width, usable_width - left_width],
@@ -610,32 +639,99 @@ def _add_education(
             block.append(Paragraph(_markup(institution), styles["education_meta"]))
         story.append(KeepTogether(block))
         if detail:
-            prefix = "- " if theme.is_mid_career_corporate else ""
-            story.append(Paragraph(prefix + _markup(detail), styles["education_detail"]))
-        story.append(Spacer(1, 1.5))
+            marker = "&bull; " if theme.is_mid_career_corporate else ""
+            story.append(Paragraph(marker + _markup(detail), styles["education_detail"]))
+        story.append(Spacer(1, item_gap_points))
 
 
-def export_resume_pdf(
+
+@dataclass(frozen=True)
+class PdfPaginationQuality:
+    page_count: int
+    last_page_substantive_lines: int
+    last_page_fill_ratio: float
+
+    @property
+    def has_orphan_final_page(self) -> bool:
+        if self.page_count <= 1:
+            return False
+        return (
+            self.last_page_substantive_lines < 3
+            or self.last_page_fill_ratio < 0.20
+        )
+
+
+def _pdf_pagination_quality(payload: bytes, theme) -> PdfPaginationQuality:
+    try:
+        reader = PdfReader(BytesIO(payload))
+    except Exception:
+        return PdfPaginationQuality(1, 0, 1.0)
+    page_count = len(reader.pages)
+    if page_count <= 1:
+        return PdfPaginationQuality(max(1, page_count), 0, 1.0)
+
+    page = reader.pages[-1]
+    positions: list[tuple[float, float]] = []
+
+    def visitor_text(text, current_matrix, text_matrix, _font_dictionary, font_size) -> None:
+        if not str(text or "").strip():
+            return
+        try:
+            # Apply the text matrix through the current transformation matrix.
+            y_position = (
+                (float(text_matrix[4]) * float(current_matrix[1]))
+                + (float(text_matrix[5]) * float(current_matrix[3]))
+                + float(current_matrix[5])
+            )
+            positions.append((y_position, float(font_size or 0.0)))
+        except (IndexError, TypeError, ValueError):
+            return
+
+    try:
+        extracted = page.extract_text(visitor_text=visitor_text) or ""
+    except TypeError:
+        extracted = page.extract_text() or ""
+    extracted_lines = [line.strip() for line in extracted.splitlines() if line.strip()]
+
+    unique_y: list[float] = []
+    for y_position, _font_size in sorted(positions, key=lambda item: item[0]):
+        if not unique_y or abs(y_position - unique_y[-1]) >= 2.0:
+            unique_y.append(y_position)
+    substantive_lines = len(unique_y) if unique_y else len(extracted_lines)
+
+    if unique_y:
+        max_font_size = max((font_size for _y, font_size in positions), default=10.0)
+        content_span = max_font_size if len(unique_y) == 1 else (unique_y[-1] - unique_y[0]) + max_font_size
+        page_height = float(page.mediabox.height)
+        usable_height = max(
+            1.0,
+            page_height - ((theme.top_margin + theme.bottom_margin) * inch),
+        )
+        fill_ratio = max(0.0, min(1.0, content_span / usable_height))
+    else:
+        # A conservative text-only fallback when PDF coordinates are unavailable.
+        fill_ratio = min(1.0, substantive_lines / 45.0)
+
+    return PdfPaginationQuality(
+        page_count=page_count,
+        last_page_substantive_lines=substantive_lines,
+        last_page_fill_ratio=fill_ratio,
+    )
+
+
+def _build_pdf_payload(
     profile: CandidateProfile,
     approved: ApprovedResume,
     *,
-    career_stage: str | None = None,
-    resume_format: str | None = None,
-    visual_design: str | None = None,
+    theme,
+    stage: str,
+    format_key: str,
+    design_key: str,
+    resume_language: str,
+    compact: bool,
 ) -> bytes:
-    """Generate a styled, ATS-readable PDF without Word or LibreOffice.
-
-    PDF and Word are rendered from the same approved resume data and the same
-    career-stage, structural-format, and visual-design selections. This removes
-    any desktop application dependency from the web download path.
-    """
-    _register_runtime_fonts()
-    stage = normalize_career_stage(career_stage)
-    format_key = normalize_resume_format(resume_format)
-    design_key = normalize_visual_design(visual_design)
-    theme = compose_resume_theme(stage, design_key)
-    styles = _build_styles(theme)
-    headings = RESUME_FORMAT_SECTIONS[format_key]
+    styles = _build_styles(theme, compact=compact)
+    headings = resume_format_headings(resume_language, format_key)
 
     output = BytesIO()
     usable_width = LETTER[0] - (theme.left_margin + theme.right_margin) * inch
@@ -668,6 +764,7 @@ def export_resume_pdf(
             styles,
             heading=headings["skills"],
             resume_format=format_key,
+            resume_language=resume_language,
         )
 
     def add_experience() -> None:
@@ -679,6 +776,7 @@ def export_resume_pdf(
             styles,
             heading=headings["experience"],
             usable_width=usable_width,
+            entry_gap_points=4.0 if compact else EXPERIENCE_ENTRY_GAP_POINTS,
         )
 
     def add_education() -> None:
@@ -689,6 +787,8 @@ def export_resume_pdf(
             styles,
             heading=headings["education"],
             usable_width=usable_width,
+            item_gap_points=0.5 if compact else 1.5,
+            left_column_ratio=0.91 if compact else 0.88,
         )
 
     if format_key == "technical":
@@ -727,4 +827,61 @@ def export_resume_pdf(
     payload = output.getvalue()
     if not payload.startswith(b"%PDF-"):
         raise PdfConversionError("The generated file was not a valid PDF.")
+    return payload
+
+
+def export_resume_pdf(
+    profile: CandidateProfile,
+    approved: ApprovedResume,
+    *,
+    career_stage: str | None = None,
+    resume_format: str | None = None,
+    visual_design: str | None = None,
+    resume_language: str | None = None,
+) -> bytes:
+    """Generate a styled, ATS-readable PDF without Word or LibreOffice.
+
+    PDF and Word are rendered from the same approved resume data and the same
+    career-stage, structural-format, and visual-design selections. If the first
+    PDF pass leaves a nearly empty final page, the exporter rebuilds it with the
+    same font sizes and margins but tighter discretionary spacing.
+    """
+    _register_runtime_fonts()
+    stage = normalize_career_stage(career_stage)
+    format_key = normalize_resume_format(resume_format)
+    design_key = normalize_visual_design(visual_design)
+    theme = compose_resume_theme(stage, design_key)
+    language = resume_language or "English"
+
+    payload = _build_pdf_payload(
+        profile,
+        approved,
+        theme=theme,
+        stage=stage,
+        format_key=format_key,
+        design_key=design_key,
+        resume_language=language,
+        compact=False,
+    )
+    quality = _pdf_pagination_quality(payload, theme)
+    if not quality.has_orphan_final_page:
+        return payload
+
+    compact_payload = _build_pdf_payload(
+        profile,
+        approved,
+        theme=theme,
+        stage=stage,
+        format_key=format_key,
+        design_key=design_key,
+        resume_language=language,
+        compact=True,
+    )
+    compact_quality = _pdf_pagination_quality(compact_payload, theme)
+    if (
+        compact_quality.page_count < quality.page_count
+        or not compact_quality.has_orphan_final_page
+        or compact_quality.last_page_fill_ratio >= quality.last_page_fill_ratio
+    ):
+        return compact_payload
     return payload

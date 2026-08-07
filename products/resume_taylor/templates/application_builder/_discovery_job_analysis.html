@@ -1,0 +1,70 @@
+{% if analysis_error %}
+<div class="alert alert-error">This job could not be assessed right now: {{ analysis_error }}</div>
+{% endif %}
+{% set job = analysis.job %}
+{% set fit = analysis.fit %}
+<div class="discovery-analysis-grid">
+  <section class="discovery-match-section">
+    <h4>Strongest matches</h4>
+    {% if analysis.strongest_matches %}
+      <ul class="discovery-grounded-list">
+        {% for match in analysis.strongest_matches %}
+          <li>
+            <strong>{{ match.requirement }}</strong>
+            <span class="discovery-source-intro">Supported by resume evidence or Career Evidence Library:</span>
+            <ul class="discovery-source-list">
+              {% for reference in match.evidence %}
+                <li data-record-id="{{ reference.record_id }}" data-record-type="{{ reference.record_type }}">
+                  <a href="{{ request.script_root }}{% if reference.surface == 'Career Evidence Library' %}/career-evidence-library#record-{{ reference.record_id }}{% else %}/applications/?tab=tailoring{% endif %}">{{ reference.label }}</a>
+                  <span>Record {{ reference.record_id }} · “{{ reference.statement }}”</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </li>
+        {% endfor %}
+      </ul>
+    {% elif fit %}
+      <p class="discovery-evidence-warning">No strength is shown because the latest fit snapshot does not contain a traceable resume or Evidence Library record.</p>
+    {% else %}
+      <p>The evidence-grounded fit assessment has not run yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="discovery-match-section">
+    <h4>Important gaps</h4>
+    {% if analysis.important_gaps %}
+      <ul>
+        {% for item in analysis.important_gaps %}
+          <li>{{ item }} — not supported by verified resume or Evidence Library evidence.</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>{% if fit %}No unsupported requirements were identified.{% else %}Gaps will appear after analysis.{% endif %}</p>
+    {% endif %}
+    {% if fit and fit.hard_blockers %}
+      <h5>Hard blockers</h5>
+      <ul>{% for item in fit.hard_blockers %}<li>{{ item }}</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+</div>
+
+<section class="discovery-analysis-explanation">
+  <h4>Why this matches</h4>
+  {% if fit %}
+    <p><strong>{{ fit.recommendation }}</strong> with {{ fit.confidence|lower }} confidence. Job Fit compares structured requirements only with traceable resume evidence and confirmed Career Evidence Library records.</p>
+    <p><strong>Search Priority:</strong> {% if analysis.search_priority is not none %}{{ "%.0f"|format(analysis.search_priority) }}{% else %}not available{% endif %}. Preference Fit is {{ "%.0f"|format(analysis.preference_score) }} and posting freshness is {{ "%.0f"|format(analysis.freshness_score) }}.</p>
+    {% if analysis.preference_components %}
+      <ul>{% for component in analysis.preference_components %}<li>{{ component.name }}: {{ "%.0f"|format(component.score) }} — {{ component.explanation }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% if analysis.partial_matches %}
+      <h4>Partial evidence</h4>
+      <ul>
+        {% for match in analysis.partial_matches %}
+          <li>{{ match.requirement }} — partial support from {% for reference in match.evidence %}{{ reference.label }}{% if not loop.last %}, {% endif %}{% endfor %}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% else %}
+    <p>This posting has not yet completed the evidence-grounded fit assessment.</p>
+  {% endif %}
+</section>

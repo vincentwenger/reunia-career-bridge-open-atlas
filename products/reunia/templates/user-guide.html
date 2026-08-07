@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% block feature_id %}user-guide{% endblock %}
+
 {% from 'macros/ui.html' import page_hero %}
 
 {% block title %}User Guide - Réunia Career Bridge{% endblock %}
@@ -25,7 +27,7 @@
                 <p>Add the target job, resume, and the materials you already have. You can refine the workspace as the application progresses.</p>
             </div>
             {% if session.get('user_id') %}
-            <a class="guide-button guide-button-primary" href="{{ request.script_root }}/application-builder/">Build an application <span aria-hidden="true">→</span></a>
+            <a class="guide-button guide-button-primary" href="{{ request.script_root }}/applications/">Build an application <span aria-hidden="true">→</span></a>
             {% else %}
             <a class="guide-button guide-button-primary" href="{{ request.script_root }}/login.html">Sign in to start <span aria-hidden="true">→</span></a>
             {% endif %}
@@ -38,7 +40,7 @@
             </div>
             <label class="guide-search" for="guideSearch">
                 <span aria-hidden="true">⌕</span>
-                <input id="guideSearch" type="search" placeholder="Try “application”, “scorecard”, or “recording”" autocomplete="off">
+                <input id="guideSearch" type="search" placeholder="Try “application”, “scorecard”, or “mock interview”" autocomplete="off">
                 <button id="clearGuideSearch" type="button" hidden>Clear</button>
             </label>
             <p class="guide-search-status" id="guideSearchStatus" role="status" aria-live="polite"></p>
@@ -50,9 +52,10 @@
                     <span class="guide-sidebar-label">On this page</span>
                     <nav id="guideSectionNav">
                         <a class="is-active" href="#quick-start">Quick start</a>
-                        <a href="#profile-application">Profile &amp; application</a>
-                        <a href="#prepare-practice">Prepare &amp; practice</a>
-                        <a href="#review-improve">Review &amp; improve</a>
+                        <a href="#career-foundation">Career Foundation</a>
+                        <a href="#build-application">Build Your Application</a>
+                        <a href="#prepare-practice">Prepare and Practice</a>
+                        <a href="#review-improve">Improve and Take Action</a>
                         <a href="#settings-account">Settings &amp; account</a>
                         <a href="#troubleshooting">Common problems</a>
                     </nav>
@@ -63,34 +66,34 @@
                 <section class="guide-section" id="quick-start" data-guide-section aria-labelledby="guide-quick-start-title">
                     <header class="guide-section-heading">
                         <span class="guide-eyebrow">The connected workflow</span>
-                        <h2 id="guide-quick-start-title">Use Career Bridge in three stages</h2>
-                        <p>The job application is the central workspace. Preparation, practice, review, and follow-up all remain connected to it.</p>
+                        <h2 id="guide-quick-start-title">Complete your foundation, then use three application stages</h2>
+                        <p>Career Foundation is reusable setup. Each job application then moves through Build, Prepare and Practice, and Improve and Take Action.</p>
                     </header>
 
                     <div class="guide-steps">
                         <article class="guide-step guide-step-important" data-guide-search-item>
                             <div class="guide-step-topline"><span class="guide-step-number">1</span><span class="guide-label guide-label-primary">Start here</span></div>
-                            <span class="guide-step-stage">Build the application</span>
+                            <span class="guide-step-stage">Build Your Application</span>
                             <h3>Connect the target role</h3>
-                            <p>Create an Application Workspace with the job posting, resume, company notes, recruiter messages, and selected career evidence.</p>
-                            <a class="guide-text-link" href="{{ request.script_root }}/application-builder/">Open Application Builder →</a>
+                            <p>Create an Application Workspace with the job posting, resume, company notes, selected career evidence, interview dates, follow-up dates, and next steps.</p>
+                            <a class="guide-text-link" href="{{ request.script_root }}/applications/">Open Application Builder →</a>
                         </article>
 
                         <div class="guide-step-arrow" aria-hidden="true">→</div>
 
                         <article class="guide-step" data-guide-search-item>
                             <div class="guide-step-topline"><span class="guide-step-number">2</span><span class="guide-label">Prepare</span></div>
-                            <span class="guide-step-stage">Before the interview</span>
+                            <span class="guide-step-stage">Prepare and Practice</span>
                             <h3>Plan and practice answers</h3>
                             <p>Use verified evidence to prepare likely questions, then record a browser-based mock interview.</p>
-                            <a class="guide-text-link" href="{{ request.script_root }}/interview-preparation">Open Interview Preparation →</a>
+                            <a class="guide-text-link" href="{{ request.script_root }}/applications/interview-preparation">Open Interview Preparation →</a>
                         </article>
 
                         <div class="guide-step-arrow" aria-hidden="true">→</div>
 
                         <article class="guide-step" data-guide-search-item>
                             <div class="guide-step-topline"><span class="guide-step-number">3</span><span class="guide-label">Improve</span></div>
-                            <span class="guide-step-stage">After practice</span>
+                            <span class="guide-step-stage">Improve and Take Action</span>
                             <h3>Review and act</h3>
                             <p>Review the transcript and Interview Scorecard, create improvement actions, and monitor progress across applications.</p>
                             <a class="guide-text-link" href="{{ request.script_root }}/interview-review">Open Interview Review →</a>
@@ -98,39 +101,77 @@
                     </div>
                 </section>
 
-                <section class="guide-section" id="profile-application" data-guide-section aria-labelledby="profile-application-title">
+                <section class="guide-section" id="career-foundation" data-guide-section aria-labelledby="career-foundation-title">
                     <header class="guide-section-heading">
-                        <span class="guide-eyebrow">Reusable context plus target-role context</span>
-                        <h2 id="profile-application-title">Career Profile &amp; Application Builder</h2>
-                        <p>Keep reusable candidate information separate from application-specific materials.</p>
+                        <span class="guide-eyebrow">Reusable candidate context</span>
+                        <h2 id="career-foundation-title">Career Foundation</h2>
+                        <p>Set up and maintain information that can support many applications without entering it again for each role.</p>
                     </header>
 
                     <div class="guide-feature-grid guide-feature-grid-two">
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">👤</div>
-                            <div><h3>Career Profile</h3><p>Store professional background, accomplishments, preferences, constraints, and reusable answer guidance.</p><a href="{{ request.script_root }}/career-profile">Open Career Profile →</a></div>
+                            <div><h3>Career Profile</h3><p>Set career direction, international and transition context, preferences, and constraints. Resume facts are managed in Baseline Resume.</p><a href="{{ request.script_root }}/career-profile">Open Career Profile →</a></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">◫</div>
-                            <div><h3>Application Workspace</h3><p>Create one workspace for each target position so resume work, interview preparation, practice, and follow-up do not become mixed.</p><a href="{{ request.script_root }}/application-builder/">Open Application Builder →</a></div>
-                        </article>
-                        <article class="guide-feature" data-guide-search-item>
-                            <div class="guide-feature-icon" aria-hidden="true">📄</div>
-                            <div><h3>Application Materials</h3><p>Store the source resume, target job description, company notes, recruiter messages, and application-only files.</p><a href="{{ request.script_root }}/application-materials">Manage Application Materials →</a></div>
+                            <div class="guide-feature-icon" aria-hidden="true">↔</div>
+                            <div><h3>Baseline Resume</h3><p>Explain international titles, credentials, terminology, and transferable skills while preserving the original evidence.</p><a href="{{ request.script_root }}/applications/career-translation">Open Baseline Resume →</a></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">▦</div>
-                            <div><h3>Career Evidence Library</h3><p>Upload verified projects, achievements, metrics, work samples, and experience that can support multiple applications.</p><a href="{{ request.script_root }}/career-evidence-library">Open Career Evidence Library →</a></div>
+                            <div><h3>Career Evidence Library</h3><p>Add confirmed experience directly, save reusable answers from Confirm Relevant Experience, and upload verified projects, achievements, metrics, and work samples that can support multiple applications.</p><a href="{{ request.script_root }}/career-evidence-library">Open Career Evidence Library →</a></div>
+                        </article>
+                    </div>
+
+                    <details class="guide-detail" data-guide-search-item>
+                        <summary>Resume terminology used across Career Bridge</summary>
+                        <dl>
+                            <dt><strong>Imported Resume</strong></dt><dd>The original file you upload.</dd>
+                            <dt><strong>Verified Resume Evidence</strong></dt><dd>The structured facts extracted from the Imported Resume and confirmed evidence.</dd>
+                            <dt><strong>Baseline Resume</strong></dt><dd>The reusable, target-market-language resume created once in Baseline Resume.</dd>
+                            <dt><strong>Application Baseline</strong></dt><dd>The frozen starting resume for one job application before tailoring.</dd>
+                            <dt><strong>Target-Market Review</strong></dt><dd>The application-specific review of titles, credentials, terminology, transferable experience, and evidence gaps.</dd>
+                        </dl>
+                    </details>
+                </section>
+
+                <section class="guide-section" id="build-application" data-guide-section aria-labelledby="build-application-title">
+                    <header class="guide-section-heading">
+                        <span class="guide-eyebrow">One target role at a time</span>
+                        <h2 id="build-application-title">Build Your Application</h2>
+                        <p>Keep every target job, tailored resume, report, and supporting document inside its own application workspace.</p>
+                    </header>
+
+                    <div class="guide-feature-grid guide-feature-grid-two">
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">⌕</div>
+                            <div><h3>Job Discovery</h3><p>Browse the shared job catalog, apply your personal filters, and rank postings against the reusable Career Foundation.</p><a href="{{ request.script_root }}/applications/job-discovery">Open Job Discovery →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">◫</div>
+                            <div><h3>Job Applications</h3><p>Create one workspace for each target position so resume work, interview preparation, practice, and follow-up do not become mixed.</p><a href="{{ request.script_root }}/applications/?tab=applications">Open Job Applications →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">📄</div>
+                            <div><h3>Resume Workflow</h3><p>Create and improve a tailored resume using the selected job description and only verified candidate evidence.</p><a href="{{ request.script_root }}/applications/?tab=tailoring">Open Resume Workflow →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">▥</div>
+                            <div><h3>Resume Reports</h3><p>Review fit, quality, evidence, and revision results for the selected application and resume version.</p><a href="{{ request.script_root }}/applications/?tab=reports">Open Resume Reports →</a></div>
+                        </article>
+                        <article class="guide-feature" data-guide-search-item>
+                            <div class="guide-feature-icon" aria-hidden="true">▤</div>
+                            <div><h3>Application Materials</h3><p>Store the job posting, imported resume, company notes, selected evidence, and other application-only files.</p><a href="{{ request.script_root }}/application-materials">Manage Application Materials →</a></div>
                         </article>
                     </div>
 
                     <details class="guide-detail" data-guide-search-item>
                         <summary>How to build one application workspace</summary>
                         <ol>
-                            <li>Open <strong>Application Builder</strong> and create the target position.</li>
-                            <li>Add the job posting, source resume, company notes, and recruiter messages.</li>
-                            <li>Select verified examples from the <strong>Career Evidence Library</strong>.</li>
-                            <li>Add application-specific objectives or constraints in <strong>Career Profile</strong>.</li>
+                            <li>Complete or update the reusable <strong>Career Foundation</strong>.</li>
+                            <li>Create or select the target role in <strong>Job Applications</strong>.</li>
+                            <li>Add the job posting, imported resume, company notes, selected evidence, and application-only files.</li>
+                            <li>Use <strong>Resume Workflow</strong> and <strong>Resume Reports</strong> for that selected application.</li>
                             <li>Save the workspace before starting interview preparation.</li>
                         </ol>
                     </details>
@@ -139,26 +180,26 @@
                 <section class="guide-section" id="prepare-practice" data-guide-section aria-labelledby="prepare-practice-title">
                     <header class="guide-section-heading">
                         <span class="guide-eyebrow">Application-specific preparation</span>
-                        <h2 id="prepare-practice-title">Interview Preparation &amp; Mock Interview</h2>
+                        <h2 id="prepare-practice-title">Prepare and Practice</h2>
                         <p>Use AI to organize evidence and practice—not to provide hidden answers during a real employer interview.</p>
                     </header>
 
                     <div class="guide-feature-grid guide-feature-grid-two">
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">⌕</div>
-                            <div><h3>Interview Preparation</h3><p>Research the company and role, identify likely questions, and retrieve verified evidence for concise answer planning.</p><a href="{{ request.script_root }}/interview-preparation">Open Interview Preparation →</a></div>
+                            <div><h3>Interview Preparation</h3><p>Research the company and role, identify likely questions, and retrieve verified evidence for concise answer planning.</p><a href="{{ request.script_root }}/applications/interview-preparation">Open Interview Preparation →</a></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">●</div>
-                            <div><h3>Mock Interview Recorder</h3><p>Record your microphone and optional interviewer prompt audio in the browser, then process the session for transcription and coaching.</p><a href="{{ request.script_root }}/mock-interview">Open Mock Interview →</a></div>
+                            <div><h3>Adaptive Mock Interview</h3><p>Choose an interview format and question count. The AI interviewer records and transcribes each answer, evaluates its evidence, challenges vague claims, and asks an adaptive follow-up.</p><a href="{{ request.script_root }}/mock-interview">Open Mock Interview →</a></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">🔒</div>
-                            <div><h3>Practice boundary</h3><p>Candidate-facing Live Q&amp;A is retired. Réunia does not secretly generate answers during real employer interviews.</p></div>
+                            <div><h3>Practice workflow</h3><p>Use Interview Preparation before the interview, Mock Interview for practice, and Interview Review for evidence-grounded coaching afterward.</p></div>
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">🌐</div>
-                            <div><h3>Browser-only MVP</h3><p>The Windows Desktop Recorder is excluded from the Career Bridge MVP. The supported recording path is the browser Mock Interview Recorder.</p></div>
+                            <div><h3>Browser-based practice</h3><p>Adaptive Mock Interview runs directly in the browser. No desktop recorder is required for the supported practice workflow.</p></div>
                         </article>
                     </div>
                 </section>
@@ -166,7 +207,7 @@
                 <section class="guide-section" id="review-improve" data-guide-section aria-labelledby="review-improve-title">
                     <header class="guide-section-heading">
                         <span class="guide-eyebrow">Turn practice into measurable progress</span>
-                        <h2 id="review-improve-title">Interview Review, Action Plan &amp; Progress</h2>
+                        <h2 id="review-improve-title">Improve and Take Action</h2>
                         <p>Review one mock interview in detail, then track improvement across the full application portfolio.</p>
                     </header>
 
@@ -185,9 +226,29 @@
                         </article>
                         <article class="guide-feature" data-guide-search-item>
                             <div class="guide-feature-icon" aria-hidden="true">📊</div>
-                            <div><h3>Career Progress</h3><p>Compare readiness and improvement trends across applications and mock interviews.</p><a href="{{ request.script_root }}/progress">Open Career Progress →</a></div>
+                            <div><h3>Progress &amp; Outcomes</h3><p>Review application outcomes, resume alignment gains, automatic interview readiness, mock-interview improvement, and completed actions.</p><a href="{{ request.script_root }}/progress">Open Progress &amp; Outcomes →</a></div>
                         </article>
                     </div>
+                </section>
+
+                <section class="guide-section" id="secondary-features" data-guide-section aria-labelledby="secondary-features-title">
+                    <header class="guide-section-heading">
+                        <span class="guide-eyebrow">Current scope and planned additions</span>
+                        <h2 id="secondary-features-title">Communication, calendar, and application extras</h2>
+                        <p>The current release tracks upcoming interview dates, application follow-up dates, custom next steps, interview-preparation actions, and post-interview thank-you actions. It does not yet provide a recruiter-message history, communication drafting, calendar synchronization, or cover-letter workflow.</p>
+                    </header>
+                    <details class="guide-detail" data-guide-search-item>
+                        <summary>Planned secondary-feature sequence</summary>
+                        <ol>
+                            <li>Communication log attached to an application.</li>
+                            <li>Thank-you and follow-up message templates.</li>
+                            <li>Recruiter-response drafting.</li>
+                            <li>Optional calendar synchronization.</li>
+                            <li>Cover-letter generation.</li>
+                            <li>Advanced application analytics.</li>
+                        </ol>
+                        <p>These additions remain secondary to the core application, resume, interview, and Career Action Plan workflows.</p>
+                    </details>
                 </section>
 
                 <section class="guide-section" id="settings-account" data-guide-section aria-labelledby="settings-account-title">
@@ -200,7 +261,7 @@
                     <div class="guide-feature-grid guide-feature-grid-two">
                         <article class="guide-feature" data-guide-search-item><div class="guide-feature-icon" aria-hidden="true">🌐</div><div><h3>General &amp; AI</h3><p>Choose the interface language and default AI performance level.</p><a href="{{ request.script_root }}/settings.html">Open Settings →</a></div></article>
                         <article class="guide-feature" data-guide-search-item><div class="guide-feature-icon" aria-hidden="true">📈</div><div><h3>Interview Review</h3><p>Choose whether to generate summaries, improvement actions, and scorecards for new mock interviews.</p></div></article>
-                        <article class="guide-feature" data-guide-search-item><div class="guide-feature-icon" aria-hidden="true">🔒</div><div><h3>Privacy &amp; sharing</h3><p>Configure retention and the defaults used when sharing an interview review.</p></div></article>
+                        <article class="guide-feature" data-guide-search-item><div class="guide-feature-icon" aria-hidden="true">🔒</div><div><h3>Data &amp; privacy</h3><p>Configure retention for saved mock interviews and uploaded documents.</p></div></article>
                         <article class="guide-feature" data-guide-search-item><div class="guide-feature-icon" aria-hidden="true">✉</div><div><h3>Profile and support</h3><p>Update your account profile from the account menu or contact support with a question or problem report.</p><a href="{{ request.script_root }}/help-support.html">Open Help &amp; Support →</a></div></article>
                     </div>
                 </section>
@@ -212,17 +273,17 @@
                         <p>Open a question for the most likely solution.</p>
                     </header>
                     <div class="guide-faq">
-                        <details data-guide-search-item><summary>The mock-interview recording will not start</summary><p>Use a current desktop version of Chrome or Edge and allow microphone access when prompted. Shared interviewer audio also requires selecting a browser tab, window, or screen with audio sharing enabled.</p></details>
-                        <details data-guide-search-item><summary>My practice session is missing from Interview Review</summary><p>Select <strong>Stop &amp; Process</strong>, keep the recorder page open, and wait for the saved confirmation. A discarded recording is not added to Interview Review.</p></details>
+                        <details data-guide-search-item><summary>My mock-interview answer will not record</summary><p>Use a current desktop version of Chrome or Edge, allow microphone access when prompted, and confirm that another application is not already using the microphone.</p></details>
+                        <details data-guide-search-item><summary>My practice session is missing from Interview Review</summary><p>Complete the selected number of questions, choose <strong>Generate interview review</strong>, and keep the page open until the review-ready confirmation appears. A discarded session is not added to Interview Review.</p></details>
                         <details data-guide-search-item><summary>Career Evidence Library did not find an example</summary><p>Confirm that the evidence was uploaded, the correct application workspace is selected, and the search scope includes the intended source. Try a shorter, more specific question.</p></details>
-                        <details data-guide-search-item><summary>The Interview Scorecard evaluated the wrong audio</summary><p>Open Settings and adjust the scorecard source for future mock interviews.</p></details>
+                        <details data-guide-search-item><summary>The Interview Scorecard evaluated the wrong content</summary><p>Adaptive Mock Interview reviews automatically grade the candidate answers rather than the AI interviewer prompts. Contact support if a review appears to analyze the wrong speaker.</p></details>
                         <details data-guide-search-item><summary>An improvement action is not visible</summary><p>Clear Career Action Plan filters and check the Closed view. Owner, application, due date, priority, status, and search filters can change what is displayed.</p></details>
                     </div>
                 </section>
 
                 <section class="guide-safety" data-guide-search-item aria-labelledby="safety-title">
                     <span class="guide-safety-icon" aria-hidden="true">🛡</span>
-                    <div><h2 id="safety-title">Use recording for authorized practice</h2><p>Record only mock-interview sessions or other conversations you are authorized to capture. Review sensitive transcript content before creating a share link.</p></div>
+                    <div><h2 id="safety-title">Use recording for authorized practice</h2><p>Record only mock-interview sessions you are authorized to capture. Review sensitive transcript content before reusing it.</p></div>
                 </section>
 
                 <section class="guide-support" aria-labelledby="support-title">

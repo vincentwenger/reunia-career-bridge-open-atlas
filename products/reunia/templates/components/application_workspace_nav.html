@@ -1,0 +1,19 @@
+{% set workspace_application = application_workspace_nav_application | default(none) %}
+{% set workspace_active = application_workspace_nav_active | default('') %}
+{% if workspace_application %}
+<nav class="application-workspace-nav" aria-label="{{ workspace_application.role }} application workspace">
+  <div class="application-workspace-nav-context">
+    <span class="application-workspace-nav-eyebrow">Selected application</span>
+    <strong>{{ workspace_application.role }}</strong>
+    <span>{{ workspace_application.company }} · {{ workspace_application.status_label }}</span>
+  </div>
+  <div class="application-workspace-nav-links" role="list">
+    <a role="listitem" class="{% if workspace_active == 'overview' %}active{% endif %}" href="{{ request.script_root }}/applications/?tab=applications#application-{{ workspace_application.id }}" {% if workspace_active == 'overview' %}aria-current="page"{% endif %}>Overview</a>
+    <a role="listitem" class="{% if workspace_active == 'resume' %}active{% endif %}" href="{{ url_for('application_builder.open_application_builder', application_id=workspace_application.id) }}" {% if workspace_active == 'resume' %}aria-current="page"{% endif %}>Resume</a>
+    <a role="listitem" class="{% if workspace_active == 'materials' %}active{% endif %}" href="{{ request.script_root }}/application-materials?application_id={{ workspace_application.id | urlencode }}" {% if workspace_active == 'materials' %}aria-current="page"{% endif %}>Materials</a>
+    <a role="listitem" class="{% if workspace_active == 'interview' %}active{% endif %}" href="{{ url_for('application_builder.interview_preparation_workspace', application_id=workspace_application.id) }}" {% if workspace_active == 'interview' %}aria-current="page"{% endif %}>Interview</a>
+    <a role="listitem" class="{% if workspace_active == 'actions' %}active{% endif %}" href="{{ request.script_root }}/career-action-plan?application_id={{ workspace_application.id | urlencode }}" {% if workspace_active == 'actions' %}aria-current="page"{% endif %}>Actions</a>
+    <a role="listitem" class="{% if workspace_active == 'activity' %}active{% endif %}" href="{{ request.script_root }}/progress?application_id={{ workspace_application.id | urlencode }}#applications" {% if workspace_active == 'activity' %}aria-current="page"{% endif %}>Activity</a>
+  </div>
+</nav>
+{% endif %}

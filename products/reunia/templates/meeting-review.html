@@ -1,7 +1,12 @@
 {% extends 'base.html' %}
+{% block feature_id %}interview-review{% endblock %}
+
 {% from 'macros/ui.html' import page_hero %}
 
 {% block title %}Réunia - Interview Review{% endblock %}
+
+{% block body_class %}career-workspace-ui interview-review-workspace-ui{% endblock %}
+
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/meeting-review.css') }}">
@@ -12,15 +17,15 @@
 
     {{ page_hero(
         'Interview Review',
-        'Choose a mock interview to review the candidate’s answers, action plan, interview scorecard, transcript, and coaching.'
+        'Select a practice session to review its summary, scorecard, transcript, and coaching.'
     ) }}
 
     <div class="content-grid">
 
-        {% set sidebar_title = 'Mock Interview Library' %}
-{% set sidebar_description = 'Select a mock interview to review answers, coaching, scorecard, and transcript.' %}
+        {% set sidebar_title = 'Mock interviews' %}
+{% set sidebar_description = 'Select a saved practice session.' %}
 {% set sidebar_search_id = 'meeting-search' %}
-{% set sidebar_search_placeholder = 'Search by target role, date, score, answer, transcript, strengths, or action items...' %}
+{% set sidebar_search_placeholder = 'Search interviews…' %}
 {% set sidebar_list_id = 'meeting-list' %}
 {% set sidebar_loading_title = 'Loading mock interviews' %}
 {% set sidebar_loading_message = 'Retrieving your mock-interview history...' %}
@@ -31,13 +36,10 @@
                 <div class="tab-nav">
                     <div class="tab-button-group" role="tablist" aria-label="Interview review tabs">
                         <button class="tab-button active" type="button" id="summary-tab-button" role="tab" aria-selected="true" aria-controls="summary-tab" tabindex="0" data-meeting-tab="summary">Summary</button>
-                        <button class="tab-button" type="button" id="scorecard-tab-button" role="tab" aria-selected="false" aria-controls="scorecard-tab" tabindex="-1" data-meeting-tab="scorecard">Interview Scorecard</button>
+                        <button class="tab-button" type="button" id="scorecard-tab-button" role="tab" aria-selected="false" aria-controls="scorecard-tab" tabindex="-1" data-meeting-tab="scorecard">Scorecard</button>
                         <button class="tab-button" type="button" id="transcript-tab-button" role="tab" aria-selected="false" aria-controls="transcript-tab" tabindex="-1" data-meeting-tab="transcript">Transcript</button>
-                        <button class="tab-button" type="button" id="ask-ai-tab-button" role="tab" aria-selected="false" aria-controls="ask-ai-tab" tabindex="-1" data-meeting-tab="ask-ai">Ask about this interview</button>
+                        <button class="tab-button" type="button" id="ask-ai-tab-button" role="tab" aria-selected="false" aria-controls="ask-ai-tab" tabindex="-1" data-meeting-tab="ask-ai">Ask AI</button>
                     </div>
-                    <button class="meeting-share-trigger" type="button" id="meeting-share-trigger" disabled>
-                        <span aria-hidden="true">↗</span> Share
-                    </button>
                 </div>
 
                 {% include 'meeting/_summary_panel.html' %}
@@ -50,7 +52,6 @@
             </section>
         </main>
     </div>
-    {% include 'meeting/_share_dialog.html' %}
     {% include 'meeting/_topic_manager_dialog.html' %}
 </div>
 {% endblock %}

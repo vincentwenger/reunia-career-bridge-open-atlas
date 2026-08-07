@@ -1,61 +1,78 @@
 {% extends 'base.html' %}
+{% block feature_id %}sign-in{% endblock %}
 
-{% block title %}Réunia - Login{% endblock %}
+{% block title %}Sign in · Réunia Career Bridge{% endblock %}
+{% block meta_description %}Sign in to Réunia Career Bridge, an evidence-grounded career workspace for immigrants and newcomers building U.S. applications.{% endblock %}
 
 {% block page_styles %}
 <link rel="stylesheet" href="{{ static_asset('css/pages/login.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="auth-page">
+<main class="auth-page">
     <div class="auth-shell">
+        <section class="auth-brand-panel" aria-labelledby="auth-brand-title">
+            <a class="auth-home-link" href="{{ request.script_root }}/">
+                <span aria-hidden="true">←</span>
+                Back to overview
+            </a>
 
-        <section class="auth-brand-panel">
-            <div class="brand-badge">✨ Réunia · AI Career Bridge</div>
+            <div class="auth-brand-mark">
+                <img src="{{ static_asset('icons/favicon-64.png') }}" alt="">
+                <span>
+                    <strong>Réunia Career Bridge</strong>
+                    <small>AI career support for newcomer inclusion</small>
+                </span>
+            </div>
 
-            <h1>Build. Practice. Improve.</h1>
-
+            <h1 id="auth-brand-title">Make international experience clear, credible, and job-ready.</h1>
             <p class="brand-description">
-                Sign in to build application workspaces, prepare evidence-backed answers, practice mock interviews, review interview scorecards, and manage your career action plan.
+                Réunia Career Bridge helps immigrants and newcomers translate their international experience into applications that U.S. employers can understand and evaluate—without inventing qualifications.
             </p>
 
-            <div class="feature-list">
-                <div class="feature-item">
-                    <div class="feature-icon">💬</div>
+            <article class="auth-profile-preview" aria-label="Fictional Career Bridge profile example">
+                <div class="auth-profile-heading">
+                    <span class="auth-example-label">Fictional example</span>
+                    <span class="auth-verified-state"><i aria-hidden="true"></i> Evidence verified</span>
+                </div>
+                <div class="auth-profile-main">
+                    <div class="auth-avatar" aria-hidden="true">TM</div>
                     <div>
-                        <strong>Application Workspaces</strong>
-                        <span>Keep each target role, resume, job posting, company notes, and recruiter messages together.</span>
+                        <h2>Thomas MARTIN</h2>
+                        <p>Application Production &amp; Support Specialist</p>
+                    </div>
+                    <span class="auth-route">France <i aria-hidden="true">→</i> United States</span>
+                </div>
+                <div class="auth-profile-details">
+                    <div><small>Target role</small><strong>Senior Application Support Engineer</strong></div>
+                    <div class="auth-tool-list" aria-label="Example tools">
+                        <span>SQL</span><span>Oracle</span><span>Linux</span><span>Shell</span>
                     </div>
                 </div>
+            </article>
 
-                <div class="feature-item">
-                    <div class="feature-icon">📝</div>
-                    <div>
-                        <strong>Mock Interview Practice</strong>
-                        <span>Record and transcribe practice answers without using hidden assistance during a real interview.</span>
-                    </div>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon">📊</div>
-                    <div>
-                        <strong>Interview Scorecards</strong>
-                        <span>Score answer relevance, evidence, structure, clarity, and delivery.</span>
-                    </div>
-                </div>
+            <div class="auth-capability-grid">
+                <article>
+                    <span class="auth-capability-label">Career &amp; Talent AI</span>
+                    <p>Resume translation, evidence-aware applications, mock interview agents, and professional networking support.</p>
+                </article>
+                <article>
+                    <span class="auth-capability-label">Newcomer Settlement Tools</span>
+                    <p>Verified job, location, work-authorization, timing, and relocation context for housing, student logistics, and neighborhood matching tools.</p>
+                </article>
             </div>
         </section>
 
-        <section class="auth-form-panel">
+        <section class="auth-form-panel" aria-labelledby="auth-title">
             <div class="auth-card" data-auth-mode="{{ auth_mode or 'login' }}">
-
                 <div class="auth-header">
+                    <span class="auth-form-eyebrow">Your Career Bridge workspace</span>
                     <h2 id="auth-title">{{ 'Create Account' if auth_mode == 'signup' else 'Welcome Back' }}</h2>
                     <p id="auth-subtitle">
                         {% if auth_mode == 'signup' %}
-                            Create your Career Bridge workspace to build applications and practice interviews.
+                            Create an evidence-grounded workspace for U.S. applications and interview practice.
                         {% else %}
-                            Log in to continue your applications, interview preparation, and progress.
+                            Continue turning your experience into clear, supported applications.
                         {% endif %}
                     </p>
                 </div>
@@ -102,7 +119,7 @@
                             id="login-email"
                             name="email"
                             autocomplete="email"
-                            placeholder="name@company.com"
+                            placeholder="name@example.com"
                             value="{{ login_email or '' }}"
                             required
                         >
@@ -155,7 +172,7 @@
                             id="signup-name"
                             name="full_name"
                             autocomplete="name"
-                            placeholder="Alex Johnson"
+                            placeholder="Your full name"
                             value="{{ signup_full_name or '' }}"
                             required
                         >
@@ -169,7 +186,7 @@
                             id="signup-email"
                             name="email"
                             autocomplete="email"
-                            placeholder="name@company.com"
+                            placeholder="name@example.com"
                             value="{{ signup_email or '' }}"
                             required
                         >
@@ -216,7 +233,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="submit-btn dark">Create Account</button>
+                    <button type="submit" class="submit-btn">Create Account</button>
 
                     <div class="switch-prompt">
                         Already have an account?
@@ -224,16 +241,14 @@
                     </div>
                 </form>
 
-                <div class="security-note">
-                    <strong>Next step after login:</strong>
-                    create or select an Application Workspace, then connect your Career Profile and evidence before starting interview preparation or a mock interview.
+                <div class="evidence-note">
+                    <strong>Evidence first.</strong>
+                    Career Bridge uses information the candidate confirms and does not invent credentials, responsibilities, or results.
                 </div>
-
             </div>
         </section>
-
     </div>
-</div>
+</main>
 {% endblock %}
 
 {% block page_scripts %}

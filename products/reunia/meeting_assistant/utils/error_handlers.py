@@ -5,6 +5,7 @@ from typing import Any
 from flask import current_app, g, jsonify, render_template, request, session, url_for
 from werkzeug.exceptions import HTTPException
 
+from meeting_assistant.services.server_error_reporting_service import ServerErrorReportingService
 from meeting_assistant.utils.exceptions import ApplicationError
 
 
@@ -37,13 +38,19 @@ def current_request_reference() -> str:
 def register_error_handlers(app) -> None:
     @app.errorhandler(ApplicationError)
     def handle_application_error(error: ApplicationError):
+        reference_id = current_request_reference() if error.status_code >= 500 else None
+        if reference_id:
+            _report_server_error(error, status_code=error.status_code, reference_id=reference_id)
         if _wants_json():
-            return jsonify({"error": str(error)}), error.status_code
+            payload = {"error": str(error)}
+            if reference_id:
+                payload["reference_id"] = reference_id
+            return jsonify(payload), error.status_code
         return render_error_page(
             error_title="Request Error",
             error_message=str(error),
             status_code=error.status_code,
-            reference_id=(current_request_reference() if error.status_code >= 500 else None),
+            reference_id=reference_id,
         ), error.status_code
 
     @app.errorhandler(413)
@@ -79,13 +86,19 @@ def register_error_handlers(app) -> None:
     @app.errorhandler(HTTPException)
     def handle_http_error(error: HTTPException):
         status_code = int(error.code or 500)
+        reference_id = current_request_reference() if status_code >= 500 else None
+        if reference_id:
+            _report_server_error(error, status_code=status_code, reference_id=reference_id)
         if _wants_json():
-            return jsonify({"error": error.description}), status_code
+            payload = {"error": error.description}
+            if reference_id:
+                payload["reference_id"] = reference_id
+            return jsonify(payload), status_code
         return render_error_page(
             error_title=error.name,
             error_message=error.description,
             status_code=status_code,
-            reference_id=(current_request_reference() if status_code >= 500 else None),
+            reference_id=reference_id,
         ), status_code
 
     @app.errorhandler(Exception)
@@ -96,6 +109,7 @@ def register_error_handlers(app) -> None:
             reference_id,
             exc_info=error,
         )
+        _report_server_error(error, status_code=500, reference_id=reference_id)
         if _wants_json():
             return jsonify({
                 "error": "An unexpected server error occurred.",
@@ -107,6 +121,46 @@ def register_error_handlers(app) -> None:
             status_code=500,
             reference_id=reference_id,
         ), 500
+
+    @app.after_request
+    def report_explicit_server_error_response(response):
+        if response.status_code < 500 or bool(
+            getattr(g, "automatic_server_error_reported", False)
+        ):
+            return response
+        reference_id = current_request_reference()
+        summary = ""
+        if response.is_json:
+            try:
+                summary = str(response.get_json(silent=True) or "")
+            except Exception:
+                summary = ""
+        synthetic_error = RuntimeError(
+            f"The request returned HTTP {response.status_code} without an uncaught exception."
+        )
+        _report_server_error(
+            synthetic_error,
+            status_code=response.status_code,
+            reference_id=reference_id,
+            response_summary=summary,
+        )
+        response.headers.setdefault("X-Request-ID", reference_id)
+        return response
+
+
+def _report_server_error(
+    error: BaseException,
+    *,
+    status_code: int,
+    reference_id: str,
+    response_summary: str = "",
+) -> None:
+    ServerErrorReportingService().report_safely(
+        error,
+        status_code=status_code,
+        reference_id=reference_id,
+        response_summary=response_summary,
+    )
 
 
 def _link_action(label: str, href: str) -> dict[str, str]:

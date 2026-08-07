@@ -1,0 +1,119 @@
+<section
+  class="card discovery-results discovery-results-minimal"
+  id="job-discovery-results"
+  aria-labelledby="job-discovery-title"
+  data-discovery-catalog-hydration-url="{{ url_for('application_builder.hydrate_discovered_jobs_from_shared_catalog') }}"
+  data-discovery-catalog-version="{{ discovery_catalog_version }}"
+  data-discovery-owner-scope="{{ discovery_owner_scope }}"
+  data-discovery-result-index-url="{{ url_for('application_builder.prebuild_discovery_result_index') }}"
+  data-discovery-results-url="{{ url_for('application_builder.job_discovery_results_json') }}"
+  data-discovery-results-loaded="{{ 'true' if discovery_results_inline else 'false' }}"
+  data-discovery-result-index-stale="{% if discovery_results_inline %}{{ 'true' if discovery_result_summary.index_stale else 'false' }}{% else %}unknown{% endif %}"
+  data-discovery-minimum-fit="{{ discovery_filters.minimum_fit }}"
+  data-discovery-confidence="{{ discovery_filters.confidence_query }}"
+  data-discovery-recommendation="{{ discovery_filters.recommendation_filter }}"
+  data-discovery-sort="{{ discovery_filters.sort_mode }}"
+>
+  <div class="section-heading compact-section-heading discovery-results-heading">
+    <div>
+      <h2 id="job-discovery-title">Opportunities</h2>
+      <span class="discovery-refresh-status">{{ enabled_discovery_source_count }} source{% if enabled_discovery_source_count != 1 %}s{% endif %} · {{ discovery_checked_label }}</span>
+    </div>
+    <div class="discovery-action-buttons discovery-action-buttons-minimal">
+      <form
+        action="{{ url_for('application_builder.assess_pending_discovered_jobs') }}"
+        method="post"
+        class="discovery-assessment-form"
+        data-discovery-assessment-run
+        data-assessment-url="{{ url_for('application_builder.assess_pending_discovered_jobs') }}"
+        data-pending-count="{{ discovery_result_summary.pending_count if discovery_results_inline else 0 }}"
+        data-assessment-run-limit="{{ discovery_assessment_run_limit }}"
+        data-active-job-id="{{ active_discovery_assessment_job.id if active_discovery_assessment_job else '' }}"
+        data-active-job-status-url="{% if active_discovery_assessment_job %}{{ url_for('application_builder.discovery_assessment_job_status', job_id=active_discovery_assessment_job.id) }}{% endif %}"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="result_tab" value="recommended">
+        <input type="hidden" name="page" value="1">
+        <input type="hidden" name="per_page" value="{{ discovery_pagination.per_page }}">
+        <input type="hidden" name="min_fit" value="{{ discovery_filters.minimum_fit }}">
+        <input type="hidden" name="confidence" value="{{ discovery_filters.confidence_query }}">
+        <input type="hidden" name="recommendation" value="{{ discovery_filters.recommendation_filter }}">
+        <input type="hidden" name="sort" value="{{ discovery_filters.sort_mode }}">
+        <button class="button secondary" type="submit" data-discovery-assessment-submit data-assessment-scope="limited" {% if active_discovery_assessment_job or not discovery_results_inline or not discovery_result_summary.pending_count %}disabled{% endif %}>Assess next {{ discovery_assessment_run_limit }} jobs</button>
+        <details class="discovery-more-actions">
+          <summary>More</summary>
+          <button class="button text" type="submit" data-discovery-assessment-submit data-assessment-scope="all" {% if active_discovery_assessment_job or not discovery_results_inline or not discovery_result_summary.pending_count %}disabled{% endif %}>Assess all remaining{% if discovery_results_inline and discovery_result_summary.pending_count %} ({{ discovery_result_summary.pending_count }}){% endif %}</button>
+        </details>
+      </form>
+
+      {% if can_manage_job_catalog %}
+      <form
+        action="{{ url_for('application_builder.refresh_discovered_jobs') }}"
+        method="post"
+        class="discovery-refresh-form discovery-refresh-form-minimal"
+        data-discovery-batch-refresh
+        data-source-refresh-url="{{ url_for('application_builder.refresh_discovered_job_source') }}"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="result_tab" value="{{ discovery_result_tab }}">
+        <input type="hidden" name="page" value="1">
+        <input type="hidden" name="per_page" value="{{ discovery_pagination.per_page }}">
+        <input type="hidden" name="min_fit" value="{{ discovery_filters.minimum_fit }}">
+        <input type="hidden" name="confidence" value="{{ discovery_filters.confidence_query }}">
+        <input type="hidden" name="recommendation" value="{{ discovery_filters.recommendation_filter }}">
+        <input type="hidden" name="sort" value="{{ discovery_filters.sort_mode }}">
+        <button class="button text" type="submit" data-discovery-refresh-submit>Refresh jobs for everyone</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% if not can_manage_job_catalog %}<p class="sr-only">The company catalog is managed by administrators and job curators.</p>{% endif %}
+
+  {% if can_manage_job_catalog %}
+    <div class="discovery-refresh-progress" data-discovery-refresh-progress hidden aria-live="polite">
+      <div class="discovery-refresh-progress-heading">
+        <div><strong data-discovery-refresh-title>Preparing refresh…</strong><p data-discovery-refresh-message>Scanning each company separately.</p></div>
+        <button class="button text" type="button" data-discovery-refresh-stop hidden>Stop after current company</button>
+      </div>
+      <progress value="0" max="{{ enabled_discovery_source_count or 1 }}" data-discovery-refresh-meter></progress>
+      <div class="discovery-refresh-progress-summary" data-discovery-refresh-summary></div>
+      <div class="discovery-refresh-issues" data-discovery-refresh-issues hidden></div>
+    </div>
+    <script type="application/json" data-discovery-refresh-sources>{{ discovery_refresh_sources|tojson }}</script>
+  {% endif %}
+
+  <div class="discovery-refresh-progress discovery-assessment-progress" data-discovery-assessment-progress hidden aria-live="polite">
+    <div class="discovery-refresh-progress-heading">
+      <div><strong data-discovery-assessment-title>Preparing assessment…</strong><p data-discovery-assessment-message>Scoring jobs against your Career Profile.</p></div>
+      <button class="button text" type="button" data-discovery-assessment-stop hidden>Stop after current job</button>
+    </div>
+    <progress value="0" max="{{ (discovery_result_summary.pending_count or 1) if discovery_results_inline else 1 }}" data-discovery-assessment-meter></progress>
+    <div class="discovery-refresh-progress-summary" data-discovery-assessment-summary></div>
+    <div class="discovery-refresh-issues" data-discovery-assessment-issues hidden></div>
+  </div>
+
+  <div data-discovery-results-content aria-live="polite" aria-busy="{{ 'false' if discovery_results_inline else 'true' }}">
+    {% if discovery_results_inline %}
+      {% include "application_builder/_discovery_results_content.html" %}
+    {% else %}
+      <div class="discovery-results-skeleton" data-discovery-results-skeleton role="status">
+        <span class="sr-only">Updating job results</span>
+        <div class="discovery-skeleton-tabs" aria-hidden="true">{% for _ in range(6) %}<span class="discovery-skeleton-block discovery-skeleton-tab"></span>{% endfor %}</div>
+        <div class="discovery-skeleton-cards" aria-hidden="true">
+          {% for _ in range(4) %}<article class="discovery-skeleton-card"><span class="discovery-skeleton-block discovery-skeleton-line is-medium"></span><span class="discovery-skeleton-block discovery-skeleton-line is-wide"></span><span class="discovery-skeleton-block discovery-skeleton-line is-short"></span></article>{% endfor %}
+        </div>
+      </div>
+      <noscript>
+        <div class="empty-state"><h3>Load job results</h3><a class="button primary" href="{{ discovery_results_fallback_url }}#job-discovery-results">Load results</a></div>
+      </noscript>
+    {% endif %}
+  </div>
+
+  <template data-discovery-results-skeleton-template>
+    <div class="discovery-results-skeleton" data-discovery-results-skeleton role="status">
+      <span class="sr-only">Updating job results</span>
+      <div class="discovery-skeleton-tabs" aria-hidden="true"><span class="discovery-skeleton-block discovery-skeleton-tab"></span><span class="discovery-skeleton-block discovery-skeleton-tab"></span><span class="discovery-skeleton-block discovery-skeleton-tab"></span><span class="discovery-skeleton-block discovery-skeleton-tab"></span></div>
+      <div class="discovery-skeleton-cards" aria-hidden="true"><article class="discovery-skeleton-card"><span class="discovery-skeleton-block discovery-skeleton-line is-medium"></span><span class="discovery-skeleton-block discovery-skeleton-line is-wide"></span><span class="discovery-skeleton-block discovery-skeleton-line is-short"></span></article><article class="discovery-skeleton-card"><span class="discovery-skeleton-block discovery-skeleton-line is-medium"></span><span class="discovery-skeleton-block discovery-skeleton-line is-wide"></span><span class="discovery-skeleton-block discovery-skeleton-line is-short"></span></article><article class="discovery-skeleton-card"><span class="discovery-skeleton-block discovery-skeleton-line is-medium"></span><span class="discovery-skeleton-block discovery-skeleton-line is-wide"></span><span class="discovery-skeleton-block discovery-skeleton-line is-short"></span></article></div>
+    </div>
+  </template>
+</section>

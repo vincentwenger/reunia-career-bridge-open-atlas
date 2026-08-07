@@ -1,0 +1,281 @@
+{
+  "scenario_id": "internationally_trained_accountant",
+  "label": "Internationally trained professional with unfamiliar credential",
+  "profile": {
+    "name": "Camille Laurent",
+    "contact": {
+      "location": "Lyon, France",
+      "phone": "+1 555 010 0000",
+      "email": "camille.laurent@example.test",
+      "linkedin_label": "LinkedIn",
+      "linkedin_url": "",
+      "github_label": "GitHub",
+      "github_url": ""
+    },
+    "current_summary": "Accounting professional experienced in month-end close, financial statements, IFRS reporting, and audit coordination for a multinational manufacturer.",
+    "skills": {
+      "hard_skills": [
+        "Financial reporting",
+        "Month-end close",
+        "Account reconciliation"
+      ],
+      "soft_skills": [
+        "Cross-functional collaboration",
+        "Attention to detail"
+      ],
+      "tools_software": [
+        "SAP",
+        "Microsoft Excel"
+      ],
+      "industry_knowledge": [
+        "IFRS",
+        "Manufacturing accounting"
+      ],
+      "languages": [
+        "French",
+        "English"
+      ]
+    },
+    "education": [
+      {
+        "credential": "Diplôme Supérieur de Comptabilité et de Gestion (DSCG)",
+        "institution": "Université Jean Moulin Lyon 3",
+        "location": "Lyon, France",
+        "date": "2018",
+        "detail": "Advanced French accounting and management credential."
+      }
+    ],
+    "experiences": [
+      {
+        "id": "EXP-ACCOUNTING-1",
+        "employer": "Alpine Components SAS",
+        "location": "Lyon, France",
+        "dates": "2018–2026",
+        "title": "Responsable Comptable",
+        "bullets": [
+          {
+            "id": "ACC-1",
+            "text": "Prepared monthly financial statements and coordinated month-end close for three manufacturing entities."
+          },
+          {
+            "id": "ACC-2",
+            "text": "Reconciled balance-sheet accounts and resolved reporting differences with operations and finance teams."
+          },
+          {
+            "id": "ACC-3",
+            "text": "Supported external audits by organizing IFRS schedules, evidence, and management responses."
+          },
+          {
+            "id": "ACC-4",
+            "text": "Maintained close checklists and reporting schedules to keep monthly accounting activities organized."
+          },
+          {
+            "id": "ACC-5",
+            "text": "Trained junior accountants on reconciliation procedures and documentation standards."
+          },
+          {
+            "id": "ACC-6",
+            "text": "Documented internal accounting controls and followed up remediation actions with process owners."
+          }
+        ]
+      }
+    ],
+    "supplemental_evidence": []
+  },
+  "career_background": {
+    "countries_worked": [
+      "France"
+    ],
+    "industries": [
+      "Manufacturing"
+    ],
+    "roles": [
+      "Responsable Comptable"
+    ],
+    "languages": [
+      "French",
+      "English"
+    ],
+    "target_country": "United States",
+    "target_role": "Senior Accountant",
+    "international_credentials": [
+      "Diplôme Supérieur de Comptabilité et de Gestion (DSCG)"
+    ],
+    "professional_certifications": [],
+    "unfamiliar_job_titles": [
+      "Responsable Comptable"
+    ],
+    "career_transitions": [],
+    "us_employment_experience": "No U.S. employment experience."
+  },
+  "job_description": "Northwest Manufacturing is hiring a Senior Accountant.\n\nKey requirements:\n- Prepare financial statements and manage month-end close\n- Apply U.S. GAAP reporting requirements\n- CPA certification required\n\nCandidates should present only experience and qualifications they can verify.",
+  "job_analysis": {
+    "target_title": "Senior Accountant",
+    "target_company": "Northwest Manufacturing",
+    "requirements": [
+      {
+        "id": "REQ-1",
+        "category": "responsibility",
+        "priority": "critical",
+        "requirement": "Prepare financial statements and manage month-end close",
+        "keywords": [
+          "financial statements",
+          "month-end close"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "category": "domain_knowledge",
+        "priority": "important",
+        "requirement": "Apply U.S. GAAP reporting requirements",
+        "keywords": [
+          "U.S. GAAP",
+          "reporting"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "category": "qualification",
+        "priority": "critical",
+        "requirement": "CPA certification required",
+        "keywords": [
+          "CPA",
+          "certification"
+        ]
+      }
+    ],
+    "ignored_boilerplate": []
+  },
+  "proposal": {
+    "professional_summary": "Accounting professional with verified experience preparing financial statements, coordinating month-end close, and reconciling balance-sheet accounts for manufacturing entities. Brings documented IFRS reporting and external-audit support experience, plus advanced French accounting education. Pursuing a Senior Accountant role while presenting international credentials accurately and treating U.S. GAAP and CPA requirements as explicit gaps rather than claimed experience.",
+    "skills": {
+      "hard_skills": [
+        "Financial reporting",
+        "Month-end close",
+        "Account reconciliation"
+      ],
+      "soft_skills": [
+        "Cross-functional collaboration",
+        "Attention to detail"
+      ],
+      "tools_software": [
+        "SAP",
+        "Microsoft Excel"
+      ],
+      "industry_knowledge": [
+        "IFRS",
+        "Manufacturing accounting"
+      ]
+    },
+    "bullet_proposals": [
+      {
+        "source_bullet_id": "ACC-1",
+        "include": true,
+        "proposed_text": "Prepared monthly financial statements and coordinated month-end close for three manufacturing entities.",
+        "matched_requirement_ids": [
+          "REQ-1"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "ACC-2",
+        "include": true,
+        "proposed_text": "Reconciled balance-sheet accounts and resolved reporting differences with operations and finance teams.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "ACC-3",
+        "include": true,
+        "proposed_text": "Supported external audits by organizing IFRS schedules, evidence, and management responses.",
+        "matched_requirement_ids": [
+          "REQ-2"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "ACC-4",
+        "include": true,
+        "proposed_text": "Maintained close checklists and reporting schedules to keep monthly accounting activities organized.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "ACC-5",
+        "include": true,
+        "proposed_text": "Trained junior accountants on reconciliation procedures and documentation standards.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "ACC-6",
+        "include": true,
+        "proposed_text": "Documented internal accounting controls and followed up remediation actions with process owners.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "requirement_id": "REQ-1",
+        "status": "supported",
+        "evidence_ids": [
+          "ACC-1"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-2",
+        "status": "partial",
+        "evidence_ids": [
+          "ACC-3"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-3",
+        "status": "unsupported",
+        "evidence_ids": [],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      }
+    ],
+    "unsupported_requirements": [
+      "CPA certification required"
+    ],
+    "candidate_questions": [],
+    "career_translation_assessment": {
+      "summary": "",
+      "target_country": "",
+      "target_role": "",
+      "findings": []
+    }
+  },
+  "expectations": {
+    "expected_findings": [
+      {
+        "category": "credential_explanation",
+        "source_text": "Diplôme Supérieur de Comptabilité et de Gestion (DSCG)",
+        "disposition": "confirmed_experience"
+      },
+      {
+        "category": "job_title_translation",
+        "source_text": "Responsable Comptable",
+        "disposition": "reasonable_rephrasing"
+      },
+      {
+        "category": "unsupported_requirement",
+        "source_text": "CPA certification required",
+        "disposition": "unsupported_claim"
+      }
+    ],
+    "expected_min_transferable_findings": 1,
+    "expected_hard_blockers": 1,
+    "forbidden_evidence_phrases": [
+      "No U.S. employment experience."
+    ],
+    "unicode_tokens": [
+      "Diplôme",
+      "Comptabilité"
+    ]
+  }
+}

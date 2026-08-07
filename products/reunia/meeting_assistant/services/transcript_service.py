@@ -34,13 +34,19 @@ class TranscriptService:
         progress_callback: Callable[[str], None] | None = None,
         analysis_cache: dict[str, Any] | None = None,
         analysis_cache_callback: Callable[[str, dict[str, Any]], None] | None = None,
+        scorecard_source_override: str | None = None,
+        analysis_override: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         meeting_id = str(data.get("meeting_id") or "").strip()
         transcript = str(data.get("transcript") or "").strip()
         if not meeting_id or not transcript:
             raise ValidationError("meeting_id and transcript are required.")
 
-        settings = self.user_service.get_settings(user_id)
+        settings = dict(self.user_service.get_settings(user_id))
+        normalized_scorecard_source = str(scorecard_source_override or "").strip().lower()
+        if normalized_scorecard_source in {"microphone", "speaker", "all"}:
+            settings["scorecardSource"] = normalized_scorecard_source
+            settings["scorecard_source"] = normalized_scorecard_source
         model = settings.get("aiModel") or current_app.config["DEFAULT_AI_MODEL"]
         if current_app.config["ALLOW_CLIENT_AI_MODEL_OVERRIDE"] and data.get("aiModel"):
             model = data["aiModel"]
@@ -67,19 +73,22 @@ class TranscriptService:
                 default=str,
             ).encode("utf-8")
         ).hexdigest()
-        cached_analysis = (analysis_cache or {}).get(analysis_key)
-        if isinstance(cached_analysis, dict):
-            analysis = dict(cached_analysis)
-            current_app.logger.info("Reused cached meeting analysis %s", analysis_key[:12])
+        if isinstance(analysis_override, dict):
+            analysis = dict(analysis_override)
         else:
-            analysis = self.analysis_service.analyze(
-                transcript=transcript,
-                model=model,
-                settings=settings,
-                user_id=user_id,
-            )
-            if analysis_cache_callback:
-                analysis_cache_callback(analysis_key, to_json_compatible(analysis))
+            cached_analysis = (analysis_cache or {}).get(analysis_key)
+            if isinstance(cached_analysis, dict):
+                analysis = dict(cached_analysis)
+                current_app.logger.info("Reused cached meeting analysis %s", analysis_key[:12])
+            else:
+                analysis = self.analysis_service.analyze(
+                    transcript=transcript,
+                    model=model,
+                    settings=settings,
+                    user_id=user_id,
+                )
+                if analysis_cache_callback:
+                    analysis_cache_callback(analysis_key, to_json_compatible(analysis))
         if progress_callback:
             progress_callback("saving")
 
@@ -127,6 +136,17 @@ class TranscriptService:
             normalized_participants = [str(value).strip() for value in participants if str(value).strip()]
             if normalized_participants:
                 item["prepared_meeting_participants"] = normalized_participants
+
+        # Preserve the Application Builder relationship for interview reviews so
+        # the Career Action Plan can attach scorecard findings to the exact job.
+        career_application_fields = {
+            "career_application_id": str(data.get("career_application_id") or "").strip(),
+            "career_application_company": str(data.get("career_application_company") or "").strip(),
+            "career_application_role": str(data.get("career_application_role") or "").strip(),
+        }
+        for field, value in career_application_fields.items():
+            if value:
+                item[field] = value
 
         try:
             self.repository.create(item)

@@ -1,0 +1,44 @@
+FICTIONAL TARGET JOB - FOR DEMONSTRATION ONLY
+
+Company: Northstar Community Bank (fictional)
+Role: Senior Application Support Engineer
+Location: United States - Hybrid
+Employment type: Full time
+
+About the role
+Northstar Community Bank is seeking a Senior Application Support Engineer to support the availability, reliability, and operational readiness of business-critical regulatory-reporting and payment applications. The role works across production support, incident investigation, service continuity, release coordination, Oracle database support, and cross-functional technical leadership.
+
+Responsibilities
+- Monitor the daily health and scheduled processing of regulatory-reporting and payment applications used by banking clients.
+- Investigate production incidents using SQL, technical logs, monitoring tools, reproducible diagnostics, and root-cause analysis.
+- Coordinate incident response with development, infrastructure, database, and business teams.
+- Maintain service continuity during incidents, releases, and database upgrades through operational procedures, regression checks, rollback planning, availability validation, and data-integrity checks.
+- Prepare and coordinate application releases, including deployment plans, technical controls, post-release verification, and rollback procedures.
+- Support Oracle upgrades and migrations of scheduled processing.
+- Maintain operational runbooks, diagnostic guides, escalation details, and service-performance reporting.
+- Provide technical leadership across application-support activities while clearly distinguishing technical coordination from formal people management.
+
+Four critical selection criteria
+The following four criteria are equally important and must be evaluated separately. General résumé wording is not sufficient when the exact scope is unclear. The candidate must provide a focused example or explicit confirmation for each criterion.
+
+1. Incident investigation methods
+The candidate must describe specific methods personally used to investigate production incidents, such as SQL analysis, technical-log review, monitoring-tool analysis, error reproduction, cause isolation, escalation evidence, or root-cause follow-up.
+
+2. Service continuity practices
+The candidate must describe specific practices personally implemented or followed to maintain service continuity during incidents, releases, migrations, or database upgrades, such as runbooks, regression validation, rollback procedures, recovery checks, availability verification, or data-integrity controls.
+
+3. Overall professional experience
+The candidate must explicitly confirm at least seven years of overall professional work experience. This confirmation should state the total experience level and may be supported by the employment dates shown in the résumé.
+
+4. Demonstrated leadership scope
+The candidate must provide examples of leadership in application-support work, including coordinating technical teams, directing incident or release activities, communicating priorities, or guiding resolution. The candidate must also clarify whether this leadership included direct employee supervision, work assignment, coaching, performance evaluation, or hiring authority.
+
+Supporting qualifications
+- Strong SQL skills and hands-on experience with Oracle or another enterprise relational database.
+- Experience working in Linux environments and using Shell scripts for operational support.
+- Experience preparing or validating application deployments, regression tests, and rollback plans.
+- Experience supporting financial-services, payment, or regulatory-reporting applications.
+- Clear written and spoken English for technical coordination and documentation.
+- Bachelor's degree in information systems, computer science, or equivalent professional experience.
+
+This posting is entirely fictional and intended for a public product demonstration. Its four critical selection criteria are deliberately separated so Career Bridge can generate four focused evidence-confirmation questions: incident investigation, service continuity, overall experience, and leadership. The application must not infer direct people management or any other unverified qualification from Thomas MARTIN's technical coordination experience.

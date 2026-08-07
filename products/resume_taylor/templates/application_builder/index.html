@@ -1,0 +1,2126 @@
+{% extends "application_builder/base.html" %}
+
+{% block head_page_scripts %}
+<script defer src="{{ application_builder_asset('resume-async-jobs.js') }}"></script>
+<script defer src="{{ application_builder_asset('app-resume-workflow.js') }}"></script>
+{% endblock %}
+
+
+{% macro score(value) -%}{{ "%.1f"|format(value) }}%{%- endmacro %}
+
+{% macro career_translation_finding_card(row) %}
+  <article class="career-translation-finding evidence-{{ row.finding.disposition|replace('_', '-') }}">
+    <div class="career-translation-finding-header">
+      <strong>{{ row.finding.source_text }}</strong>
+      <span class="evidence-state-badge" title="{{ row.disposition_description }}">{{ row.disposition_label }}</span>
+    </div>
+    {% if row.finding.translated_meaning %}<p class="career-translation-meaning"><strong>Target-market meaning:</strong> {{ row.finding.translated_meaning }}</p>{% endif %}
+    <p>{{ row.finding.rationale }}</p>
+    {% if row.evidence_labels %}<p class="caption"><strong>Evidence:</strong> {{ row.evidence_labels|join(', ') }}</p>{% endif %}
+    {% if row.finding.recommended_action %}<p class="career-translation-action"><strong>Next action:</strong> {{ row.finding.recommended_action }}</p>{% endif %}
+    {% if row.finding.category == 'credential_explanation' and row.finding.disposition == 'user_clarification_required' %}
+      <div class="button-row"><a class="button secondary compact-button" href="{{ url_for('application_builder.career_translation_workspace') }}">Review credential evidence</a></div>
+    {% elif row.finding.category == 'job_title_translation' and row.finding.disposition == 'user_clarification_required' %}
+      <div class="button-row"><a class="button secondary compact-button" href="{{ url_for('application_builder.career_translation_workspace') }}#employment-roles">Review title evidence</a></div>
+    {% elif row.finding.category == 'missing_evidence' and row.finding.disposition == 'user_clarification_required' %}
+      <div class="button-row"><a class="button secondary compact-button" href="#confirmation">Answer this question</a></div>
+    {% endif %}
+  </article>
+{% endmacro %}
+
+{% macro career_translation_no_evidence_card(row) %}
+  <article class="career-translation-finding career-translation-no-evidence-item evidence-{{ row.finding.disposition|replace('_', '-') }}">
+    <div class="career-translation-finding-header">
+      <strong>{{ row.finding.source_text }}</strong>
+      <span class="evidence-state-badge">{% if row.finding.disposition == 'recommended_learning_or_future_action' %}Confirmed development area{% else %}Kept outside resume{% endif %}</span>
+    </div>
+    {% if row.finding.disposition == 'recommended_learning_or_future_action' %}
+      <p>This is a candidate-confirmed gap, so Career Bridge will not claim it. Any future development action is optional.</p>
+    {% else %}
+      <p>No verified evidence is currently linked, so this requirement will stay outside the resume. No action is required unless you have relevant experience to add.</p>
+    {% endif %}
+  </article>
+{% endmacro %}
+
+{% macro application_fit_panel(fit, panel_id, baseline_fit=none, decision_checkpoint=false) %}
+  {% set is_preliminary = fit.stage_label == 'Preliminary assessment' %}
+  {% set fit_delta = fit.score - baseline_fit.score if baseline_fit and not is_preliminary else none %}
+  <section class="card application-fit-card application-fit-{{ fit.recommendation_key }}" id="{{ panel_id }}" aria-labelledby="{{ panel_id }}-title">
+    <div class="application-fit-header">
+      <div>
+        <span class="eyebrow">{{ fit.stage_label }}</span>
+        <h3 id="{{ panel_id }}-title">{{ 'Preliminary Job Fit' if is_preliminary else 'Verified Job Fit' }}</h3>
+        {% if is_preliminary %}
+          <p>Calculated from the Application Baseline before you answer any experience questions.</p>
+        {% else %}
+          <p>Updated with the experience you confirmed in Step 2.</p>
+        {% endif %}
+      </div>
+      <span class="application-fit-recommendation">{{ fit.recommendation }}</span>
+    </div>
+
+    {% if decision_checkpoint %}
+      <div class="application-fit-checkpoint">
+        <div>
+          <strong>Decide whether this role deserves more time</strong>
+          <span>Review the preliminary fit, strengths, and important gaps before answering the questions below.</span>
+        </div>
+        <span class="application-fit-checkpoint-label">Pre-question decision</span>
+      </div>
+    {% endif %}
+
+    <div class="application-fit-metrics">
+      <div class="application-fit-score">
+        <span>{{ 'Initial job fit' if is_preliminary else 'Verified job fit' }}</span>
+        <strong>{{ "%.0f"|format(fit.score) }}<small>/100</small></strong>
+        <div class="application-fit-progress" aria-label="Job fit score {{ '%.0f'|format(fit.score) }} out of 100"><span style="width: {{ fit.score }}%"></span></div>
+        {% if fit_delta is not none %}
+          <em class="application-fit-change application-fit-change-{{ 'positive' if fit_delta > 0 else 'negative' if fit_delta < 0 else 'neutral' }}">
+            Initial {{ "%.0f"|format(baseline_fit.score) }} → Verified {{ "%.0f"|format(fit.score) }}
+            {% if fit_delta %}({{ "%+.0f"|format(fit_delta) }}){% else %}(no change){% endif %}
+          </em>
+        {% endif %}
+      </div>
+      <div class="application-fit-metric">
+        <span>Recommendation</span>
+        <strong>{{ fit.recommendation.split(' — ')[0] }}</strong>
+        <em>{{ fit.recommendation_summary }}</em>
+      </div>
+      <div class="application-fit-metric">
+        <span>Directional interview potential</span>
+        <strong>{{ fit.interview_range }}</strong>
+        <em>{{ fit.interview_label }} · {{ fit.history_note }}</em>
+      </div>
+      <div class="application-fit-metric">
+        <span>Assessment confidence</span>
+        <strong>{{ fit.confidence }}</strong>
+        <em>{{ fit.confidence_summary }}</em>
+      </div>
+    </div>
+
+    <div class="application-fit-counts" aria-label="Requirement evidence summary">
+      <span><strong>{{ fit.supported_count }}</strong> supported</span>
+      <span><strong>{{ fit.partial_count }}</strong> partial</span>
+      <span><strong>{{ fit.unsupported_count }}</strong> unsupported</span>
+      <span><strong>{{ fit.critical_supported }}/{{ fit.critical_total }}</strong> critical supported</span>
+      {% if fit.hard_blocker_count %}<span class="application-fit-blocker"><strong>{{ fit.hard_blocker_count }}</strong> eligibility blocker{% if fit.hard_blocker_count != 1 %}s{% endif %}</span>{% endif %}
+    </div>
+
+    <div class="application-fit-explanation-grid">
+      <div>
+        <h4>Why this role may be worth applying to</h4>
+        {% if fit.strengths %}
+          <ul>{% for item in fit.strengths %}<li>{{ item }}</li>{% endfor %}</ul>
+        {% else %}
+          <p class="caption">No fully supported high-priority requirement has been identified yet.</p>
+        {% endif %}
+      </div>
+      <div>
+        <h4>Potential obstacles</h4>
+        {% if fit.obstacles %}
+          <ul>{% for item in fit.obstacles %}<li>{{ item }}</li>{% endfor %}</ul>
+        {% else %}
+          <p class="caption">No material evidence gap was identified.</p>
+        {% endif %}
+      </div>
+      <div>
+        <h4>What could improve your chances</h4>
+        <ul>{% for item in fit.improvements %}<li>{{ item }}</li>{% endfor %}</ul>
+      </div>
+    </div>
+
+    <p class="application-fit-disclaimer"><strong>Important:</strong> The interview range is a directional estimate based on verified resume-to-job evidence{% if fit.history_calibrated %} and your recorded application outcomes{% endif %}. It cannot know the applicant pool, referrals, internal candidates, hiring freezes, or recruiter preferences and is not a guaranteed probability.</p>
+  </section>
+{% endmacro %}
+
+{% macro report_panel(report, prefix) %}
+  <section class="report-panel" data-report-prefix="{{ prefix }}">
+    <div class="metric-grid metric-grid-3 report-headline">
+      <div class="metric-card"><span>Overall score</span><strong>{{ score(report.overall) }}</strong></div>
+      <div class="metric-card"><span>Job Match</span><strong>{{ score(report.job_match) }}</strong></div>
+      <div class="metric-card"><span>Resume Quality</span><strong>{{ score(report.resume_quality) }}</strong></div>
+    </div>
+    <p class="caption">Overall weighting: Hard skills 25% · Evidence &amp; Gaps 15% · Content Quality 15% · Searchability 15% · Recruiter tips 12% · Formatting 10% · Soft skills 8%. Job Match combines exact skills, meaning-based requirement coverage, and verified evidence; Resume Quality measures data integrity, language quality, readability, style, ATS structure, page length, and typography.</p>
+
+    <div class="section-score-grid">
+      {% for section in report.sections %}
+        <div class="mini-score"><span>{{ section.name }}</span><strong>{{ score(section.score) }}</strong></div>
+      {% endfor %}
+    </div>
+
+    <div class="tabs" data-tabs>
+      <div class="tab-list" role="tablist">
+        {% for section in report.sections %}
+          <button type="button" class="tab-button {% if loop.first %}active{% endif %}" data-tab-target="{{ prefix }}-{{ section.slug }}" role="tab">{{ section.name }}</button>
+        {% endfor %}
+      </div>
+      {% for section in report.sections %}
+        <div class="tab-panel {% if loop.first %}active{% endif %}" id="{{ prefix }}-{{ section.slug }}" data-tab-panel role="tabpanel">
+          <p>{{ section.intro }}</p>
+          {% if section.primary_workflow_step %}
+            <div class="report-workflow-ownership" aria-label="Workflow ownership">
+              <span>Primarily improved in:</span>
+              <a href="{{ url_for('application_builder.index', tab='tailoring', stage=section.primary_workflow_stage) }}">{{ section.primary_workflow_step }}</a>
+              {% if section.verification_workflow_step %}
+                <span class="report-workflow-separator" aria-hidden="true">·</span>
+                <span>Also verified in:</span>
+                <a href="{{ url_for('application_builder.index', tab='tailoring', stage=section.verification_workflow_stage) }}">{{ section.verification_workflow_step }}</a>
+              {% endif %}
+            </div>
+          {% endif %}
+          <div class="progress-row">
+            <span>Section score: {{ score(section.score) }}</span>
+            <div class="progress"><span style="width: {{ section.score }}%"></span></div>
+          </div>
+          {% for subsection in section.subsections %}
+            <h4>{{ subsection.name }}</h4>
+            {% for check in subsection.checks %}
+              <div class="report-check report-{{ check.status }}">
+                <div class="report-icon" aria-hidden="true">
+                  {% if check.status == 'pass' %}✓{% elif check.status == 'warning' %}!{% elif check.status == 'fail' %}✕{% else %}i{% endif %}
+                </div>
+                <div class="report-copy">
+                  <div class="report-label">{{ check.label }}{% if check.status != 'info' %}<span class="report-check-score">{{ score(check.score) }}</span>{% endif %}</div>
+                  <div class="report-detail">{{ check.detail }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          {% endfor %}
+
+          {% if section.name == 'Evidence & Gaps' and report.evidence %}
+            <h4>Detailed evidence matrix</h4>
+            <p>The evidence matrix verifies whether each job requirement is supported by the imported resume or candidate-confirmed evidence and whether it is represented in the resume being scored. Unsupported requirements remain visible as gaps instead of being converted into resume claims.</p>
+            <div class="metric-grid metric-grid-4">
+              <div class="metric-card compact"><span>Supported</span><strong>{{ report.evidence.summary.supported }}</strong></div>
+              <div class="metric-card compact"><span>Partially supported</span><strong>{{ report.evidence.summary.partial }}</strong></div>
+              <div class="metric-card compact"><span>Unsupported / no decision</span><strong>{{ report.evidence.summary.unsupported }}</strong></div>
+              <div class="metric-card compact"><span>Confirmations</span><strong>{{ report.evidence.summary.confirmations }}</strong></div>
+            </div>
+
+            {% if report.evidence.answers %}
+              <h5>Candidate confirmation responses</h5>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Question</th><th>Response</th><th>Details</th><th>Requirement ID</th></tr></thead>
+                  <tbody>
+                    {% for answer in report.evidence.answers %}
+                      <tr><td>{{ answer.question }}</td><td>{{ answer.response }}</td><td>{{ answer.details }}</td><td>{{ answer.requirement_id }}</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% endif %}
+
+            <div class="table-wrap evidence-table">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Priority</th><th>Category</th><th>Requirement</th><th>Evidence status</th><th>In resume</th><th>Score</th><th>Evidence locations</th><th>Rationale</th><th>Recommended action</th></tr>
+                </thead>
+                <tbody>
+                  {% for row in report.evidence.rows %}
+                    <tr>
+                      <td>{{ row.requirement_id }}</td><td>{{ row.priority }}</td><td>{{ row.category }}</td><td>{{ row.requirement }}</td><td>{{ row.evidence_status }}</td><td>{{ 'Yes' if row.appears_in_resume else 'No' }}</td><td>{{ score(row.score) }}</td><td>{{ row.evidence_locations|join(', ') if row.evidence_locations else 'None' }}</td><td>{{ row.rationale }}</td><td>{{ row.recommended_action }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="two-column">
+              <div>
+                <h5>Unsupported requirements</h5>
+                {% if report.evidence.unsupported %}<ul>{% for item in report.evidence.unsupported %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p>None identified.</p>{% endif %}
+              </div>
+              <div>
+                <h5>Questions before claiming more</h5>
+                {% if report.evidence.questions %}<ul>{% for item in report.evidence.questions %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p>No additional questions.</p>{% endif %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endmacro %}
+
+{% macro comparison_panel(comparison, prefix) %}
+  <section class="comparison-panel" data-comparison-prefix="{{ prefix }}">
+    <h3>{{ comparison.initial_label }} → {{ comparison.updated_label }}</h3>
+    <div class="metric-grid metric-grid-3">
+      <div class="metric-card"><span>Overall</span><strong>{{ score(comparison.overall) }}</strong><em class="{{ 'positive' if comparison.overall_delta > 0 else 'negative' if comparison.overall_delta < 0 else '' }}">{{ '%+.1f'|format(comparison.overall_delta) }} points</em></div>
+      <div class="metric-card"><span>Job Match</span><strong>{{ score(comparison.job_match) }}</strong><em class="{{ 'positive' if comparison.job_match_delta > 0 else 'negative' if comparison.job_match_delta < 0 else '' }}">{{ '%+.1f'|format(comparison.job_match_delta) }} points</em></div>
+      <div class="metric-card"><span>Resume Quality</span><strong>{{ score(comparison.resume_quality) }}</strong><em class="{{ 'positive' if comparison.resume_quality_delta > 0 else 'negative' if comparison.resume_quality_delta < 0 else '' }}">{{ '%+.1f'|format(comparison.resume_quality_delta) }} points</em></div>
+    </div>
+    <div class="metric-grid metric-grid-3">
+      <div class="metric-card compact"><span>Checks improved</span><strong>{{ comparison.improved }}</strong></div>
+      <div class="metric-card compact"><span>Red Xs fixed</span><strong>{{ comparison.red_x_fixed }}</strong></div>
+      <div class="metric-card compact"><span>Checks regressed</span><strong>{{ comparison.regressed }}</strong></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Score</th><th>{{ comparison.initial_label }}</th><th>{{ comparison.updated_label }}</th><th>Change</th></tr></thead>
+        <tbody>{% for row in comparison.rows %}<tr><td>{{ row.score }}</td><td>{{ score(row.initial) }}</td><td>{{ score(row.updated) }}</td><td>{{ '%+.1f'|format(row.change) }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+    <h4>Evidence improvement</h4>
+    <div class="metric-grid metric-grid-4">
+      <div class="metric-card compact"><span>Evidence score</span><strong>{{ score(comparison.evidence_score) }}</strong><em>{{ '%+.1f'|format(comparison.evidence_delta) }}</em></div>
+      <div class="metric-card compact"><span>Requirements strengthened</span><strong>{{ comparison.evidence_improved }}</strong></div>
+      <div class="metric-card compact"><span>Newly fully supported</span><strong>{{ comparison.newly_fully_supported }}</strong></div>
+      <div class="metric-card compact"><span>Remaining evidence gaps</span><strong>{{ comparison.remaining_evidence_gaps }}</strong></div>
+    </div>
+  </section>
+{% endmacro %}
+
+{% macro change_explanation(reason, impact=None, report_available=false, supporting_reasons=None, added=None, removed=None, summary_label='Why this changed', evidence_note=None, matched_requirements=None, selected_instead=None, selection_score=None) %}
+  {% if reason %}
+    <details class="change-explanation" data-change-explanation>
+      <summary><span aria-hidden="true">ⓘ</span> {{ summary_label }}</summary>
+      <div class="change-explanation-body">
+        {% if reason.change_category %}
+          <div class="change-category-row" aria-label="Change category">
+            <span class="change-category-badge {{ 'verified' if reason.change_category == 'Verified Experience' else 'alignment' }}">{{ reason.change_category }}</span>
+          </div>
+        {% endif %}
+        <p class="change-explanation-reason"><strong>{{ reason.label }}</strong> {{ reason.detail }}</p>
+        {% if impact %}
+          <p class="change-explanation-impact">
+            <strong>{{ 'Observed' if impact.certainty == 'observed' else 'Likely' }} report impact:</strong>
+            {{ impact.label }} <span>{{ '%.1f'|format(impact.before) }}% → {{ '%.1f'|format(impact.after) }}%</span>
+          </p>
+          {% if impact.certainty != 'observed' %}<p class="caption">Several resume changes can affect the same report score, so this connection is shown as likely rather than certain.</p>{% endif %}
+        {% elif not report_available %}
+          <p class="caption change-impact-unavailable">The score impact will be calculated when the Job-Aligned Resume Report is available. <a href="{{ url_for('application_builder.index', tab='reports', report='comparison') }}#reports-comparison">Open Resume Reports</a></p>
+        {% endif %}
+
+        {% if supporting_reasons or added or removed or evidence_note or matched_requirements is not none or selected_instead or selection_score %}
+          <details class="change-supporting-details">
+            <summary>View supporting details</summary>
+            {% if supporting_reasons %}
+              {% for item in supporting_reasons %}
+                {% if not loop.first %}<p><strong>{{ item.label }}:</strong> {{ item.detail }}</p>{% endif %}
+              {% endfor %}
+            {% endif %}
+            {% if added %}<p><strong>Added:</strong> {{ added|join(', ') }}</p>{% endif %}
+            {% if removed %}<p><strong>Removed:</strong> {{ removed|join(', ') }}</p>{% endif %}
+            {% if evidence_note %}<p><strong>Evidence note:</strong> {{ evidence_note }}</p>{% endif %}
+            {% if matched_requirements is not none %}<p><strong>Matched requirements:</strong> {{ matched_requirements|join('; ') if matched_requirements else 'None' }}</p>{% endif %}
+            {% if selection_score %}
+              <p><strong>Selection score:</strong> Job relevance {{ selection_score.relevance }}/3; evidence strength {{ selection_score.evidence_strength }}/2; unique coverage {{ selection_score.unique_coverage }}/2; total {{ selection_score.total }}/7.</p>
+            {% endif %}
+            {% if selected_instead %}
+              <div class="selected-instead-list">
+                <p><strong>Higher-ranked related accomplishments</strong></p>
+                {% for alternative in selected_instead %}
+                  <article class="selected-instead-item">
+                    <p><strong>{{ alternative.id }}</strong> — {{ alternative.text }}</p>
+                    {% if alternative.reasons %}
+                      <ul>
+                        {% for comparison_reason in alternative.reasons %}<li>{{ comparison_reason }}</li>{% endfor %}
+                      </ul>
+                    {% endif %}
+                    {% if alternative.score %}
+                      <p class="caption">Job relevance {{ alternative.score.relevance }}/3; evidence strength {{ alternative.score.evidence_strength }}/2; unique coverage {{ alternative.score.unique_coverage }}/2; total {{ alternative.score.total }}/7.</p>
+                    {% endif %}
+                  </article>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </details>
+        {% endif %}
+      </div>
+    </details>
+  {% endif %}
+{% endmacro %}
+
+
+{% macro automatic_change_explanation(fix, added=None, removed=None, evidence_note=None, matched_requirements=None, selected_instead=None, selection_score=None) %}
+  {% if fix and fix.reasons %}
+    <details class="change-explanation automatic-change-explanation" data-change-explanation>
+      <summary><span aria-hidden="true">ⓘ</span> Why this changed</summary>
+      <div class="change-explanation-body">
+        <p class="change-explanation-reason"><strong>{{ fix.reasons[0].label }}</strong> {{ fix.reasons[0].detail }}</p>
+        {% if fix.before_word_count is defined and fix.after_word_count is defined %}
+          <p class="caption"><strong>Wording length:</strong> {{ fix.before_word_count }} → {{ fix.after_word_count }} words</p>
+        {% endif %}
+        {% if fix.reasons|length > 1 or added or removed or evidence_note or matched_requirements is not none or selected_instead or selection_score %}
+          <details class="change-supporting-details">
+            <summary>View supporting details</summary>
+            {% for reason in fix.reasons %}
+              {% if not loop.first %}<p><strong>{{ reason.label }}:</strong> {{ reason.detail }}</p>{% endif %}
+            {% endfor %}
+            {% if added %}<p><strong>Added:</strong> {{ added|join(', ') }}</p>{% endif %}
+            {% if removed %}<p><strong>Removed:</strong> {{ removed|join(', ') }}</p>{% endif %}
+            {% if evidence_note %}<p><strong>Evidence note:</strong> {{ evidence_note }}</p>{% endif %}
+            {% if matched_requirements is not none %}<p><strong>Matched requirements:</strong> {{ matched_requirements|join('; ') if matched_requirements else 'None' }}</p>{% endif %}
+            {% if selection_score %}
+              <p><strong>Selection score:</strong> Job relevance {{ selection_score.relevance }}/3; evidence strength {{ selection_score.evidence_strength }}/2; unique coverage {{ selection_score.unique_coverage }}/2; total {{ selection_score.total }}/7.</p>
+            {% endif %}
+            {% if selected_instead %}
+              <div class="selected-instead-list">
+                <p><strong>Higher-ranked related accomplishments</strong></p>
+                {% for alternative in selected_instead %}
+                  <article class="selected-instead-item">
+                    <p><strong>{{ alternative.id }}</strong> — {{ alternative.text }}</p>
+                    {% if alternative.reasons %}<ul>{% for comparison_reason in alternative.reasons %}<li>{{ comparison_reason }}</li>{% endfor %}</ul>{% endif %}
+                    {% if alternative.score %}<p class="caption">Job relevance {{ alternative.score.relevance }}/3; evidence strength {{ alternative.score.evidence_strength }}/2; unique coverage {{ alternative.score.unique_coverage }}/2; total {{ alternative.score.total }}/7.</p>{% endif %}
+                  </article>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </details>
+        {% endif %}
+      </div>
+    </details>
+  {% endif %}
+{% endmacro %}
+
+
+
+
+
+{% macro tailoring_review_overview(changes) %}
+  {% if changes %}
+    <section class="quality-improvement-overview tailoring-review-overview" id="tailoring-review-summary" aria-label="Job Alignment changes">
+      <div class="quality-overview-heading">
+        <div>
+          <span class="eyebrow">Job Alignment</span>
+          <h3>
+            {% if changes.has_changes %}
+              {{ changes.total_changes }} change group{% if changes.total_changes != 1 %}s{% endif %} applied
+            {% else %}
+              Tailored resume created
+            {% endif %}
+            <span class="quality-overview-divider" aria-hidden="true">·</span>
+            Ready for review
+          </h3>
+          <p>Review the Draft comparison below. <strong>Job Alignment</strong> is the overall change category. Changes directly supported by answers from Confirm Relevant Experience are labeled <strong>Verified Experience</strong>.</p>
+        </div>
+        <div class="quality-overview-status" aria-label="Tailored resume review status">
+          {% if changes.has_changes %}<span class="quality-summary-chip actionable"><strong>{{ changes.total_changes }}</strong> changes</span>{% endif %}
+          <span class="change-category-badge alignment">Job Alignment</span>
+          {% if changes.verified_experience_change_count %}<span class="change-category-badge verified"><strong>{{ changes.verified_experience_change_count }}</strong> Verified Experience</span>{% endif %}
+          <span class="quality-check-passed">✓ Generated</span>
+        </div>
+      </div>
+
+      {% if changes.has_changes %}
+        <div class="quality-overview-actions">
+          <details class="quality-overview-details">
+            <summary>View details</summary>
+            <div class="quality-overview-details-content">
+              <section class="quality-overview-section" aria-label="Job Alignment change breakdown">
+                <h4>Job Alignment changes</h4>
+                <div class="quality-overview-metrics">
+                  <span><strong>{{ 1 if changes.title_changed else 0 }}</strong> title</span>
+                  <span><strong>{{ 1 if changes.summary_changed else 0 }}</strong> summary</span>
+                  <span><strong>{{ changes.skill_added_count }}</strong> skills added</span>
+                  <span><strong>{{ changes.skill_removed_count }}</strong> skills removed</span>
+                  <span><strong>{{ changes.bullet_changes|length }}</strong> bullets</span>
+                </div>
+
+                {% if changes.reason_summary %}
+                  <div class="quality-overview-reasons">
+                    <strong>Change reasons</strong>
+                    <div class="auto-fix-reason-tags">
+                      {% for item in changes.reason_summary %}
+                        <span><strong>{{ item.count }}</strong> {{ item.label }}</span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endif %}
+
+                <p class="caption">The comparison contains the full before-and-after wording. Open “Why this changed” only for an item you want to inspect.</p>
+              </section>
+            </div>
+          </details>
+        </div>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endmacro %}
+
+
+{% macro resume_version_editor(data, profile, title, version, editable, input_is_current, download_status, download_filename, comparison=None, tailoring_changes=None, show_quality_review_action=false) %}
+  {% set version_resume_label = 'Application Baseline' if version == 'initial' else data.current_label %}
+  <section class="card resume-version-card" id="{{ version }}-resume-version-editor">
+    <div class="section-heading">
+      <div>
+        <h2>{{ version_resume_label }}</h2>
+        <p>
+          {% if show_quality_review_action %}Review the Job-Aligned Resume against the Application Baseline, edit anything needed, then optimize and export it in the final stage.
+          {% elif version == 'initial' %}Frozen starting point for this application, created from the Baseline Resume and Verified Resume Evidence. This version is always view-only.
+          {% elif editable %}This is the active working version. Save changes before continuing the workflow.
+          {% else %}This version is locked and preserved as a snapshot from its workflow stage.{% endif %}
+        </p>
+      </div>
+      <div class="resume-version-actions">
+        <span class="version-lock {{ 'editable' if editable else 'locked' }}">{{ 'Editing enabled' if editable else 'View only' }}</span>
+        <a class="button secondary compact-button" data-resume-download href="{{ url_for('application_builder.download_workflow_snapshot', stage=data.snapshot_stage) if data.snapshot_stage is defined else url_for('application_builder.download_resume_version', version=version) }}">Download resume</a>
+        <span class="caption" data-download-status data-saved-status="{{ download_status }}">{{ download_status }}</span>
+        <span class="caption download-filename"><strong>Downloading:</strong> <code>{{ download_filename }}</code></span>
+      </div>
+    </div>
+
+    {% if data.workflow_snapshot is defined and data.workflow_snapshot %}
+      <div class="workflow-snapshot-banner" role="status">
+        <div>
+          <span class="eyebrow">Completed-step snapshot</span>
+          <strong>{{ data.snapshot_label }}</strong>
+          <p>This is the exact saved resume from when this step was completed. Later workflow changes are intentionally not shown here.</p>
+        </div>
+        {% if data.snapshot_captured_at %}<span class="caption">Saved {{ data.snapshot_captured_at }}</span>{% endif %}
+      </div>
+    {% endif %}
+
+
+    {% if version == 'final' and editable %}
+      <details class="final-editor-editing-guide compact-editing-guide" aria-label="Final resume editing instructions">
+        <summary>Edit Final Resume</summary>
+        <div class="compact-editing-guide-body">
+          <p>The comparison panels are read-only previews. Fields explicitly labeled <strong>Editable</strong> below can be changed and saved.</p>
+          <span class="version-lock editable">Editing enabled</span>
+        </div>
+      </details>
+    {% endif %}
+
+    {% if version == 'draft' and tailoring_changes and data.comparison_label == 'Application Baseline' %}
+      {{ tailoring_review_overview(tailoring_changes) }}
+    {% endif %}
+
+    {% if editable %}
+      <form action="{{ url_for('application_builder.save_resume_version', version=version) }}" method="post" class="loading-form resume-editor-form" id="{{ version }}-resume-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% endif %}
+
+    {% if data.has_comparison %}
+      {% set comparison_stage = 'final' if version == 'draft' and not editable else 'draft' %}
+      {% set comparison_anchor = '#final-review' if comparison_stage == 'final' else '#tailored-resume' %}
+      <section class="resume-comparison-toolbar draft-comparison-toolbar" aria-label="Resume comparison{% if version == 'draft' and comparison %} controls{% endif %}">
+        <div>
+          <span class="eyebrow">{{ 'Draft comparison' if version == 'draft' else 'Final comparison' }}</span>
+          <h3>Resume comparison</h3>
+          {% if version == 'draft' and comparison %}
+            <p>
+              The red and green highlights compare <strong>{{ comparison.reference_label }}</strong>
+              with <strong>{{ comparison.current_label }}</strong>. Switch the reference without leaving this workflow step.
+            </p>
+            {% if comparison.last_change_label %}
+              <p class="caption"><strong>Latest saved change:</strong> {{ comparison.last_change_label }}{% if comparison.last_changed_at %} · {{ comparison.last_changed_at }}{% endif %}</p>
+            {% endif %}
+          {% else %}
+            <p>
+              The red and green highlights compare <strong>{{ data.comparison_label }}</strong>
+              with <strong>{{ data.current_label }}</strong>. Comparison panels are read-only; editable fields are clearly labeled below.
+            </p>
+          {% endif %}
+        </div>
+        {% if version == 'draft' and comparison %}
+          <div class="comparison-choice" role="group" aria-label="Compare {{ comparison.current_label }} with">
+            <span class="comparison-choice-label">Compare {{ comparison.current_label }} with:</span>
+            <a class="button compact-button {{ 'primary' if comparison.mode == 'initial' else 'secondary' }}" href="{{ url_for('application_builder.index', tab='tailoring', stage=comparison_stage, compare='initial') }}{{ comparison_anchor }}">Application Baseline</a>
+            {% if comparison.previous_available %}
+              <a class="button compact-button {{ 'primary' if comparison.mode == 'previous' else 'secondary' }}" href="{{ url_for('application_builder.index', tab='tailoring', stage=comparison_stage, compare='previous') }}{{ comparison_anchor }}">{{ comparison.previous_choice_label }}</a>
+            {% else %}
+              <span class="button secondary compact-button disabled-link" aria-disabled="true">{{ comparison.previous_choice_label }}</span>
+            {% endif %}
+          </div>
+          <div class="draft-version-path resume-version-path" aria-label="Resume workflow version history">
+            <span>Application Baseline</span><span aria-hidden="true">→</span>
+            {% if comparison.previous_available %}<span>{{ comparison.previous_path_label }}</span><span aria-hidden="true">→</span>{% endif %}
+            <strong>{{ comparison.current_label }}</strong>
+            <small>Internal revision v{{ comparison.current_revision }}</small>
+          </div>
+        {% else %}
+          <div class="draft-version-path resume-version-path" aria-label="Resume comparison path">
+            <span>{{ data.comparison_label }}</span><span aria-hidden="true">→</span><strong>{{ data.current_label }}</strong>
+          </div>
+        {% endif %}
+        {% if data.mutually_excluded_count > 0 %}
+          <label class="comparison-neutral-toggle checkbox-row">
+            <input type="checkbox" data-show-mutually-excluded>
+            Show {{ data.mutually_excluded_count }} bullet{% if data.mutually_excluded_count != 1 %}s{% endif %} not included in either compared version
+          </label>
+        {% endif %}
+        {% if version == 'draft' and comparison and comparison.mode == 'previous' %}
+          <div class="alert alert-info compact-alert">
+            Showing the latest saved operation: <strong>{{ comparison.reference_label }} → {{ comparison.current_label }}</strong>.
+            Select <strong>Application Baseline</strong> to review the complete change from the permanent baseline.
+          </div>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    <article class="resume-paper">
+      <header class="resume-paper-header">
+        <h2>{{ profile.name }}</h2>
+        <p>{{ profile.contact.location }} · {{ profile.contact.phone }} · {{ profile.contact.email }}</p>
+        {% if profile.contact.linkedin_url or profile.contact.github_url %}
+          <p class="resume-paper-contact-links" aria-label="Professional profile links">
+            {% if profile.contact.linkedin_url %}
+              <a href="{{ profile.contact.linkedin_url }}" target="_blank" rel="noopener noreferrer">{{ profile.contact.linkedin_label or 'LinkedIn' }}</a>
+            {% endif %}
+            {% if profile.contact.github_url %}
+              {% if profile.contact.linkedin_url %}<span aria-hidden="true">·</span>{% endif %}
+              <a href="{{ profile.contact.github_url }}" target="_blank" rel="noopener noreferrer">{{ profile.contact.github_label or 'GitHub' }}</a>
+            {% endif %}
+          </p>
+        {% endif %}
+        <h3>{{ title }}</h3>
+      </header>
+
+      {% if data.has_comparison or (editable and version == 'final') %}
+        <section class="resume-paper-section comparison-section">
+          <div class="comparison-section-heading">
+            <div>
+              <h3>{{ resume_labels.job_title }}</h3>
+              <p class="caption">Profile title comparison for {{ data.comparison_label }} → {{ data.current_label }}.</p>
+            </div>
+            {% if data.title_comparison.reference != data.title_comparison.current %}<span class="status-badge warning">Title changed</span>{% else %}<span class="status-badge passed">Unchanged</span>{% endif %}
+          </div>
+          <div class="diff-grid">
+            <div class="diff-card"><div class="diff-card-title">{{ data.comparison_label }}</div><div class="diff-content">{{ data.title_comparison.reference_html|safe }}</div></div>
+            <div class="diff-card"><div class="diff-card-title">{{ data.current_label }}</div><div class="diff-content">{{ data.title_comparison.current_html|safe }}</div></div>
+          </div>
+          {% if tailoring_changes and data.comparison_label == 'Application Baseline' and tailoring_changes.title_reason %}
+            {{ change_explanation(tailoring_changes.title_reason, tailoring_changes.report_impacts.title, tailoring_changes.report_impacts.available) }}
+          {% elif data.title_comparison.comparison_reason %}
+            {{ change_explanation(data.title_comparison.comparison_reason, none, true) }}
+          {% endif %}
+          {% if editable and version == 'final' %}
+            <div class="editable-resume-field">
+              <label for="resume-title-{{ version }}">Editable job title</label>
+              <input id="resume-title-{{ version }}" type="text" name="target_title" value="{{ title }}" required>
+            </div>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      <section class="resume-paper-section">
+        <div class="comparison-section-heading">
+          <h3>{{ resume_labels.professional_summary }}</h3>
+          {% if data.has_comparison and data.summary_comparison.reference != data.summary_comparison.current %}<span class="status-badge warning">Summary changed</span>{% endif %}
+        </div>
+        {% if data.has_comparison %}
+          <div class="diff-grid summary-comparison" data-diff-container data-reference="{{ data.summary_comparison.reference|e }}">
+            <div class="diff-card">
+              <div class="diff-card-title">{{ data.comparison_label }}</div>
+              <div class="diff-content" data-reference-diff>{{ data.summary_comparison.reference_html|safe }}</div>
+              <p class="caption">{{ data.summary_comparison.reference_word_count }} words · {{ data.summary_comparison.reference_sentence_count }} sentences</p>
+            </div>
+            <div class="diff-card">
+              <div class="diff-card-title">{{ data.current_label }}</div>
+              <div class="diff-content" data-proposed-diff>{{ data.summary_comparison.current_html|safe }}</div>
+              <p class="caption">{{ data.summary_comparison.current_word_count }} words · {{ data.summary_comparison.current_sentence_count }} sentences</p>
+            </div>
+          </div>
+          {% if tailoring_changes and data.comparison_label == 'Application Baseline' and tailoring_changes.summary_reason %}
+            {{ change_explanation(tailoring_changes.summary_reason, tailoring_changes.report_impacts.summary, tailoring_changes.report_impacts.available) }}
+          {% elif data.summary_automatic_fix %}
+            {{ automatic_change_explanation(data.summary_automatic_fix) }}
+          {% elif data.summary_comparison.comparison_reason %}
+            {{ change_explanation(data.summary_comparison.comparison_reason, none, true) }}
+          {% endif %}
+        {% endif %}
+        {% if editable %}
+          <div class="editable-resume-field">
+            <label for="resume-summary-{{ version }}">{{ 'Editable professional summary' if version == 'final' else 'Edit professional summary' }}</label>
+            <textarea id="resume-summary-{{ version }}" name="professional_summary" rows="6" {% if data.has_comparison %}data-diff-editor{% endif %}>{{ data.summary }}</textarea>
+          </div>
+        {% else %}<p>{{ data.summary }}</p>{% endif %}
+      </section>
+
+      <section class="resume-paper-section">
+        <h3>{{ resume_labels.skills }}</h3>
+        <p class="caption skill-balance-guidance">
+          Recommended balance: Hard Skills {{ data.skill_category_rules.hard_skills.minimum }}–{{ data.skill_category_rules.hard_skills.maximum }}
+          ({{ data.skill_category_counts.hard_skills }} selected) ·
+          Soft Skills {{ data.skill_category_rules.soft_skills.minimum }}–{{ data.skill_category_rules.soft_skills.maximum }}
+          ({{ data.skill_category_counts.soft_skills }} selected) ·
+          Tools &amp; Software {{ data.skill_category_rules.tools_software.minimum }}–{{ data.skill_category_rules.tools_software.maximum }}
+          ({{ data.skill_category_counts.tools_software }} selected) ·
+          Industry Knowledge {{ data.skill_category_rules.industry_knowledge.minimum }}–{{ data.skill_category_rules.industry_knowledge.maximum }}
+          ({{ data.skill_category_counts.industry_knowledge }} selected).
+          Overall target: {{ data.skill_total_recommended_minimum }}–{{ data.skill_total_maximum }} relevant, verified skills
+          ({{ data.skill_total_count }} selected).
+        </p>
+        {% if data.has_comparison %}
+          <div class="skills-comparison-summary">
+            {% set totals = namespace(added=0, removed=0, unchanged=0) %}
+            {% for category in data.skill_comparisons %}
+              {% set totals.added = totals.added + category.added|length %}
+              {% set totals.removed = totals.removed + category.removed|length %}
+              {% set totals.unchanged = totals.unchanged + category.unchanged|length %}
+            {% endfor %}
+            <p><strong>{{ totals.added }} skills added · {{ totals.removed }} removed · {{ totals.unchanged }} unchanged</strong></p>
+            <p class="caption">Compared as exact skill names for {{ data.comparison_label }} → {{ data.current_label }}.</p>
+          </div>
+          <div class="skill-comparison-grid">
+            {% for category in data.skill_comparisons %}
+              <section class="skill-comparison-card">
+                <h4>{{ category.label }}</h4>
+                {% if category.added %}<div class="skill-change-row"><span class="skill-change-label added">Added</span><div class="skill-tags">{% for skill in category.added %}<span class="skill-tag skill-added">{{ skill }}</span>{% endfor %}</div></div>{% endif %}
+                {% if category.removed %}<div class="skill-change-row"><span class="skill-change-label removed">Removed</span><div class="skill-tags">{% for skill in category.removed %}<span class="skill-tag skill-removed">{{ skill }}</span>{% endfor %}</div></div>{% endif %}
+                {% if category.unchanged %}<details class="skill-unchanged"><summary>{{ category.unchanged|length }} unchanged</summary><div class="skill-tags">{% for skill in category.unchanged %}<span class="skill-tag">{{ skill }}</span>{% endfor %}</div></details>{% endif %}
+                {% if not category.added and not category.removed and not category.unchanged %}<p class="caption">No skills in this category.</p>{% endif %}
+                {% if tailoring_changes and data.comparison_label == 'Application Baseline' and tailoring_changes.skill_details.get(category.label) %}
+                  {% set skill_reason = tailoring_changes.skill_details.get(category.label) %}
+                  {{ change_explanation(skill_reason, tailoring_changes.report_impacts.skills.get(category.label), tailoring_changes.report_impacts.available, none, skill_reason.added, skill_reason.removed) }}
+                {% elif category.automatic_fix %}
+                  {{ automatic_change_explanation(category.automatic_fix, category.added, category.removed) }}
+                {% elif category.comparison_reason %}
+                  {{ change_explanation(category.comparison_reason, none, true, none, category.added, category.removed) }}
+                {% endif %}
+              </section>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% if editable %}
+          <div class="field-grid two">
+            <div>
+              <label for="resume-hard-skills-{{ version }}">Hard Skills</label>
+              <textarea id="resume-hard-skills-{{ version }}" name="hard_skills" rows="4">{{ data.hard_skills }}</textarea>
+              <label for="resume-tools-software-{{ version }}">Tools &amp; Software</label>
+              <textarea id="resume-tools-software-{{ version }}" name="tools_software" rows="4">{{ data.tools_software }}</textarea>
+            </div>
+            <div>
+              <label for="resume-soft-skills-{{ version }}">Soft Skills</label>
+              <textarea id="resume-soft-skills-{{ version }}" name="soft_skills" rows="4">{{ data.soft_skills }}</textarea>
+              <label for="resume-industry-knowledge-{{ version }}">Industry Knowledge</label>
+              <textarea id="resume-industry-knowledge-{{ version }}" name="industry_knowledge" rows="4">{{ data.industry_knowledge }}</textarea>
+            </div>
+          </div>
+        {% else %}
+          <div class="readonly-skills">
+            {% if data.hard_skills %}<p><strong>{{ resume_labels.hard_skills }}:</strong> {{ data.hard_skills }}</p>{% endif %}
+            {% if data.soft_skills %}<p><strong>{{ resume_labels.soft_skills }}:</strong> {{ data.soft_skills }}</p>{% endif %}
+            {% if data.tools_software %}<p><strong>{{ resume_labels.tools_software }}:</strong> {{ data.tools_software }}</p>{% endif %}
+            {% if data.industry_knowledge %}<p><strong>{{ resume_labels.industry_knowledge }}:</strong> {{ data.industry_knowledge }}</p>{% endif %}
+          </div>
+        {% endif %}
+      </section>
+
+      <section class="resume-paper-section experience-comparison-section">
+        <div class="comparison-section-heading">
+          <div>
+            <h3>{{ resume_labels.experience }}</h3>
+            {% if data.has_comparison %}
+              <p class="caption">Included, modified, added, rewritten, restored, and intentionally excluded bullets for {{ data.comparison_label }} → {{ data.current_label }}.</p>
+            {% endif %}
+          </div>
+        </div>
+        {% if data.selection_consistency_warnings %}
+          <div class="selection-consistency-warnings" aria-label="Bullet selection review warnings">
+            {% for warning in data.selection_consistency_warnings %}
+              <div class="alert alert-warning compact-alert">
+                <strong>{{ warning.title }}.</strong> {{ warning.detail }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% for experience in data.experiences %}
+          <div class="resume-experience">
+            <div class="resume-experience-heading"><strong>{{ experience.title }} — {{ experience.employer }}</strong><span>{{ experience.dates }}</span></div>
+            <p class="caption">{{ experience.location }}</p>
+            {% if data.has_comparison %}
+              <div class="experience-change-summary" aria-label="Experience change summary">
+                <span class="retained-count{% if experience.retained_count > 0 %} has-changes{% endif %}"><strong>{{ experience.retained_count }}</strong> retained</span>
+                <span><strong>{{ experience.changed_count }}</strong> modified</span>
+                <span class="added-count{% if experience.added_count > 0 %} has-changes{% endif %}"><strong>{{ experience.added_count }}</strong> added</span>
+                {% if experience.rewritten_count > 0 %}<span class="rewritten-count has-changes"><strong>{{ experience.rewritten_count }}</strong> rewritten</span>{% endif %}
+                {% if experience.restored_count > 0 %}<span class="restored-count has-changes"><strong>{{ experience.restored_count }}</strong> restored</span>{% endif %}
+                                <span class="excluded-count{% if experience.excluded_count > 0 %} has-changes{% endif %}"><strong>{{ experience.excluded_count }}</strong> excluded</span>
+              </div>
+              {% for bullet in experience.bullets %}
+                <details class="bullet-editor bullet-status-{{ bullet.inclusion_status }}" {% if bullet.inclusion_status == 'excluded_unchanged' %}hidden data-mutually-excluded-bullet{% endif %} data-bullet-editor>
+                  <summary>
+                    <span class="bullet-status-badge {{ bullet.inclusion_status }}">{{ bullet.status_label }}</span>
+                    {% set summary_text = bullet.rewritten_as_text if bullet.inclusion_status == 'rewritten' else bullet.comparison if bullet.inclusion_status == 'excluded' else bullet.proposed %}
+                    <span>{{ bullet.id }} — {{ summary_text[:100] }}{% if summary_text|length > 100 %}…{% endif %}</span>
+                  </summary>
+                  {% if bullet.inclusion_status == 'selection_missing' %}
+                    <div class="alert neutral-alert compact-alert">
+                      <strong>Evaluated by Job Alignment.</strong>
+                      Career Bridge restored the verified source bullet and evaluated it with the same deterministic selection rules as every other accomplishment.
+                    </div>
+                  {% elif bullet.inclusion_status == 'auto_reconciled_included' %}
+                    <div class="alert alert-info compact-alert">
+                      <strong>{{ bullet.status_label }}.</strong>
+                      Career Bridge selected this accomplishment using job relevance, evidence strength, unique requirement coverage, and duplication checks.
+                    </div>
+                  {% elif bullet.inclusion_status == 'auto_reconciled_excluded' %}
+                    <div class="alert neutral-alert compact-alert">
+                      <strong>{{ bullet.status_label }}.</strong>
+                      {{ bullet.evidence_note_display }}
+                    </div>
+                  {% elif bullet.inclusion_status == 'rewritten' %}
+                    <div class="alert rewritten-alert compact-alert">
+                      <strong>Marked as rewritten as {{ bullet.rewritten_as_id }}.</strong>
+                      The replacement bullet remains included in {{ bullet.current_label }}, so this source bullet is not counted as an exclusion.
+                    </div>
+                  {% elif bullet.inclusion_status == 'excluded' %}
+                    <div class="alert alert-warning compact-alert">
+                      <strong>Intentionally excluded from {{ bullet.current_label }}.</strong>
+                      The original accomplishment remains available in the Application Baseline and Verified Resume Evidence.
+                    </div>
+                  {% elif bullet.inclusion_status == 'added' %}
+                    <div class="alert alert-info compact-alert"><strong>Added to {{ bullet.current_label }}.</strong> It was not included in the comparison version.</div>
+                  {% elif bullet.inclusion_status == 'restored_missing_included' %}
+                    <div class="alert restored-missing-alert compact-alert">
+                      <strong>Restored and included in {{ bullet.current_label }}.</strong>
+                      This bullet was missing from the structured data for {{ bullet.comparison_label }}. The automatic fix restored it from the Verified Resume Evidence, selected it for the current resume, and included it in the Word download.
+                    </div>
+                  {% elif bullet.inclusion_status == 'restored_missing_excluded' %}
+                    <div class="alert restored-missing-alert compact-alert">
+                      <strong>Restored to the structured Draft, but not included in the resume.</strong>
+                      This bullet was restored from the Verified Resume Evidence but could not be selected because the experience had already reached its allowed bullet-count limit. It will not appear in the Word download unless another bullet is excluded.
+                    </div>
+                  {% elif bullet.inclusion_status == 'excluded_unchanged' %}
+                    <div class="alert neutral-alert compact-alert"><strong>{{ bullet.status_label }}.</strong> This is unchanged between the two compared drafts and is shown only for reference.</div>
+                  {% endif %}
+
+                  {% if bullet.tailoring_reason and bullet.tailoring_reason.reasons %}
+                    {{ change_explanation(
+                      bullet.tailoring_reason.reasons[0],
+                      bullet.tailoring_reason.report_impact,
+                      tailoring_changes.report_impacts.available if tailoring_changes else false,
+                      bullet.tailoring_reason.reasons,
+                      none,
+                      none,
+                      'Why this changed',
+                      bullet.evidence_note_display if version == 'final' else none,
+                      bullet.matched_requirements if version == 'final' else none,
+                      bullet.selected_instead if version == 'final' else none,
+                      bullet.selection_score if version == 'final' else none
+                    ) }}
+                  {% elif bullet.automatic_fix and bullet.automatic_fix.reasons %}
+                    {{ automatic_change_explanation(
+                      bullet.automatic_fix,
+                      none,
+                      none,
+                      bullet.evidence_note_display if version == 'final' else none,
+                      bullet.matched_requirements if version == 'final' else none,
+                      bullet.selected_instead if version == 'final' else none,
+                      bullet.selection_score if version == 'final' else none
+                    ) }}
+                  {% elif bullet.comparison_reason %}
+                    {{ change_explanation(
+                      bullet.comparison_reason,
+                      none,
+                      true,
+                      none,
+                      none,
+                      none,
+                      'Why this changed',
+                      bullet.evidence_note_display if version == 'final' else none,
+                      bullet.matched_requirements if version == 'final' else none,
+                      bullet.selected_instead if version == 'final' else none,
+                      bullet.selection_score if version == 'final' else none
+                    ) }}
+                  {% endif %}
+
+                  {% if editable %}
+                    {% if bullet.inclusion_status in ['excluded', 'excluded_unchanged', 'restored_missing_excluded', 'selection_missing', 'auto_reconciled_excluded', 'rewritten'] %}
+                      <div class="bullet-inclusion-controls exclusion-decision-controls">
+                        <input id="include__{{ bullet.id }}" type="checkbox" name="include__{{ bullet.id }}" {% if bullet.include %}checked{% endif %} data-bullet-include hidden>
+                        <button class="button primary compact-button" type="button" data-restore-bullet data-target="include__{{ bullet.id }}">{% if bullet.inclusion_status == 'rewritten' %}Restore original bullet{% else %}Restore to {{ version_resume_label }}{% endif %}</button>
+                        <span class="caption" data-restore-status>{% if bullet.inclusion_status == 'rewritten' %}The identified replacement remains included; restore the original only if both bullets should appear.{% elif bullet.inclusion_status == 'selection_missing' %}Restoring this bullet records a manual candidate selection because the generated decision was incomplete.{% else %}Restore this source-backed accomplishment when it is relevant and space permits.{% endif %}</span>
+                      </div>
+                    {% else %}
+                      <div class="bullet-inclusion-controls">
+                        <label class="checkbox-row" for="include__{{ bullet.id }}">
+                          <input id="include__{{ bullet.id }}" type="checkbox" name="include__{{ bullet.id }}" {% if bullet.include %}checked{% endif %} data-bullet-include>
+                          Include in {{ version_resume_label }}
+                        </label>
+                      </div>
+                    {% endif %}
+                  {% endif %}
+
+                  {% if bullet.inclusion_status in ['excluded', 'selection_missing', 'auto_reconciled_excluded'] %}
+                    <details class="excluded-bullet-details">
+                      <summary>View comparison and supporting details</summary>
+                      <div class="excluded-bullet-details-body">
+                  {% endif %}
+                  <div class="diff-grid" data-diff-container data-reference="{{ bullet.comparison|e }}">
+                    <div class="diff-card">
+                      <div class="diff-card-title">{{ bullet.comparison_label }}</div>
+                      <div class="diff-content" data-reference-diff>
+                        {% if bullet.inclusion_status in ['restored_missing_included', 'restored_missing_excluded'] %}<span class="excluded-placeholder neutral-placeholder">Missing from the structured Draft</span>{% elif bullet.inclusion_status in ['added', 'excluded_unchanged'] %}<span class="excluded-placeholder{% if bullet.inclusion_status == 'excluded_unchanged' %} neutral-placeholder{% endif %}">Not included in this resume version</span>{% else %}{{ bullet.comparison_html|safe }}{% endif %}
+                      </div>
+                    </div>
+                    <div class="diff-card {% if bullet.inclusion_status in ['excluded', 'selection_missing', 'auto_reconciled_excluded'] %}diff-card-excluded{% elif bullet.inclusion_status in ['excluded_unchanged', 'restored_missing_excluded'] %}diff-card-neutral{% endif %}">
+                      <div class="diff-card-title">{{ bullet.current_label }}</div>
+                      <div class="diff-content" data-proposed-diff>
+                        {% if bullet.inclusion_status in ['excluded', 'selection_missing', 'auto_reconciled_excluded', 'excluded_unchanged'] %}<span class="excluded-placeholder{% if bullet.inclusion_status == 'excluded_unchanged' %} neutral-placeholder{% endif %}">Not included in this resume version</span>{% else %}{% if bullet.inclusion_status == 'restored_missing_included' %}<span class="restored-structured-label">Restored structured wording · included in Word resume</span>{% elif bullet.inclusion_status == 'restored_missing_excluded' %}<span class="restored-structured-label">Restored structured wording · currently excluded</span>{% endif %}{{ bullet.proposed_html|safe }}{% endif %}
+                      </div>
+                    </div>
+                  </div>
+
+                  {% if editable %}
+                    <div class="editable-resume-field"><label for="resume-bullet-{{ version }}-{{ bullet.id }}">{{ 'Editable bullet wording' if version == 'final' else 'Edit wording' }}</label><textarea id="resume-bullet-{{ version }}-{{ bullet.id }}" name="text__{{ bullet.id }}" rows="5" data-diff-editor>{{ bullet.proposed }}</textarea></div>
+                  {% endif %}
+                  {% set has_change_explanation = (bullet.tailoring_reason and bullet.tailoring_reason.reasons) or (bullet.automatic_fix and bullet.automatic_fix.reasons) or bullet.comparison_reason %}
+                  {% if not bullet.tailoring_reason and (version != 'final' or not has_change_explanation) %}
+                    <p><strong>Evidence note:</strong> {{ bullet.evidence_note_display }}</p>
+                    <p><strong>Matched requirements:</strong> {{ bullet.matched_requirements|join('; ') if bullet.matched_requirements else 'None' }}</p>
+                  {% endif %}
+                  {% if bullet.inclusion_status in ['excluded', 'selection_missing', 'auto_reconciled_excluded'] %}
+                      </div>
+                    </details>
+                  {% endif %}
+                </details>
+              {% endfor %}
+            {% else %}
+              <ul>{% for bullet in experience.bullets if bullet.include %}<li>{{ bullet.proposed }}</li>{% endfor %}</ul>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </section>
+
+      <section class="resume-paper-section">
+        <h3>{{ resume_labels.education }}</h3>
+        {% for item in profile.education %}
+          {% if editable and version == 'final' %}
+            <fieldset class="editable-education-entry">
+              <legend>Editable education entry {{ loop.index }}</legend>
+              <div class="field-grid two">
+                <div><label for="resume-education-credential-{{ version }}-{{ loop.index0 }}">Credential</label><input id="resume-education-credential-{{ version }}-{{ loop.index0 }}" type="text" name="education__{{ loop.index0 }}__credential" value="{{ item.credential }}" required></div>
+                <div><label for="resume-education-institution-{{ version }}-{{ loop.index0 }}">Institution</label><input id="resume-education-institution-{{ version }}-{{ loop.index0 }}" type="text" name="education__{{ loop.index0 }}__institution" value="{{ item.institution }}" required></div>
+                <div><label for="resume-education-location-{{ version }}-{{ loop.index0 }}">Location</label><input id="resume-education-location-{{ version }}-{{ loop.index0 }}" type="text" name="education__{{ loop.index0 }}__location" value="{{ item.location }}"></div>
+                <div><label for="resume-education-date-{{ version }}-{{ loop.index0 }}">Date</label><input id="resume-education-date-{{ version }}-{{ loop.index0 }}" type="text" name="education__{{ loop.index0 }}__date" value="{{ item.date }}" required></div>
+              </div>
+              <label for="resume-education-detail-{{ version }}-{{ loop.index0 }}">Detail</label><input id="resume-education-detail-{{ version }}-{{ loop.index0 }}" type="text" name="education__{{ loop.index0 }}__detail" value="{{ item.detail }}">
+            </fieldset>
+          {% else %}
+            <p><strong>{{ item.credential }}</strong> — {{ item.institution }}{% if item.location %}, {{ item.location }}{% endif %} · {{ item.date }}{% if item.detail %}<br>{{ item.detail }}{% endif %}</p>
+          {% endif %}
+        {% endfor %}
+      </section>
+    </article>
+
+    {% if editable %}
+      <div class="editor-save-bar workflow-action-bar">
+        <div class="workflow-action-copy">
+          <span class="eyebrow">{{ 'Finish this step' if show_quality_review_action else 'Save your work' }}</span>
+          {% if show_quality_review_action %}
+            <strong>Approve &amp; optimize resume</strong>
+            <span>Approve the saved Job-Aligned Resume and continue to final quality optimization and export.</span>
+          {% else %}
+            <strong>Save resume changes</strong>
+            <span>Save the current working version before downloading or leaving this editor.</span>
+          {% endif %}
+        </div>
+        <div class="workflow-action-content">
+          <div class="editor-save-actions workflow-action-controls">
+            <button class="button secondary" type="submit" data-resume-save-button disabled>Save resume changes</button>
+            {% if show_quality_review_action %}
+              <button
+                class="button primary"
+                type="submit"
+                formaction="{{ url_for('application_builder.start_final_stage') }}"
+                formmethod="post"
+                {% if not input_is_current %}disabled{% endif %}
+                data-loading-title="Creating final resume…"
+                data-loading-message="Saving your approved resume and applying only quality improvements that preserve or improve its score."
+                data-loading-steps="Saving your approved resume|Reviewing quality opportunities|Testing improvements against the job-alignment score|Preparing the final resume export"
+                data-loading-step-details="Keeping the reviewed Step 3 resume as the protected baseline.|Looking for clearer wording and presentation improvements.|Keeping only changes that preserve or improve the protected score.|Generating the final report and PDF/Word export files."
+                data-loading-step-timings="2500,8000,18000"
+                data-loading-reassurance="Some stages can take longer when several improvements need to be checked."
+                data-loading-reassurance-delayed="Still working. The app is checking possible improvements and rejecting any that lower the protected score."
+                data-loading-reassurance-extended="Still working. If the optional AI pass cannot finish within the safe request window, Step 4 will open with your approved score-safe resume."
+              >Approve &amp; optimize</button>
+            {% endif %}
+          </div>
+          <span class="caption" data-resume-save-status>
+            The generated resume is already saved. Edit a field to enable saving. Downloads use the last saved version.
+          </span>
+        </div>
+      </div>
+      </form>
+    {% endif %}
+  </section>
+{% endmacro %}
+
+{% block content %}
+{% include "application_builder/_resume_async_job.html" %}
+{% if active_tab == 'configuration' %}
+
+  <section class="card configuration-card" id="configuration-panel">
+    <div class="section-heading">
+      <div>
+        <h2>AI configuration</h2>
+        <p>Choose the models used for routine tailoring and the independent evidence review performed during Step 3.</p>
+      </div>
+    </div>
+    <form action="{{ url_for('application_builder.configuration') }}" method="post" class="stack-form loading-form config-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field-grid two">
+        <div>
+          <label for="processing-mode">Processing mode</label>
+          <select id="processing-mode" name="processing_mode" data-processing-mode>
+            {% for value in processing_mode_order %}
+              <option value="{{ value }}" {% if state.processing_mode == value %}selected{% endif %}>{{ processing_mode_labels[value] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div data-custom-models {% if state.processing_mode != 'custom' %}hidden{% endif %}>
+        <div class="field-grid two">
+          <div>
+            <label for="custom-analysis-tailoring-model">Analysis and tailoring model</label>
+            <input id="custom-analysis-tailoring-model" name="custom_analysis_tailoring_model" value="{{ state.custom_analysis_tailoring_model }}">
+            <label for="custom-analysis-tailoring-effort">Analysis and tailoring reasoning</label>
+            <select id="custom-analysis-tailoring-effort" name="custom_analysis_tailoring_reasoning_effort">
+              {% for effort in reasoning_efforts %}<option value="{{ effort }}" {% if (state.custom_analysis_tailoring_reasoning_effort or 'automatic') == effort %}selected{% endif %}>{{ effort }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="custom-evidence-review-model">Evidence review model (Step 3)</label>
+            <input id="custom-evidence-review-model" name="custom_evidence_review_model" value="{{ state.custom_evidence_review_model }}">
+            <label for="custom-evidence-review-effort">Evidence review reasoning</label>
+            <select id="custom-evidence-review-effort" name="custom_evidence_review_reasoning_effort">
+              {% for effort in reasoning_efforts %}<option value="{{ effort }}" {% if (state.custom_evidence_review_reasoning_effort or 'automatic') == effort %}selected{% endif %}>{{ effort }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+      <button class="button primary" type="submit">Save configuration</button>
+    </form>
+
+    {% if model_error %}<div class="alert alert-error">{{ model_error }}</div>{% endif %}
+    {% if models.description %}<p class="caption">{{ models.description }}</p>{% endif %}
+    {% if models.warning %}<div class="alert alert-warning">{{ models.warning }}</div>{% endif %}
+
+    <div class="metric-grid metric-grid-2">
+      <div class="metric-card compact">
+        <span>Analysis and tailoring</span>
+        <strong>{{ models.analysis_tailoring_model }}</strong>
+        <em>Reasoning: {{ reasoning_effort_label(models.analysis_tailoring_reasoning_effort) }}</em>
+      </div>
+      <div class="metric-card compact">
+        <span>Evidence review · Step 3</span>
+        <strong>{{ models.evidence_review_model }}</strong>
+        <em>Reasoning: {{ reasoning_effort_label(models.evidence_review_reasoning_effort) }}</em>
+      </div>
+    </div>
+
+    <details>
+      <summary>Which actions call OpenAI?</summary>
+      <ul class="compact-list">
+        <li><strong>Routine model:</strong> Initial Report analysis, tailoring, confirmation refinement, and individual suggested fixes.</li>
+        <li><strong>Evidence model:</strong> Claim review during Confirm Relevant Experience and Review Tailored Resume.</li>
+        <li><strong>Local only:</strong> Resume Report scoring after analysis, text differences, editing, deterministic bulk fixes, and PDF/Word export.</li>
+      </ul>
+    </details>
+    {% if api_ready %}
+      <div class="alert alert-success">OPENAI_API_KEY is configured.</div>
+    {% else %}
+      <div class="alert alert-error">OPENAI_API_KEY is not configured.<code class="code-block">setx OPENAI_API_KEY "your-key"</code></div>
+    {% endif %}
+  </section>
+
+  <section class="card" id="candidate-profile">
+    <h2>Verified Resume Evidence</h2>
+    <div class="metric-grid metric-grid-3">
+      <div class="metric-card compact"><span>Candidate</span><strong>{{ source_profile.name if state.profile_upload_name and source_profile.name else 'No profile yet' }}</strong></div>
+      <div class="metric-card compact"><span>Verified skills</span><strong>{{ profile_stats.skills }}</strong></div>
+      <div class="metric-card compact"><span>Source experience bullets</span><strong>{{ profile_stats.bullets }}</strong></div>
+    </div>
+    {% if state.profile_upload_name %}
+      <div class="button-row">
+        <a class="button secondary" href="{{ url_for('application_builder.download_source_profile') }}">Download Verified Resume Evidence JSON</a>
+      </div>
+    {% else %}
+      <p class="caption">No verified resume evidence exists yet. Create the Baseline Resume in Foundation first.</p>
+    {% endif %}
+    <p class="caption">Verified Resume Evidence comes from the reusable Foundation Baseline Resume.</p>
+    <div class="button-row">
+      <a class="button secondary" href="{{ url_for('application_builder.career_translation_workspace') }}">Manage Foundation Baseline Resume</a>
+      <form action="{{ url_for('application_builder.reset_workflow') }}" method="post" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="button danger-outline" type="submit">Reset workflow</button>
+      </form>
+    </div>
+  </section>
+
+{% elif active_tab == 'reports' %}
+
+  <div class="tabs top-report-tabs" data-tabs>
+    <div class="tab-list report-version-tabs" role="tablist" aria-label="Resume report versions">
+      <button type="button" class="tab-button report-version-tab {% if report_view_name == 'initial' %}active{% endif %}" data-tab-target="reports-initial" role="tab">
+        <span>Application Baseline</span>
+      </button>
+      <button type="button" class="tab-button report-version-tab {% if report_view_name == 'draft' %}active{% endif %}" data-tab-target="reports-draft" role="tab">
+        <span>Job-Aligned Resume</span>
+      </button>
+      <button type="button" class="tab-button report-version-tab {% if report_view_name == 'final' %}active{% endif %}" data-tab-target="reports-final" role="tab">
+        <span>Final Resume</span>
+      </button>
+      <button type="button" class="tab-button report-version-tab {% if report_view_name == 'comparison' %}active{% endif %}" data-tab-target="reports-comparison" role="tab">
+        <span>Comparison</span>
+      </button>
+    </div>
+
+    <section class="tab-panel {% if report_view_name == 'initial' %}active{% endif %}" id="reports-initial" data-tab-panel role="tabpanel">
+      <div class="card">
+        <div class="report-stage-context">
+          <span class="workflow-range-badge">Step 1 · Application and Job Setup</span>
+          <p>This report evaluates the Application Baseline before any tailoring begins.</p>
+        </div>
+        <div class="section-heading">
+          <div><h2>Application Baseline Report</h2><p>Generated automatically when Step 1 analyzes the job and resume. It establishes the unmodified comparison baseline.</p></div>
+          {% if state.initial_report or state.initial_report_error or initial_report_stale %}
+            <form action="{{ url_for('application_builder.run_initial_report') }}" method="post" class="loading-form inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="button secondary" type="submit" {% if not state.job_description.strip() or (not ai_ready and not (analysis_is_current and state.initial_evidence_proposal)) %}disabled{% endif %}>{{ 'Retry report' if state.initial_report_error else 'Rerun report' }}</button>
+            </form>
+          {% endif %}
+        </div>
+        {% if not state.job_description.strip() %}<div class="alert alert-info">The report will be generated automatically after the job description is saved and Step 1 starts tailoring.</div>{% endif %}
+        {% if initial_report_stale %}<div class="alert alert-warning">The Verified Resume Evidence, job description, or target title changed. The report will refresh automatically the next time Step 1 runs; use Rerun report to refresh it now.</div>{% endif %}
+        {% if state.initial_report_error %}<div class="alert alert-warning"><strong>Automatic generation failed.</strong> {{ state.initial_report_error }} The workflow remains available; use Retry report after correcting the problem.</div>{% endif %}
+        {% if initial_report %}
+          {% if state.initial_report_created_at %}<p class="caption">Generated automatically: {{ state.initial_report_created_at }}</p>{% endif %}
+          {{ report_panel(initial_report, 'initial') }}
+        {% else %}
+          <div class="empty-state"><h3>Generating automatically</h3><p>The Application Baseline Report continues after Step 2 becomes available, so it does not delay the workflow.</p></div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="tab-panel {% if report_view_name == 'draft' %}active{% endif %}" id="reports-draft" data-tab-panel role="tabpanel">
+      <div class="card">
+        <div class="report-stage-context">
+          <span class="workflow-range-badge">Step 3 · Review Tailored Resume</span>
+          <p>This report scores the exact Job-Aligned Resume saved at the end of Step 3.</p>
+        </div>
+        <div class="section-heading">
+          <div><h2>Job-Aligned Resume Report</h2><p>Generated automatically when the Job-Aligned Resume is created and refreshed after every saved Step 3 edit or applied improvement.</p></div>
+          {% if state.updated_report or state.updated_report_error or draft_report_stale %}
+            <form action="{{ url_for('application_builder.run_draft_report') }}" method="post" class="loading-form inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="button secondary" type="submit" {% if not input_is_current or not state.confirmation_complete %}disabled{% endif %}>{{ 'Retry report' if state.updated_report_error else 'Rerun report' }}</button>
+            </form>
+          {% endif %}
+        </div>
+        {% if not input_is_current %}<div class="alert alert-info">The report will be generated automatically when the Job-Aligned Resume is created in Step 3.</div>{% endif %}
+        {% if draft_report_stale %}<div class="alert alert-warning">The Job-Aligned Resume changed after this report snapshot. Saving the current Step 3 resume refreshes it automatically; use Rerun report to refresh it now.</div>{% endif %}
+        {% if state.updated_report_error %}<div class="alert alert-warning"><strong>Automatic generation failed.</strong> {{ state.updated_report_error }} Review Tailored Resume remains available; use Retry report after correcting the problem.</div>{% endif %}
+        {% if draft_report %}
+          {% if state.updated_report_created_at %}<p class="caption">Generated automatically: {{ state.updated_report_created_at }}</p>{% endif %}
+          {{ report_panel(draft_report, 'draft') }}
+          <details><summary>Proposal data download</summary><p class="caption">Includes the proposal, candidate confirmation responses, supplemental evidence, unsupported requirements, and evidence decisions.</p><a class="button secondary" href="{{ url_for('application_builder.download_proposal') }}">Download proposal JSON</a></details>
+        {% else %}
+          <div class="empty-state"><h3>Generating automatically</h3><p>The Job-Aligned Resume Report continues after the resume becomes available for review.</p></div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="tab-panel {% if report_view_name == 'final' %}active{% endif %}" id="reports-final" data-tab-panel role="tabpanel">
+      <div class="card">
+        <div class="report-stage-context">
+          <span class="workflow-range-badge">Steps 4–6 · Quality, Finalize, Evidence &amp; Export</span>
+          <p>This report is created during Step 4 and finalized across Steps 5–6 after saved Final Resume edits and evidence review.</p>
+        </div>
+        <div class="section-heading">
+          <div><h2>Final Resume Report</h2><p>Generated during Improve Resume Quality and refreshed through Finalize Resume and Evidence Review and Export.</p></div>
+          <div class="button-row">
+            {% if state.final_report or state.final_report_error or final_report_stale %}
+              <form action="{{ url_for('application_builder.run_final_report') }}" method="post" class="loading-form inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="button secondary" type="submit">{{ 'Retry report' if state.final_report_error else 'Rerun report' }}</button>
+              </form>
+            {% endif %}
+            {% if state.final_resume_bytes and state.final_resume_pdf_bytes %}
+              <a class="button primary" href="{{ url_for('application_builder.download_final_resume') }}">Download final PDF</a>
+              <a class="button secondary" href="{{ url_for('application_builder.download_final_resume_word') }}">Download Word (.docx)</a>
+            {% elif state.final_proposal %}
+              <form action="{{ url_for('application_builder.queue_final_resume_export') }}" method="post" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="button secondary" type="submit">Prepare Word and PDF</button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+        {% if final_report_stale %}<div class="alert alert-warning">The Final Resume changed after this report snapshot. Saving the current Final Resume refreshes it automatically; use Rerun report to refresh it now.</div>{% endif %}
+        {% if state.final_report_error %}<div class="alert alert-warning"><strong>Automatic generation failed.</strong> {{ state.final_report_error }} The Final Resume export remains available; use Retry report after correcting the problem.</div>{% endif %}
+        {% if final_report %}
+          {% if final_report_created_at %}<p class="caption">Generated automatically: {{ final_report_created_at }}</p>{% endif %}
+          {{ report_panel(final_report, 'final') }}
+        {% else %}
+          <div class="empty-state"><h3>Waiting for Steps 4–6</h3><p>The Final Resume Report begins during quality improvement and is finalized before export.</p></div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="tab-panel {% if report_view_name == 'comparison' %}active{% endif %}" id="reports-comparison" data-tab-panel role="tabpanel">
+      <div class="card">
+        <div class="report-stage-context">
+          <span class="workflow-range-badge">Steps 1–4 · Progress across versions</span>
+          <p>Compare the saved report snapshots without treating every workflow activity as a separate resume version.</p>
+        </div>
+        <h2>Improvement comparison</h2>
+        <p>Compare Application Baseline → Job-Aligned Resume, Job-Aligned Resume → Final Resume, and Application Baseline → Final Resume whenever those report snapshots are available.</p>
+        {% if comparisons %}
+          {% set first_comparison = 'initial_draft' if comparisons.get('initial_draft') else 'draft_final' if comparisons.get('draft_final') else 'initial_final' %}
+          <div class="tabs comparison-tabs" data-tabs>
+            <div class="tab-list" role="tablist">
+              {% if comparisons.get('initial_draft') %}<button type="button" class="tab-button {% if first_comparison == 'initial_draft' %}active{% endif %}" data-tab-target="comparison-initial-draft" role="tab">Initial → Job-Aligned</button>{% endif %}
+              {% if comparisons.get('draft_final') %}<button type="button" class="tab-button {% if first_comparison == 'draft_final' %}active{% endif %}" data-tab-target="comparison-draft-final" role="tab">Job-Aligned → Final</button>{% endif %}
+              {% if comparisons.get('initial_final') %}<button type="button" class="tab-button {% if first_comparison == 'initial_final' %}active{% endif %}" data-tab-target="comparison-initial-final" role="tab">Initial → Final</button>{% endif %}
+            </div>
+            {% if comparisons.get('initial_draft') %}<div class="tab-panel {% if first_comparison == 'initial_draft' %}active{% endif %}" id="comparison-initial-draft" data-tab-panel>{{ comparison_panel(comparisons.initial_draft, 'initial-draft') }}</div>{% endif %}
+            {% if comparisons.get('draft_final') %}<div class="tab-panel {% if first_comparison == 'draft_final' %}active{% endif %}" id="comparison-draft-final" data-tab-panel>{{ comparison_panel(comparisons.draft_final, 'draft-final') }}</div>{% endif %}
+            {% if comparisons.get('initial_final') %}<div class="tab-panel {% if first_comparison == 'initial_final' %}active{% endif %}" id="comparison-initial-final" data-tab-panel>{{ comparison_panel(comparisons.initial_final, 'initial-final') }}</div>{% endif %}
+          </div>
+        {% else %}
+          <div class="empty-state"><h3>Comparison is not available yet</h3><p>Run at least two report versions to see score changes, fixed checks, regressions, and evidence improvement.</p></div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+{% else %}
+
+  <section class="guided-workflow guided-workflow-minimal" aria-label="Resume workflow">
+    <nav class="workflow-stepper" aria-label="Resume tailoring stages">
+      {% for step in guided_workflow.steps %}
+        <a
+          class="workflow-step workflow-step-{{ step.status }} {% if step.key == guided_workflow.current_key %}current{% endif %} {% if step.key == selected_workflow_stage %}viewing{% endif %}"
+          href="{{ step.href }}"
+          aria-current="{{ 'page' if step.key == selected_workflow_stage else 'false' }}"
+          title="{{ step.status_label }}"
+        >
+          <span class="workflow-step-number" aria-hidden="true">{% if step.status == 'completed' %}✓{% elif step.status == 'locked' %}·{% else %}{{ step.number }}{% endif %}</span>
+          <strong>{{ step.title }}</strong>
+        </a>
+      {% endfor %}
+    </nav>
+  </section>
+
+  {% set initial_report_needs_background = analysis and state.initial_evidence_proposal and (not initial_report or initial_report_stale) and not state.initial_report_error %}
+  {% set draft_report_needs_background = state.confirmation_complete and state.draft_proposal and (not draft_report or draft_report_stale) and not state.updated_report_error %}
+  {% set final_report_needs_background = state.final_resume_bytes and state.final_proposal and not state.final_report_exact and not state.final_report_error %}
+  {% if initial_report_needs_background or draft_report_needs_background or final_report_needs_background %}
+    <aside class="automatic-report-queue" aria-live="polite" aria-label="Automatic Resume Report generation">
+      <strong>Resume Reports are continuing automatically</strong>
+      <span>You can keep reviewing the current workflow step while document rendering finishes.</span>
+      {% if initial_report_needs_background %}
+        <span class="automatic-report-item" data-auto-report data-url="{{ url_for('application_builder.run_automatic_report', report_name='initial') }}" data-label="Application Baseline Report" data-refresh="{{ 'true' if active_tab == 'reports' else 'false' }}">Application Baseline Report · queued</span>
+      {% endif %}
+      {% if draft_report_needs_background %}
+        <span class="automatic-report-item" data-auto-report data-url="{{ url_for('application_builder.run_automatic_report', report_name='draft') }}" data-label="Job-Aligned Resume Report" data-refresh="{{ 'true' if active_tab == 'reports' else 'false' }}">Job-Aligned Resume Report · queued</span>
+      {% endif %}
+      {% if final_report_needs_background %}
+        <span class="automatic-report-item" data-auto-report data-url="{{ url_for('application_builder.run_automatic_report', report_name='final') }}" data-label="Final Resume Report" data-refresh="{{ 'true' if active_tab == 'reports' else 'false' }}">Final Resume Report · verifying page count…</span>
+      {% endif %}
+    </aside>
+  {% endif %}
+
+  <div class="workflow-stage-panel" data-workflow-stage-panel="initial" {% if selected_workflow_panel != 'initial' %}hidden{% endif %}>
+  <section class="card resume-import-card resume-import-minimal" id="resume-import" aria-labelledby="resume-import-title">
+    <div class="resume-import-summary-row">
+      <div>
+        <h2 id="resume-import-title">Application Baseline</h2>
+        {% if state.profile_upload_name and source_profile.all_source_text().strip() %}
+          <p><strong>{{ source_profile.name or 'Baseline Resume' }}</strong> · From Foundation Baseline Resume</p>
+        {% else %}
+          <p>No Foundation Baseline Resume is available yet.</p>
+        {% endif %}
+      </div>
+      <div class="button-row">
+        <a class="button secondary" href="{{ url_for('application_builder.career_translation_workspace') }}">Review Foundation Baseline Resume</a>
+      </div>
+    </div>
+
+    {% if application_baseline_outdated and active_application %}
+      <div class="alert alert-warning application-baseline-sync-warning">
+        <div>
+          <strong>This application uses an older frozen baseline.</strong>
+          <p>Foundation has a newer Baseline Resume. Restarting will replace this Application Baseline and clear later tailoring results.</p>
+        </div>
+        <form action="{{ url_for('application_builder.refresh_application_baseline', application_id=active_application.id) }}" method="post" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="button secondary" type="submit">Restart with current Baseline Resume</button>
+        </form>
+      </div>
+    {% elif application_baseline_frozen %}
+      <p class="caption">This Application Baseline is frozen because tailoring has started. Foundation changes do not silently alter completed workflow results.</p>
+    {% elif state.profile_upload_name and source_profile.all_source_text().strip() %}
+      <p class="caption">This application automatically uses the current Foundation Baseline Resume until tailoring starts.</p>
+    {% else %}
+      <p class="caption">Create the reusable Baseline Resume in Foundation before starting this application.</p>
+    {% endif %}
+  </section>
+  <section class="card workflow-stage-intro workflow-stage-intro-minimal" id="job-input">
+    <div class="step-heading"><div><span class="step-number step-label">1</span><h2>Application and Job Setup</h2></div></div>
+  </section>
+  {% if state.workflow_stage != 'initial' and not edit_setup_snapshot and setup_snapshot %}
+    <section class="card workflow-stage-content workflow-snapshot-card" id="job-input-details">
+      <div class="workflow-snapshot-banner">
+        <div>
+          <span class="eyebrow">Completed-step snapshot</span>
+          <strong>Step 1 · Application and Job Setup</strong>
+          <p>These are the exact job inputs used when tailoring started. Later workflow activity does not replace this saved view.</p>
+        </div>
+        <span class="caption">Saved {{ setup_snapshot.captured_at }}</span>
+      </div>
+      <div class="snapshot-field-grid">
+        <div><span>Target job title</span><strong>{{ setup_snapshot.target_title or 'Inferred from the job description' }}</strong></div>
+        <div><span>Target country</span><strong>{{ setup_snapshot.career_background.target_country or 'Not specified' }}</strong></div>
+        {% if setup_snapshot.career_background.has_context() %}
+          <div class="snapshot-career-context">
+            <span>International career context</span>
+            <ul class="compact-list">
+              {% if setup_snapshot.career_background.countries_worked %}<li><strong>Countries worked:</strong> {{ setup_snapshot.career_background.countries_worked|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.industries %}<li><strong>Industries:</strong> {{ setup_snapshot.career_background.industries|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.roles %}<li><strong>Roles:</strong> {{ setup_snapshot.career_background.roles|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.languages %}<li><strong>Languages:</strong> {{ setup_snapshot.career_background.languages|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.international_credentials %}<li><strong>International credentials:</strong> {{ setup_snapshot.career_background.international_credentials|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.professional_certifications %}<li><strong>Certifications:</strong> {{ setup_snapshot.career_background.professional_certifications|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.unfamiliar_job_titles %}<li><strong>Titles needing translation:</strong> {{ setup_snapshot.career_background.unfamiliar_job_titles|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.career_transitions %}<li><strong>Career transitions:</strong> {{ setup_snapshot.career_background.career_transitions|join(', ') }}</li>{% endif %}
+              {% if setup_snapshot.career_background.us_employment_experience %}<li><strong>U.S. employment experience:</strong> {{ setup_snapshot.career_background.us_employment_experience }}</li>{% endif %}
+            </ul>
+          </div>
+        {% endif %}
+        <div class="snapshot-job-description"><span>Job description</span><pre>{{ setup_snapshot.job_description }}</pre></div>
+      </div>
+    </section>
+  {% else %}
+    {% if edit_setup_snapshot %}
+      <div class="alert alert-warning workflow-reopen-warning"><strong>Editing Step 1 will restart the workflow.</strong> Selecting Start tailoring again will replace the saved results from Steps 2–4.</div>
+    {% endif %}
+    <section class="card workflow-stage-content" id="job-input-details">
+      <div class="section-heading compact-section-heading">
+        <div>
+          <h2>Target role</h2>
+          <p>Add the job description below. The Application Baseline remains visible underneath as a read-only reference.</p>
+        </div>
+      </div>
+      <form
+        id="setup-workflow-form"
+        action="{{ url_for('application_builder.start_workflow') }}"
+        method="post"
+        enctype="multipart/form-data"
+        class="loading-form"
+        data-loading-title="Analyzing job &amp; resume…"
+        data-loading-message="The app is reviewing the target role and finding the most relevant experience to confirm."
+        data-loading-steps="Reading the target job requirements|Reviewing international career context|Comparing the role with the Application Baseline|Building the Target-Market Review|Preparing Confirm Relevant Experience"
+        data-loading-step-details="Finding the role's main responsibilities, skills, and priorities.|Reviewing countries, industries, languages, credentials, titles, and transitions without collecting immigration data.|Matching the job needs with experience already supported by your resume.|Separating confirmed experience, safe rephrasing, clarification needs, unsupported claims, and future actions.|Saving the analysis and opening Step 2."
+        data-loading-step-timings="2500,7000,12000,19000"
+        data-loading-reassurance="Some analyses take longer when the job description or resume contains many detailed requirements."
+        data-loading-reassurance-delayed="Still working. The app is comparing the role with your experience and narrowing the list to the most useful confirmation questions."
+        data-loading-reassurance-extended="Still working. A detailed role can require additional review before the experience questions are ready."
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <section class="newcomer-onboarding" aria-labelledby="newcomer-onboarding-title">
+          <div class="newcomer-onboarding-heading newcomer-onboarding-heading-minimal">
+            <div>
+              <h3 id="newcomer-onboarding-title">Application context</h3>
+              <p>{% if reusable_career_profile and reusable_career_profile.has_context() %}Career Profile connected.{% else %}Career Profile not completed.{% endif %}</p>
+            </div>
+            <a class="text-link" href="/career-profile">{% if reusable_career_profile and reusable_career_profile.has_context() %}Update profile{% else %}Complete profile{% endif %}</a>
+          </div>
+
+          <div class="field-grid two career-translation-target-fields">
+            <div>
+              <label for="target-country">Target country for this application</label>
+              {% set selected_target_country = career_background.target_country|trim or 'United States' %}
+              <select id="target-country" name="target_country" data-target-country>
+                {% if selected_target_country not in country_options %}
+                  <option value="{{ selected_target_country }}" selected>{{ selected_target_country }} (current value)</option>
+                {% endif %}
+                {% for country in country_options %}
+                  <option value="{{ country }}" {% if selected_target_country == country %}selected{% endif %}>{{ country }}</option>
+                {% endfor %}
+              </select>
+
+            </div>
+            <div>
+              <label for="resume-language">Application Resume language</label>
+              <span class="sr-only">Career Bridge generates the Application Resume in the selected target language. The imported resume language is detected automatically.</span>
+              <select id="resume-language" name="resume_language" aria-describedby="resume-language-help">
+                <option value="">Automatic — {{ resume_language_choice.name }}{% if resume_language_choice.country %} for {{ resume_language_choice.country }}{% endif %}</option>
+                {% for language_code, language_label in resume_language_options %}
+                  <option value="{{ language_label }}" {% if selected_resume_language|lower == language_label|lower %}selected{% endif %}>{{ language_label }}</option>
+                {% endfor %}
+              </select>
+              <p class="caption" id="resume-language-help">This is the target language of the Application Resume, not the language of the uploaded file.</p>
+            </div>
+          </div>
+
+          <details class="application-specific-context"{% if not reusable_career_profile or not reusable_career_profile.has_context() or career_background_additions.has_context() %} open{% endif %}>
+            <summary>
+              <span>Additional application-specific exceptions</span>
+              <small>Optional</small>
+            </summary>
+            <div class="application-specific-context-body">
+
+              <div class="field-grid two newcomer-field-grid">
+                <div>
+                  <label for="countries-worked">Additional countries worked</label>
+                  <textarea id="countries-worked" name="countries_worked" rows="3" placeholder="Only countries not already in Career Profile">{{ career_background_additions.countries_worked|join(', ') }}</textarea>
+                </div>
+                <div>
+                  <label for="career-industries">Additional industries</label>
+                  <textarea id="career-industries" name="career_industries" rows="3" placeholder="Only industries not already in Career Profile">{{ career_background_additions.industries|join(', ') }}</textarea>
+                </div>
+                <div>
+                  <label for="career-roles">Additional roles or job families</label>
+                  <textarea id="career-roles" name="career_roles" rows="3" placeholder="Only roles not already in Career Profile">{{ career_background_additions.roles|join(', ') }}</textarea>
+                </div>
+                <div>
+                  <label for="career-languages">Additional professional languages</label>
+                  <input id="career-languages" name="career_languages" value="{{ career_background_additions.languages|join(', ') }}" placeholder="Only languages not already in Career Profile">
+                </div>
+                <div>
+                  <label for="international-credentials">Additional international credentials</label>
+                  <textarea id="international-credentials" name="international_credentials" rows="3" placeholder="Only credentials not already in Career Profile">{{ career_background_additions.international_credentials|join(', ') }}</textarea>
+                </div>
+                <div>
+                  <label for="professional-certifications">Additional professional certifications</label>
+                  <textarea id="professional-certifications" name="professional_certifications" rows="3" placeholder="Only certifications not already in Career Profile">{{ career_background_additions.professional_certifications|join(', ') }}</textarea>
+                </div>
+                <div>
+                  <label for="unfamiliar-job-titles">Additional job titles needing explanation</label>
+                  <textarea id="unfamiliar-job-titles" name="unfamiliar_job_titles" rows="3" placeholder="Only titles not already in Career Profile">{{ career_background_additions.unfamiliar_job_titles|join(', ') }}</textarea>
+                </div>
+                <div>
+                  <label for="career-transitions">Additional career-transition context</label>
+                  <textarea id="career-transitions" name="career_transitions" rows="3" placeholder="Only context not already in Career Profile">{{ career_background_additions.career_transitions|join(', ') }}</textarea>
+                </div>
+                <div data-us-experience-field {% if selected_target_country|trim|lower not in ['united states', 'united states of america', 'usa', 'us', 'u.s.', 'u.s.a.'] %}hidden{% endif %}>
+                  <label for="us-employment-experience">Additional U.S. employment context</label>
+                  <textarea id="us-employment-experience" name="us_employment_experience" rows="3" placeholder="Only details not already in Career Profile">{{ career_background_additions.us_employment_experience }}</textarea>
+                </div>
+              </div>
+              <p class="caption">Use commas, semicolons, or separate lines for list fields.</p>
+            </div>
+          </details>
+        </section>
+
+        <div class="field-grid two">
+          <div>
+            <label for="target-title">Target job title (optional)</label>
+            <input id="target-title" name="target_title" value="{{ state.target_title }}" placeholder="The analyzer can infer it when blank">
+          </div>
+          <div>
+            <label for="job-file">Job description text file (optional)</label>
+            <input id="job-file" type="file" name="job_file" accept="text/plain,.txt">
+          </div>
+        </div>
+        <label for="job-description">Job description</label>
+        <textarea id="job-description" name="job_description" rows="16" placeholder="Paste the complete job description here.">{{ state.job_description }}</textarea>
+      </form>
+    </section>
+  {% endif %}
+  {% if preliminary_application_fit %}
+    {{ application_fit_panel(preliminary_application_fit, 'application-fit-setup') }}
+  {% endif %}
+  {{ resume_version_editor(initial_editor_data, source_profile, initial_resume_title(source_profile), 'initial', false, input_is_current, 'Application Baseline · View only', initial_editor_filename) }}
+  {% if state.workflow_stage != 'initial' and not edit_setup_snapshot and setup_snapshot %}
+    <div class="workflow-action-bar workflow-stage-action" aria-label="Edit completed setup step">
+      <div class="workflow-action-copy">
+        <span class="eyebrow">Completed step</span>
+        <strong>Keep this saved snapshot</strong>
+        <span>Reviewing this step does not change the active resume. Edit only when the job inputs need to be replaced.</span>
+      </div>
+      <div class="workflow-action-content">
+        <div class="workflow-action-controls"><a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='setup', edit='setup') }}#job-input">Edit this step</a></div>
+        <span class="caption">Restarting from Step 1 will replace all later workflow results.</span>
+      </div>
+    </div>
+  {% else %}
+    <div class="workflow-action-bar workflow-stage-action" aria-label="Setup next step">
+      <div class="workflow-action-copy">
+        <span class="eyebrow">Next step</span>
+        <strong>Start tailoring</strong>
+        <span>Analyze the target role and open Confirm Relevant Experience.</span>
+      </div>
+      <div class="workflow-action-content">
+        <div class="workflow-action-controls">
+          <button class="button primary"
+            name="action"
+            value="tailor"
+            type="submit"
+            form="setup-workflow-form"
+            data-enable-when-filled="job-description,job-file"
+            data-permanently-disabled="{{ 'true' if not ai_ready else 'false' }}"
+            {% if not ai_ready or not state.job_description.strip() %}disabled{% endif %}
+          >Start tailoring</button>
+        </div>
+        <span class="caption">A complete job description produces a more accurate requirement analysis.</span>
+      </div>
+    </div>
+  {% endif %}
+  </div>
+
+  <div class="workflow-stage-panel" data-workflow-stage-panel="confirmation" {% if selected_workflow_panel != 'confirmation' %}hidden{% endif %}>
+  {% if analysis and proposal %}
+    {% if not input_is_current %}<div class="alert alert-warning">The job description, target title, or analysis model changed after this analysis was created. Return to Setup and start tailoring again.</div>{% endif %}
+
+    <section class="card workflow-stage-intro" id="confirmation-stage">
+      <div class="step-heading">
+        <div><span class="step-number step-label">2</span><h2>Confirm Relevant Experience</h2></div>
+        {% if state.confirmation_follow_up_count %}
+          <p>Answer this one final set of targeted facts identified after the transformed resume was reviewed. No additional question round will follow.</p>
+        {% else %}
+          <p>Review the Target-Market Review and confirm only the additional experience needed to keep the tailored resume accurate, understandable in the target market, and evidence-based.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if preliminary_application_fit %}
+      {{ application_fit_panel(preliminary_application_fit, 'application-fit-confirmation', none, true) }}
+    {% endif %}
+
+    <details class="card compact-details job-analysis-details" id="job-analysis">
+      <summary>View detailed job requirement analysis</summary>
+      <div class="compact-details-body">
+        <p><strong>Target:</strong> {{ analysis.target_title }}{% if analysis.target_company %} at {{ analysis.target_company }}{% endif %}</p>
+        <p class="caption">This reference is optional. Step 2 asks only about critical or important requirements that are not already supported by the Verified Resume Evidence.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Priority</th><th>Category</th><th>Requirement</th><th>Keywords</th></tr></thead>
+            <tbody>{% for item in analysis.requirements %}<tr><td>{{ item.id }}</td><td>{{ item.priority }}</td><td>{{ item.category.replace('_', ' ') }}</td><td>{{ item.requirement }}</td><td>{{ item.keywords|join(', ') }}</td></tr>{% endfor %}</tbody>
+          </table>
+        </div>
+        {% if analysis.ignored_boilerplate %}<details><summary>Ignored job-posting boilerplate</summary><ul>{% for item in analysis.ignored_boilerplate %}<li>{{ item }}</li>{% endfor %}</ul></details>{% endif %}
+      </div>
+    </details>
+
+    {% if career_translation_assessment %}
+      <section class="card career-translation-assessment" id="career-translation-assessment" aria-labelledby="career-translation-title">
+        <div class="career-translation-heading">
+          <div>
+            <span class="eyebrow">Before resume rewriting</span>
+            <h2 id="career-translation-title">Target-Market Review</h2>
+            <p>{{ career_translation_assessment.summary }}</p>
+          </div>
+          <div class="career-translation-target">
+            <span>Target market</span>
+            <strong>{{ career_translation_assessment.target_role or analysis.target_title }}{% if career_translation_assessment.target_country or career_background.target_country %} · {{ career_translation_assessment.target_country or career_background.target_country }}{% endif %}</strong>
+          </div>
+        </div>
+
+        <div class="career-translation-review-summary" aria-label="Target-market review summary">
+          <div class="career-translation-summary-card career-translation-summary-evidence">
+            <strong>{{ career_translation_assessment.evidence_found_count }}</strong>
+            <span>Evidence already found</span>
+            <small>Existing Verified Resume Evidence supports these items. No new answer is required.</small>
+          </div>
+          <div class="career-translation-summary-card career-translation-summary-confirmation">
+            <strong>{{ career_translation_assessment.confirmation_needed_count }}</strong>
+            <span>Confirmation needed</span>
+            <small>Only these items need a factual answer before they can influence the resume.</small>
+          </div>
+          <div class="career-translation-summary-card career-translation-summary-no-evidence">
+            <strong>{{ career_translation_assessment.no_evidence_count }}</strong>
+            <span>No evidence found</span>
+            <small>These stay outside the resume. No action is required unless you have relevant experience to add.</small>
+          </div>
+        </div>
+
+        {% if career_translation_assessment.confirmation_needed_groups %}
+          <div class="career-translation-review-heading" id="confirmation-needed">
+            <div>
+              <h3>Confirmation needed</h3>
+              <p class="caption">Career Bridge found potentially relevant experience but needs one factual detail. Answer only the focused questions that apply to you.</p>
+            </div>
+          </div>
+          <div class="career-translation-groups career-translation-attention-groups">
+            {% for group in career_translation_assessment.confirmation_needed_groups %}
+              <section class="career-translation-group">
+                <h3>{{ group.label }}</h3>
+                <div class="career-translation-findings">
+                  {% for row in group.findings %}
+                    {{ career_translation_finding_card(row) }}
+                  {% endfor %}
+                </div>
+              </section>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="alert alert-success compact-alert"><strong>No confirmation is needed.</strong> Career Bridge can proceed using only the evidence already linked to this application.</div>
+        {% endif %}
+
+        {% if career_translation_assessment.evidence_found_groups %}
+          <details class="career-translation-section-details career-translation-evidence-details"{% if not career_translation_assessment.confirmation_needed_count %} open{% endif %}>
+            <summary>
+              <span>Evidence already found</span>
+              <strong>{{ career_translation_assessment.evidence_found_count }}</strong>
+            </summary>
+            <div class="career-translation-section-body">
+              <p class="caption">Career Bridge linked these requirements or target-market explanations to traceable Verified Resume Evidence. Review the proposed links for transparency; no new answer is required.</p>
+              <div class="career-translation-groups">
+                {% for group in career_translation_assessment.evidence_found_groups %}
+                  <section class="career-translation-group">
+                    <h3>{{ group.label }}</h3>
+                    <div class="career-translation-findings">
+                      {% for row in group.findings %}
+                        {{ career_translation_finding_card(row) }}
+                      {% endfor %}
+                    </div>
+                  </section>
+                {% endfor %}
+              </div>
+            </div>
+          </details>
+        {% endif %}
+
+        {% if career_translation_assessment.no_evidence_groups %}
+          <details class="career-translation-section-details career-translation-no-evidence-details">
+            <summary>
+              <span>No evidence found — no action required</span>
+              <strong>{{ career_translation_assessment.no_evidence_count }}</strong>
+            </summary>
+            <div class="career-translation-section-body">
+              <p class="caption">These requirements will remain outside the resume. Their absence is not proof that you lack the experience. Open this section only when you want to add a verified example.</p>
+              <div class="career-translation-groups">
+                {% for group in career_translation_assessment.no_evidence_groups %}
+                  <section class="career-translation-group">
+                    <h3>{{ group.label }}</h3>
+                    <div class="career-translation-findings">
+                      {% for row in group.findings %}
+                        {{ career_translation_no_evidence_card(row) }}
+                      {% endfor %}
+                    </div>
+                  </section>
+                {% endfor %}
+              </div>
+            </div>
+          </details>
+        {% endif %}
+
+        <div class="alert alert-info compact-alert evidence-first-note"><strong>What you need to do:</strong> Answer items under <em>Confirmation needed</em>. Evidence already found is available for review, and items under <em>No evidence found</em> require no action unless you choose to add a verified example.</div>
+      </section>
+    {% endif %}
+
+    <section class="card" id="confirmation">
+      <h2>{% if state.confirmation_follow_up_count %}Targeted evidence follow-up{% else %}Additional experience confirmation{% endif %}</h2>
+      {% if state.confirmation_follow_up_count %}
+        <div class="alert alert-warning"><strong>{{ state.confirmation_follow_up_count }} final follow-up question(s) need your input.</strong> This is the only follow-up round and it is limited to three blocking questions. After these answers, any remaining uncertainty will be removed or rewritten with safer source-backed wording.</div>
+        <p>Each question shows the exact summary statement or bullet under review. Select Yes and add one precise fact only when the complete statement is accurate. Select No to use safer wording automatically.</p>
+      {% else %}
+        <div class="alert alert-info compact-alert"><strong>{{ confirmation_rows|length }} high-value question{% if confirmation_rows|length != 1 %}s{% endif %} selected.</strong> Only critical or important gaps that could materially improve the resume are shown. Lower-priority gaps are handled conservatively without asking you.</div>
+        <p>Confirmed answers become evidence for this application. No answers remain visible as acknowledged gaps and are not added to the resume.</p>
+        <p class="caption confirmation-answer-guidance"><strong>Recommended answer length: 60–120 words (about 3–6 sentences).</strong> Include what you did, how you did it, the tools or techniques you used, and the result. This is guidance, not a strict limit.</p>
+      {% endif %}
+
+      {% if state.reused_library_evidence_count %}
+        <div class="alert alert-success compact-alert"><strong>{{ state.reused_library_evidence_count }} previous answer{% if state.reused_library_evidence_count != 1 %}s were{% else %} was{% endif %} reused from Career Evidence Library.</strong> Those questions were not asked again. Review or edit reusable answers from <a href="{{ request.script_root }}/career-evidence-library">Career Evidence Library</a>.</div>
+      {% endif %}
+      {% if not state.confirmation_complete %}
+        <form
+          id="confirmation-workflow-form"
+          action="{{ url_for('application_builder.apply_confirmation') }}"
+          method="post"
+          class="loading-form"
+          data-confirmation-form
+          data-loading-title="{% if state.confirmation_follow_up_count %}Applying final evidence answers…{% else %}Creating tailored resume…{% endif %}"
+          data-loading-message="The app is applying your answers locally, adding only verified evidence, and opening Review Tailored Resume."
+          data-loading-steps="Applying your answers|Adding verified evidence|Selecting job-aligned bullets|Opening Review Tailored Resume"
+          data-loading-step-details="Using only facts you confirmed.|Attaching confirmed details to the selected roles.|Running deterministic relevance, evidence-strength, and duplication checks.|Saving the editable resume and opening Step 3."
+          data-loading-step-timings="700,1500,2600"
+          data-loading-reassurance="This step does not wait for another AI rewrite or evidence audit."
+          data-loading-reassurance-delayed="Still working. The app is validating and saving the Job-Aligned Resume."
+          data-loading-reassurance-extended="Still working. Your answers are preserved while the updated workflow state is saved."
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% if confirmation_rows %}
+            {% if proposal.unsupported_requirements %}<details><summary>Current unsupported requirements</summary><ul>{% for item in proposal.unsupported_requirements %}<li>{{ item }}</li>{% endfor %}</ul></details>{% endif %}
+            <div class="bulk-confirmation-controls" aria-labelledby="bulk-confirmation-heading">
+              <div>
+                <h3 id="bulk-confirmation-heading">{% if state.confirmation_follow_up_count %}Answer the final follow-up questions{% else %}Answer experience questions in bulk{% endif %}</h3>
+                <p class="caption">Answer only the experience you can support with a brief fact. You can mark every question as no relevant experience when none apply.</p>
+              </div>
+              <div class="button-row bulk-confirmation-buttons">
+                <button class="button secondary" type="button" data-confirmation-bulk="no">Mark all as no experience</button>
+              </div>
+              <p class="caption bulk-confirmation-status" data-confirmation-bulk-status role="status" aria-live="polite"></p>
+            </div>
+            {% for row in confirmation_rows %}
+              {% set q = row.question %}
+              <div class="question-card" data-question-type="{{ q.answer_type }}">
+                <h3>{{ row.display_id }} — {{ q.question }}</h3>
+                {% if row.requirement %}<p class="caption">Related requirement: {{ row.requirement.requirement }} · {{ row.requirement.priority|capitalize }} · {{ row.requirement.category.replace('_', ' ') }}</p>{% endif %}
+                {% if q.source_id %}<p class="caption">Affected resume item: <strong>{{ q.source_id }}</strong>. The related job is preselected when it can be identified.</p>{% endif %}
+                {% if q.help_text %}<p class="caption">{{ q.help_text }}</p>{% endif %}
+                {% if q.answer_type in ['yes_no', 'yes_no_with_details'] %}
+                  <fieldset class="radio-row">
+                    <legend>Answer</legend>
+                    <label><input type="radio" name="choice__{{ q.id }}" value="yes" {% if row.choice == 'yes' %}checked{% endif %} required> Yes</label>
+                    <label><input type="radio" name="choice__{{ q.id }}" value="no" {% if row.choice == 'no' %}checked{% endif %} required> No</label>
+                  </fieldset>
+                  <div class="conditional-details" data-details-for="{{ q.id }}" {% if row.choice != 'yes' %}hidden{% endif %}>
+                    <label for="answer-{{ q.id }}">{{ q.details_prompt or 'Describe the relevant experience with enough detail to support a strong resume bullet.' }}</label>
+                    <textarea id="answer-{{ q.id }}" name="answer__{{ q.id }}" rows="5" aria-describedby="answer-guidance-{{ q.id }}" {% if row.choice == 'yes' %}required{% endif %}>{{ row.answer }}</textarea>
+                    <p class="caption" id="answer-guidance-{{ q.id }}">{% if state.confirmation_follow_up_count %}Add the precise factual detail requested above so the application can verify the statement safely.{% else %}<strong>Aim for 60–120 words (about 3–6 sentences).</strong> Include what you did, how you did it, the tools or techniques used, and the result. This is guidance, not a strict limit.{% endif %}</p>
+                  </div>
+                {% elif q.answer_type == 'long_text' %}
+                  <input type="hidden" name="choice__{{ q.id }}" value="{{ row.choice }}" data-text-question-choice>
+                  <div class="text-answer-details" data-text-answer-for="{{ q.id }}" {% if row.choice == 'no' %}hidden{% endif %}>
+                    <label for="answer-{{ q.id }}">{{ q.details_prompt or 'Provide the relevant details.' }}</label>
+                    <textarea id="answer-{{ q.id }}" name="answer__{{ q.id }}" rows="6" aria-describedby="answer-guidance-{{ q.id }}" data-required-answer="{{ 'true' if q.required else 'false' }}" {% if q.required and row.choice != 'no' %}required{% endif %} {% if row.choice == 'no' %}disabled{% endif %}>{{ row.answer }}</textarea>
+                    <p class="caption" id="answer-guidance-{{ q.id }}">{% if state.confirmation_follow_up_count %}Add the precise factual detail requested above so the application can verify the statement safely.{% else %}<strong>Aim for 60–120 words (about 3–6 sentences).</strong> Include what you did, how you did it, the tools or techniques used, and the result. This is guidance, not a strict limit.{% endif %}</p>
+                    <button class="button text mark-question-no-experience" type="button" data-mark-question-no-experience>Mark this as no experience</button>
+                  </div>
+                  <div class="no-experience-answer" data-no-experience-answer {% if row.choice != 'no' %}hidden{% endif %}>
+                    <p><strong>Marked as no relevant experience.</strong> This question is complete and will remain an acknowledged gap.</p>
+                    <button class="button secondary" type="button" data-answer-question-instead>Add an answer instead</button>
+                  </div>
+                {% else %}
+                  <input type="hidden" name="choice__{{ q.id }}" value="{{ row.choice }}" data-text-question-choice>
+                  <div class="text-answer-details" data-text-answer-for="{{ q.id }}" {% if row.choice == 'no' %}hidden{% endif %}>
+                    <label for="answer-{{ q.id }}">{{ q.details_prompt or ('Number or measurable result' if q.answer_type == 'number' else 'Date or date range' if q.answer_type == 'date_or_range' else 'Your answer') }}</label>
+                    <input id="answer-{{ q.id }}" name="answer__{{ q.id }}" value="{{ row.answer }}" data-required-answer="{{ 'true' if q.required else 'false' }}" {% if q.required and row.choice != 'no' %}required{% endif %} {% if row.choice == 'no' %}disabled{% endif %}>
+                    <button class="button text mark-question-no-experience" type="button" data-mark-question-no-experience>Mark this as no experience</button>
+                  </div>
+                  <div class="no-experience-answer" data-no-experience-answer {% if row.choice != 'no' %}hidden{% endif %}>
+                    <p><strong>Marked as no relevant experience.</strong> This question is complete and will remain an acknowledged gap.</p>
+                    <button class="button secondary" type="button" data-answer-question-instead>Add an answer instead</button>
+                  </div>
+                {% endif %}
+                <div class="confirmation-placement" data-confirmation-placement {% if row.choice == 'no' or (q.answer_type in ['yes_no', 'yes_no_with_details'] and row.choice != 'yes') %}hidden{% endif %}>
+                  <div class="form-grid confirmation-placement-grid">
+                    <label for="experience-{{ q.id }}">Which job was this part of?
+                      <select id="experience-{{ q.id }}" name="experience__{{ q.id }}" data-confirmation-experience {% if row.choice != 'no' and (q.answer_type not in ['yes_no', 'yes_no_with_details'] or row.choice == 'yes') %}required{% endif %}>
+                        <option value="">Select a job</option>
+                        {% for experience in confirmation_experiences %}
+                          <option value="{{ experience.id }}" {% if row.experience_id == experience.id %}selected{% endif %}>{{ experience.employer }} — {{ experience.title }}</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                    <label for="placement-{{ q.id }}">How should it be used?
+                      <select id="placement-{{ q.id }}" name="placement__{{ q.id }}" data-confirmation-placement-choice>
+                        <option value="auto" {% if row.placement == 'auto' %}selected{% endif %}>Let the application decide</option>
+                        <option value="update_existing" {% if row.placement == 'update_existing' %}selected{% endif %}>Update the closest existing bullet</option>
+                        <option value="new_bullet" {% if row.placement == 'new_bullet' %}selected{% endif %}>Add a new bullet</option>
+                      </select>
+                    </label>
+                  </div>
+                  <p class="caption">The confirmed answer will be attached to this role. The application will either strengthen a related bullet or create a traceable bullet such as NAS-CONF-01.</p>
+                </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="alert alert-success"><strong>No additional confirmation is required.</strong> The existing evidence is sufficient to create the tailored resume.</div>
+          {% endif %}
+        </form>
+        <div class="workflow-action-bar workflow-stage-action" aria-label="Confirmation next step">
+          <div class="workflow-action-copy">
+            <span class="eyebrow">Next step</span>
+            <strong>{% if state.confirmation_follow_up_count %}Apply final evidence answers{% else %}Create tailored resume{% endif %}</strong>
+            <span>{% if state.confirmation_follow_up_count %}Apply this final question set; remaining uncertainty will use safer wording automatically.{% else %}Use only the evidence you confirmed and open Review Tailored Resume.{% endif %}</span>
+          </div>
+          <div class="workflow-action-content">
+            <div class="workflow-action-controls">
+              <button class="button primary" type="submit" form="confirmation-workflow-form" {% if not input_is_current %}disabled{% endif %}>{% if state.confirmation_follow_up_count %}Apply final evidence answers{% else %}Create tailored resume{% endif %}</button>
+              <button class="button secondary" type="submit" form="confirmation-workflow-form" formaction="{{ url_for('application_builder.save_confirmation_to_library') }}" data-skip-loading="true" {% if not input_is_current %}disabled{% endif %}>Save confirmed answers to Career Evidence Library</button>
+            </div>
+            {% if not input_is_current %}<span class="caption workflow-action-warning">Return to Setup because the job inputs or tailoring model changed.</span>{% else %}<span class="caption">{% if state.confirmation_follow_up_count %}Your final answers will be applied locally; no additional AI review or follow-up round will run.{% else %}Required questions must be answered or explicitly marked as no relevant experience. The secondary action saves both Yes and No answers for reuse and keeps you on this step; Create tailored resume advances to Step 3.{% endif %}</span>{% endif %}
+          </div>
+        </div>
+      {% else %}
+        {% if confirmation_snapshot %}
+          <div class="workflow-snapshot-banner">
+            <div>
+              <span class="eyebrow">Completed-step snapshot</span>
+              <strong>Step 2 · Confirm Relevant Experience</strong>
+              <p>These are the saved confirmation answers used to create the tailored resume.</p>
+            </div>
+            <span class="caption">Saved {{ confirmation_snapshot.captured_at }}</span>
+          </div>
+        {% endif %}
+        {% if confirmation_display_answers %}
+          <div class="metric-grid metric-grid-3">
+            <div class="metric-card compact"><span>Yes confirmations</span><strong>{{ confirmation_display_answers|selectattr('yes_no', 'equalto', true)|list|length }}</strong></div>
+            <div class="metric-card compact"><span>No / acknowledged gaps</span><strong>{{ confirmation_display_answers|selectattr('yes_no', 'equalto', false)|list|length }}</strong></div>
+            <div class="metric-card compact"><span>Responses</span><strong>{{ confirmation_display_answers|length }}</strong></div>
+          </div>
+          {% if confirmed_answer_dispositions %}
+            <details class="compact-details confirmation-dispositions">
+              <summary>How your confirmed experience was used</summary>
+              <div class="compact-details-body">
+                {% for item in confirmed_answer_dispositions %}
+                  <div class="confirmation-disposition-row">
+                    <div><strong>{{ item.question_id }} · {{ item.experience }}</strong><p>{{ item.answer }}</p></div>
+                    <span class="status-badge status-{{ item.status }}">{{ item.result }}</span>
+                  </div>
+                {% endfor %}
+              </div>
+            </details>
+          {% endif %}
+          <div class="button-row">
+            <form action="{{ url_for('application_builder.save_confirmation_to_library') }}" method="post" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="button secondary" type="submit">{% if state.saved_library_evidence_count %}Update answers in Career Evidence Library{% else %}Save confirmed answers to Career Evidence Library{% endif %}</button>
+            </form>
+            <a class="button text" href="{{ request.script_root }}/career-evidence-library">Open Career Evidence Library</a>
+          </div>
+          {% if state.saved_library_evidence_count %}<p class="caption">{{ state.saved_library_evidence_count }} reusable confirmation answer{% if state.saved_library_evidence_count != 1 %}s are{% else %} is{% endif %} available in Career Evidence Library.</p>{% endif %}
+        {% else %}
+          <div class="alert alert-info">No additional experience confirmations were required.</div>
+        {% endif %}
+        <form action="{{ url_for('application_builder.reopen_confirmation') }}" method="post" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="workflow-reopen-control">
+            <button class="button secondary" type="submit" data-confirm-reopen="Changing these answers will clear Steps 3–4 and create a new tailored resume. Continue?">Edit this step</button>
+            <span class="caption">Your saved answers will reopen prefilled. Saving changes clears every later resume snapshot.</span>
+          </div>
+        </form>
+      {% endif %}
+    </section>
+  {% else %}
+    <section class="card" id="confirmation-stage">
+      <div class="empty-state"><h3>Experience confirmation has not started</h3><p>Return to Setup and start tailoring first.</p><a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='setup') }}#job-input">Return to Setup</a></div>
+    </section>
+  {% endif %}
+  </div>
+
+  {% if proposal_data and state.confirmation_complete %}
+    <div class="workflow-stage-panel" data-workflow-stage-panel="draft" {% if selected_workflow_panel != 'draft' %}hidden{% endif %}>
+      <section class="card workflow-stage-intro" id="draft-stage">
+        <div class="step-heading">
+          <div><span class="step-number step-label">3</span><h2>Review Tailored Resume</h2></div>
+          <p class="workflow-stage-purpose"><strong>Decision:</strong> Approve the Job-Aligned Resume or edit the wording before optimization.</p>
+          <p class="workflow-stage-guidance">Focus on what changed, why it changed, and whether the result accurately represents your experience. Detailed diagnostics and report results remain available but secondary.</p>
+        </div>
+        {% if confirmed_answer_dispositions %}
+          <details class="compact-details confirmation-dispositions">
+            <summary>Confirmed experience included in this tailored resume</summary>
+            <div class="compact-details-body">
+              {% for item in confirmed_answer_dispositions %}
+                <div class="confirmation-disposition-row">
+                  <div><strong>{{ item.experience }}</strong><p>{{ item.answer }}</p></div>
+                  <span class="status-badge status-{{ item.status }}">{{ item.result }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          </details>
+        {% endif %}
+      </section>
+      {% if application_fit %}
+        {{ application_fit_panel(application_fit, 'application-fit-draft', preliminary_application_fit) }}
+      {% endif %}
+      {% if not state.quality_review_started %}
+        <div id="tailored-resume">
+          {{ resume_version_editor(tailor_stage_editor_data, tailor_stage_profile, analysis.target_title, 'draft', true, input_is_current, 'Job-Aligned Resume under review', job_aligned_editor_filename, none, tailor_stage_tailoring_changes, true) }}
+        </div>
+      {% else %}
+        <div id="tailored-resume">
+          {{ resume_version_editor(tailor_stage_editor_data, tailor_stage_profile, analysis.target_title, 'draft', false, true, 'Completed · Job-Aligned Resume snapshot', job_aligned_editor_filename, none, tailor_stage_tailoring_changes, true) }}
+        </div>
+        <div class="workflow-action-bar workflow-stage-action" aria-label="Edit completed job alignment step">
+          <div class="workflow-action-copy">
+            <span class="eyebrow">Completed step</span>
+            <strong>Job-Aligned Resume review complete</strong>
+            <span>Continue to resume optimization without changing this saved Step 3 snapshot, or reopen it to create a new Final Resume.</span>
+          </div>
+          <div class="workflow-action-content">
+            <div class="workflow-action-controls">
+              <a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='quality') }}#final-review">Open Improve Resume Quality</a>
+              <form action="{{ url_for('application_builder.reopen_workflow_stage', stage='review') }}" method="post" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="button text" type="submit" data-confirm-reopen="Editing Step 3 will clear the Final Resume, optimization report, and export. Continue?">Edit this step</button>
+              </form>
+            </div>
+            <span class="caption">Editing Step 3 clears the Final Resume, Final Resume Report, and export.</span>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="workflow-stage-panel" data-workflow-stage-panel="final" {% if selected_workflow_panel != 'final' %}hidden{% endif %}>
+      <section class="card workflow-stage-intro" id="resume-quality"><span id="final-review" aria-hidden="true"></span>
+        <div class="step-heading">
+          <div><span class="step-number step-label">4</span><h2>Improve Resume Quality</h2></div>
+          <p class="workflow-stage-purpose"><strong>Purpose:</strong> Apply safe, score-protected improvements before the final formatting and evidence review steps.</p>
+          <p class="workflow-stage-guidance">This step focuses on <strong>Content Quality</strong>, <strong>Searchability</strong>, <strong>Recruiter tips</strong>, and <strong>Soft skills</strong>. Visual presentation is finalized in Step 5, and the final evidence audit runs in Step 6.</p>
+        </div>
+      </section>
+
+      {% if state.workflow_stage == 'final' %}
+        {% if optimization_summary %}
+          <section class="card final-optimization-report" aria-label="Final Resume optimization summary">
+            <div class="section-heading compact-section-heading">
+              <div>
+                {% if state.optimization_status in ['timed_out', 'unavailable'] %}
+                  <span class="eyebrow">Final Resume ready</span>
+                  <h3>Your approved resume was preserved safely</h3>
+                  <p>The optional AI refinement did not complete, so no unreviewed wording changes were applied.</p>
+                {% else %}
+                  <span class="eyebrow">Optimization complete</span>
+                  <h3>Your strongest score-safe version was kept</h3>
+                  <p>Only changes that maintained or improved the protected Resume Report scores were accepted.</p>
+                {% endif %}
+              </div>
+            </div>
+            <div class="metric-grid metric-grid-3 optimization-outcome-grid">
+              <div class="metric-card"><span>Overall score</span><strong>{{ '%.1f'|format(state.optimization_report_after.overall_score()) }}%</strong><em>{{ '%+.1f'|format(state.optimization_report_after.overall_score() - state.optimization_report_before.overall_score()) }} points</em></div>
+              <div class="metric-card"><span>Safe improvements</span><strong>{{ state.optimization_applied_issue_count }}</strong><em>Accepted automatically</em></div>
+              <div class="metric-card"><span>Optional recommendations</span><strong>{{ optimization_remaining|length }}</strong><em>Do not block export</em></div>
+            </div>
+            {% if state.optimization_status in ['timed_out', 'unavailable'] %}
+              <div class="alert alert-info compact-alert optimization-fallback-notice">
+                <div>
+                  <strong>Your Final Resume is ready to review and export.</strong>
+                  <p>{{ state.optimization_notice or 'The approved Job-Aligned Resume was kept unchanged because the optional refinement did not finish.' }}</p>
+                </div>
+                <form action="{{ url_for('application_builder.start_final_stage') }}" method="post" class="loading-form inline-form" data-loading-title="Retrying optional refinement…" data-loading-message="Checking one focused group of score-safe improvements.">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="button secondary" type="submit">Retry optional refinement</button>
+                </form>
+              </div>
+            {% elif state.optimization_applied_issue_count %}
+              <div class="alert alert-success compact-alert"><strong>{{ state.optimization_applied_issue_count }} safe improvement{% if state.optimization_applied_issue_count != 1 %}s were{% else %} was{% endif %} applied.</strong> Proposed changes that reduced quality were discarded automatically.</div>
+            {% else %}
+              <div class="alert alert-info compact-alert"><strong>The Job-Aligned Resume was already the strongest version.</strong> No proposed change improved quality without reducing a protected score.</div>
+            {% endif %}
+
+            <details class="quality-overview-details">
+              <summary>View category results</summary>
+              <div class="quality-overview-details-content">
+                <div class="optimization-category-grid">
+                  {% for item in optimization_summary %}
+                    <div class="optimization-category-card">
+                      <strong>{{ item.name }}</strong>
+                      <span>Score: {{ '%.1f'|format(item.before_score) if item.before_score is not none else '—' }} → {{ '%.1f'|format(item.after_score) if item.after_score is not none else '—' }}</span>
+                      <span class="caption">{{ item.resolved }} issue{% if item.resolved != 1 %}s{% endif %} resolved · {{ item.after_open }} remain</span>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </details>
+
+            {% if optimization_remaining %}
+              <details class="quality-overview-details optimization-remaining-details">
+                <summary>{{ optimization_remaining|length }} optional recommendation{% if optimization_remaining|length != 1 %}s{% endif %}</summary>
+                <div class="quality-overview-details-content">
+                  <p class="caption">These suggestions are available for optional manual refinement and never block download.</p>
+                  <div class="optimization-recommendation-list">
+                    {% for item in optimization_remaining %}
+                      <article class="optimization-recommendation-item">
+                        <div class="audit-item-heading"><strong>{{ item.section }}</strong><span class="caption">{{ item.subsection }}</span></div>
+                        <p><strong>{{ item.label }}</strong></p><p>{{ item.detail }}</p>
+                      </article>
+                    {% endfor %}
+                  </div>
+                </div>
+              </details>
+            {% endif %}
+
+            <details class="quality-overview-details optimization-technical-details">
+              <summary>How automatic quality protection worked</summary>
+              <div class="quality-overview-details-content">
+                <p>{{ state.optimization_accepted_batch_count }} candidate group{% if state.optimization_accepted_batch_count != 1 %}s{% endif %} passed all score and validation checks. {{ state.optimization_rejected_batch_count }} candidate group{% if state.optimization_rejected_batch_count != 1 %}s were{% else %} was{% endif %} discarded because at least one protected result would decline.</p>
+                {% if state.optimization_baseline_rolled_back %}<p>A weaker edited working copy was restored to the saved Job-Aligned Resume before optimization.</p>{% endif %}
+              </div>
+            </details>
+          </section>
+        {% endif %}
+
+        <section class="quality-improvement-overview final-optimization-overview" aria-label="Final resume readiness">
+          <div class="quality-overview-heading">
+            <div>
+              <span class="eyebrow">Final Resume</span>
+              {% if state.optimization_status in ['timed_out', 'unavailable'] %}
+                <h3>Ready to export</h3>
+                <p>The approved Job-Aligned Resume is being used as the Final Resume. You may export it now or retry the optional refinement above.</p>
+              {% else %}
+                <h3>Optimized and ready to export</h3>
+                <p>Review the <strong>Job-Aligned Resume → Final Resume</strong> comparison below. The comparison appears only when optimization or saved edits changed the content.</p>
+              {% endif %}
+            </div>
+            <div class="quality-overview-status" aria-label="Optimization status">
+              <span class="quality-check-passed">✓ Ready</span>
+              {% if state.optimization_status in ['timed_out', 'unavailable'] %}<span class="quality-summary-chip advisory">Optional refinement pending</span>{% endif %}
+              {% if optimization_remaining %}<span class="quality-summary-chip advisory"><strong>{{ optimization_remaining|length }}</strong> advisory</span>{% endif %}
+            </div>
+          </div>
+        </section>
+
+        <section class="card workflow-stage-intro application-builder-substage" id="finalize-resume">
+          <div class="step-heading">
+            <div><span class="step-number step-label">5</span><h2>Finalize Resume</h2></div>
+            <p class="workflow-stage-purpose"><strong>Purpose:</strong> Review the strongest resume version and choose its final format and visual presentation.</p>
+            <p class="workflow-stage-guidance">Formatting choices change presentation only. They do not add unsupported experience or rerun the evidence decisions from earlier steps.</p>
+          </div>
+        </section>
+
+        <section id="final-resume-editor" class="inline-final-editor final-comparison-focus">
+          {{ resume_version_editor(final_editor_data, profile, final_resume_title, 'final', true, input_is_current, 'Ready to export', final_editor_filename) }}
+        </section>
+
+        <section class="card resume-style-selector" id="resume-style-selector" aria-labelledby="resume-style-heading">
+          <div class="section-heading compact-section-heading">
+            <div>
+              <span class="eyebrow">Resume export preferences</span>
+              <h3 id="resume-style-heading">Customize your resume</h3>
+              <p>Recommendations use the target job, uploaded resume, and any experience you confirmed. Career stage controls density and seniority, resume format controls section structure, and visual design controls typography and presentation. Each choice applies automatically without rerunning AI optimization.</p>
+            </div>
+            <div class="resume-preference-current" aria-label="Current resume configuration">
+              <span>Current configuration</span>
+              <strong>{{ selected_resume_preference_label }}</strong>
+            </div>
+          </div>
+
+          <div class="resume-preference-groups">
+            <section class="resume-preference-group" aria-labelledby="career-stage-heading">
+              <div class="resume-preference-group-heading">
+                <div>
+                  <span class="resume-preference-step">1</span>
+                  <h4 id="career-stage-heading">Career stage</h4>
+                </div>
+                <p>Controls document density, accomplishment scope, and the prominence of education versus leadership.</p>
+              </div>
+              <form action="{{ url_for('application_builder.select_resume_style') }}" method="post" class="resume-style-form loading-form" data-auto-submit-radio="career_stage" data-loading-title="Applying career stage…" data-loading-message="Refreshing the resume export and Resume Reports without rerunning optimization.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="resume-style-grid resume-style-grid-three">
+                  {% for option in career_stage_options %}
+                    <label class="resume-style-card resume-preference-card{% if selected_career_stage == option.key %} selected{% endif %}">
+                      <input type="radio" name="career_stage" value="{{ option.key }}" {% if selected_career_stage == option.key %}checked{% endif %}>
+                      <span class="resume-style-card-header">
+                        <span><strong>{{ option.label }}</strong><small>{{ option.audience }}</small></span>
+                        {% if recommended_career_stage == option.key %}<span class="resume-style-recommended">Recommended</span>{% endif %}
+                      </span>
+                      <span class="resume-style-description">{{ option.description }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              </form>
+            </section>
+
+            <section class="resume-preference-group" aria-labelledby="resume-format-heading">
+              <div class="resume-preference-group-heading">
+                <div>
+                  <span class="resume-preference-step">2</span>
+                  <h4 id="resume-format-heading">Resume format</h4>
+                </div>
+                <p>Controls which sections lead and how the same verified experience is framed for the target role.</p>
+              </div>
+              <form action="{{ url_for('application_builder.select_resume_style') }}" method="post" class="resume-style-form loading-form" data-auto-submit-radio="resume_format" data-loading-title="Applying resume format…" data-loading-message="Reordering and relabeling the resume without changing verified content.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="resume-style-grid resume-style-grid-four">
+                  {% for option in resume_format_options %}
+                    <label class="resume-style-card resume-preference-card{% if selected_resume_format == option.key %} selected{% endif %}">
+                      <input type="radio" name="resume_format" value="{{ option.key }}" {% if selected_resume_format == option.key %}checked{% endif %}>
+                      <span class="resume-style-card-header">
+                        <span><strong>{{ option.label }}</strong><small>{{ option.audience }}</small></span>
+                        {% if recommended_resume_format == option.key %}<span class="resume-style-recommended">Recommended</span>{% endif %}
+                      </span>
+                      <span class="resume-style-description">{{ option.description }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              </form>
+            </section>
+
+            <section class="resume-preference-group" aria-labelledby="visual-design-heading">
+              <div class="resume-preference-group-heading">
+                <div>
+                  <span class="resume-preference-step">3</span>
+                  <h4 id="visual-design-heading">Visual design</h4>
+                </div>
+                <p>Controls typography, alignment, spacing, and accent treatment while keeping the document single-column and ATS-friendly.</p>
+              </div>
+              <form action="{{ url_for('application_builder.select_resume_style') }}" method="post" class="resume-style-form loading-form" data-auto-submit-radio="visual_design" data-loading-title="Applying visual design…" data-loading-message="Refreshing resume formatting and Resume Reports without rerunning optimization.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="resume-style-grid resume-style-grid-two">
+                  {% for option in visual_design_options %}
+                    <label class="resume-style-card resume-preference-card visual-design-card{% if selected_visual_design == option.key %} selected{% endif %}">
+                      <input type="radio" name="visual_design" value="{{ option.key }}" {% if selected_visual_design == option.key %}checked{% endif %}>
+                      <span class="resume-style-card-header">
+                        <span><strong>{{ option.label }}</strong><small>{{ option.audience }}</small></span>
+                        {% if recommended_visual_design == option.key %}<span class="resume-style-recommended">Recommended</span>{% endif %}
+                      </span>
+                      <span class="resume-style-description">{{ option.description }}</span>
+                      <span class="resume-style-preview resume-style-preview-{{ option.key }}" aria-hidden="true">
+                        <span class="preview-name"></span>
+                        <span class="preview-title"></span>
+                        <span class="preview-contact"></span>
+                        <span class="preview-heading"></span>
+                        <span class="preview-line"></span>
+                        <span class="preview-line short"></span>
+                      </span>
+                    </label>
+                  {% endfor %}
+                </div>
+              </form>
+            </section>
+          </div>
+
+          <div class="resume-style-actions">
+            <span class="caption">Selecting any option applies it immediately and queues refreshed Word/PDF exports and formatting checks. Both files use the same approved resume content and selected design; wording and AI optimization are not rerun.</span>
+          </div>
+        </section>
+
+        {% if state.final_resume_pdf_error %}
+          <div class="alert alert-warning">PDF export encountered an unexpected error. The Word download remains available. Retry the PDF after reviewing the final resume.</div>
+        {% endif %}
+
+        <section class="card workflow-stage-intro application-builder-substage" id="evidence-review-export">
+          <div class="step-heading">
+            <div><span class="step-number step-label">6</span><h2>Evidence Review and Export</h2></div>
+            <p class="workflow-stage-purpose"><strong>Decision:</strong> Confirm the final report and export the approved resume for this job application.</p>
+            <p class="workflow-stage-guidance">Use PDF by default to preserve formatting. The exact final resume remains attached to the selected application when you save it.</p>
+          </div>
+        </section>
+
+        <div class="workflow-action-bar workflow-stage-action final-workflow-action" id="final-resume-actions" aria-label="Final resume actions">
+          <div class="workflow-action-copy">
+            <span class="eyebrow">Step 6 · Evidence Review and Export</span>
+            <strong>Export Final Resume</strong>
+            <span>PDF is recommended because it preserves the selected design. Use Word only when an employer specifically requests a .docx file. Remaining report recommendations are advisory.</span>
+          </div>
+          <div class="workflow-action-content">
+            <div class="workflow-action-controls final-primary-download">
+              {% if state.final_resume_bytes and state.final_resume_pdf_bytes %}
+                <a class="button primary" href="{{ url_for('application_builder.download_final_resume') }}">Download PDF</a>
+                <a class="button secondary" href="{{ url_for('application_builder.download_final_resume_word') }}">Download Word (.docx)</a>
+              {% else %}
+                <form action="{{ url_for('application_builder.queue_final_resume_export') }}" method="post" class="inline-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="button primary" type="submit">Prepare Word and PDF</button>
+                </form>
+              {% endif %}
+              <form action="{{ url_for('application_builder.save_final_as_application') }}" method="post" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="button secondary" type="submit">Save as application</button>
+              </form>
+              <details class="final-secondary-actions">
+                <summary>More actions</summary>
+                <div class="button-row">
+                  <a class="button secondary" href="{{ url_for('application_builder.index', tab='reports', report='final') }}#reports-final">View Final Resume Report</a>
+                  <form action="{{ url_for('application_builder.start_final_stage') }}" method="post" class="loading-form inline-form" data-loading-title="Re-optimizing resume…" data-loading-message="Checking for newly available score-safe improvements.">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="button secondary" type="submit">Rerun optimization</button>
+                  </form>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <section class="card" id="final-optimization-not-started">
+          <div class="empty-state">
+            <h3>Resume optimization has not started</h3>
+            <p>Complete Review Tailored Resume and select Improve Resume Quality.</p>
+            <a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='review') }}#tailored-resume">Open Review Tailored Resume</a>
+          </div>
+        </section>
+      {% endif %}
+    </div>
+  {% elif selected_workflow_panel == 'draft' %}
+    <div class="workflow-stage-panel">
+      <section class="card" id="draft-stage"><div class="empty-state"><h3>The tailored resume has not been created</h3><p>Complete Confirm Relevant Experience and select Create tailored resume first.</p><a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='confirmation') }}#confirmation-stage">Open Confirm Relevant Experience</a></div></section>
+    </div>
+  {% elif selected_workflow_panel == 'final' %}
+    <div class="workflow-stage-panel">
+      <section class="card" id="final-review"><div class="empty-state"><h3>Final optimization has not started</h3><p>Complete Review Tailored Resume and select Improve Resume Quality.</p><a class="button secondary" href="{{ url_for('application_builder.index', tab='tailoring', stage='review') }}#tailored-resume">Open Review Tailored Resume</a></div></section>
+    </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

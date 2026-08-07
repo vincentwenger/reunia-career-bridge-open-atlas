@@ -1,0 +1,282 @@
+{
+  "scenario_id": "multilingual_resume",
+  "label": "Multilingual and differently structured resume content",
+  "profile": {
+    "name": "Youssef El Amrani",
+    "contact": {
+      "location": "Casablanca, Morocco",
+      "phone": "+1 555 010 0000",
+      "email": "youssef.elamrani@example.test",
+      "linkedin_label": "LinkedIn",
+      "linkedin_url": "",
+      "github_label": "GitHub",
+      "github_url": ""
+    },
+    "current_summary": "Coordinateur de projets experienced in multilingual stakeholder communication, schedule tracking, risk logs, and delivery reporting for renewable-energy programs.",
+    "skills": {
+      "hard_skills": [
+        "Project scheduling",
+        "Risk tracking",
+        "Delivery reporting"
+      ],
+      "soft_skills": [
+        "Communication multilingue",
+        "Coordination des parties prenantes"
+      ],
+      "tools_software": [
+        "Microsoft Project",
+        "Excel"
+      ],
+      "industry_knowledge": [
+        "Renewable energy"
+      ],
+      "languages": [
+        "العربية",
+        "Français",
+        "English"
+      ]
+    },
+    "education": [
+      {
+        "credential": "Master Management de Projet",
+        "institution": "Université Hassan II",
+        "location": "Casablanca, Maroc",
+        "date": "2019",
+        "detail": "Programme enseigné en français."
+      }
+    ],
+    "experiences": [
+      {
+        "id": "EXP-PROJECT-1",
+        "employer": "Atlas Énergie",
+        "location": "Casablanca, Maroc",
+        "dates": "2019–2026",
+        "title": "Coordinateur de projets",
+        "bullets": [
+          {
+            "id": "MAR-1",
+            "text": "Suivi des plannings de projets solaires et mise à jour des jalons avec les équipes techniques."
+          },
+          {
+            "id": "MAR-2",
+            "text": "Maintained risk logs and prepared bilingual delivery reports for clients and program leaders."
+          },
+          {
+            "id": "MAR-3",
+            "text": "نسّق الاجتماعات مع الموردين وفرق التنفيذ لتوضيح المسؤوليات ومتابعة القرارات."
+          },
+          {
+            "id": "MAR-4",
+            "text": "Préparé des comptes rendus de projet en français et en anglais pour les parties prenantes."
+          },
+          {
+            "id": "MAR-5",
+            "text": "Tracked action items after vendor meetings and updated project owners on overdue decisions."
+          },
+          {
+            "id": "MAR-6",
+            "text": "Consolidated schedule, risk, and delivery data in Excel for monthly program reviews."
+          }
+        ]
+      }
+    ],
+    "supplemental_evidence": []
+  },
+  "career_background": {
+    "countries_worked": [
+      "Morocco"
+    ],
+    "industries": [
+      "Renewable energy"
+    ],
+    "roles": [
+      "Coordinateur de projets"
+    ],
+    "languages": [
+      "العربية",
+      "Français",
+      "English",
+      "Français"
+    ],
+    "target_country": "Canada",
+    "target_role": "Project Coordinator",
+    "international_credentials": [
+      "Master Management de Projet"
+    ],
+    "professional_certifications": [],
+    "unfamiliar_job_titles": [
+      "Coordinateur de projets"
+    ],
+    "career_transitions": [],
+    "us_employment_experience": ""
+  },
+  "job_description": "Northern Renewables is hiring a Project Coordinator.\n\nKey requirements:\n- Track project schedules and milestones with technical teams\n- Maintain risk logs and delivery reports\n- Coordinate vendor meetings and follow up decisions\n\nCandidates should present only experience and qualifications they can verify.",
+  "job_analysis": {
+    "target_title": "Project Coordinator",
+    "target_company": "Northern Renewables",
+    "requirements": [
+      {
+        "id": "REQ-1",
+        "category": "responsibility",
+        "priority": "critical",
+        "requirement": "Track project schedules and milestones with technical teams",
+        "keywords": [
+          "project schedules",
+          "milestones",
+          "technical teams"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "category": "methodology",
+        "priority": "important",
+        "requirement": "Maintain risk logs and delivery reports",
+        "keywords": [
+          "risk logs",
+          "delivery reports"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "category": "responsibility",
+        "priority": "important",
+        "requirement": "Coordinate vendor meetings and follow up decisions",
+        "keywords": [
+          "coordinate",
+          "vendor",
+          "meetings",
+          "decisions"
+        ]
+      }
+    ],
+    "ignored_boilerplate": []
+  },
+  "proposal": {
+    "professional_summary": "Multilingual project coordinator with verified experience tracking schedules, maintaining risk logs, preparing delivery reports, and coordinating vendors for renewable-energy programs. Communicates in Arabic, French, and English and holds a documented project-management master degree from Morocco. Targets Project Coordinator roles by preserving multilingual source evidence, translating responsibilities carefully, and keeping official employer, credential, title, and project facts unchanged.",
+    "skills": {
+      "hard_skills": [
+        "Project scheduling",
+        "Risk tracking",
+        "Delivery reporting"
+      ],
+      "soft_skills": [
+        "Communication multilingue",
+        "Coordination des parties prenantes"
+      ],
+      "tools_software": [
+        "Microsoft Project",
+        "Excel"
+      ],
+      "industry_knowledge": [
+        "Renewable energy"
+      ]
+    },
+    "bullet_proposals": [
+      {
+        "source_bullet_id": "MAR-1",
+        "include": true,
+        "proposed_text": "Suivi des plannings de projets solaires et mise à jour des jalons avec les équipes techniques.",
+        "matched_requirement_ids": [
+          "REQ-1"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "MAR-2",
+        "include": true,
+        "proposed_text": "Maintained risk logs and prepared bilingual delivery reports for clients and program leaders.",
+        "matched_requirement_ids": [
+          "REQ-2"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "MAR-3",
+        "include": true,
+        "proposed_text": "نسّق الاجتماعات مع الموردين وفرق التنفيذ لتوضيح المسؤوليات ومتابعة القرارات.",
+        "matched_requirement_ids": [
+          "REQ-3"
+        ],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "MAR-4",
+        "include": true,
+        "proposed_text": "Préparé des comptes rendus de projet en français et en anglais pour les parties prenantes.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "MAR-5",
+        "include": true,
+        "proposed_text": "Tracked action items after vendor meetings and updated project owners on overdue decisions.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      },
+      {
+        "source_bullet_id": "MAR-6",
+        "include": true,
+        "proposed_text": "Consolidated schedule, risk, and delivery data in Excel for monthly program reviews.",
+        "matched_requirement_ids": [],
+        "evidence_note": "Preserved from verified source evidence."
+      }
+    ],
+    "evidence_matches": [
+      {
+        "requirement_id": "REQ-1",
+        "status": "supported",
+        "evidence_ids": [
+          "MAR-1"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-2",
+        "status": "supported",
+        "evidence_ids": [
+          "MAR-2"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      },
+      {
+        "requirement_id": "REQ-3",
+        "status": "supported",
+        "evidence_ids": [
+          "MAR-3"
+        ],
+        "rationale": "Scenario fixture evidence decision based on the Candidate Profile."
+      }
+    ],
+    "unsupported_requirements": [],
+    "candidate_questions": [],
+    "career_translation_assessment": {
+      "summary": "",
+      "target_country": "",
+      "target_role": "",
+      "findings": []
+    }
+  },
+  "expectations": {
+    "expected_findings": [
+      {
+        "category": "credential_explanation",
+        "source_text": "Master Management de Projet",
+        "disposition": "confirmed_experience"
+      },
+      {
+        "category": "job_title_translation",
+        "source_text": "Coordinateur de projets",
+        "disposition": "reasonable_rephrasing"
+      }
+    ],
+    "expected_min_transferable_findings": 1,
+    "expected_hard_blockers": 0,
+    "forbidden_evidence_phrases": [],
+    "unicode_tokens": [
+      "العربية",
+      "Français",
+      "Énergie",
+      "نسّق"
+    ]
+  }
+}
